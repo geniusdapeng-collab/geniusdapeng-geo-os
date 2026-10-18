@@ -43,7 +43,7 @@ fail-closed.
 | L9 | Platform publication receipt | pass for GitHub | Issue #1, `PUB-001` |
 | L10 | Responsive UI at 1440 and 390 px | pass | Playwright screenshots and zero overflow |
 | L11 | Sensitive data and secret scan | pass | `scripts/security-scan.mjs` |
-| L12 | Remote integration and CI | pending at report authoring | final commit/CI recorded in final response |
+| L12 | Remote integration and CI | pass | source `e836302e6e0b055e0edcad9a6cefd857485c8141`; CI run `39146118847` |
 
 ## Real-device checks
 
