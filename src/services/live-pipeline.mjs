@@ -1,5 +1,6 @@
 import { ApiError, PolicyError } from "../domain/errors.mjs";
 import { hashObject } from "../domain/hash.mjs";
+import { validatePublication } from "../domain/policy.mjs";
 
 export class LivePipelineService {
   constructor({
@@ -19,6 +20,7 @@ export class LivePipelineService {
     this.videoEdit = videoEdit;
     this.mediaEngine = mediaEngine;
     this.clock = clock;
+    this.publishingContentIds = new Set();
   }
 
   async adapterHealth() {
@@ -232,43 +234,63 @@ export class LivePipelineService {
     accountId = "github",
     label = "geo-live-smoke",
   }) {
-    const state = this.service.store.snapshot();
-    const content = state.content.find((item) => item.id === contentId);
-    const account = state.accounts.find((item) => item.id === accountId);
-    if (!content) {
-      throw new ApiError(404, "CONTENT_NOT_FOUND", `找不到内容 ${contentId}。`);
-    }
-    if (content.status !== "scheduled") {
-      throw new PolicyError(
-        "CONTENT_NOT_SCHEDULED",
-        "模型驱动发布前，内容必须经过审批并进入 scheduled。",
+    if (this.publishingContentIds.has(contentId)) {
+      throw new ApiError(
+        409,
+        "PUBLICATION_IN_PROGRESS",
+        `内容 ${contentId} 已有发布请求正在执行。`,
       );
     }
-    if (!account || account.platform !== "GitHub") {
-      throw new PolicyError("GITHUB_ACCOUNT_REQUIRED", "需要一个启用并审阅过的 GitHub 账号。");
-    }
+    this.publishingContentIds.add(contentId);
+    try {
+      const state = this.service.store.snapshot();
+      const content = state.content.find((item) => item.id === contentId);
+      const account = state.accounts.find((item) => item.id === accountId);
+      if (!content) {
+        throw new ApiError(404, "CONTENT_NOT_FOUND", `找不到内容 ${contentId}。`);
+      }
+      if (content.status !== "scheduled") {
+        throw new PolicyError(
+          "CONTENT_NOT_SCHEDULED",
+          "模型驱动发布前，内容必须经过审批并进入 scheduled。",
+        );
+      }
+      if (!account || account.platform !== "GitHub") {
+        throw new PolicyError("GITHUB_ACCOUNT_REQUIRED", "需要一个启用并审阅过的 GitHub 账号。");
+      }
 
-    const issue = await this.github.createIssue({
-      title: content.title,
-      body: `${content.body}\n\n---\n\n由鹏栈 GEO 控制面通过 GitHub 官方 REST API 发布。模型：${content.generation?.model ?? "未记录"}；内容版本：v${content.version}。`,
-      label,
-    });
-    const publication = await this.service.recordPublication({
-      contentId,
-      accountId,
-      actor: "PengStack live publisher",
-      receipt: {
-        url: issue.url,
-        publishedAt: issue.createdAt || this.clock().toISOString(),
-        capturedBy: "geniusdapeng-collab",
-        dataMode: "real",
-      },
-    });
-    return {
-      issue,
-      publication,
-      contentId,
-      accountId,
-    };
+      validatePublication({
+        account,
+        content,
+        claims: state.claims,
+        now: this.clock(),
+        requireReceipt: false,
+      });
+
+      const issue = await this.github.createIssue({
+        title: content.title,
+        body: `${content.body}\n\n---\n\n由鹏栈 GEO 控制面通过 GitHub 官方 REST API 发布。模型：${content.generation?.model ?? "未记录"}；内容版本：v${content.version}。`,
+        label,
+      });
+      const publication = await this.service.recordPublication({
+        contentId,
+        accountId,
+        actor: "PengStack live publisher",
+        receipt: {
+          url: issue.url,
+          publishedAt: issue.createdAt || this.clock().toISOString(),
+          capturedBy: "geniusdapeng-collab",
+          dataMode: "real",
+        },
+      });
+      return {
+        issue,
+        publication,
+        contentId,
+        accountId,
+      };
+    } finally {
+      this.publishingContentIds.delete(contentId);
+    }
   }
 }

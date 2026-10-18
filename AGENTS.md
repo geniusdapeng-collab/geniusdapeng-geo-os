@@ -19,6 +19,7 @@ node --check src/server.mjs
 node --check public/app.js
 node --test tests/*.test.mjs
 node --test engines/geo-evidence/test/*.test.mjs
+pnpm test:vendor
 node scripts/smoke.mjs
 node scripts/security-scan.mjs
 ```

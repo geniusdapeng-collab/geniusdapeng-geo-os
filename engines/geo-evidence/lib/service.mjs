@@ -29,18 +29,27 @@ function mergeProviderCitations(
   providerCitations = [],
   caseConfig = PERSONAL_GEO_CASE,
 ) {
-  const combined = [...(analysis.citations ?? [])];
-  const seen = new Set(combined.map((citation) => citation.url));
-  for (const citation of providerCitations) {
-    if (!citation?.url || seen.has(citation.url)) continue;
-    let domain = "";
+  const combined = [];
+  const seen = new Set();
+  for (const citation of [...(analysis.citations ?? []), ...providerCitations]) {
+    if (!citation?.url) continue;
+    let parsedUrl;
     try {
-      domain = new URL(citation.url).hostname.toLowerCase();
+      parsedUrl = new URL(String(citation.url));
     } catch {
-      domain = "";
+      continue;
     }
-    combined.push({ ...citation, domain });
-    seen.add(citation.url);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)
+      || parsedUrl.username || parsedUrl.password
+      || seen.has(parsedUrl.toString())) {
+      continue;
+    }
+    combined.push({
+      ...citation,
+      url: parsedUrl.toString(),
+      domain: parsedUrl.hostname.toLowerCase(),
+    });
+    seen.add(parsedUrl.toString());
   }
   const ownedUrlPrefixes = caseConfig.brand.ownedUrlPrefixes ?? [];
   return {
@@ -58,27 +67,101 @@ function mergeProviderCitations(
 
 function privateAddress(address) {
   if (!address) return true;
-  if (address === "::1" || address.startsWith("fc") || address.startsWith("fd") || address.startsWith("fe80:")) return true;
-  if (!isIP(address)) return false;
-  const parts = address.split(".").map(Number);
+  const normalized = String(address).toLowerCase();
+  if (normalized.includes(":")) {
+    if (normalized === "::" || normalized === "::1") return true;
+    if (normalized.startsWith("fe8") || normalized.startsWith("fe9")
+      || normalized.startsWith("fea") || normalized.startsWith("feb")) return true;
+    if (/^f[cd]/.test(normalized) || normalized.startsWith("ff")) return true;
+    if (normalized.startsWith("::ffff:")) {
+      const tail = normalized.slice("::ffff:".length);
+      const hexPair = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(tail);
+      if (hexPair) {
+        const high = Number.parseInt(hexPair[1], 16);
+        const low = Number.parseInt(hexPair[2], 16);
+        return privateAddress(
+          [high >> 8, high & 0xff, low >> 8, low & 0xff].join("."),
+        );
+      }
+      return privateAddress(tail);
+    }
+    return false;
+  }
+  if (!isIP(normalized)) return false;
+  const parts = normalized.split(".").map(Number);
   if (parts.length !== 4) return false;
-  return parts[0] === 10
+  return parts[0] === 0
+    || parts[0] === 10
+    || (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
     || parts[0] === 127
     || (parts[0] === 169 && parts[1] === 254)
     || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
     || (parts[0] === 192 && parts[1] === 168)
-    || parts[0] === 0;
+    || (parts[0] === 192 && parts[1] === 0 && parts[2] === 0)
+    || (parts[0] === 192 && parts[1] === 0 && parts[2] === 2)
+    || (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19))
+    || (parts[0] === 198 && parts[1] === 51 && parts[2] === 100)
+    || (parts[0] === 203 && parts[1] === 0 && parts[2] === 113)
+    || parts[0] >= 224;
 }
 
 async function assertPublicHttpUrl(rawUrl) {
   const url = new URL(rawUrl);
   if (!["http:", "https:"].includes(url.protocol)) throw new Error("只允许抓取公开 HTTP(S) 页面");
   if (url.username || url.password) throw new Error("引用 URL 不得包含凭据");
-  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (isIP(hostname) && privateAddress(hostname)) {
+    throw new Error("拒绝抓取本机、内网或无法安全解析的地址");
+  }
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
   if (addresses.length === 0 || addresses.some((entry) => privateAddress(entry.address))) {
     throw new Error("拒绝抓取本机、内网或无法安全解析的地址");
   }
   return url;
+}
+
+async function fetchPublicResponse(fetchImpl, rawUrl, init, timeoutMs) {
+  let currentUrl = await assertPublicHttpUrl(rawUrl);
+  for (let redirects = 0; redirects <= 5; redirects += 1) {
+    const response = await fetchImpl(currentUrl, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (![301, 302, 303, 307, 308].includes(response.status)) {
+      return { response, finalUrl: currentUrl.toString() };
+    }
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) {
+      throw new Error(`公开页面返回 ${response.status} 但没有 Location`);
+    }
+    if (redirects === 5) {
+      throw new Error("公开页面重定向次数超过 5 次");
+    }
+    currentUrl = await assertPublicHttpUrl(new URL(location, currentUrl).toString());
+  }
+  throw new Error("公开页面重定向失败");
+}
+
+async function readResponseTextLimited(response, maximumBytes) {
+  if (!response.body) {
+    return "";
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maximumBytes) {
+      await reader.cancel();
+      throw new Error(`响应体超过 ${maximumBytes} 字节上限`);
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 async function mapLimit(items, concurrency, mapper) {
@@ -104,6 +187,7 @@ export class GeoEvidenceService {
       caseConfig = store.caseConfig ?? PERSONAL_GEO_CASE,
       articleTopics = PERSONAL_ARTICLE_TOPICS,
       metrics = computePersonalMetrics,
+      fetchImpl = fetch,
     } = {},
   ) {
     this.store = store;
@@ -112,6 +196,7 @@ export class GeoEvidenceService {
     this.caseConfig = caseConfig;
     this.articleTopics = articleTopics;
     this.metrics = metrics;
+    this.fetchImpl = fetchImpl;
   }
 
   health() {
@@ -170,10 +255,11 @@ export class GeoEvidenceService {
     const notes = [];
 
     await mapLimit(queries, Math.max(1, Math.min(6, Number(concurrency) || 2)), async (query) => {
-      const prompt = `请回答酒店采购方会问的问题：${query.text}`;
+      let prompt = query.text;
       try {
         const result = await adapter.answer(query);
         const answer = String(result.answer ?? "");
+        prompt = String(result.prompt ?? query.text);
         let analysis = analyzeAnswer(query, answer, this.caseConfig);
         analysis = mergeProviderCitations(
           analysis,
@@ -356,26 +442,27 @@ export class GeoEvidenceService {
   }
 
   async fetchCitation(url) {
-    const safeUrl = await assertPublicHttpUrl(url);
-    const response = await fetch(safeUrl, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(20_000),
-      headers: { "user-agent": "GeoEvidenceStudio/0.1 public-citation-inspector" },
-    });
+    const { response, finalUrl } = await fetchPublicResponse(
+      this.fetchImpl,
+      url,
+      {
+        headers: { "user-agent": "GeoEvidenceStudio/0.1 public-citation-inspector" },
+      },
+      20_000,
+    );
     if (!response.ok) throw new Error(`引用页返回 HTTP ${response.status}`);
     const contentType = response.headers.get("content-type") ?? "";
     if (!/text\/html|text\/plain|application\/xhtml\+xml/i.test(contentType)) {
       throw new Error(`不支持的内容类型：${contentType || "unknown"}`);
     }
-    const raw = await response.text();
-    const text = raw.slice(0, 2_000_000);
+    const text = await readResponseTextLimited(response, 2_000_000);
     const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text)?.[1]
       ?.replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim() ?? "";
     return {
-      url: safeUrl.toString(),
-      finalUrl: response.url,
+      url,
+      finalUrl,
       status: response.status,
       contentType,
       title,
@@ -385,8 +472,10 @@ export class GeoEvidenceService {
     };
   }
 
-  summary({ runId } = {}) {
-    const samples = this.store.listSamples({ runId, limit: 2000 });
+  summary({ runId, dataModes } = {}) {
+    const allowedModes = Array.isArray(dataModes) ? new Set(dataModes) : null;
+    const samples = this.store.listSamples({ runId, limit: 2000 })
+      .filter((sample) => !allowedModes || allowedModes.has(sample.dataMode));
     const successful = samples.filter((sample) => sample.status === "success");
     return {
       case: this.caseConfig,
@@ -481,19 +570,23 @@ export class GeoEvidenceService {
 
       if (channel === "webhook") {
         if (!webhookUrl) throw new Error("webhook 发布需要 webhookUrl");
-        const response = await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            title: article.title,
-            slug: article.slug,
-            markdown: article.markdown,
-            evidenceHash: article.evidence_hash,
-            approvedBy,
-          }),
-          signal: AbortSignal.timeout(30_000),
-        });
-        const text = await response.text();
+        const { response, finalUrl } = await fetchPublicResponse(
+          this.fetchImpl,
+          webhookUrl,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              title: article.title,
+              slug: article.slug,
+              markdown: article.markdown,
+              evidenceHash: article.evidence_hash,
+              approvedBy,
+            }),
+          },
+          30_000,
+        );
+        const text = await readResponseTextLimited(response, 1_000_000);
         if (!response.ok) throw new Error(`Webhook ${response.status}: ${text.slice(0, 500)}`);
         let payload;
         try {
@@ -503,7 +596,7 @@ export class GeoEvidenceService {
         }
         this.store.completePublication(publicationId, {
           url: payload.url ?? null,
-          receipt: { status: response.status, payload },
+          receipt: { status: response.status, finalUrl, payload },
         });
         return { publicationId, channel, status: "published", ...payload };
       }
@@ -571,7 +664,7 @@ export class GeoEvidenceService {
           result: { ...generated, scope },
           receipt: {
             synced: generated.created.length > 0,
-            mode: "real",
+            mode: generated.created.length > 0 ? "draft" : "not_run",
             verified_at: new Date().toISOString(),
           },
         };
@@ -617,7 +710,7 @@ export class GeoEvidenceService {
         });
         return {
           result: { publicationId, articleId: article.id, channel: params.channel ?? "manual" },
-          receipt: { synced: true, mode: "real", verified_at: new Date().toISOString() },
+          receipt: { synced: true, mode: "queued", verified_at: new Date().toISOString() },
         };
       }
       case "rpa.source_publish": {
@@ -633,20 +726,20 @@ export class GeoEvidenceService {
             synced: published.status === "published",
             snapshot_uri: published.url,
             verified_at: new Date().toISOString(),
-            mode: "real",
+            mode: String(published.url ?? "").startsWith("file:") ? "local" : "real",
           },
         };
       }
       case "archive.write_back": {
         return {
-          result: { state: "archived", scope, params },
-          receipt: { synced: true, mode: "real", verified_at: new Date().toISOString() },
+          result: { state: "connector-required", tool: "archive.write_back", scope, params },
+          receipt: { synced: false, mode: "not_implemented" },
         };
       }
       default:
         return {
           result: { state: "connector-required", tool: name, scope },
-          receipt: { synced: false, mode: "real" },
+          receipt: { synced: false, mode: "not_configured" },
         };
     }
   }

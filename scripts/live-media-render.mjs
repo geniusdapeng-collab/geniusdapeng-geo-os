@@ -81,7 +81,10 @@ const receipt = {
     durationSeconds: source.durationSeconds,
   })),
   manifestHash: result.manifestHash,
-  postQuality: result.manifest.postQuality,
+  postQuality: {
+    ...result.manifest.postQuality,
+    path: relative(rootDir, result.manifest.postQuality.path),
+  },
   outputs: result.outputs.map((output) => ({
     file: relative(rootDir, output.path),
     bytes: output.bytes,

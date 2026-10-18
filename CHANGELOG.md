@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.4.1 - 2026-10-19
+
+### Fixed
+
+- Revalidate approved Claim state, expiry, target platform and account policy
+  before every external publication.
+- Serialize live publication per content item so concurrent requests cannot
+  create duplicate GitHub Issues.
+- Reject cross-origin browser writes and non-allowlisted Host headers, and add
+  a restrictive Content-Security-Policy to the local control plane.
+- Keep fixture data out of aggregate GEO metrics and record the exact prompt
+  sent to the model.
+- Reject unsafe citation schemes, loopback/private citation targets, unsafe
+  redirect chains and oversized fetched response bodies.
+- Pass the requested cover title and hook through to real media delivery, and
+  report the installed `tsx` runtime truthfully.
+- Make the default video-edit live check use the vendored engine and record the
+  pinned upstream commit.
+- Return truthful draft, queued, local and connector-required receipts instead
+  of labelling non-real operations as `real`.
+- Restore the integrated video-engine TypeScript and rhythm-audio test paths.
+
+### Verified
+
+- 38 root tests, 11 GEO engine tests, 74 Node video-engine tests and 74
+  Vitest video-engine tests
+- 12/12 real DeepSeek Search queries
+- Real model-to-content-to-FFmpeg delivery with two 640x360 MP4 variants
+- Google Chrome desktop/mobile interaction and responsive-layout checks
+- Model-driven GitHub Issue publication with official API readback
+
 ## 0.4.0 - 2026-10-18
 
 ### Integrated

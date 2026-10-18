@@ -17,6 +17,12 @@ External fleet publication result: **partially verified** because only GitHub
 credentials were supplied. The other 15 platform accounts remain manual and
 fail-closed.
 
+The 2026-10-19 deep-audit rerun, finding ledger, exact coverage statement and
+current real-device receipts are recorded in
+[AUDIT-2026-10-19.md](AUDIT-2026-10-19.md). Its candidate branch is expected to
+pass the remote CI gate before `main` integration; the PR CI and main readback
+remain the authoritative cloud receipt.
+
 ## Evidence-grade summary
 
 - A: real model, DeepSeek Search, FFmpeg media, GitHub API, UI interaction and

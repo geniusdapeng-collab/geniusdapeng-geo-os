@@ -4,7 +4,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { PersonalGeoEngine } from "../src/engines/geo-evidence.mjs";
-import { VideoMediaEngine } from "../src/engines/video-media.mjs";
+import {
+  VideoMediaEngine,
+  buildPostArguments,
+} from "../src/engines/video-media.mjs";
 
 const rootDir = resolve(import.meta.dirname, "..");
 
@@ -40,7 +43,28 @@ test("integrated video media engine reports bundled capabilities", async () => {
   const engine = new VideoMediaEngine({ rootDir });
   const health = await engine.health();
   assert.equal(health.ok, true);
+  assert.equal(health.tsx, true);
   assert.equal(health.mode, "in-process-video-edit-engine");
   assert.ok(health.capabilities.includes("post-production"));
   assert.ok(health.capabilities.includes("cover"));
+});
+
+test("video post arguments preserve the requested cover title and hook", () => {
+  const args = buildPostArguments({
+    timelinePath: "timeline.json",
+    deliveryDir: "delivery",
+    variants: ["clean-tech", "natural-clean"],
+    subtitlePath: "captions.srt",
+    title: "成片标题",
+    coverTitle: "4 层证据链",
+    hook: "Claim → 内容 → 回执 → 复测",
+    platform: "微信视频号",
+    outputWidth: 640,
+    outputHeight: 360,
+    musicDir: "music",
+  });
+  assert.equal(args[args.indexOf("--cover-title") + 1], "4 层证据链");
+  assert.equal(args[args.indexOf("--hook") + 1], "Claim → 内容 → 回执 → 复测");
+  assert.equal(args[args.indexOf("--width") + 1], "640");
+  assert.equal(args[args.indexOf("--height") + 1], "360");
 });

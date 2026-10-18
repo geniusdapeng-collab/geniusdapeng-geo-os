@@ -80,7 +80,10 @@ export class PersonalGeoEngine {
   }
 
   summary({ runId } = {}) {
-    const summary = this.service.summary({ runId });
+    const summary = this.service.summary({
+      runId,
+      dataModes: ["real", "imported"],
+    });
     const queries = this.store.listQueries({ limit: 2000 });
     const samples = this.store.listSamples({ runId, limit: 5000 })
       .filter((sample) => ["real", "imported"].includes(sample.dataMode));

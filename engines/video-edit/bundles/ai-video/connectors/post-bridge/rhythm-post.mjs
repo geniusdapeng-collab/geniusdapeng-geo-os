@@ -1,6 +1,7 @@
 /** Local adapter; source is read-only and returned sound receipt binds the actual output. */
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +9,11 @@ import { promisify } from "node:util";
 import { probeMedia, sha256File } from "../subtitle-bridge/measure.mjs";
 const execute = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+const workspaceRoot = path.resolve(root, "../..");
+const engineTsx = path.join(root, "node_modules/tsx/dist/cli.mjs");
+const tsxCli = existsSync(engineTsx)
+  ? engineTsx
+  : path.join(workspaceRoot, "node_modules/tsx/dist/cli.mjs");
 export async function applyPostRhythmSound({ input, plan, workDir, bins, env = process.env }) {
   const sourceHash = await sha256File(input);
   const dir = path.join(workDir, `post-sound-${randomUUID()}`);
@@ -15,7 +21,7 @@ export async function applyPostRhythmSound({ input, plan, workDir, bins, env = p
   const requestFile = path.join(dir, "request.json"), resultFile = path.join(dir, "result.json");
   await fs.writeFile(requestFile, JSON.stringify({ plan, file: path.resolve(input), outputDir: dir, ffmpeg: bins.ffmpeg, ffprobe: bins.ffprobe, resultFile }), { flag: "wx" });
   try {
-    await execute(process.execPath, [path.join(root, "node_modules/tsx/dist/cli.mjs"), path.join(root, "scripts/tools/rhythm-post.mts"), requestFile], { cwd: root, env, timeout: 1_800_000, maxBuffer: 8 * 1024 * 1024 });
+    await execute(process.execPath, [tsxCli, path.join(root, "scripts/tools/rhythm-post.mts"), requestFile], { cwd: root, env, timeout: 1_800_000, maxBuffer: 8 * 1024 * 1024 });
     const result = JSON.parse(await fs.readFile(resultFile, "utf8"));
     const relative = path.relative(dir, result.file ?? "");
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("RHYTHM_POST_OUTPUT_OUTSIDE_WORK");

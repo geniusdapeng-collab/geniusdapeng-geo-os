@@ -14,6 +14,31 @@ async function testFiles(directory) {
     .map((file) => join(directory, file));
 }
 
+const postBridgeDir = join(
+  rootDir,
+  "engines",
+  "video-edit",
+  "bundles",
+  "ai-video",
+  "connectors",
+  "post-bridge",
+);
+const vendorVitestFiles = [
+  join(
+    rootDir,
+    "engines",
+    "video-edit",
+    "bundles",
+    "ai-video",
+    "connectors",
+    "cover-kb-bridge",
+    "core.test.ts",
+  ),
+  join(postBridgeDir, "delivery-integration.test.ts"),
+  join(postBridgeDir, "post-cli-media.test.ts"),
+  join(postBridgeDir, "revision-concurrency.test.ts"),
+];
+
 const commands = [
   {
     id: "unit-integration",
@@ -27,6 +52,18 @@ const commands = [
       "--test",
       ...(await testFiles(join(rootDir, "engines", "geo-evidence", "test"))),
     ],
+  },
+  {
+    id: "embedded-video-node-tests",
+    command: process.execPath,
+    args: ["--test", ...(await testFiles(postBridgeDir))],
+    timeoutMs: 180_000,
+  },
+  {
+    id: "embedded-video-integration-tests",
+    command: join(rootDir, "node_modules", ".bin", "vitest"),
+    args: ["run", ...vendorVitestFiles],
+    timeoutMs: 300_000,
   },
   {
     id: "smoke",
@@ -46,7 +83,7 @@ for (const item of commands) {
   try {
     const { stdout, stderr } = await execFileAsync(item.command, item.args, {
       cwd: rootDir,
-      timeout: 120_000,
+      timeout: item.timeoutMs ?? 120_000,
       maxBuffer: 32 * 1024 * 1024,
     });
     results.push({
@@ -70,14 +107,14 @@ const report = {
   schemaVersion: "pengstack.acceptance/v1",
   generatedAt: new Date().toISOString(),
   sourceHead: (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: rootDir })).stdout.trim(),
+  sourceDirty:
+    (await execFileAsync("git", ["status", "--porcelain"], { cwd: rootDir })).stdout.trim().length > 0,
   result: results.every((item) => item.status === "passed") ? "passed" : "failed",
   checks: results,
-  liveReceipts: [
-    "docs/evidence/personal-geo-live-2026-10-18.json",
-    "docs/evidence/media-render-live-2026-10-18.json",
-    "docs/evidence/full-system-live-2026-10-18.json",
-    "docs/evidence/github-live-2026-10-18.json",
-  ],
+  liveReceipts: (await readdir(join(rootDir, "docs", "evidence")))
+    .filter((file) => /(?:^|-)(?:live|render)-.*\.json$/i.test(file) || /-live-\d{4}-\d{2}-\d{2}\.json$/i.test(file))
+    .sort()
+    .map((file) => `docs/evidence/${file}`),
 };
 const reportPath = join(outputDir, "pengstack-acceptance.json");
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");

@@ -55,11 +55,22 @@ function normalizeSearchResults(body) {
     body?.data,
   ];
   const results = candidates.find(Array.isArray) ?? [];
-  return results.map((item) => ({
-    title: String(item.title ?? item.name ?? ""),
-    url: String(item.url ?? item.link ?? ""),
-    content: String(item.content ?? item.snippet ?? item.summary ?? ""),
-  })).filter((item) => item.url);
+  return results.map((item) => {
+    let url;
+    try {
+      url = new URL(String(item.url ?? item.link ?? ""));
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    return {
+      title: String(item.title ?? item.name ?? ""),
+      url: url.toString(),
+      content: String(item.content ?? item.snippet ?? item.summary ?? ""),
+    };
+  }).filter(Boolean);
 }
 
 async function requestJson(url, init, timeoutMs) {
@@ -101,7 +112,10 @@ export function createProvider(name = "fixture", options = {}) {
       dataMode: "fixture",
       model: "fixture-rules/v1",
       async answer(query) {
-        return fixtureAnswer(query);
+        return {
+          ...fixtureAnswer(query),
+          prompt: query.text,
+        };
       },
     };
   }
@@ -127,6 +141,7 @@ export function createProvider(name = "fixture", options = {}) {
         if (!row) throw new Error(`导入文件缺少 queryId=${query.id}`);
         return {
           answer: String(row.answer ?? ""),
+          prompt: query.text,
           raw: row,
           model: row.model ?? "external-import",
           citations: row.citations ?? undefined,
@@ -163,6 +178,7 @@ export function createProvider(name = "fixture", options = {}) {
           ? `\n\n搜索结果：\n${searchResults.map((item, index) =>
               `${index + 1}. ${item.title}\nURL: ${item.url}\n摘要: ${item.content.slice(0, 1800)}`).join("\n\n")}`
           : "";
+        const prompt = `${chatPrompt(query)}${context}`;
         const callChat = (maxTokens) => requestJson(`${config.baseUrl}/chat/completions`, {
           method: "POST",
           headers: {
@@ -176,7 +192,7 @@ export function createProvider(name = "fixture", options = {}) {
                 role: "system",
                 content: "你是独立消费者问题回答助手。事实不清楚时必须说明，不得编造。最终答案直接输出给用户。",
               },
-              { role: "user", content: `${chatPrompt(query)}${context}` },
+              { role: "user", content: prompt },
             ],
             temperature: 0.2,
             max_tokens: maxTokens,
@@ -198,7 +214,7 @@ export function createProvider(name = "fixture", options = {}) {
           },
           body: JSON.stringify({
             model: config.model,
-            input: `${chatPrompt(query)}${context}`,
+            input: prompt,
             max_output_tokens: 4000,
             stream: false,
           }),
@@ -222,6 +238,7 @@ export function createProvider(name = "fixture", options = {}) {
         }
         return {
           answer,
+          prompt,
           raw: {
             completion: body,
             search: searchRaw,

@@ -12,6 +12,12 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const SUPPORTED_VARIANTS = new Set([
+  "warm-story",
+  "clean-tech",
+  "bold-promo",
+  "natural-clean",
+]);
 
 function sha256Bytes(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -24,6 +30,50 @@ function toSrtTime(seconds) {
   const secs = Math.floor((ms % 60_000) / 1000);
   const millis = ms % 1000;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
+}
+
+export function buildPostArguments({
+  timelinePath,
+  deliveryDir,
+  variants,
+  subtitlePath,
+  title,
+  coverTitle,
+  hook,
+  platform,
+  outputWidth,
+  outputHeight,
+  musicDir,
+}) {
+  const args = [
+    "--timeline",
+    timelinePath,
+    "--out-dir",
+    deliveryDir,
+    "--variants",
+    variants.join(","),
+    "--subtitle",
+    subtitlePath,
+    "--title",
+    title,
+    "--platform",
+    platform,
+    "--clarity",
+    "off",
+    "--bgm-pack",
+    musicDir,
+    "--json",
+  ];
+  if (coverTitle?.trim()) {
+    args.push("--cover-title", coverTitle.trim());
+  }
+  if (hook?.trim()) {
+    args.push("--hook", hook.trim());
+  }
+  if (outputWidth && outputHeight) {
+    args.push("--width", String(outputWidth), "--height", String(outputHeight));
+  }
+  return args;
 }
 
 export class VideoMediaEngine {
@@ -42,18 +92,13 @@ export class VideoMediaEngine {
 
   async health() {
     try {
-      const [ffmpegVersion, ffprobeVersion, tsxPackage] = await Promise.all([
+      const [ffmpegVersion, ffprobeVersion] = await Promise.all([
         execFileAsync(this.ffmpeg, ["-version"], { timeout: 10_000 }),
         execFileAsync(this.ffprobe, ["-version"], { timeout: 10_000 }),
+      ]);
+      await Promise.all([
         access(join(this.rootDir, "node_modules", "tsx", "package.json")),
-        access(
-          join(
-            this.engineRoot,
-            "scripts",
-            "tools",
-            "edit-post.mts",
-          ),
-        ),
+        access(join(this.engineRoot, "scripts", "tools", "edit-post.mts")),
       ]);
       return {
         ok: true,
@@ -62,7 +107,7 @@ export class VideoMediaEngine {
         engineRoot: this.engineRoot,
         ffmpeg: ffmpegVersion.stdout.split("\n")[0],
         ffprobe: ffprobeVersion.stdout.split("\n")[0],
-        tsx: Boolean(tsxPackage),
+        tsx: true,
         capabilities: [
           "timeline",
           "post-production",
@@ -154,6 +199,13 @@ export class VideoMediaEngine {
     }
     if (!title?.trim()) {
       throw new Error("媒体渲染需要标题。");
+    }
+    if (!Array.isArray(variants) || variants.length === 0) {
+      throw new Error("媒体渲染至少需要一个风格变体。");
+    }
+    const unsupported = variants.filter((variant) => !SUPPORTED_VARIANTS.has(variant));
+    if (unsupported.length > 0) {
+      throw new Error(`未知媒体变体：${unsupported.join(", ")}`);
     }
     const sourceFiles = sources.map((file) => resolve(String(file)));
     const jobId = `media-${Date.now()}-${randomUUID().slice(0, 8)}`;
@@ -292,33 +344,19 @@ export class VideoMediaEngine {
       WORKLOOM_VISUAL_BRIDGE_URL: "http://127.0.0.1:1",
     };
 
-    const postArgs = [
-      "--timeline",
+    const postArgs = buildPostArguments({
       timelinePath,
-      "--out-dir",
       deliveryDir,
-      "--variants",
-      variants.join(","),
-      "--subtitle",
+      variants,
       subtitlePath,
-      "--title",
       title,
-      "--platform",
+      coverTitle,
+      hook,
       platform,
-      "--clarity",
-      "off",
-      "--bgm-pack",
+      outputWidth,
+      outputHeight,
       musicDir,
-      "--json",
-    ];
-    if (outputWidth && outputHeight) {
-      postArgs.push(
-        "--width",
-        String(outputWidth),
-        "--height",
-        String(outputHeight),
-      );
-    }
+    });
     const post = await this.#run("edit-post.mts", postArgs, env);
     const packageRun = await this.#run(
       "edit-package.mts",

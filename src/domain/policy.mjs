@@ -19,6 +19,26 @@ function includesAny(text, terms) {
   return terms.some((term) => normalized.includes(term.toLowerCase()));
 }
 
+function claimExpiryFinding(claim, now) {
+  if (!claim?.expiresAt) {
+    return null;
+  }
+  const expiresAt = new Date(claim.expiresAt).getTime();
+  if (!Number.isFinite(expiresAt)) {
+    return {
+      code: "CLAIM_EXPIRY_INVALID",
+      message: `Claim ${claim.id} 的过期时间不是有效日期。`,
+    };
+  }
+  if (expiresAt <= now.getTime()) {
+    return {
+      code: "CLAIM_EXPIRED",
+      message: `Claim ${claim.id} 已过期。`,
+    };
+  }
+  return null;
+}
+
 export function scanSensitiveText(text) {
   const value = String(text ?? "");
   const findings = [];
@@ -140,11 +160,9 @@ export function validateContentForApproval(content, claims, { now = new Date() }
         message: `Claim ${claimId} 尚未批准。`,
       });
     }
-    if (claim.expiresAt && new Date(claim.expiresAt).getTime() < now.getTime()) {
-      findings.push({
-        code: "CLAIM_EXPIRED",
-        message: `Claim ${claimId} 已过期。`,
-      });
+    const expiryFinding = claimExpiryFinding(claim, now);
+    if (expiryFinding) {
+      findings.push(expiryFinding);
     }
   }
 
@@ -155,7 +173,14 @@ export function validateContentForApproval(content, claims, { now = new Date() }
   }
 }
 
-export function validatePublication({ account, content, receipt, now = new Date() }) {
+export function validatePublication({
+  account,
+  content,
+  receipt,
+  claims,
+  now = new Date(),
+  requireReceipt = true,
+}) {
   const findings = [];
 
   if (!account) {
@@ -179,11 +204,53 @@ export function validatePublication({ account, content, receipt, now = new Date(
       code: "CONTENT_NOT_SCHEDULED",
       message: "只有已排期内容可以登记发布回执。",
     });
+  } else {
+    if (
+      account &&
+      (!Array.isArray(content.platforms) || !content.platforms.includes(account.platform))
+    ) {
+      findings.push({
+        code: "TARGET_PLATFORM_MISMATCH",
+        message: `内容目标平台不包含账号平台 ${account.platform}。`,
+      });
+    }
+
+    const claimIds = Array.isArray(content.claimIds) ? content.claimIds : [];
+    if (!content.opinion && claimIds.length === 0) {
+      findings.push({
+        code: "EVIDENCE_REQUIRED",
+        message: "非观点内容发布前必须保留至少一条已批准 Claim。",
+      });
+    }
+    if (Array.isArray(claims) && claimIds.length > 0) {
+      const claimMap = new Map(claims.map((claim) => [claim.id, claim]));
+      for (const claimId of claimIds) {
+        const claim = claimMap.get(claimId);
+        if (!claim) {
+          findings.push({
+            code: "CLAIM_NOT_FOUND",
+            message: `找不到 Claim ${claimId}。`,
+          });
+          continue;
+        }
+        if (claim.state !== "approved") {
+          findings.push({
+            code: "CLAIM_NOT_APPROVED",
+            message: `Claim ${claimId} 尚未批准。`,
+          });
+        }
+        const expiryFinding = claimExpiryFinding(claim, now);
+        if (expiryFinding) {
+          findings.push(expiryFinding);
+        }
+      }
+    }
+    findings.push(...scanSensitiveText(`${content.title ?? ""}\n${content.body ?? ""}`));
   }
 
-  if (!receipt || typeof receipt !== "object") {
+  if (requireReceipt && (!receipt || typeof receipt !== "object")) {
     findings.push({ code: "RECEIPT_REQUIRED", message: "缺少发布回执。" });
-  } else {
+  } else if (requireReceipt) {
     if (!["real", "imported"].includes(receipt.dataMode)) {
       findings.push({
         code: "RECEIPT_DATA_MODE_INVALID",
@@ -225,7 +292,7 @@ export function isClaimPubliclyExportable(claim, { now = new Date() } = {}) {
   if (!claim || claim.state !== "approved" || claim.publicLevel !== "approved_public") {
     return false;
   }
-  if (claim.expiresAt && new Date(claim.expiresAt).getTime() < now.getTime()) {
+  if (claimExpiryFinding(claim, now)) {
     return false;
   }
   return scanSensitiveText(claim.text).length === 0;

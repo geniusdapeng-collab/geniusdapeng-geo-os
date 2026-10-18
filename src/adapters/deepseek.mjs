@@ -37,19 +37,30 @@ function normalizeSearchResults(body) {
   const results = candidates.find(Array.isArray) ?? [];
   return results
     .map((entry) => {
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(String(entry.url ?? entry.link ?? ""));
+        if (!["http:", "https:"].includes(parsedUrl.protocol)
+          || parsedUrl.username || parsedUrl.password) {
+          return null;
+        }
+      } catch {
+        return null;
+      }
       let domain = "";
       try {
-        domain = new URL(String(entry.url ?? "")).hostname;
+        domain = parsedUrl.hostname;
       } catch {
         domain = "";
       }
       return {
         title: String(entry.title ?? entry.name ?? ""),
-        url: String(entry.url ?? entry.link ?? ""),
+        url: parsedUrl.toString(),
         domain,
         snippet: String(entry.content ?? entry.snippet ?? entry.summary ?? "").slice(0, 2_000),
       };
     })
+    .filter(Boolean)
     .filter((entry) => entry.url);
 }
 
@@ -96,13 +107,22 @@ export class DeepSeekAdapter {
   }
 
   async health() {
+    let configured = Boolean(this.apiKey);
+    if (!configured) {
+      try {
+        this.#auth();
+        configured = true;
+      } catch {
+        configured = false;
+      }
+    }
     try {
       const response = await this.fetchImpl(endpoint(this.baseUrl, "/health"), {
         signal: AbortSignal.timeout(5_000),
       });
       const body = await response.json();
       return {
-        configured: Boolean(this.apiKey || process.env.DEEPSEEK_API_KEY || process.platform === "darwin"),
+        configured,
         ok: response.ok && body.status === "ok",
         mode: "direct-deepseek-api",
         baseUrl: this.baseUrl,
@@ -111,7 +131,7 @@ export class DeepSeekAdapter {
       };
     } catch (error) {
       return {
-        configured: false,
+        configured,
         ok: false,
         mode: "direct-deepseek-api",
         baseUrl: this.baseUrl,
