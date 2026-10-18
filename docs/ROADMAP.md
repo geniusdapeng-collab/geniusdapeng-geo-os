@@ -8,16 +8,18 @@
 - Responsive dashboard
 - 120-topic content bank
 
-## v0.2: real GEO engine adapter
+## v0.2: real GEO engine adapter — baseline completed 2026-10-18
 
-- Pin and wrap GeoEvidence Studio endpoints
-- Import DeepSeek Search and Chat samples with source-preserving evidence files
+- [x] Pin and wrap GeoEvidence Studio endpoints
+- [x] Import DeepSeek Search and Chat/Responses samples with source-preserving evidence files
+- [x] Run 12/12 real DeepSeek baseline queries
 - Add query batches, confidence intervals and 7/28-day comparisons
 - Add same-name disambiguation review
 
-## v0.3: media factory adapter
+## v0.3: media factory adapter — first production connector completed 2026-10-18
 
-- Define design, cover, video, edit, talking-head and delivery jobs
+- [x] Invoke the pinned WorkLoom-video-edit cover bridge CLI
+- Define remaining video, edit, talking-head and delivery jobs
 - Require a claim or opinion marker for every media job
 - Store asset hashes and license sidecars
 - Separate private masters from approved public exports

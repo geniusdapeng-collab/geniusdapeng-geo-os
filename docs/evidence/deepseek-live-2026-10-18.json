@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "deepseek-search-chat-baseline",
+  "completedAt": "2026-10-18T10:35:28.195Z",
+  "model": "deepseek-flash",
+  "provider": "DeepSeek Search + Chat/Responses API",
+  "stateFile": "var/live-deepseek-state-v3.json",
+  "requested": 12,
+  "successful": 12,
+  "failed": 0,
+  "metrics": {
+    "dataModes": {
+      "real": 12,
+      "imported": 0,
+      "fixture": 0,
+      "draft": 0
+    },
+    "qualifiedSamples": 12,
+    "status": "measured",
+    "mentionRate": 0.1667,
+    "ownedCitationRate": 0.0833,
+    "negativeMentionRate": 0,
+    "queryCoverage": 1,
+    "observedQueries": 12,
+    "totalQueries": 12
+  },
+  "receiptHash": "2ce14bd20e75bfe6d97f097f4df90cedfba4bf15bb616bd6f6f9b747aeca8724",
+  "queries": [
+    {
+      "queryId": "Q001",
+      "status": "success",
+      "observationId": "OBS-0001",
+      "answerHash": "6ec953a981aea59d5b53427bc34c322b1c2e22043798d5788281b7fbceceaf7b",
+      "searchResponseHash": "28c1202f06ed6dfcf6359774137a0757b223be163cd6cc83e3496271b1d86dda",
+      "completionResponseHash": "d0aa16c37dcbe50285279877755f5da49ce6ce33ca399fa00e3a6fd5d53a8b33",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q002",
+      "status": "success",
+      "observationId": "OBS-0002",
+      "answerHash": "593058e381f0095859c94b94210b98979ff87d25c14d72225e7c327aaf0cd55f",
+      "searchResponseHash": "bdd367640b26ccc35eb9bea8483cba55424fa599d4a1aac2a28c2a17483be115",
+      "completionResponseHash": "61a94dbea4d8711cc33c09abb89241ac48eade2ae69d1657d324692ee9918c72",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q003",
+      "status": "success",
+      "observationId": "OBS-0003",
+      "answerHash": "d9ff796c819ac22a9383b3f014e196192a29128ec7a82a9065b4f009bb1a8b17",
+      "searchResponseHash": "6b7aff17140c92430defc21e3bca0b3512259a32d3d917da500feec0ce40097c",
+      "completionResponseHash": "4817183052647fd7025ab3127d0f94dd08a9d2c8d8cdbdb4b8f79f0441f55279",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q004",
+      "status": "success",
+      "observationId": "OBS-0004",
+      "answerHash": "81ecdd550ba1af9a9a0678c34d9c491c1bc04bbe50afb04acbaaa4e467b66960",
+      "searchResponseHash": "f63c6b5b8ff7db8a69c5c30fe734b8a44e3325edd41de51d11c5e9db1725b693",
+      "completionResponseHash": "b39bbb9bf716f6482fbec6b5bb7a3b18e86025aa2b1fb76df4a7dd6ad48aa93e",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q005",
+      "status": "success",
+      "observationId": "OBS-0005",
+      "answerHash": "f6ca8093280ee1f6e67ce4eff0603521faf35ae04e580eb7e6258db6f49a0ee5",
+      "searchResponseHash": "634fbc7de3098f8935ae2a127fe2741fd300da7b676e11e0909406d2d49a01d4",
+      "completionResponseHash": "37f56091398791c1b04075f7b31a3d4e45198b1bba4a28cd14ec056782d54724",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q006",
+      "status": "success",
+      "observationId": "OBS-0006",
+      "answerHash": "f90c3572e1105836b0e2cf5a169fca12c52d09cefe0fa01d13a8d6ca1914f91d",
+      "searchResponseHash": "3f95d530aa9779121320b3fc83f30680e85240146bfe4e3bf01c52ebf202d132",
+      "completionResponseHash": "d54b8f58331d69aaa9bee64a237d0cca6c87eced010dc9ceef0b41d6c4f2fcf4",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q007",
+      "status": "success",
+      "observationId": "OBS-0007",
+      "answerHash": "26c2c1a5faf4639c7b0db3480281fe1ae07cae213be37deae68c1aa00689e3fa",
+      "searchResponseHash": "76be81885cd7cd9c6d184cfa30a28aad57dd9f85dd19d127a486ab28512d6ebe",
+      "completionResponseHash": "fb32b6457228db6508bfed53247746f31704bbaaf927f830ca7c8907fd3ebb43",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q008",
+      "status": "success",
+      "observationId": "OBS-0008",
+      "answerHash": "b29519a6f54f0917f262ba0fbdb2ec24e9825a824994762356de867238f4ba62",
+      "searchResponseHash": "fdfd30f3504e037d4ab0a15fd80611fdbe9099325765ef468ccfab3f85317c19",
+      "completionResponseHash": "d96ddb87d79f18dd8717683f443f725835068c1b17be41d43a51890a94fcc2f2",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q009",
+      "status": "success",
+      "observationId": "OBS-0009",
+      "answerHash": "a0cb92db4b660589fc35f1b230e6e56d633f5ce74f0b230687bdae5e7d986378",
+      "searchResponseHash": "c1c75bffbc3791f12c1ef073a6fbc22797b1a95e2c597fcd0481f077904b4c0f",
+      "completionResponseHash": "f8fcfd1bdb65e645a3b9e4f6ef054a878da38af50b0e2f70a6334993c51caa1c",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q010",
+      "status": "success",
+      "observationId": "OBS-0010",
+      "answerHash": "49a0528839f5aeeace1167c752e685641c8618ad5622d98678ba8ec19e879454",
+      "searchResponseHash": "f4dbbfc619171e30d139bda780ac5f7920e835631b76d418c62408e606ddb983",
+      "completionResponseHash": "c80cdbaf86b2634e67001bb6d5a134e464f477a5b3c7bbd066683f984e783d69",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    },
+    {
+      "queryId": "Q011",
+      "status": "success",
+      "observationId": "OBS-0011",
+      "answerHash": "7916bd3755f2839fa3402534633994c42c84491f53e3a39079d99ed4dc02436d",
+      "searchResponseHash": "5021e624e752b001ce3e3846e8f158ed4aeb93a4c9a72fdb35a0c5b14a0eea84",
+      "completionResponseHash": "9a060bbfd4214b966563bf4fe365918337721502ef65351863ec2f38374c7aba",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 0,
+      "error": null
+    },
+    {
+      "queryId": "Q012",
+      "status": "success",
+      "observationId": "OBS-0012",
+      "answerHash": "a54b40623322c8b01f16105d528c9c83207122f76a63df8940e581cccd8a5463",
+      "searchResponseHash": "ff5d83aaed201465474eb1bf3fa55c9fdde4dda3e5c2d46e135aa2630f6df027",
+      "completionResponseHash": "cc2b54187da5381a4aed8d7d885b0f78d7b3549d1cddf6aaa0c8e0860f432c1d",
+      "completionSurface": "deepseek-chat-completions",
+      "citationCount": 5,
+      "error": null
+    }
+  ]
+}

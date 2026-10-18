@@ -15,6 +15,11 @@
 - 只增不改的哈希事件链
 - 120 条初始内容选题库
 - 响应式本地控制台，无第三方运行时依赖
+- 当前模型 `deepseek-flash` 的真实 Responses 兼容接口
+- 12 条 DeepSeek Search + Chat/Responses 真实基线样本
+- GeoEvidence Studio 生产 HTTP 适配器
+- WorkLoom-video-edit 封面知识库生产 CLI 适配器
+- 经模型生成、事实审批和 GitHub 官方 REST API 完成的真实 Issue 回执
 
 ## 启动
 
@@ -34,6 +39,17 @@ node --check src/server.mjs
 node --check public/app.js
 ```
 
+实时适配器验收：
+
+```bash
+node scripts/live-deepseek-collect.mjs
+node scripts/live-geoevidence.mjs
+VIDEO_EDIT_ROOT=../upstreams/WorkLoom-video-edit node scripts/live-video-edit.mjs
+GITHUB_TOKEN=... node scripts/live-github-publish.mjs
+```
+
+令牌只在当前进程环境中使用。不要把真实值写进 `.env` 后提交。
+
 ## 数据模式
 
 - `real`：真实采集或真实外部操作，可用于效果结论
@@ -48,6 +64,9 @@ node --check public/app.js
 - 平台规则未确认时按人工内容包处理。
 - 公开导出只允许 `approved_public` 且未过期的事实。
 - 招聘、客户、法律、金融、负面和隐私对话必须人工处理。
+- 当前真实写接口只验证了 GitHub Issue；其他平台没有凭据时继续 fail-closed。
+
+最近一次真实运行结果见 [docs/LIVE-VERIFICATION.md](docs/LIVE-VERIFICATION.md)。
 
 ## 目录
 

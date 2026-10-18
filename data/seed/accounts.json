@@ -175,9 +175,10 @@
     "cadence": "每周 3 次有效提交",
     "publishMode": "api-or-manual",
     "formats": ["代码", "README", "Release", "Issue"],
-    "policyStatus": "manual_review_required",
+    "policyStatus": "reviewed",
     "policyCheckedAt": "2026-10-18",
-    "status": "draft"
+    "policyNote": "Official GitHub REST API issue write verified by the production adapter.",
+    "status": "active"
   },
   {
     "id": "linkedin",

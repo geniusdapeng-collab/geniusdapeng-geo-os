@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "video-edit-production-adapter",
+  "completedAt": "2026-10-18T10:36:50.306Z",
+  "upstream": {
+    "repository": "geniusdapeng-collab/WorkLoom-video-edit",
+    "commit": "2d112904dc23e7fde94dab2ec26933abbb51cb31"
+  },
+  "health": {
+    "configured": true,
+    "upstreamRoot": "../upstreams/WorkLoom-video-edit",
+    "mode": "official-video-edit-cover-bridge-cli",
+    "ok": true,
+    "topics": 14,
+    "mappingRows": 161,
+    "paramRows": 137,
+    "platformDrifts": [],
+    "payloadHash": "aa53a1e7360abf5a89f4867e2e69a016b7fa304d4b90e5815a414278d6c0f816"
+  },
+  "enrichment": {
+    "platform": "xiaohongshu",
+    "hints": [
+      "【封面知识库·PLAT-003§4】小红书封面规范：画幅：3:4 竖屏；画布尺寸：1080×1440 px；标题带：画面上部 7%–45%（约 100px–650px）为标题安全放置区；底部遮挡区：画面下方 17%（约 240px），被标题/互动条遮挡，禁放关键元素；文案调性：审美先行、价值预览、弱化硬广；（数值取自 KB，链内以代码规格为准）",
+      "【封面知识库·THEME-001】题材「知识科普（图表）」→ 版式/构图/字级：subject-led；配色字体：source-han-heavy；title #FFFFFF；accent #4CC9FF；深蓝 scrim"
+    ],
+    "trace": [
+      {
+        "kbId": "PLAT-003",
+        "section": "§4",
+        "reason": "platform=xiaohongshu"
+      },
+      {
+        "kbId": "THEME-001",
+        "section": "§4+THEME-002§6",
+        "reason": "theme=知识科普"
+      }
+    ],
+    "notes": [],
+    "conflicts": [],
+    "source": "kb",
+    "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab"
+  }
+}

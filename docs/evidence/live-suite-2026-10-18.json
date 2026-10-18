@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "pengstack.live-suite/v1",
+  "completedAt": "2026-10-18T10:40:06.988Z",
+  "deepseek": {
+    "successful": 12,
+    "failed": 0,
+    "metrics": {
+      "dataModes": {
+        "real": 12,
+        "imported": 0,
+        "fixture": 0,
+        "draft": 0
+      },
+      "qualifiedSamples": 12,
+      "status": "measured",
+      "mentionRate": 0.1667,
+      "ownedCitationRate": 0.0833,
+      "negativeMentionRate": 0,
+      "queryCoverage": 1,
+      "observedQueries": 12,
+      "totalQueries": 12
+    },
+    "receiptHash": "2ce14bd20e75bfe6d97f097f4df90cedfba4bf15bb616bd6f6f9b747aeca8724"
+  },
+  "geoevidence": {
+    "runId": "run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
+    "dataMode": "real",
+    "successful": 1,
+    "failed": 0,
+    "receipt": {
+      "synced": true,
+      "snapshot_uri": "geo-evidence://run/run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
+      "verified_at": "2026-10-18T10:36:37.006Z",
+      "mode": "real"
+    },
+    "responseHash": "921a13d516d984d7f43f2a2bbbc7148a4509da56f29a35a17db17093d0aa527b"
+  },
+  "videoEdit": {
+    "topics": 14,
+    "mappingRows": 161,
+    "paramRows": 137,
+    "platformDrifts": 0,
+    "hintCount": 2,
+    "traceCount": 2,
+    "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab"
+  },
+  "github": {
+    "contentId": "CNT-004",
+    "issueNumber": 1,
+    "issueUrl": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/1",
+    "issueState": "open",
+    "publicationId": "PUB-001",
+    "dataMode": "real",
+    "contentHash": "edeaceaa67381d9867cdecba06d7424f9b46cdda9a81d2bfda0c105245164c88",
+    "receiptHash": "156be8e42f37359cbe68ba2e5f0274c3b3b6e57d02444a6d8aec6e3a4f088b6c"
+  },
+  "result": "passed"
+}

@@ -628,6 +628,51 @@ textarea {
   gap: 10px;
 }
 
+.adapter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adapter-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f9fbfd;
+}
+
+.adapter-card strong,
+.adapter-card small {
+  display: block;
+}
+
+.adapter-card strong {
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+
+.adapter-card small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.adapter-state {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 3px 7px;
+  border-radius: 99px;
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--green-soft);
+}
+
+.adapter-state.offline {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
 .risk-grid > div {
   padding: 14px;
   border-radius: 10px;
@@ -757,7 +802,8 @@ textarea {
   .account-grid,
   .two-column,
   .form-grid,
-  .risk-grid {
+  .risk-grid,
+  .adapter-grid {
     grid-template-columns: 1fr;
   }
 

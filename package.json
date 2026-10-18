@@ -1,6 +1,6 @@
 {
   "name": "geniusdapeng-geo-os",
-  "version": "0.1.0",
+  "version": "0.3.0-alpha.1",
   "private": true,
   "type": "module",
   "description": "天才大鹏：私人个人 GEO 与全网社媒运营控制面",
@@ -12,7 +12,11 @@
     "start": "node src/server.mjs",
     "test": "node --test",
     "check": "node --check src/server.mjs && node --check public/app.js",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "live:deepseek": "node scripts/live-deepseek-collect.mjs",
+    "live:geoevidence": "node scripts/live-geoevidence.mjs",
+    "live:video-edit": "node scripts/live-video-edit.mjs",
+    "live:github": "node scripts/live-github-publish.mjs"
   },
   "license": "UNLICENSED"
 }

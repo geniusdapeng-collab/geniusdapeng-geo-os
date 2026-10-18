@@ -16,13 +16,14 @@ HTTP API -> domain policy -> append-only event ledger -> local JSON state
       |                           |
       |                           +-> claims / content / receipts / observations
       |
-      +-> future engine adapters
-            GeoEvidence adapter
-            Media factory adapter
-            Manual platform packages
+      +-> DeepSeek Responses/Chat/Search API
+      +-> GeoEvidence Studio production HTTP API
+      +-> WorkLoom-video-edit cover bridge CLI
+      +-> GitHub official REST API
+      +-> fail-closed manual adapters for other platforms
 ```
 
-v0.1 intentionally uses Node.js built-ins only. The small local runtime keeps setup auditable and removes dependency drift from the first milestone. SQLite or PostgreSQL is a later migration after the object model stabilizes.
+The base runtime introduced in v0.1 intentionally uses Node.js built-ins only. The small local runtime keeps setup auditable and removes dependency drift from the first milestone. SQLite or PostgreSQL is a later migration after the object model stabilizes.
 
 ## Trust chain
 
@@ -41,8 +42,17 @@ The event chain is tamper-evident. It is not a trusted timestamp, platform signa
 - Runtime state is local and ignored by Git.
 - Public export only reads `approved_public` claims.
 - All platform accounts start with `manual_review_required`.
-- No adapter can auto-publish until a reviewed implementation and explicit external authorization exist.
+- GitHub issue publication is live and receipt-verified. Other platform writes remain disabled until their official credentials and policies are reviewed.
 - The repository contains no credentials.
+
+## Live adapters
+
+- `DeepSeekAdapter` uses the local Responses-compatible gateway and system keychain. It performs real provider search, Chat/Responses completion, evidence hashing and model-driven JSON content generation.
+- `GeoEvidenceAdapter` calls the upstream production HTTP API and rejects an upstream run without `receipt.synced=true`.
+- `VideoEditAdapter` invokes the upstream cover knowledge-base CLI at a pinned commit and records hint/trace hashes and drift checks.
+- `GitHubAdapter` creates a real owner/repo Issue through the official REST API and records the issue URL and content hash.
+
+No adapter may convert fixture or mock output into a real publication receipt.
 
 ## Domain objects
 

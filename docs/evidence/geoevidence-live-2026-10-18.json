@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "geoevidence-production-adapter",
+  "completedAt": "2026-10-18T10:36:37.056Z",
+  "upstream": {
+    "repository": "geniusdapeng-collab/geo-evidence-studio",
+    "commit": "06b47a15fd114541bd3147dc5c07b944c36bc8da"
+  },
+  "queryId": "ffd-brand-001",
+  "provider": "deepseek-search",
+  "run": {
+    "runId": "run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
+    "status": "completed",
+    "provider": "deepseek-search",
+    "dataMode": "real",
+    "successful": 1,
+    "failed": 0,
+    "metrics": {
+      "totalSamples": 1,
+      "successfulSamples": 1,
+      "successRate": 1,
+      "evidenceCoverageRate": 1,
+      "mentionRate": 1,
+      "mentionRate95": {
+        "low": 0.20654329147389294,
+        "high": 1
+      },
+      "firstRecommendationRate": 1,
+      "citationPresenceRate": 1,
+      "ownedCitationRate": null,
+      "brandNegativeMentionRate": 0,
+      "negativeExposureRate": 0,
+      "negativeCitationRate": 0,
+      "industryNegativeRate": 0,
+      "brandSafetyRate": 1,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 1,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    },
+    "receipt": {
+      "synced": true,
+      "snapshot_uri": "geo-evidence://run/run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
+      "verified_at": "2026-10-18T10:36:37.006Z",
+      "mode": "real"
+    },
+    "responseHash": "921a13d516d984d7f43f2a2bbbc7148a4509da56f29a35a17db17093d0aa527b"
+  }
+}

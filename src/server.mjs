@@ -2,7 +2,12 @@ import { join, resolve } from "node:path";
 import { JsonStore } from "./storage/json-store.mjs";
 import { loadSeedState } from "./services/bootstrap.mjs";
 import { GeoOsService } from "./services/geo-os-service.mjs";
+import { LivePipelineService } from "./services/live-pipeline.mjs";
 import { createGeoOsServer } from "./http/server.mjs";
+import { DeepSeekAdapter } from "./adapters/deepseek.mjs";
+import { GitHubAdapter } from "./adapters/github.mjs";
+import { GeoEvidenceAdapter } from "./adapters/geoevidence.mjs";
+import { VideoEditAdapter } from "./adapters/video-edit.mjs";
 
 const rootDir = resolve(import.meta.dirname, "..");
 const host = process.env.HOST || "127.0.0.1";
@@ -19,7 +24,14 @@ const store = new JsonStore({ filePath: dataFile });
 await store.open(() => loadSeedState(dataDir));
 
 const service = new GeoOsService({ store });
-const server = createGeoOsServer({ service, publicDir });
+const livePipeline = new LivePipelineService({
+  service,
+  deepSeek: new DeepSeekAdapter(),
+  github: new GitHubAdapter(),
+  geoEvidence: new GeoEvidenceAdapter(),
+  videoEdit: new VideoEditAdapter(),
+});
+const server = createGeoOsServer({ service, livePipeline, publicDir });
 
 server.listen(port, host, () => {
   console.log(`天才大鹏 control center: http://${host}:${port}`);

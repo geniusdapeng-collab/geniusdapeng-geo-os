@@ -214,3 +214,50 @@ test("an approved public claim can move to the public export", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("live adapter routes require explicit confirmation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pengstack-live-route-"));
+  const filePath = join(directory, "state.json");
+  const store = new JsonStore({ filePath, clock: now });
+  await store.open(() => loadSeedState(dataDir));
+  const service = new GeoOsService({ store, clock: now });
+  let called = 0;
+  const livePipeline = {
+    async adapterHealth() {
+      return { deepSeek: { ok: true } };
+    },
+    async collectDeepSeek() {
+      called += 1;
+      return { successful: 1 };
+    },
+  };
+  const server = createGeoOsServer({ service, livePipeline, publicDir });
+  await new Promise((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
+  const address = server.address();
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  try {
+    const health = await request(baseUrl, "/api/adapters/health");
+    assert.equal(health.response.status, 200);
+
+    const missingConfirmation = await request(baseUrl, "/api/live/deepseek/collect", {
+      method: "POST",
+      body: JSON.stringify({ limit: 1 }),
+    });
+    assert.equal(missingConfirmation.response.status, 400);
+    assert.equal(
+      missingConfirmation.payload.error.code,
+      "LIVE_RUN_CONFIRMATION_REQUIRED",
+    );
+
+    const confirmed = await request(baseUrl, "/api/live/deepseek/collect", {
+      method: "POST",
+      body: JSON.stringify({ confirm: true, limit: 1 }),
+    });
+    assert.equal(confirmed.response.status, 200);
+    assert.equal(called, 1);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+    await rm(directory, { recursive: true, force: true });
+  }
+});

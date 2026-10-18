@@ -131,6 +131,41 @@ function renderOverview() {
   renderStatusList("#claim-status", state.data.summary.claimCounts ?? {}, claimLabels);
 }
 
+async function loadAdapterHealth() {
+  const target = document.querySelector("#adapter-grid");
+  try {
+    const health = await api("/api/adapters/health");
+    const labels = {
+      deepSeek: "DeepSeek 模型",
+      github: "GitHub API",
+      geoEvidence: "GeoEvidence",
+      videoEdit: "video-edit",
+    };
+    target.innerHTML = Object.entries(health)
+      .map(([name, item]) => {
+        const ok = item?.ok === true;
+        const detail =
+          name === "deepSeek"
+            ? item.model || item.baseUrl
+            : name === "github"
+              ? item.repository
+              : name === "geoEvidence"
+                ? item.health?.case || item.baseUrl
+                : `${item.topics ?? 0} topics · ${item.platformDrifts?.length ?? 0} drifts`;
+        return `
+          <div class="adapter-card">
+            <span class="adapter-state ${ok ? "" : "offline"}">${ok ? "已连接" : "未就绪"}</span>
+            <strong>${escapeHtml(labels[name] || name)}</strong>
+            <small>${escapeHtml(detail || item.error || "未配置")}</small>
+          </div>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    target.innerHTML = `<div class="empty-panel">${escapeHtml(error.message)}</div>`;
+  }
+}
+
 function renderAccounts() {
   const template = document.querySelector("#account-card-template");
   const grid = document.querySelector("#account-grid");
@@ -296,6 +331,7 @@ async function loadData() {
   try {
     state.data = await api("/api/bootstrap");
     renderAll();
+    await loadAdapterHealth();
     setLoading(false);
     const initialView = window.location.hash.replace("#", "") || "overview";
     if (document.querySelector(`[data-view="${initialView}"]`)) {

@@ -31,6 +31,7 @@ All write endpoints accept JSON and return structured errors:
 | GET | `/api/geo/observations` | AI answer samples |
 | GET | `/api/geo/metrics` | Mention, citation, negative and coverage metrics |
 | GET | `/api/exports/public-preview` | Only exportable public claims |
+| GET | `/api/adapters/health` | DeepSeek, GitHub, GeoEvidence and video-edit readiness |
 
 ## Write
 
@@ -44,6 +45,15 @@ All write endpoints accept JSON and return structured errors:
 | POST | `/api/interactions` | Classify and store |
 | POST | `/api/geo/queries` | Add a stable query |
 | POST | `/api/geo/observations` | Record an AI answer sample |
+| POST | `/api/live/generate-content` | Generate content with the current model |
+| POST | `/api/live/deepseek/collect` | Run real DeepSeek Search + Chat/Responses queries |
+| POST | `/api/live/geoevidence/run` | Start a real upstream GeoEvidence visibility run |
+| POST | `/api/live/video-edit/cover` | Run the upstream cover knowledge-base CLI |
+| POST | `/api/live/github/publish` | Publish an approved scheduled item as a GitHub Issue |
+
+Every `/api/live/*` request must include `"confirm": true`. This prevents a
+dashboard refresh or accidental form submission from spending model tokens or
+writing to an external platform.
 
 ## State machine
 

@@ -109,7 +109,7 @@ async function serveStatic(request, response, publicDir, pathname) {
   createReadStream(filePath).pipe(response);
 }
 
-export function createGeoOsServer({ service, publicDir }) {
+export function createGeoOsServer({ service, livePipeline, publicDir }) {
   return createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     const path = url.pathname;
@@ -153,6 +153,58 @@ export function createGeoOsServer({ service, publicDir }) {
         }
         writeJson(response, 200, service.events(url.searchParams.get("limit")));
         return;
+      }
+
+      if (path === "/api/adapters/health") {
+        if (request.method !== "GET") {
+          methodNotAllowed(response, ["GET"]);
+          return;
+        }
+        if (!livePipeline) {
+          throw new ApiError(503, "ADAPTERS_UNAVAILABLE", "实时适配器未启用。");
+        }
+        writeJson(response, 200, await livePipeline.adapterHealth());
+        return;
+      }
+
+      if (path.startsWith("/api/live/")) {
+        if (!livePipeline) {
+          throw new ApiError(503, "ADAPTERS_UNAVAILABLE", "实时适配器未启用。");
+        }
+        if (request.method !== "POST") {
+          methodNotAllowed(response, ["POST"]);
+          return;
+        }
+        const body = await readJsonBody(request);
+        if (body.confirm !== true) {
+          throw new ApiError(
+            400,
+            "LIVE_RUN_CONFIRMATION_REQUIRED",
+            "实时运行会产生模型或平台调用，请求体必须显式设置 confirm=true。",
+          );
+        }
+
+        if (path === "/api/live/generate-content") {
+          writeJson(response, 200, await livePipeline.generateContent(body));
+          return;
+        }
+        if (path === "/api/live/deepseek/collect") {
+          writeJson(response, 200, await livePipeline.collectDeepSeek(body));
+          return;
+        }
+        if (path === "/api/live/geoevidence/run") {
+          writeJson(response, 200, await livePipeline.runGeoEvidence(body));
+          return;
+        }
+        if (path === "/api/live/video-edit/cover") {
+          writeJson(response, 200, await livePipeline.enrichCover(body));
+          return;
+        }
+        if (path === "/api/live/github/publish") {
+          writeJson(response, 201, await livePipeline.publishContentToGitHub(body));
+          return;
+        }
+        throw new ApiError(404, "LIVE_ENDPOINT_NOT_FOUND", "实时接口不存在。");
       }
 
       if (path === "/api/exports/public-preview") {

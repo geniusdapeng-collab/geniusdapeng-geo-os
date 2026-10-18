@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "model-driven-github-publication",
+  "completedAt": "2026-10-18T10:40:06.988Z",
+  "repository": "geniusdapeng-collab/geniusdapeng-geo-os",
+  "contentId": "CNT-004",
+  "contentTitle": "个人 GEO 需要证据控制面：私有仓不是公开 GEO 信源",
+  "model": {
+    "name": "deepseek-flash",
+    "responseId": "88e607ad-5dd9-4712-ac3c-2b6ce88d4bf1",
+    "usage": {
+      "input_tokens": 225,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 2226,
+      "output_tokens_details": {
+        "reasoning_tokens": 1902
+      },
+      "total_tokens": 2451
+    },
+    "responseHash": "7369f254f119e71bbcc86c48a8ccd9bd7a48c530af754f4abacde3f7c57c49c3"
+  },
+  "issue": {
+    "id": 5908656843,
+    "number": 1,
+    "url": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/1",
+    "apiUrl": "https://api.github.com/repos/geniusdapeng-collab/geniusdapeng-geo-os/issues/1",
+    "state": "open",
+    "createdAt": "2026-10-18T10:40:06Z",
+    "title": "个人 GEO 需要证据控制面：私有仓不是公开 GEO 信源",
+    "receiptHash": "3044e8ddd9c3a0214cc588bd50e0cde7d5676a2bc33ae1e65da11b53a777a751"
+  },
+  "publication": {
+    "id": "PUB-001",
+    "contentId": "CNT-004",
+    "accountId": "github",
+    "platform": "GitHub",
+    "url": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/1",
+    "publishedAt": "2026-10-18T10:40:06Z",
+    "capturedBy": "geniusdapeng-collab",
+    "dataMode": "real",
+    "contentHash": "edeaceaa67381d9867cdecba06d7424f9b46cdda9a81d2bfda0c105245164c88",
+    "receiptHash": "156be8e42f37359cbe68ba2e5f0274c3b3b6e57d02444a6d8aec6e3a4f088b6c",
+    "recordedAt": "2026-10-18T10:40:06.968Z",
+    "recordedBy": "PengStack live publisher"
+  },
+  "stateFile": "var/live-github-state.json"
+}
