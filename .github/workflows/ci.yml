@@ -20,6 +20,8 @@ jobs:
         run: npm install --ignore-scripts
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install verified font catalog
+        run: bash engines/video-edit/bundles/ai-video/connectors/subtitle-bridge/kit/install-fonts.sh --download
       - name: Syntax check
         run: |
           node --check src/server.mjs

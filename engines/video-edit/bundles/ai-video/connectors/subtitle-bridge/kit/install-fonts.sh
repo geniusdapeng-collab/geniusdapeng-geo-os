@@ -171,7 +171,11 @@ if mode == "download":
     installed = 0
     for item in pin["fonts"]:
         raw = os.path.join(work, os.path.basename(item["file"]) + ".download")
-        curl = ["curl", "-fsSL", "--max-time", "600", "-o", raw, item["upstream"]["url"]]
+        curl = [
+            "curl", "-fsSL", "--retry", "3", "--retry-delay", "2",
+            "--retry-all-errors", "--max-time", "600", "-o", raw,
+            item["upstream"]["url"],
+        ]
         if proxy:
             curl[1:1] = ["-x", proxy]
         subprocess.run(curl, check=True)
