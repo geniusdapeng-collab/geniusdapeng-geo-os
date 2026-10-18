@@ -126,13 +126,15 @@ export class PersonalGeoEngine {
     queryIds,
     platform = "deepseek",
   } = {}) {
-    this.service.env = {
-      ...this.service.env,
-      DEEPSEEK_API_KEY: resolveDeepSeekApiKey(),
-      DEEPSEEK_BASE_URL:
-        process.env.DEEPSEEK_BASE_URL || "http://127.0.0.1:8788",
-      DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || "deepseek-flash",
-    };
+    if (provider.startsWith("deepseek")) {
+      this.service.env = {
+        ...this.service.env,
+        DEEPSEEK_API_KEY: resolveDeepSeekApiKey(),
+        DEEPSEEK_BASE_URL:
+          process.env.DEEPSEEK_BASE_URL || "http://127.0.0.1:8788",
+        DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || "deepseek-flash",
+      };
+    }
     const run = await this.service.runObservations({
       provider,
       limit,

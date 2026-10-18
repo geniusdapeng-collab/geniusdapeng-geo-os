@@ -18,6 +18,8 @@ jobs:
           node-version: 24
       - name: Install runtime dependencies
         run: npm install --ignore-scripts
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Syntax check
         run: |
           node --check src/server.mjs
