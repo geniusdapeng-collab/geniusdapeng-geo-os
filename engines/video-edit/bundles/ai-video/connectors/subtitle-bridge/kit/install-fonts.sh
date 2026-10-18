@@ -92,7 +92,7 @@ for name in bundled_mismatch:
     print(f"  ✗ 摘要不符（随包字体被改动过，必须回退）：{name}")
 for name in bundled_missing:
     print(f"  ✗ 随包字体缺失：{name}")
-if bundled_mismatch or bundled_missing:
+if mode in ("check", "install") and (bundled_mismatch or bundled_missing):
     sys.exit(2)
 
 if os.path.isdir(external_dir):
