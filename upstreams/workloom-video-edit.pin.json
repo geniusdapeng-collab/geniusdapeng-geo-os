@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "commit": "2d112904dc23e7fde94dab2ec26933abbb51cb31",
+  "verifiedAt": "2026-10-18",
+  "license": "Apache-2.0",
+  "integration": "adapter-only",
+  "codeCopied": false,
+  "capabilities": [
+    "graphic-design",
+    "platform-covers",
+    "generative-video",
+    "source-footage-editing",
+    "talking-head-editing",
+    "delivery-manifests"
+  ]
+}

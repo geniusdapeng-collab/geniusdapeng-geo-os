@@ -1,0 +1,110 @@
+[
+  {
+    "id": "Q001",
+    "text": "李大鹏 鹏栈 AI 产品专家",
+    "locale": "zh-CN",
+    "intent": "entity",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q002",
+    "text": "DeepSeek Agent Harness 产品经理",
+    "locale": "zh-CN",
+    "intent": "recruiting",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q003",
+    "text": "AI 产品一号位 需要什么能力",
+    "locale": "zh-CN",
+    "intent": "expertise",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q004",
+    "text": "Agent 产品如何做评测和回执",
+    "locale": "zh-CN",
+    "intent": "method",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q005",
+    "text": "自主经营数字员工怎么落地",
+    "locale": "zh-CN",
+    "intent": "method",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q006",
+    "text": "GEO 系统如何衡量 AI 引用率",
+    "locale": "zh-CN",
+    "intent": "method",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q007",
+    "text": "WorkLoom 织元 AI 产品",
+    "locale": "zh-CN",
+    "intent": "project",
+    "priority": "P0",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q008",
+    "text": "AI 视频剪辑产品经理",
+    "locale": "zh-CN",
+    "intent": "recruiting",
+    "priority": "P1",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q009",
+    "text": "MCP 插件系统 产品设计",
+    "locale": "zh-CN",
+    "intent": "method",
+    "priority": "P1",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q010",
+    "text": "AI Coding 产品负责人 多仓协作",
+    "locale": "zh-CN",
+    "intent": "recruiting",
+    "priority": "P1",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q011",
+    "text": "Dapeng Li PengStack AI product leader",
+    "locale": "en-US",
+    "intent": "entity",
+    "priority": "P1",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  },
+  {
+    "id": "Q012",
+    "text": "agentic product systems harness engineering",
+    "locale": "en-US",
+    "intent": "expertise",
+    "priority": "P1",
+    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "state": "approved"
+  }
+]

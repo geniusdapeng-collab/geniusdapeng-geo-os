@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>天才大鹏 · PengStack GEO OS</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#overview" aria-label="返回概览">
+          <span class="brand-mark">鹏</span>
+          <span>
+            <strong>鹏栈</strong>
+            <small>GEO OS</small>
+          </span>
+        </a>
+
+        <nav aria-label="主导航">
+          <button class="nav-item active" data-view="overview">概览</button>
+          <button class="nav-item" data-view="accounts">账号矩阵</button>
+          <button class="nav-item" data-view="content">内容工厂</button>
+          <button class="nav-item" data-view="geo">GEO 复测</button>
+          <button class="nav-item" data-view="interactions">互动分流</button>
+        </nav>
+
+        <div class="sidebar-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          <p>本地优先 · 人工发布</p>
+          <small>v0.1 私有控制面</small>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Dapeng Li · PengStack</p>
+            <h1>天才大鹏</h1>
+          </div>
+          <button id="refresh" class="ghost-button" type="button">刷新数据</button>
+        </header>
+
+        <div id="global-error" class="error-banner" role="alert" hidden></div>
+        <div id="loading" class="loading-card" aria-live="polite">
+          <span class="loader" aria-hidden="true"></span>
+          正在读取本地证据账本
+        </div>
+
+        <div id="app" hidden>
+          <section class="view active" id="view-overview" aria-labelledby="overview-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">今日控制面</p>
+                <h2 id="overview-title">事实、内容和可见性</h2>
+              </div>
+              <p id="revision-label" class="revision"></p>
+            </div>
+
+            <div id="stat-grid" class="stat-grid"></div>
+
+            <div class="two-column">
+              <article class="panel">
+                <div class="panel-heading">
+                  <h3>内容闸门</h3>
+                  <span>状态机</span>
+                </div>
+                <div id="content-status" class="status-list"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-heading">
+                  <h3>事实审批</h3>
+                  <span>Claim ledger</span>
+                </div>
+                <div id="claim-status" class="status-list"></div>
+              </article>
+            </div>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <h3>当前主线</h3>
+                <span>事实 → 内容 → 发布 → 复测</span>
+              </div>
+              <ol class="pipeline">
+                <li><strong>01</strong><span>批准 Claim</span></li>
+                <li><strong>02</strong><span>建立内容 Brief</span></li>
+                <li><strong>03</strong><span>生成平台变体</span></li>
+                <li><strong>04</strong><span>人工审批</span></li>
+                <li><strong>05</strong><span>登记发布回执</span></li>
+                <li><strong>06</strong><span>7 / 28 天复测</span></li>
+              </ol>
+            </article>
+          </section>
+
+          <section class="view" id="view-accounts" aria-labelledby="accounts-title" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">16 个平台</p>
+                <h2 id="accounts-title">账号矩阵</h2>
+              </div>
+              <p class="section-copy">A 波建立证据，B 波扩散，C 波沉淀搜索。</p>
+            </div>
+            <div id="account-grid" class="account-grid"></div>
+          </section>
+
+          <section class="view" id="view-content" aria-labelledby="content-title" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Evidence before publishing</p>
+                <h2 id="content-title">内容工厂</h2>
+              </div>
+              <button id="open-content-form" class="primary-button" type="button">新建内容</button>
+            </div>
+
+            <form id="content-form" class="panel form-panel" hidden>
+              <div class="form-grid">
+                <label>
+                  <span>标题</span>
+                  <input name="title" required maxlength="240" placeholder="一句话说明内容要回答什么" />
+                </label>
+                <label>
+                  <span>内容类型</span>
+                  <select name="contentType">
+                    <option value="article">长文</option>
+                    <option value="social_post">短帖</option>
+                    <option value="image_text">图文</option>
+                    <option value="video">视频</option>
+                    <option value="talking_head">口播</option>
+                    <option value="opinion">纯观点</option>
+                  </select>
+                </label>
+                <label class="wide">
+                  <span>正文 / Brief</span>
+                  <textarea name="body" required rows="7" placeholder="先写事实与判断，不要直接写成平台营销稿"></textarea>
+                </label>
+                <label>
+                  <span>绑定 Claim</span>
+                  <select name="claimId">
+                    <option value="">不绑定（仅纯观点）</option>
+                  </select>
+                </label>
+                <label>
+                  <span>目标平台</span>
+                  <select name="platform"></select>
+                </label>
+              </div>
+              <div class="form-actions">
+                <button class="ghost-button" id="cancel-content-form" type="button">取消</button>
+                <button class="primary-button" type="submit">保存草稿</button>
+              </div>
+            </form>
+
+            <div id="content-list" class="content-list"></div>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <h3>120 条初始选题</h3>
+                <span>只作生产入口，不代表已批准</span>
+              </div>
+              <div id="content-bank-list" class="bank-list"></div>
+            </article>
+          </section>
+
+          <section class="view" id="view-geo" aria-labelledby="geo-title" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">AI answer visibility</p>
+                <h2 id="geo-title">GEO 复测</h2>
+              </div>
+              <p class="section-copy">没有 real 或 imported 样本，不输出效果结论。</p>
+            </div>
+            <div id="geo-metrics" class="stat-grid"></div>
+            <div class="two-column">
+              <article class="panel">
+                <div class="panel-heading"><h3>固定问题集</h3><span>DeepSeek 优先</span></div>
+                <div id="query-list" class="query-list"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-heading"><h3>最近观察</h3><span>答案哈希与引用</span></div>
+                <div id="observation-list" class="query-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section
+            class="view"
+            id="view-interactions"
+            aria-labelledby="interactions-title"
+            hidden
+          >
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Human in the loop</p>
+                <h2 id="interactions-title">互动分流</h2>
+              </div>
+              <p class="section-copy">招聘、客户、法律、金融、负面和隐私必须人工处理。</p>
+            </div>
+            <form id="interaction-form" class="panel form-panel">
+              <label>
+                <span>粘贴一条评论或私信</span>
+                <textarea name="text" required rows="5" placeholder="系统只做风险分流，不自动回复"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">判断处理级别</button>
+              </div>
+            </form>
+            <div id="interaction-result" class="panel empty-panel">
+              还没有待判断的互动。
+            </div>
+            <article class="panel">
+              <div class="panel-heading"><h3>处理原则</h3><span>L0-L3</span></div>
+              <div class="risk-grid">
+                <div><strong>L0</strong><p>本人逐条处理</p></div>
+                <div><strong>L1</strong><p>生成草稿后确认</p></div>
+                <div><strong>L2</strong><p>仅限已批准 FAQ</p></div>
+                <div><strong>L3</strong><p>不互动或安全队列</p></div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <template id="account-card-template">
+      <article class="account-card">
+        <div class="account-topline">
+          <span class="wave"></span>
+          <span class="policy"></span>
+        </div>
+        <h3></h3>
+        <p class="handle"></p>
+        <p class="focus"></p>
+        <dl>
+          <div><dt>受众</dt><dd class="audience"></dd></div>
+          <div><dt>节奏</dt><dd class="cadence"></dd></div>
+          <div><dt>发布</dt><dd class="mode"></dd></div>
+        </dl>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

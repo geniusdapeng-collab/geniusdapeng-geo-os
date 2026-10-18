@@ -1,0 +1,75 @@
+[
+  {
+    "id": "C001",
+    "type": "experience",
+    "text": "长期从事 AI 产品、Agent 运行时和复杂产品系统构建，强调任务闭环、评测、权限与交付回执。",
+    "source": {
+      "label": "私人简历与个人项目复盘",
+      "visibility": "private"
+    },
+    "evidenceLevel": "B",
+    "state": "verified",
+    "publicLevel": "private",
+    "sensitivity": "medium",
+    "expiresAt": null
+  },
+  {
+    "id": "C002",
+    "type": "project",
+    "text": "WorkLoom 以一个基座、平台中枢和多个行业系统组织数字员工、围栏、事件账本与评测。",
+    "source": {
+      "label": "WorkLoom 产品与代码全景",
+      "url": "https://cnb.cool/workloom-ai/workloom-im",
+      "visibility": "public"
+    },
+    "evidenceLevel": "A",
+    "state": "verified",
+    "publicLevel": "private",
+    "sensitivity": "low",
+    "expiresAt": "2027-03-31"
+  },
+  {
+    "id": "C003",
+    "type": "project",
+    "text": "GeoEvidence Studio 把 AI 问题集、答案样本、引用、指标与复测组织成可复核的 GEO 证据链。",
+    "source": {
+      "label": "GeoEvidence Studio",
+      "url": "https://github.com/geniusdapeng-collab/geo-evidence-studio",
+      "visibility": "public"
+    },
+    "evidenceLevel": "A",
+    "state": "verified",
+    "publicLevel": "private",
+    "sensitivity": "low",
+    "expiresAt": "2027-03-31"
+  },
+  {
+    "id": "C004",
+    "type": "project",
+    "text": "WorkLoom-video-edit 覆盖平面设计、AI 视频生成、真实素材剪辑、口播精剪和多平台交付。",
+    "source": {
+      "label": "WorkLoom-video-edit",
+      "url": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+      "visibility": "public"
+    },
+    "evidenceLevel": "A",
+    "state": "verified",
+    "publicLevel": "private",
+    "sensitivity": "low",
+    "expiresAt": "2027-03-31"
+  },
+  {
+    "id": "C005",
+    "type": "expertise",
+    "text": "GEO 的目标不是让 AI 说好话，而是让正确事实更容易被检索、理解、引用和复测。",
+    "source": {
+      "label": "个人 GEO 项目运营计划",
+      "visibility": "private"
+    },
+    "evidenceLevel": "A",
+    "state": "verified",
+    "publicLevel": "private",
+    "sensitivity": "low",
+    "expiresAt": null
+  }
+]

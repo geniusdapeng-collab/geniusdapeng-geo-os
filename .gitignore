@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+var/
+coverage/
+*.log
+*.tmp
+*.sqlite
+*.sqlite-*
+node_modules/
+dist/
+build/
+data/private/
+outputs/

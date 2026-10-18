@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/geniusdapeng-collab/geo-evidence-studio",
+  "commit": "06b47a15fd114541bd3147dc5c07b944c36bc8da",
+  "verifiedAt": "2026-10-18",
+  "license": "Apache-2.0",
+  "integration": "adapter-only",
+  "codeCopied": false,
+  "capabilities": [
+    "query-sets",
+    "AI-answer-samples",
+    "citation-evidence",
+    "visibility-metrics",
+    "negative-signal-review",
+    "publication-receipts"
+  ]
+}

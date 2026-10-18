@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Syntax check
+        run: |
+          node --check src/server.mjs
+          node --check public/app.js
+      - name: Unit and integration tests
+        run: node --test
+      - name: Smoke test
+        run: node scripts/smoke.mjs
+      - name: Secret scan
+        run: node scripts/security-scan.mjs

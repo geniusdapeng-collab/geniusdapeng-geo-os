@@ -1,0 +1,3242 @@
+[
+  {
+    "id": "C001",
+    "track": "Agent与Harness",
+    "theme": "Harness产品拆解",
+    "title": "DeepSeek Harness 是什么",
+    "hook": "DeepSeek Harness 最值得产品经理看的，不是界面，而是它把 Agent 能力拆成了可组合的插件。",
+    "thesis": "用产品语言解释 Harness、Agent Loop、工具、插件和开放生态之间的关系。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "AI产品经理与开发者",
+    "funnelStage": "认知",
+    "keywords": [
+      "DeepSeek Harness",
+      "Agent产品"
+    ],
+    "interactionQuestion": "你最想先拆 Harness 的哪一层？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "需核对官方版本变化",
+    "state": "待立项"
+  },
+  {
+    "id": "C002",
+    "track": "自主经营数字员工",
+    "theme": "数字员工定义",
+    "title": "AI数字员工先像员工还是先像工具",
+    "hook": "数字员工如果不能接目标、交结果和复盘，就只是更复杂的工具。",
+    "thesis": "用岗位、目标、权限、回执和绩效五个要素定义数字员工。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "企业AI产品负责人",
+    "funnelStage": "认知",
+    "keywords": [
+      "数字员工",
+      "AI自主经营"
+    ],
+    "interactionQuestion": "你认为数字员工必须先具备什么？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C003",
+    "track": "GEO",
+    "theme": "GEO基础",
+    "title": "GEO到底是什么",
+    "hook": "GEO不是让AI说你好话，而是让正确事实更容易被检索、理解和引用。",
+    "thesis": "从实体、问题、来源、答案和复测五个环节解释GEO。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "品牌与增长负责人",
+    "funnelStage": "认知",
+    "keywords": [
+      "GEO",
+      "AI搜索优化"
+    ],
+    "interactionQuestion": "你会怎么判断GEO是否有效？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C004",
+    "track": "AI媒体生产",
+    "theme": "内容复用",
+    "title": "一份事实如何生成16个平台内容",
+    "hook": "多平台分发的核心不是复制，而是同一事实在不同语境里重新组织。",
+    "thesis": "从母资产、平台变体、审核和回执解释内容工厂。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "内容与增长团队",
+    "funnelStage": "认知",
+    "keywords": [
+      "内容工厂",
+      "多平台分发"
+    ],
+    "interactionQuestion": "你会先做文章还是先做视频？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C005",
+    "track": "AI Coding与工程",
+    "theme": "多仓协作",
+    "title": "我如何用Codex管理多仓开发",
+    "hook": "多仓协作的关键不是让AI写得更快，而是让任务、分支和回执不打架。",
+    "thesis": "介绍任务卡、独立工作树、CI、合并和回执。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "AI工程团队",
+    "funnelStage": "认知",
+    "keywords": [
+      "Codex",
+      "多仓开发"
+    ],
+    "interactionQuestion": "你最多同时管理过几个仓？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C006",
+    "track": "电商",
+    "theme": "客服边界",
+    "title": "客服Agent哪些话不能说",
+    "hook": "客服Agent最大的风险不是不会回答，而是过度承诺。",
+    "thesis": "建立退换、赔付、时效和合规表达红线。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "电商客服负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI客服",
+      "电商合规"
+    ],
+    "interactionQuestion": "你见过AI客服乱承诺吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C007",
+    "track": "金融资产管理",
+    "theme": "模拟与实盘",
+    "title": "模拟盘和实盘必须分开",
+    "hook": "模拟成功的最大风险，是让人误以为已经具备实盘能力。",
+    "thesis": "区分数据、撮合、回执、资金风险和审批。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "交易系统开发者",
+    "funnelStage": "信任",
+    "keywords": [
+      "模拟盘",
+      "实盘风控"
+    ],
+    "interactionQuestion": "你会用什么门槛才允许实盘？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C008",
+    "track": "行业系统",
+    "theme": "行业复制",
+    "title": "行业包如何把一套Agent复制到不同业务",
+    "hook": "复制的不是页面，而是岗位、对象、阶段、围栏和评测的组合。",
+    "thesis": "用酒店、电商、金融、咨询对比同一基座的不同行业包。",
+    "sourceIds": [
+      "S03"
+    ],
+    "evidenceLevel": "B",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "平台与行业产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "行业Agent",
+      "平台化"
+    ],
+    "interactionQuestion": "你最看好哪个行业的Agent落地？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C009",
+    "track": "个人品牌与招聘",
+    "theme": "全景叙事",
+    "title": "一张图讲清WorkLoom十二仓",
+    "hook": "十二个项目不是十二个App，而是一套基座、行业包和运营中枢的组合。",
+    "thesis": "用基座、平台中枢、行业、实验四层讲清矩阵。",
+    "sourceIds": [
+      "S03"
+    ],
+    "evidenceLevel": "B",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "AI产品与招聘方",
+    "funnelStage": "认知",
+    "keywords": [
+      "WorkLoom",
+      "Agent矩阵"
+    ],
+    "interactionQuestion": "你会先从哪个行业仓看起？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C010",
+    "track": "Agent与Harness",
+    "theme": "Harness产品拆解",
+    "title": "一切皆插件意味着什么",
+    "hook": "“一切皆插件”不是技术口号，它决定了产品如何扩展、升级和治理。",
+    "thesis": "插件化降低了能力接入成本，也把发现、权限、版本和兼容性变成了核心产品问题。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "开发者与平台产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "插件系统",
+      "Agent平台"
+    ],
+    "interactionQuestion": "你会把哪个能力做成插件？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C011",
+    "track": "自主经营数字员工",
+    "theme": "任务流转",
+    "title": "一张任务卡如何在人和Agent之间流转",
+    "hook": "任务卡是人与Agent的协作接口，不是待办清单的换皮。",
+    "thesis": "展示目标、阶段、责任人、围栏、产物和交接回执。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "GitHub",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "产品Demo",
+    "audience": "企业产品与运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "任务编排",
+      "数字员工"
+    ],
+    "interactionQuestion": "你的任务卡能支持Agent接手吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C012",
+    "track": "GEO",
+    "theme": "可见性测量",
+    "title": "如何测AI是否认识你",
+    "hook": "先定义正确实体，再测提及、引用、位置和描述准确性。",
+    "thesis": "展示一套可重复的AI可见性基线。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "个人品牌与企业市场团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI可见性",
+      "GEO指标"
+    ],
+    "interactionQuestion": "你最想知道AI怎么描述你吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C013",
+    "track": "AI媒体生产",
+    "theme": "视频工厂",
+    "title": "AI视频工厂真正的瓶颈是交付",
+    "hook": "生成一段视频不等于交付一条可发布的成片。",
+    "thesis": "拆解生成、剪辑、字幕、配乐、封面和交付清单。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "视频产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI视频",
+      "视频交付"
+    ],
+    "interactionQuestion": "你被哪一步卡得最久？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C014",
+    "track": "AI Coding与工程",
+    "theme": "开发协议",
+    "title": "为什么一任务一分支不是形式主义",
+    "hook": "当Agent参与开发，分支就是任务边界和恢复点。",
+    "thesis": "解释任务号、提交规范、租约、PR和回执。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "研发管理者",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI Coding",
+      "开发协作"
+    ],
+    "interactionQuestion": "你的AI会一次改多少文件？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C015",
+    "track": "电商",
+    "theme": "价格风险",
+    "title": "电商价格Agent为什么危险",
+    "hook": "价格动作影响收入和品牌，一次错误可能比内容错误贵得多。",
+    "thesis": "拆分定价建议、审批、生效和撤销。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "电商经营者",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI定价",
+      "价格审批"
+    ],
+    "interactionQuestion": "你能接受AI自动改价吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C016",
+    "track": "金融资产管理",
+    "theme": "紧急制动",
+    "title": "金融Agent为什么需要Kill Switch",
+    "hook": "自治交易的底线不是模型更聪明，而是随时能停。",
+    "thesis": "展示全局停机、单策略冻结、撤单和人工接管。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "金融科技负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Kill Switch",
+      "交易风控"
+    ],
+    "interactionQuestion": "你会把停机权交给谁？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C017",
+    "track": "行业系统",
+    "theme": "酒店经营",
+    "title": "酒店数字员工的一天",
+    "hook": "从夜审到早报，酒店是观察AI班组最完整的场景。",
+    "thesis": "串联定价、评价、对账、巡检和内容岗位。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "酒店经营者",
+    "funnelStage": "认知",
+    "keywords": [
+      "酒店AI",
+      "数字员工"
+    ],
+    "interactionQuestion": "你最想让酒店哪个岗位先AI化？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C018",
+    "track": "个人品牌与招聘",
+    "theme": "产品演进",
+    "title": "WorkLoom如何从基座长成行业矩阵",
+    "hook": "平台化不是复用代码那么简单，还要复用岗位、围栏、事件和评测。",
+    "thesis": "解释从IM基座到酒店、电商、金融、咨询的路径。",
+    "sourceIds": [
+      "S03"
+    ],
+    "evidenceLevel": "B",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "平台产品负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "WorkLoom",
+      "平台产品"
+    ],
+    "interactionQuestion": "平台化最该复用哪一层？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C019",
+    "track": "Agent与Harness",
+    "theme": "任务闭环",
+    "title": "Agent不是聊天框",
+    "hook": "用户要的是任务完成，不是一段更像人的回答。",
+    "thesis": "Agent产品的核心界面应围绕目标、计划、执行、证据和结果组织。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "AI产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent产品设计",
+      "任务闭环"
+    ],
+    "interactionQuestion": "你的Agent产品真正交付了什么？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C020",
+    "track": "自主经营数字员工",
+    "theme": "岗位系统",
+    "title": "数字员工需要实名、岗位和权限",
+    "hook": "没有身份和边界的Agent无法进入真实组织。",
+    "thesis": "说明员工档案、岗位版本、技能包、围栏和审计关系。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "企业管理者",
+    "funnelStage": "认知",
+    "keywords": [
+      "数字员工管理",
+      "Agent治理"
+    ],
+    "interactionQuestion": "你愿意让Agent拥有哪种权限？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C021",
+    "track": "GEO",
+    "theme": "指标体系",
+    "title": "提及率为什么不是唯一指标",
+    "hook": "被提到不等于被正确提到，也不等于被推荐。",
+    "thesis": "解释提及率、首推率、引用率、自有信源率和准确率。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "增长与PR团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "GEO指标",
+      "提及率"
+    ],
+    "interactionQuestion": "你最看重哪一个指标？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C022",
+    "track": "AI媒体生产",
+    "theme": "剪辑架构",
+    "title": "帧级时间轴为什么重要",
+    "hook": "模型自报的秒数会漂，帧级时间码才能让切点可执行。",
+    "thesis": "用源轨、主轨和帧号解释剪辑可信度。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "剪辑开发者",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI剪辑",
+      "帧级时间轴"
+    ],
+    "interactionQuestion": "你遇到过几秒的切点漂移？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C023",
+    "track": "AI Coding与工程",
+    "theme": "假完成",
+    "title": "AI Coding最怕假完成",
+    "hook": "测试没跑、回执没回、页面没看，却告诉你任务已经完成。",
+    "thesis": "列出AI Coding常见假完成与验证方法。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "研发与产品团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI Coding",
+      "假完成"
+    ],
+    "interactionQuestion": "你被AI的“已完成”骗过吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C024",
+    "track": "电商",
+    "theme": "经营对象",
+    "title": "电商自主经营的核心对象是什么",
+    "hook": "电商Agent如果没有商品、订单、售后和库存对象，就只是在聊天。",
+    "thesis": "梳理电商经营对象与Agent责任边界。",
+    "sourceIds": [
+      "S03"
+    ],
+    "evidenceLevel": "B",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "电商产品负责人",
+    "funnelStage": "认知",
+    "keywords": [
+      "电商Agent",
+      "自主经营"
+    ],
+    "interactionQuestion": "你最想自动化哪个电商环节？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C025",
+    "track": "金融资产管理",
+    "theme": "内容边界",
+    "title": "投资内容可以讲方法不能给建议",
+    "hook": "金融内容的价值是解释决策框架，不是替别人承担风险。",
+    "thesis": "区分研究、观点、策略展示和投资建议。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "金融内容创作者",
+    "funnelStage": "信任",
+    "keywords": [
+      "金融内容",
+      "合规"
+    ],
+    "interactionQuestion": "你怎么看AI财经内容？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 1,
+    "riskReview": "必须保留风险提示",
+    "state": "待立项"
+  },
+  {
+    "id": "C026",
+    "track": "行业系统",
+    "theme": "酒店服务",
+    "title": "酒店AI前台如何连接PMS",
+    "hook": "前台AI如果不能读取房态和写入工单，就只是FAQ。",
+    "thesis": "拆解知识、业务办理、客控和系统集成。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "酒店产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI前台",
+      "PMS"
+    ],
+    "interactionQuestion": "你住酒店会跟AI前台聊天吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C027",
+    "track": "个人品牌与招聘",
+    "theme": "Harness选择",
+    "title": "为什么WorkLoom选择DeepSeek Harness",
+    "hook": "我们选择Harness，是为了把通用Agent循环交给生态，把企业治理留在自己手里。",
+    "thesis": "说明地基、seam、插件、行业护城河和社区回馈。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "DeepSeek与开发者社区",
+    "funnelStage": "招聘",
+    "keywords": [
+      "DeepSeek Harness",
+      "WorkLoom"
+    ],
+    "interactionQuestion": "你会怎样选择Agent底座？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "招聘表达需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C028",
+    "track": "Agent与Harness",
+    "theme": "任务闭环",
+    "title": "Agent Loop该怎么产品化",
+    "hook": "Agent Loop只有被用户看见、理解和控制，才会成为产品能力。",
+    "thesis": "展示计划、工具调用、错误恢复和回执，比隐藏全部过程更能建立信任。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "GitHub",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "产品Demo",
+    "audience": "产品与工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent Loop",
+      "可观测性"
+    ],
+    "interactionQuestion": "你愿意让用户看到多少执行过程？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C029",
+    "track": "自主经营数字员工",
+    "theme": "围栏",
+    "title": "为什么围栏比愿景更重要",
+    "hook": "真正的自主经营先要回答什么不能做。",
+    "thesis": "用block、review、auto三级判定解释业务围栏。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "企业AI负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent围栏",
+      "风险管理"
+    ],
+    "interactionQuestion": "你的AI系统哪件事必须被阻断？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C030",
+    "track": "GEO",
+    "theme": "自有信源",
+    "title": "自有信源引用率怎么算",
+    "hook": "只有先确认哪些域名属于自己，引用率才有意义。",
+    "thesis": "拆解owned domain、引用提取、N/A与零的区别。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "SEO/GEO团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "自有信源",
+      "引用率"
+    ],
+    "interactionQuestion": "你的官网是AI愿意引用的信源吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 1,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C031",
+    "track": "AI媒体生产",
+    "theme": "口播精剪",
+    "title": "口播精剪怎么保留人味",
+    "hook": "追求完美会摧毁信任，剪得太干净反而像AI念稿。",
+    "thesis": "ASR逐字稿、情绪曲线、停顿保留率和人审。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "知识博主与产品人",
+    "funnelStage": "信任",
+    "keywords": [
+      "口播精剪",
+      "ASR"
+    ],
+    "interactionQuestion": "你能接受保留多少语气词？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C032",
+    "track": "AI Coding与工程",
+    "theme": "完成口径",
+    "title": "无回执不算完成在工程里的含义",
+    "hook": "提交、CI、合并和发布是四个不同状态。",
+    "thesis": "用源代码、候选、main和制品四层回执拆解完成。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "工程负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "CI",
+      "交付回执"
+    ],
+    "interactionQuestion": "你团队把提交当完成吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C033",
+    "track": "电商",
+    "theme": "客服售后",
+    "title": "商品订单售后三段Agent怎么分工",
+    "hook": "售前、履约和售后用同一个Agent，通常会把责任和权限混在一起。",
+    "thesis": "按业务阶段拆岗位、工具、围栏和数据。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "电商运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "电商客服",
+      "售后Agent"
+    ],
+    "interactionQuestion": "你会先自动化客服还是补货？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C034",
+    "track": "金融资产管理",
+    "theme": "风控优先",
+    "title": "金融Agent先建风控还是先做收益",
+    "hook": "金融产品没有风控闭环，收益叙事就没有可信基础。",
+    "thesis": "从许可、仓位、止损、熔断和审计说明优先级。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "金融科技产品经理",
+    "funnelStage": "认知",
+    "keywords": [
+      "金融Agent",
+      "风控"
+    ],
+    "interactionQuestion": "你能接受AI自动下单吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C035",
+    "track": "行业系统",
+    "theme": "咨询边界",
+    "title": "咨询AI为什么不能替代访谈",
+    "hook": "高信任场景里的AI价值是准备和整理，不是伪装成顾问。",
+    "thesis": "说明诊断、访谈、汇报和续约中的人机分工。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "咨询公司负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI咨询",
+      "人机协作"
+    ],
+    "interactionQuestion": "哪些咨询环节绝不能交给AI？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "避免暗示替代专业责任",
+    "state": "待立项"
+  },
+  {
+    "id": "C036",
+    "track": "个人品牌与招聘",
+    "theme": "决策方法",
+    "title": "产品一号位如何写Decision Memo",
+    "hook": "一号位不是拍脑袋，而是把问题、约束、选项、风险和行动写清楚。",
+    "thesis": "给出可用于Agent产品立项的备忘录模板。",
+    "sourceIds": [
+      "S10"
+    ],
+    "evidenceLevel": "B/私有",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "招聘方与产品负责人",
+    "funnelStage": "招聘",
+    "keywords": [
+      "Decision Memo",
+      "产品一号位"
+    ],
+    "interactionQuestion": "你会用什么标准判断方案？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "履历事实需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C037",
+    "track": "Agent与Harness",
+    "theme": "工具调用",
+    "title": "工具调用为什么会失败",
+    "hook": "Tool Use失败通常不是模型不会调用，而是参数、权限、幂等和回执没有设计好。",
+    "thesis": "用失败样本拆解工具调用链路，并给出产品侧的异常分支清单。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "Agent开发者",
+    "funnelStage": "信任",
+    "keywords": [
+      "Tool Use",
+      "工具调用失败"
+    ],
+    "interactionQuestion": "你遇到最多的工具失败是哪一类？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C038",
+    "track": "自主经营数字员工",
+    "theme": "高风险动作",
+    "title": "高风险动作为什么必须人审",
+    "hook": "AI不能承担法律责任，也不能替人承担经营后果。",
+    "thesis": "区分系统能力、审批功能和真实高风险经营动作。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "企业管理者",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI审批",
+      "高风险Agent"
+    ],
+    "interactionQuestion": "哪类AI动作绝不能被自动放行？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C039",
+    "track": "GEO",
+    "theme": "实体消歧",
+    "title": "同名实体污染怎么修",
+    "hook": "AI把同名人物混在一起时，增加内容数量只会放大错误。",
+    "thesis": "用统一handle、消歧页、项目锚点和事实卡修复实体。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "个人品牌运营者",
+    "funnelStage": "信任",
+    "keywords": [
+      "实体消歧",
+      "个人品牌"
+    ],
+    "interactionQuestion": "你被同名信息误导过吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "需本人确认公开身份信息",
+    "state": "待立项"
+  },
+  {
+    "id": "C040",
+    "track": "AI媒体生产",
+    "theme": "封面设计",
+    "title": "封面设计师如何产品化",
+    "hook": "封面不是挑一张好看的图，而是一个带规格、知识和机检的设计任务。",
+    "thesis": "讲平台规格、账号视觉锤、知识库、出图和返修。",
+    "sourceIds": [
+      "S06"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "内容与设计团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "视频封面",
+      "平面设计"
+    ],
+    "interactionQuestion": "你的封面有固定视觉锤吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C041",
+    "track": "AI Coding与工程",
+    "theme": "测试证据",
+    "title": "AI Coding需要怎样的测试证据",
+    "hook": "只说“应该能跑”不叫验证。",
+    "thesis": "命令、退出码、日志摘要、产物哈希和失败样本。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "QA与研发团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI测试",
+      "证据链"
+    ],
+    "interactionQuestion": "你接受AI截图当测试吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C042",
+    "track": "电商",
+    "theme": "多平台",
+    "title": "多平台电商Agent如何共用一套数据",
+    "hook": "平台规则不同，但商品事实和经营事件应该共用。",
+    "thesis": "用统一商品主数据和平台适配层解决重复维护。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "电商架构团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "多平台电商",
+      "商品主数据"
+    ],
+    "interactionQuestion": "你最头疼哪个平台的数据口径？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C043",
+    "track": "金融资产管理",
+    "theme": "交易链路",
+    "title": "21环节交易链路为什么不能跳步",
+    "hook": "删掉一个校验环节，结果就可能无法解释。",
+    "thesis": "讲数据、清洗、行情、风控、决策和执行的回执链。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "量化与风控团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "交易Agent",
+      "ExecutionTracer"
+    ],
+    "interactionQuestion": "你的交易链路缺一步会怎样？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C044",
+    "track": "行业系统",
+    "theme": "咨询信任",
+    "title": "咨询Agent的信任公式",
+    "hook": "判断力、上下文深度和可归因性决定客户是否相信建议。",
+    "thesis": "用一个真实咨询项目解释每条建议如何挂依据链。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "B2B顾问",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI咨询",
+      "信任工程"
+    ],
+    "interactionQuestion": "你会为AI建议付咨询费吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C045",
+    "track": "个人品牌与招聘",
+    "theme": "需求验证",
+    "title": "我怎么验证一个AI产品需求",
+    "hook": "AI需求不是听起来酷，而是任务频率、失败代价和可验证收益共同成立。",
+    "thesis": "用访谈、数据、原型、评测和灰度做需求验证。",
+    "sourceIds": [
+      "S10"
+    ],
+    "evidenceLevel": "B/私有",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI产品经理",
+    "funnelStage": "招聘",
+    "keywords": [
+      "AI需求",
+      "产品验证"
+    ],
+    "interactionQuestion": "你最常见的伪需求是什么？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "履历事实需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C046",
+    "track": "Agent与Harness",
+    "theme": "技能系统",
+    "title": "Skills如何变成可安装能力",
+    "hook": "Skill不是一段更长的提示词，而是有输入、输出、权限、版本和考试的岗位能力。",
+    "thesis": "拆解技能目录、dry-run、冲突检测、版本演进和上线考试。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "AI平台产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent Skills",
+      "技能市场"
+    ],
+    "interactionQuestion": "你的Skill有失败关闭机制吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C047",
+    "track": "自主经营数字员工",
+    "theme": "事件账本",
+    "title": "五元事件账本怎么工作",
+    "hook": "可复盘不是多写日志，而是记录谁在什么上下文做了什么决定。",
+    "thesis": "用who、context、object、decision、rule_impact解释事件结构。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "事件账本",
+      "Agent审计"
+    ],
+    "interactionQuestion": "你的日志能还原决策链吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C048",
+    "track": "GEO",
+    "theme": "问题集",
+    "title": "120条GEO查询集怎么设计",
+    "hook": "查询集不是关键词堆，而是用户、场景、比较和风险问题的组合。",
+    "thesis": "展示实体、岗位、DeepSeek、能力、对比和风险六类问题。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "GEO从业者",
+    "funnelStage": "信任",
+    "keywords": [
+      "GEO查询集",
+      "AI搜索"
+    ],
+    "interactionQuestion": "你会先问AI哪一类问题？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C049",
+    "track": "AI媒体生产",
+    "theme": "图文设计",
+    "title": "图文生产为什么先做设计brief",
+    "hook": "没有受众、渠道和禁用规则，AI出图只会更像模板。",
+    "thesis": "从brief、素材、艺术指导、评审到终审。",
+    "sourceIds": [
+      "S06"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "品牌与内容团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "图文设计",
+      "设计brief"
+    ],
+    "interactionQuestion": "你做图前会写brief吗？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C050",
+    "track": "AI Coding与工程",
+    "theme": "产品能力",
+    "title": "AI产品经理为什么也要会MCP和CLI",
+    "hook": "不懂工具链，就无法判断Agent到底能不能把任务完成。",
+    "thesis": "从MCP、CLI、文件系统和权限讲产品经理的技术判断。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "AI产品经理",
+    "funnelStage": "招聘",
+    "keywords": [
+      "AI产品经理",
+      "MCP"
+    ],
+    "interactionQuestion": "你会自己接一个MCP试吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C051",
+    "track": "电商",
+    "theme": "大促",
+    "title": "大促Agent的周节拍怎么设计",
+    "hook": "大促不是临时多发几条内容，而是库存、价格、素材和客服同步切换。",
+    "thesis": "给出预热、爆发、返场和复盘四个节拍。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "电商运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI大促",
+      "电商运营"
+    ],
+    "interactionQuestion": "你大促最容易在哪一步掉链子？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C052",
+    "track": "金融资产管理",
+    "theme": "回测门禁",
+    "title": "回测与生产为什么必须共用闸门",
+    "hook": "如果回测和生产用两套规则，所有回测结论都可能失真。",
+    "thesis": "用单一阈值配置、共用gate和版本哈希解释一致性。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "量化工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "回测",
+      "交易闸门"
+    ],
+    "interactionQuestion": "你遇到过回测与实盘漂移吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C053",
+    "track": "行业系统",
+    "theme": "平台运营",
+    "title": "平台运营Agent为什么要用工单账本",
+    "hook": "平台客服不是聊天，而是有SLA、责任和回执的服务系统。",
+    "thesis": "用工单状态机串起接待、分诊、处理、回访和复盘。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "SaaS运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI工单",
+      "客户成功"
+    ],
+    "interactionQuestion": "你最想自动化哪一种工单？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C054",
+    "track": "个人品牌与招聘",
+    "theme": "能力地图",
+    "title": "一个AI产品负责人的能力地图",
+    "hook": "AI产品负责人要同时理解用户、模型、工程、评测和经营。",
+    "thesis": "把岗位能力拆成可展示的作品和证据。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "招聘方与转型者",
+    "funnelStage": "招聘",
+    "keywords": [
+      "AI产品经理",
+      "能力地图"
+    ],
+    "interactionQuestion": "你最想补哪一块能力？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C055",
+    "track": "Agent与Harness",
+    "theme": "MCP",
+    "title": "MCP产品的接入体验怎么设计",
+    "hook": "MCP把连接做成了协议，但用户仍需面对授权、数据范围和失败诊断。",
+    "thesis": "从首次接入、权限确认、调用失败到撤销授权，逐段设计MCP体验。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "开发者工具产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "MCP",
+      "开发者体验"
+    ],
+    "interactionQuestion": "你觉得MCP最难的是技术接入还是权限？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C056",
+    "track": "自主经营数字员工",
+    "theme": "完成定义",
+    "title": "为什么没有回执就不算完成",
+    "hook": "AI说做完了，不等于外部系统真的完成。",
+    "thesis": "从API回读、文件哈希、人工签收和失败恢复讲完成口径。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI产品负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent回执",
+      "交付验证"
+    ],
+    "interactionQuestion": "你被AI的假成功骗过吗？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C057",
+    "track": "GEO",
+    "theme": "内容结构",
+    "title": "AI答案版内容六段式",
+    "hook": "AI最容易被结构清楚、事实完整、来源可核的内容帮助。",
+    "thesis": "问题前置、直接答案、证据、表格、实体锚点和引用。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "内容运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "GEO写作",
+      "AI答案"
+    ],
+    "interactionQuestion": "你的文章首屏能直接回答吗？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C058",
+    "track": "AI媒体生产",
+    "theme": "生成与剪辑",
+    "title": "AI生成视频和真实素材剪辑怎么分工",
+    "hook": "生成解决没有画面，剪辑解决已有画面怎么讲成故事。",
+    "thesis": "从成本、可信度、授权、时间码和后期复用比较。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "品牌与制作团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI视频生成",
+      "视频剪辑"
+    ],
+    "interactionQuestion": "你更相信生成画面还是实拍？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C059",
+    "track": "AI Coding与工程",
+    "theme": "门禁",
+    "title": "PR门禁如何防止AI自嗨",
+    "hook": "没有确定性检查和精确回读，AI会优化自己的叙事。",
+    "thesis": "类型检查、测试、权限、秘密扫描和发布回读。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "研发效能团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "PR门禁",
+      "AI研发"
+    ],
+    "interactionQuestion": "你的门禁最缺哪一项？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C060",
+    "track": "电商",
+    "theme": "GEO协同",
+    "title": "电商GEO和站内搜索怎么协同",
+    "hook": "站内搜索解决购买意图，GEO解决站外AI答案里的品牌与品类认知。",
+    "thesis": "用同一商品事实驱动两类内容与两类复测。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "电商增长团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "电商GEO",
+      "AI搜索"
+    ],
+    "interactionQuestion": "你会在哪个平台先测AI答案？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 2,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C061",
+    "track": "金融资产管理",
+    "theme": "多角色组合",
+    "title": "持仓Agent的三层职责",
+    "hook": "研究、配置和风控混成一个Agent，会让责任无法追踪。",
+    "thesis": "拆分宏观哨兵、配置官和风险官。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "资产管理系统产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "资产配置Agent",
+      "风控"
+    ],
+    "interactionQuestion": "你希望哪一层必须人审？",
+    "priority": "P1",
+    "productionDifficulty": "高",
+    "batch": 3,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C062",
+    "track": "行业系统",
+    "theme": "实验车道",
+    "title": "为什么实验仓不能直接回灌基座",
+    "hook": "实验能证明可能性，但不能自动证明通用性。",
+    "thesis": "解释实验车道、隔离副本和公共化提案。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "AI平台团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "实验车道",
+      "平台治理"
+    ],
+    "interactionQuestion": "你觉得实验成功就能直接全量吗？",
+    "priority": "P2",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C063",
+    "track": "个人品牌与招聘",
+    "theme": "求职方向",
+    "title": "为什么我想做Agent Harness产品",
+    "hook": "我关心的不是一个功能，而是Agent怎样在真实任务里更可靠地交付。",
+    "thesis": "从用户任务、开发者体验、评测和社区四个角度表达岗位匹配。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "DeepSeek招聘方",
+    "funnelStage": "招聘",
+    "keywords": [
+      "DeepSeek招聘",
+      "Harness产品"
+    ],
+    "interactionQuestion": "你最看重候选人的哪项证据？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "公开求职状态需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C064",
+    "track": "Agent与Harness",
+    "theme": "Memory",
+    "title": "Memory该存什么不该存什么",
+    "hook": "记忆不是越多越好。错误记忆会让Agent更自信地做错事。",
+    "thesis": "区分短期上下文、用户偏好、业务事实与组织记忆，分别设计生命周期。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "Agent产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent Memory",
+      "记忆设计"
+    ],
+    "interactionQuestion": "你最怕Agent记住什么？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C065",
+    "track": "自主经营数字员工",
+    "theme": "组织设计",
+    "title": "从单Agent到班组的三个前提",
+    "hook": "没有共享状态、岗位边界和统一回执，Agent越多越乱。",
+    "thesis": "解释基座、行业包和客户覆盖层的分工。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "企业架构师",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI组织",
+      "Agent班組"
+    ],
+    "interactionQuestion": "你会先扩Agent还是先补治理？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C066",
+    "track": "GEO",
+    "theme": "边界",
+    "title": "GEO不是刷排名",
+    "hook": "没有平台能保证AI一定推荐你，能保证的是证据与测量。",
+    "thesis": "区分内容优化、语料污染、刷量和虚假引用。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "企业管理者",
+    "funnelStage": "信任",
+    "keywords": [
+      "GEO合规",
+      "AI搜索"
+    ],
+    "interactionQuestion": "你见过哪些伪GEO做法？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C067",
+    "track": "AI媒体生产",
+    "theme": "信号层",
+    "title": "AI剪辑不能相信模型自报时间码",
+    "hook": "镜头边界、静音和音频能量应该先由本地信号确定。",
+    "thesis": "讲清probe、ASR、节拍、响度和模型语义的分工。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "视频工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI剪辑",
+      "信号层"
+    ],
+    "interactionQuestion": "你的剪辑切点由谁决定？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C068",
+    "track": "AI Coding与工程",
+    "theme": "并行协作",
+    "title": "多Agent并行如何避免撞车",
+    "hook": "并行不是多开窗口，而是依赖、范围、租约和冲突管理。",
+    "thesis": "展示DAG、敏感scope租约、候选分支和串行合并。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "AI平台工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Multi-Agent",
+      "开发协作"
+    ],
+    "interactionQuestion": "哪些文件绝不能让两个Agent同时改？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C069",
+    "track": "电商",
+    "theme": "视频素材",
+    "title": "电商视频素材工厂如何接经营",
+    "hook": "素材不是库存，而是能被选品、投放、客服和复盘重复调用的经营资产。",
+    "thesis": "从商品档案、素材标签、合规和版本回执设计素材库。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "内容电商团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "电商视频",
+      "素材库"
+    ],
+    "interactionQuestion": "你的素材能按商品和场景检索吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C070",
+    "track": "金融资产管理",
+    "theme": "模型幻觉",
+    "title": "金融产品经理怎么看模型幻觉",
+    "hook": "金融场景里，幻觉不是文案错误，而可能是仓位错误。",
+    "thesis": "用事实核验、工具回执、规则引擎和人工闸门降低风险。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "金融产品团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "模型幻觉",
+      "金融Agent"
+    ],
+    "interactionQuestion": "你会把下单权交给模型吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "仅方法讨论，不构成投资建议",
+    "state": "待立项"
+  },
+  {
+    "id": "C071",
+    "track": "个人品牌与招聘",
+    "theme": "作品集",
+    "title": "Agent产品面试该带什么作品",
+    "hook": "一份能跑、能复盘、能解释取舍的Demo，比十页概念图更有用。",
+    "thesis": "给出任务闭环、评测报告、失败复盘和产品路线图四件套。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI产品候选人",
+    "funnelStage": "招聘",
+    "keywords": [
+      "AI产品面试",
+      "作品集"
+    ],
+    "interactionQuestion": "你面试时会带Demo吗？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C072",
+    "track": "Agent与Harness",
+    "theme": "上下文工程",
+    "title": "Context Engineering的产品边界",
+    "hook": "上下文工程解决的是“让模型在该看见什么时看见什么”。",
+    "thesis": "从任务装配、检索、压缩、引用和遗忘机制解释产品边界。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "AI产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Context Engineering",
+      "上下文"
+    ],
+    "interactionQuestion": "上下文应该由用户控制到什么程度？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C073",
+    "track": "自主经营数字员工",
+    "theme": "数据边界",
+    "title": "为什么客户数据不能随便上行",
+    "hook": "群体智慧需要经验，不需要客户的原始数据。",
+    "thesis": "解释脱敏、白名单、元数据回流和覆盖层只收紧。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "企业安全与产品团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent数据边界",
+      "隐私"
+    ],
+    "interactionQuestion": "什么数据你绝不会交给外部模型？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C074",
+    "track": "GEO",
+    "theme": "公开证据",
+    "title": "个人GEO为什么需要canonical实体页",
+    "hook": "平台简介各写一套，会让AI无法确认你是谁。",
+    "thesis": "用唯一URL、统一简介、项目链接和更新时间建立实体锚点。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "个人品牌与招聘方",
+    "funnelStage": "信任",
+    "keywords": [
+      "个人GEO",
+      "canonical"
+    ],
+    "interactionQuestion": "你的所有账号指向同一个主页吗？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 3,
+    "riskReview": "公开前先脱敏",
+    "state": "待立项"
+  },
+  {
+    "id": "C075",
+    "track": "AI媒体生产",
+    "theme": "平台变体",
+    "title": "一条母视频怎么拆成多平台版本",
+    "hook": "横版讲逻辑，竖版抓注意，短版只留一个动作。",
+    "thesis": "给出母视频拆条、重排、字幕和封面的规则。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "内容团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "短视频分发",
+      "平台适配"
+    ],
+    "interactionQuestion": "你会保留同一句开场吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C076",
+    "track": "AI Coding与工程",
+    "theme": "声明式接入",
+    "title": "什么是声明式AI Coding接入",
+    "hook": "让新工具通过YAML声明能力，比为每个工具写一套胶水更容易维护。",
+    "thesis": "解释描述、能力发现、参数、回执和测试。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "开发者工具产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI Coding",
+      "dev-bridge"
+    ],
+    "interactionQuestion": "你愿意为AI写配置还是写代码？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C077",
+    "track": "个人品牌与招聘",
+    "theme": "入职计划",
+    "title": "如果加入DeepSeek产品团队我先做哪三件事",
+    "hook": "先理解用户任务，再建立评测，再和研究员、工程与社区形成共同节奏。",
+    "thesis": "提出90天倾听、评测和产品路线假设。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "DeepSeek产品团队",
+    "funnelStage": "招聘",
+    "keywords": [
+      "DeepSeek产品经理",
+      "90天计划"
+    ],
+    "interactionQuestion": "你会把哪件事放在第一个月？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "公开求职状态需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C078",
+    "track": "Agent与Harness",
+    "theme": "Harness工程",
+    "title": "Harness Engineering为什么重要",
+    "hook": "Harness决定模型如何变成稳定产品，工程能力本身就是产品能力。",
+    "thesis": "用执行、工具、恢复、观测和评测五个维度拆Harness。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "海外AI产品经理",
+    "funnelStage": "认知",
+    "keywords": [
+      "Harness Engineering",
+      "Agent Runtime"
+    ],
+    "interactionQuestion": "Which harness layer most affects user trust?",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C079",
+    "track": "自主经营数字员工",
+    "theme": "自治档位",
+    "title": "自主经营的四个权限档位",
+    "hook": "自治不是0和1，而是按决策域逐步扩张。",
+    "thesis": "观察、请示后执行、汇报后执行、全权自治对应不同证据门槛。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "企业管理者",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent自治",
+      "权限设计"
+    ],
+    "interactionQuestion": "你的业务可以开放到第几档？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C080",
+    "track": "GEO",
+    "theme": "指标体系",
+    "title": "首推率怎么测",
+    "hook": "首推要同时记录出现顺序、推荐语境和样本波动。",
+    "thesis": "用固定提示、重复采样和人工复核设计首推率。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI搜索研究者",
+    "funnelStage": "信任",
+    "keywords": [
+      "首推率",
+      "GEO测量"
+    ],
+    "interactionQuestion": "首推率应该按平台分开吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C081",
+    "track": "AI媒体生产",
+    "theme": "设计评审",
+    "title": "海报评审为什么要三种视角",
+    "hook": "一张图同时要过艺术、客户和移动端可读性。",
+    "thesis": "用三视角评分和top3修改收敛设计质量。",
+    "sourceIds": [
+      "S06"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "设计与市场团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "设计评审",
+      "海报"
+    ],
+    "interactionQuestion": "你最常被哪种视角打回？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C082",
+    "track": "AI Coding与工程",
+    "theme": "审查回执",
+    "title": "评审回执为什么要绑定代码版本",
+    "hook": "代码一变，旧审查就失效。",
+    "thesis": "用source、main、policy和测试哈希绑定审查。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "工程治理团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Code Review",
+      "审查回执"
+    ],
+    "interactionQuestion": "你会复用旧PR的审查吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C083",
+    "track": "个人品牌与招聘",
+    "theme": "架构方法",
+    "title": "四层可信Agent架构",
+    "hook": "可信Agent需要入口、运行时、业务包和证据层共同成立。",
+    "thesis": "从交互、模型、工具、围栏和账本讲系统设计。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "AI架构师",
+    "funnelStage": "信任",
+    "keywords": [
+      "可信Agent",
+      "Agent架构"
+    ],
+    "interactionQuestion": "你会把证据层放在哪？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C084",
+    "track": "Agent与Harness",
+    "theme": "概念辨析",
+    "title": "Prompt、Context、Harness三层差在哪",
+    "hook": "Prompt解决怎么说，Context解决看到什么，Harness解决怎么把事做完。",
+    "thesis": "用同一任务贯穿三层，避免概念堆砌。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI从业者",
+    "funnelStage": "认知",
+    "keywords": [
+      "Prompt Engineering",
+      "Harness"
+    ],
+    "interactionQuestion": "你团队现在最缺哪一层？",
+    "priority": "P0",
+    "productionDifficulty": "低",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C085",
+    "track": "自主经营数字员工",
+    "theme": "上岗考试",
+    "title": "AI上岗前怎么考试",
+    "hook": "模型会回答，不代表员工能上岗。",
+    "thesis": "介绍红线题、岗位题、隐藏集和复考机制。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "AI治理与HR",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent考试",
+      "AI评测"
+    ],
+    "interactionQuestion": "你希望数字员工考什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C086",
+    "track": "GEO",
+    "theme": "引用反查",
+    "title": "AI引用来源怎么逆向分析",
+    "hook": "看AI引用了谁，比看它写了什么更能发现内容机会。",
+    "thesis": "用引用域、页面类型和缺失来源做机会图谱。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "内容与增长团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "引用反查",
+      "GEO内容"
+    ],
+    "interactionQuestion": "你最近被哪个陌生站点截走了信源？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C087",
+    "track": "AI媒体生产",
+    "theme": "素材授权",
+    "title": "素材授权是AI剪辑第一道门",
+    "hook": "没有用途和授权记录，越好看的素材越不能进时间线。",
+    "thesis": "介绍素材指纹、授权声明、fail-closed和归档。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "企业内容团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "素材授权",
+      "AI剪辑"
+    ],
+    "interactionQuestion": "你怎么管理商用素材？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C088",
+    "track": "AI Coding与工程",
+    "theme": "发布闭环",
+    "title": "从代码生成到发布回读要经过什么",
+    "hook": "发布不是点一下按钮，而是构建、标签、清单和字节回读。",
+    "thesis": "展示源码合并与制品发布的独立状态。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "GitHub",
+    "secondaryPlatform": "掘金",
+    "format": "Build Log",
+    "audience": "DevOps团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI发布",
+      "发布回执"
+    ],
+    "interactionQuestion": "你的发布回执包含哪些哈希？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C089",
+    "track": "Agent与Harness",
+    "theme": "权限设计",
+    "title": "如何给自主Agent设边界",
+    "hook": "自治权不是一次性开关，而是按决策域逐级授予。",
+    "thesis": "用观察、请示后执行、汇报后执行和全权自治四档解释权限演进。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "企业AI产品负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent权限",
+      "自主经营"
+    ],
+    "interactionQuestion": "哪些动作你的Agent永远不能自己做？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C090",
+    "track": "自主经营数字员工",
+    "theme": "夜班",
+    "title": "夜班不是自动回复而是异步经营",
+    "hook": "夜间的价值在于无人时段仍能推进任务、巡检和准备决策。",
+    "thesis": "拆解候选清单、任务执行、异常升级和清晨决策包。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "经营负责人",
+    "funnelStage": "认知",
+    "keywords": [
+      "AI夜班",
+      "自主经营"
+    ],
+    "interactionQuestion": "你最希望AI夜里替你完成什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 3,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C091",
+    "track": "GEO",
+    "theme": "负面识别",
+    "title": "AI负面误报如何过滤",
+    "hook": "含“投诉”两个字，不代表AI在批评你的品牌。",
+    "thesis": "用上下文、指向对象和不确定性短语降低误报。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "品牌安全团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "品牌负面",
+      "GEO风控"
+    ],
+    "interactionQuestion": "你见过最离谱的AI误报是什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C092",
+    "track": "AI媒体生产",
+    "theme": "调色",
+    "title": "调色也要可复算",
+    "hook": "调色不是凭一句“高级一点”，而是风格、场景、肤色和平台适配的组合。",
+    "thesis": "解释色彩意图、分段配方、机检与版本回退。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "后期与产品团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI调色",
+      "视频后期"
+    ],
+    "interactionQuestion": "你更能接受暖调还是冷调？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C093",
+    "track": "AI Coding与工程",
+    "theme": "内容系统",
+    "title": "我如何让Codex管理内容运营",
+    "hook": "内容运营也需要任务、证据、回执和复测，而不是一堆聊天记录。",
+    "thesis": "展示Codex如何驱动选题、生产、发布和复测。",
+    "sourceIds": [
+      "S09"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "内容与AI从业者",
+    "funnelStage": "信任",
+    "keywords": [
+      "Codex",
+      "内容运营"
+    ],
+    "interactionQuestion": "你会让Agent管理哪一步？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C094",
+    "track": "Agent与Harness",
+    "theme": "审批设计",
+    "title": "Agent产品的批准按钮怎么设计",
+    "hook": "批准不是点同意，而是确认具体动作、风险和可回滚路径。",
+    "thesis": "拆解审批内容、角色、有效期、幂等和驳回原因。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "企业Agent产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent审批",
+      "高风险动作"
+    ],
+    "interactionQuestion": "你会把哪些动作设为必须审批？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C095",
+    "track": "自主经营数字员工",
+    "theme": "绩效",
+    "title": "数字员工绩效应该怎么评",
+    "hook": "只看调用次数会鼓励Agent忙碌，真实目标应看有效结果。",
+    "thesis": "采用结果、质量、成本、人工介入和风险事件的五维绩效。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "AI运营负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "数字员工绩效",
+      "AI管理"
+    ],
+    "interactionQuestion": "你会用哪个指标评价数字员工？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C096",
+    "track": "GEO",
+    "theme": "SEO与GEO",
+    "title": "从SEO到GEO产品团队要补什么",
+    "hook": "搜索入口变了，但事实、结构和可信来源仍然重要。",
+    "thesis": "比较关键词、实体、引用、答案复用和复测。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "增长产品经理",
+    "funnelStage": "认知",
+    "keywords": [
+      "SEO",
+      "GEO"
+    ],
+    "interactionQuestion": "你认为GEO会不会取代SEO？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C097",
+    "track": "AI媒体生产",
+    "theme": "配乐",
+    "title": "配乐如何避免盖住人声",
+    "hook": "BGM的价值是托住内容，不是证明曲库很大。",
+    "thesis": "从许可、情绪、卡点、人声让位和允许不配讲选曲。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "内容创作者",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI配乐",
+      "BGM"
+    ],
+    "interactionQuestion": "你更喜欢有配乐还是纯口播？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C098",
+    "track": "Agent与Harness",
+    "theme": "评测体系",
+    "title": "Agent评测从回答好坏改成任务完成",
+    "hook": "Agent评测必须同时看结果、过程、成本、恢复和风险。",
+    "thesis": "给出一套可操作的五维评测框架。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "知乎",
+    "format": "深度长文",
+    "audience": "AI产品经理与评测团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent评测",
+      "任务完成率"
+    ],
+    "interactionQuestion": "你的评测集覆盖失败分支了吗？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C099",
+    "track": "自主经营数字员工",
+    "theme": "班组协作",
+    "title": "AI班组如何交接班",
+    "hook": "多Agent协作的断点通常不在模型，而在交接信息不对称。",
+    "thesis": "用共享状态、责任边界、未决事项和回执设计交接。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "企业AI团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI班组",
+      "Multi-Agent"
+    ],
+    "interactionQuestion": "你的Agent交接会丢什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C100",
+    "track": "GEO",
+    "theme": "复测方法",
+    "title": "GEO发布后为什么看7天和28天",
+    "hook": "一次发布不会立刻改变AI答案，需要给检索和索引留时间。",
+    "thesis": "设计发布前、7天、28天的同题对照。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "品牌与内容团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "GEO复测",
+      "内容效果"
+    ],
+    "interactionQuestion": "你会用多长时间判断内容有效？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C101",
+    "track": "AI媒体生产",
+    "theme": "字幕",
+    "title": "字幕字号不是审美小问题",
+    "hook": "字幕在手机上不可读，内容就等于没交付。",
+    "thesis": "用短边比例、分辨率、朝向和平台倍率解释字号推导。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "视频制作团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "字幕设计",
+      "移动端"
+    ],
+    "interactionQuestion": "你会先看字幕还是先看画面？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C102",
+    "track": "Agent与Harness",
+    "theme": "职业方法",
+    "title": "Agent产品一号位的90天行动计划",
+    "hook": "第一年最重要的不是接需求，而是建立模型、产品、运行时和用户之间的共同语言。",
+    "thesis": "给出一份从用户任务、评测、路线图到社区的90天产品计划。",
+    "sourceIds": [
+      "S07"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "招聘方与AI产品同行",
+    "funnelStage": "招聘",
+    "keywords": [
+      "Agent产品负责人",
+      "DeepSeek"
+    ],
+    "interactionQuestion": "如果你来做，会先改哪个用户任务？",
+    "priority": "P0",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "招聘表达需本人确认",
+    "state": "待立项"
+  },
+  {
+    "id": "C103",
+    "track": "自主经营数字员工",
+    "theme": "复杂任务",
+    "title": "数字员工如何接住复杂业务",
+    "hook": "复杂业务不是靠更长提示词，而是靠对象、阶段、技能和审批。",
+    "thesis": "以酒店或电商任务为例拆成可执行业务链。",
+    "sourceIds": [
+      "S03"
+    ],
+    "evidenceLevel": "B",
+    "primaryPlatform": "微信公众号",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "案例拆解",
+    "audience": "行业负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "业务流程Agent",
+      "数字员工"
+    ],
+    "interactionQuestion": "你最想先让哪个岗位AI化？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C104",
+    "track": "GEO",
+    "theme": "系统设计",
+    "title": "个人GEO的操作系统长什么样",
+    "hook": "个人GEO需要事实库、内容工厂、发布回执和AI复测，而不是一个监测表。",
+    "thesis": "展示从Claim到Publication再到Observation的闭环。",
+    "sourceIds": [
+      "S04"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "AI产品与内容团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "个人GEO",
+      "GEO系统"
+    ],
+    "interactionQuestion": "你更缺内容还是更缺复核？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C105",
+    "track": "AI媒体生产",
+    "theme": "字幕形态",
+    "title": "烧字版和软字幕怎么选",
+    "hook": "给平台投稿和为他人预览，需要不同的交付形态。",
+    "thesis": "比较烧字、软字幕、干净母版和封面烧封。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "视频运营团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "视频字幕",
+      "交付形态"
+    ],
+    "interactionQuestion": "你收到软字幕文件会打开吗？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C106",
+    "track": "Agent与Harness",
+    "theme": "Subagent",
+    "title": "Subagent产品设计的分工与回传",
+    "hook": "Subagent的价值不是多开几个模型，而是把复杂任务切成可检查的子任务。",
+    "thesis": "讲清角色、输入、回传、失败隔离和总控汇总。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "Agent产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "Subagent",
+      "Multi-Agent"
+    ],
+    "interactionQuestion": "你会把什么任务拆给Subagent？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C107",
+    "track": "自主经营数字员工",
+    "theme": "事件回放",
+    "title": "经营事件为什么要可回放",
+    "hook": "复盘不是看结果，而是重建当时的上下文、判断和规则影响。",
+    "thesis": "展示任务回放与责任追踪的最小字段。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "工程与审计团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "事件回放",
+      "Agent审计"
+    ],
+    "interactionQuestion": "你复盘时会追到模型调用吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C108",
+    "track": "AI媒体生产",
+    "theme": "交付清单",
+    "title": "一条成片的交付清单应该有什么",
+    "hook": "没有清单的成片交付，很容易在字幕、封面和版权上返工。",
+    "thesis": "母版、字幕、封面、配乐、调色、工程文件和回执。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "制作与客户团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "视频交付",
+      "delivery manifest"
+    ],
+    "interactionQuestion": "你交付时最容易漏哪一项？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C109",
+    "track": "Agent与Harness",
+    "theme": "Multi-Agent",
+    "title": "Multi-Agent不是角色越多越好",
+    "hook": "角色数量增加了叙事，却不一定增加交付。",
+    "thesis": "多Agent的关键是共享状态、依赖、冲突解决和最终责任。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "AI产品负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Multi-Agent",
+      "班组协作"
+    ],
+    "interactionQuestion": "你见过最没必要的Agent角色是什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C110",
+    "track": "自主经营数字员工",
+    "theme": "版本升级",
+    "title": "模型升级后为什么必须重考",
+    "hook": "模型换代、提示词换代、技能换代，都可能改变员工行为。",
+    "thesis": "介绍版本、考试、灰度和回滚的发布闭环。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "AI平台团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent版本",
+      "灰度发布"
+    ],
+    "interactionQuestion": "你的Agent升级会复考吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C111",
+    "track": "AI媒体生产",
+    "theme": "交付节奏",
+    "title": "为什么4K不应该默认自动开跑",
+    "hook": "等待时间本身就是产品体验，先交完整1080P再确认4K更合理。",
+    "thesis": "比较轻预览、1080P完整版和4K多风格成本。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "抖音",
+    "secondaryPlatform": "微信视频号",
+    "format": "竖屏口播",
+    "audience": "内容负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "4K视频",
+      "交付节奏"
+    ],
+    "interactionQuestion": "你愿意等4K还是先要1080P？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C112",
+    "track": "Agent与Harness",
+    "theme": "Agent界面",
+    "title": "Agent产品的UI不是聊天记录",
+    "hook": "聊天只是入口，真正的工作区应呈现任务、对象、证据和状态。",
+    "thesis": "展示一个任务从一个意图变成可验收结果的界面结构。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "GitHub",
+    "secondaryPlatform": "哔哩哔哩",
+    "format": "产品Demo",
+    "audience": "AI产品设计师",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent UI",
+      "产品设计"
+    ],
+    "interactionQuestion": "你希望Agent界面先展示结果还是过程？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C113",
+    "track": "自主经营数字员工",
+    "theme": "最小架构",
+    "title": "一个数字员工系统的最小可用架构",
+    "hook": "最小可用系统不是聊天框，而是任务、工具、权限、事件和评测的闭环。",
+    "thesis": "给出一张从入口到验收的架构图。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "AI产品与工程团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "数字员工架构",
+      "Agent系统"
+    ],
+    "interactionQuestion": "你会砍掉哪一层先上线？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C114",
+    "track": "AI媒体生产",
+    "theme": "用户体验",
+    "title": "开工前为什么要先告诉用户预计时间",
+    "hook": "AI视频最容易输在不确定的等待，而不是画面不够炫。",
+    "thesis": "展示时长、变体数、机器配置与交付节奏的透明沟通。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "视频产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI视频产品",
+      "用户体验"
+    ],
+    "interactionQuestion": "你能接受多久的渲染等待？",
+    "priority": "P1",
+    "productionDifficulty": "低",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C115",
+    "track": "Agent与Harness",
+    "theme": "失败恢复",
+    "title": "Agent失败以后怎么接着做",
+    "hook": "没有断点、重放和补偿，长任务就只是一次性演示。",
+    "thesis": "展示任务步骤、状态快照、幂等动作和人工接管。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "哔哩哔哩",
+    "secondaryPlatform": "YouTube",
+    "format": "B站长视频",
+    "audience": "Agent开发者",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent恢复",
+      "长任务"
+    ],
+    "interactionQuestion": "你的Agent失败后会留下什么？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C116",
+    "track": "AI媒体生产",
+    "theme": "图像生成",
+    "title": "AI图像如何防止品牌漂移",
+    "hook": "同一个品牌不能每张图都像换了公司。",
+    "thesis": "用视觉锤、色板、字体、账号档案和一致性机检约束生图。",
+    "sourceIds": [
+      "S06"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "小红书",
+    "secondaryPlatform": "LinkedIn",
+    "format": "图文卡片",
+    "audience": "品牌设计团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "AI生图",
+      "品牌一致性"
+    ],
+    "interactionQuestion": "你会允许AI改品牌色吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C117",
+    "track": "Agent与Harness",
+    "theme": "可观测性",
+    "title": "用事件账本做Agent可观测性",
+    "hook": "Agent的可观测性不只是日志，而是能回答谁在什么上下文做了什么决定。",
+    "thesis": "介绍五元事件、回执、哈希链和回放。",
+    "sourceIds": [
+      "S02"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "掘金",
+    "secondaryPlatform": "知乎",
+    "format": "技术文章",
+    "audience": "工程与产品团队",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent可观测性",
+      "事件账本"
+    ],
+    "interactionQuestion": "你的Agent能复盘哪一步做错了吗？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C118",
+    "track": "AI媒体生产",
+    "theme": "成本结构",
+    "title": "内容工厂的成本应该怎么算",
+    "hook": "每篇内容的价格不是模型单价，而是从事实到发布的全部劳动。",
+    "thesis": "拆解模型、渲染、人工审核、返修和分发成本。",
+    "sourceIds": [
+      "S05"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "内容经营者",
+    "funnelStage": "信任",
+    "keywords": [
+      "内容成本",
+      "AI内容工厂"
+    ],
+    "interactionQuestion": "你更在意速度还是每条成本？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C119",
+    "track": "Agent与Harness",
+    "theme": "成本控制",
+    "title": "Agent产品如何控制成本",
+    "hook": "Agent成本不是一次调用价格，而是任务完成一次需要多少调用、重试和人工。",
+    "thesis": "从模型路由、缓存、上下文压缩、失败熔断和预算上限讲成本产品化。",
+    "sourceIds": [
+      "S01"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "知乎",
+    "secondaryPlatform": "微信公众号",
+    "format": "知乎回答",
+    "audience": "AI产品负责人",
+    "funnelStage": "信任",
+    "keywords": [
+      "Agent成本",
+      "模型路由"
+    ],
+    "interactionQuestion": "你的成本是按Token还是按任务算？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  },
+  {
+    "id": "C120",
+    "track": "Agent与Harness",
+    "theme": "插件生态",
+    "title": "插件生态难在发现、权限和兼容性",
+    "hook": "插件数量不是生态，可发现、可安装、可升级、可撤销才是。",
+    "thesis": "拆解插件清单、能力声明、版本矩阵、权限和热更新。",
+    "sourceIds": [
+      "S08"
+    ],
+    "evidenceLevel": "A",
+    "primaryPlatform": "LinkedIn",
+    "secondaryPlatform": "Medium",
+    "format": "LinkedIn长文",
+    "audience": "开发者平台产品经理",
+    "funnelStage": "信任",
+    "keywords": [
+      "插件生态",
+      "开发者平台"
+    ],
+    "interactionQuestion": "你最在意插件的哪个风险？",
+    "priority": "P1",
+    "productionDifficulty": "中",
+    "batch": 4,
+    "riskReview": "常规事实核验",
+    "state": "待立项"
+  }
+]
