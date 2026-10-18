@@ -1,10 +1,10 @@
 {
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
-  "commit": "2d112904dc23e7fde94dab2ec26933abbb51cb31",
+  "commit": "2412a5b4e49f2d19601752758ce5274d2e88772c",
   "verifiedAt": "2026-10-18",
   "license": "Apache-2.0",
-  "integration": "adapter-only",
-  "codeCopied": false,
+  "integration": "vendored-in-process-media-engine",
+  "codeCopied": true,
   "capabilities": [
     "graphic-design",
     "platform-covers",

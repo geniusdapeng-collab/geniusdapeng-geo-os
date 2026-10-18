@@ -84,6 +84,7 @@ export class GeoOsService {
       publications: state.publications,
       interactions: state.interactions,
       observations: state.observations,
+      mediaJobs: state.mediaJobs ?? [],
       metrics: this.metrics(),
       summary: this.summary(),
       eventHead: state.events.at(-1)?.hash ?? null,
@@ -117,6 +118,7 @@ export class GeoOsService {
       queries: state.queries.length,
       observations: state.observations.length,
       interactions: state.interactions.length,
+      mediaJobs: state.mediaJobs?.length ?? 0,
       publications: state.publications.length,
       eventHead: state.events.at(-1)?.hash ?? null,
     };
@@ -438,6 +440,10 @@ export class GeoOsService {
           answerHash: hashText(answer),
           citations,
           dataMode,
+          providerEvidence:
+            input.providerEvidence && typeof input.providerEvidence === "object"
+              ? input.providerEvidence
+              : null,
           derived: {
             mentioned,
             negativeMention: mentioned && hasNegativeMention(answer),

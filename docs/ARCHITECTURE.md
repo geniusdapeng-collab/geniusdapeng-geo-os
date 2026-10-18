@@ -2,9 +2,9 @@
 
 ## Decision
 
-`geniusdapeng-geo-os` is a lightweight private control plane. It owns the personal entity, claims, content graph, approvals, receipt ledger, interactions and GEO observations. GeoEvidence Studio and WorkLoom-video-edit remain independent engines behind pinned adapter contracts.
+`geniusdapeng-geo-os` is an independent private system. It keeps the personal entity, claims, content graph, approvals and receipt ledger in one control plane, and runs a vendored personal GEO engine plus a vendored media-production engine inside the same repository.
 
-This repository does not copy either upstream application shell. A private repository also does not serve as the public GEO evidence layer.
+The WorkLoom desktop/server shell, PostgreSQL runtime and unrelated industry bundles are not included. Only the production code required by GEO collection and media delivery is integrated. A private repository still does not serve as the public GEO evidence layer.
 
 ## Runtime
 
@@ -17,13 +17,13 @@ HTTP API -> domain policy -> append-only event ledger -> local JSON state
       |                           +-> claims / content / receipts / observations
       |
       +-> DeepSeek Responses/Chat/Search API
-      +-> GeoEvidence Studio production HTTP API
-      +-> WorkLoom-video-edit cover bridge CLI
+      +-> PersonalGeoEngine (in-process GeoEvidence SQLite/collection/metrics/articles)
+      +-> VideoMediaEngine (in-process FFmpeg/post/subtitle/color/BGM/cover/package)
       +-> GitHub official REST API
       +-> fail-closed manual adapters for other platforms
 ```
 
-The base runtime introduced in v0.1 intentionally uses Node.js built-ins only. The small local runtime keeps setup auditable and removes dependency drift from the first milestone. SQLite or PostgreSQL is a later migration after the object model stabilizes.
+The control-plane records use local JSON with a hash event chain. Rich GEO runs use the vendored SQLite engine. Media jobs store their own immutable local delivery directory and receipt. The runtime uses Node.js 24, SQLite built-ins, FFmpeg/FFprobe and the pinned `tsx` toolchain.
 
 ## Trust chain
 
@@ -45,11 +45,12 @@ The event chain is tamper-evident. It is not a trusted timestamp, platform signa
 - GitHub issue publication is live and receipt-verified. Other platform writes remain disabled until their official credentials and policies are reviewed.
 - The repository contains no credentials.
 
-## Live adapters
+## Integrated engines and external adapters
 
 - `DeepSeekAdapter` uses the local Responses-compatible gateway and system keychain. It performs real provider search, Chat/Responses completion, evidence hashing and model-driven JSON content generation.
-- `GeoEvidenceAdapter` calls the upstream production HTTP API and rejects an upstream run without `receipt.synced=true`.
-- `VideoEditAdapter` invokes the upstream cover knowledge-base CLI at a pinned commit and records hint/trace hashes and drift checks.
+- `PersonalGeoEngine` runs the adapted GeoEvidence SQLite store, providers, analysis, incidents, article generation and publication receipts in-process. Its default case is `pengstack-personal-geo`, not the future-frontdesk customer case.
+- `VideoMediaEngine` builds a validated timeline, invokes the vendored post-production, subtitle, color, BGM, transition, cover and packaging code, and requires the FFmpeg quality gate to pass.
+- `VideoEditAdapter` exposes cover knowledge hints and feedback triage from the same vendored engine.
 - `GitHubAdapter` creates a real owner/repo Issue through the official REST API and records the issue URL and content hash.
 
 No adapter may convert fixture or mock output into a real publication receipt.
@@ -66,4 +67,4 @@ No adapter may convert fixture or mock output into a real publication receipt.
 - `Observation`: one AI answer sample with citations and derived metrics
 - `Event`: append-only mutation evidence
 
-See [API.md](API.md) for endpoints and [adr/ADR-001-control-plane.md](adr/ADR-001-control-plane.md) for the architectural tradeoff.
+See [API.md](API.md) for endpoints, [adr/ADR-001-control-plane.md](adr/ADR-001-control-plane.md) for historical context and [adr/ADR-002-integrated-monorepo.md](adr/ADR-002-integrated-monorepo.md) for the current architecture.

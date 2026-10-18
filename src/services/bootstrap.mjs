@@ -43,6 +43,7 @@ export async function loadSeedState(dataDir) {
     publications: [],
     interactions: [],
     observations: [],
+    mediaJobs: [],
     publicExports: [],
   };
 }

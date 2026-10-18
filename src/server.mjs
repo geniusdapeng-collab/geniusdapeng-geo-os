@@ -6,8 +6,9 @@ import { LivePipelineService } from "./services/live-pipeline.mjs";
 import { createGeoOsServer } from "./http/server.mjs";
 import { DeepSeekAdapter } from "./adapters/deepseek.mjs";
 import { GitHubAdapter } from "./adapters/github.mjs";
-import { GeoEvidenceAdapter } from "./adapters/geoevidence.mjs";
 import { VideoEditAdapter } from "./adapters/video-edit.mjs";
+import { PersonalGeoEngine } from "./engines/geo-evidence.mjs";
+import { VideoMediaEngine } from "./engines/video-media.mjs";
 
 const rootDir = resolve(import.meta.dirname, "..");
 const host = process.env.HOST || "127.0.0.1";
@@ -24,14 +25,25 @@ const store = new JsonStore({ filePath: dataFile });
 await store.open(() => loadSeedState(dataDir));
 
 const service = new GeoOsService({ store });
+const geoEngine = new PersonalGeoEngine({
+  rootDir,
+  ...(process.env.GEO_ENGINE_DB
+    ? { databasePath: resolve(rootDir, process.env.GEO_ENGINE_DB) }
+    : {}),
+  controlQueries: store.snapshot().queries,
+});
+const mediaEngine = new VideoMediaEngine({ rootDir });
 const livePipeline = new LivePipelineService({
   service,
   deepSeek: new DeepSeekAdapter(),
   github: new GitHubAdapter(),
-  geoEvidence: new GeoEvidenceAdapter(),
-  videoEdit: new VideoEditAdapter(),
+  geoEngine,
+  videoEdit: new VideoEditAdapter({
+    upstreamRoot: join(rootDir, "engines", "video-edit"),
+  }),
+  mediaEngine,
 });
-const server = createGeoOsServer({ service, livePipeline, publicDir });
+const server = createGeoOsServer({ service, livePipeline, geoEngine, publicDir });
 
 server.listen(port, host, () => {
   console.log(`天才大鹏 control center: http://${host}:${port}`);
@@ -41,6 +53,7 @@ server.listen(port, host, () => {
 function shutdown(signal) {
   console.log(`received ${signal}; shutting down`);
   server.close((error) => {
+    geoEngine.close();
     process.exitCode = error ? 1 : 0;
   });
 }
@@ -48,4 +61,4 @@ function shutdown(signal) {
 process.once("SIGINT", () => shutdown("SIGINT"));
 process.once("SIGTERM", () => shutdown("SIGTERM"));
 
-export { server, service, store };
+export { server, service, store, geoEngine, mediaEngine };

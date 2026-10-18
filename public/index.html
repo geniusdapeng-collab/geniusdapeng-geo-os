@@ -23,6 +23,7 @@
           <button class="nav-item active" data-view="overview">概览</button>
           <button class="nav-item" data-view="accounts">账号矩阵</button>
           <button class="nav-item" data-view="content">内容工厂</button>
+          <button class="nav-item" data-view="media">媒体工厂</button>
           <button class="nav-item" data-view="geo">GEO 复测</button>
           <button class="nav-item" data-view="interactions">互动分流</button>
         </nav>
@@ -30,7 +31,7 @@
         <div class="sidebar-note">
           <span class="status-dot" aria-hidden="true"></span>
           <p>本地优先 · 人工发布</p>
-          <small>v0.3 alpha · live adapters</small>
+          <small>v0.4 · integrated engines</small>
         </div>
       </aside>
 
@@ -179,9 +180,18 @@
                 <p class="eyebrow">AI answer visibility</p>
                 <h2 id="geo-title">GEO 复测</h2>
               </div>
-              <p class="section-copy">没有 real 或 imported 样本，不输出效果结论。</p>
+              <p id="geo-status-copy" class="section-copy">没有 real 或 imported 样本，不输出效果结论。</p>
             </div>
             <div id="geo-metrics" class="stat-grid"></div>
+            <article class="panel">
+              <div class="panel-heading">
+                <h3>个人 GEO 证据引擎</h3>
+                <span>GeoEvidence SQLite · 进程内运行</span>
+              </div>
+              <div id="geo-engine-grid" class="stat-grid compact-grid">
+                <div class="empty-panel">正在读取引擎摘要。</div>
+              </div>
+            </article>
             <div class="two-column">
               <article class="panel">
                 <div class="panel-heading"><h3>固定问题集</h3><span>DeepSeek 优先</span></div>
@@ -192,6 +202,54 @@
                 <div id="observation-list" class="query-list"></div>
               </article>
             </div>
+          </section>
+
+          <section class="view" id="view-media" aria-labelledby="media-title" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Video edit production pipeline</p>
+                <h2 id="media-title">媒体工厂</h2>
+              </div>
+              <p class="section-copy">真实 FFmpeg 合成，多风格交付，保留产物哈希与技术质检。</p>
+            </div>
+
+            <form id="media-form" class="panel form-panel">
+              <div class="form-grid">
+                <label>
+                  <span>标题</span>
+                  <input name="title" required maxlength="120" placeholder="证据优先的 AI 产品系统" />
+                </label>
+                <label>
+                  <span>平台</span>
+                  <select name="platform">
+                    <option>微信视频号</option>
+                    <option>哔哩哔哩</option>
+                    <option>抖音</option>
+                    <option>小红书</option>
+                  </select>
+                </label>
+                <label class="wide">
+                  <span>本地视频文件，每行一个绝对路径</span>
+                  <textarea name="sources" required rows="3" placeholder="/path/shot-1.mp4&#10;/path/shot-2.mp4"></textarea>
+                </label>
+                <label class="wide">
+                  <span>字幕</span>
+                  <input name="subtitleText" value="先确认事实，再生成内容，发布后保留回执并复测。" />
+                </label>
+              </div>
+              <div class="form-actions">
+                <span id="media-form-status" class="form-status"></span>
+                <button class="primary-button" type="submit">运行完整后期</button>
+              </div>
+            </form>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <h3>最近媒体任务</h3>
+                <span>真实产物与回执</span>
+              </div>
+              <div id="media-jobs" class="content-list"></div>
+            </article>
           </section>
 
           <section

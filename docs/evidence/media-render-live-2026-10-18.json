@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "integrated-video-edit-media-render",
+  "completedAt": "2026-10-18T14:43:36.015Z",
+  "jobId": "media-1792334601496-b9efd87d",
+  "engine": {
+    "mode": "in-process-video-edit-engine",
+    "upstreamCommit": "2412a5b4e49f2d19601752758ce5274d2e88772c"
+  },
+  "title": "证据优先的 AI 产品系统",
+  "platform": "微信视频号",
+  "variants": [
+    "clean-tech",
+    "natural-clean"
+  ],
+  "sourceMeta": [
+    {
+      "sourceId": "S1",
+      "file": "var/media/fixtures/pengstack-live-source-1.mp4",
+      "sha256": "424e57dedffd6312782ed0d1b81b204616bdfdf2cf37f5a1fc568de16023efd4",
+      "durationSeconds": 3
+    },
+    {
+      "sourceId": "S2",
+      "file": "var/media/fixtures/pengstack-live-source-2.mp4",
+      "sha256": "71452047404ff0ea3879e90f03cdcb1b556a11928917555f377b575f8ce22267",
+      "durationSeconds": 3
+    }
+  ],
+  "manifestHash": "7ece9d1bd8ca48efb09b4e8ca1fd4f11ff8a0ca39626bc7a82fe815354f1a5b8",
+  "postQuality": {
+    "path": "/Users/mac/Documents/Codex/2026-10-18/geo-cbn-workloom-harness-a8-deepseek/work/geniusdapeng-geo-os/var/media/jobs/media-1792334601496-b9efd87d/delivery/quality/post-quality-post-final.json",
+    "sha256": "f5981c58d33fed5ca5d2fee76bf4a8fe9dc76107f658d85c24afa0776e957204",
+    "passed": true
+  },
+  "outputs": [
+    {
+      "file": "var/media/jobs/media-1792334601496-b9efd87d/final/证据优先的 AI 产品系统-标准版-640x360.mp4",
+      "bytes": 221965,
+      "sha256": "daf4f72ebb8df5d9e1abe11fb57a797c3b788da63a6f89899d655ececf66d708"
+    },
+    {
+      "file": "var/media/jobs/media-1792334601496-b9efd87d/final/证据优先的 AI 产品系统-自然高清版-640x360.mp4",
+      "bytes": 181403,
+      "sha256": "e851bb741fdc7be34d84110c175ffc17cdcb1580a2cbe2850225a2555c52debb"
+    }
+  ],
+  "finalDir": "var/media/jobs/media-1792334601496-b9efd87d/final"
+}

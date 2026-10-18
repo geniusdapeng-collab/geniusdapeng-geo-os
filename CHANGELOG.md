@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0 - 2026-10-18
+
+### Integrated
+
+- Vendored and personalized GeoEvidence SQLite, collection, metrics,
+  incidents, article and publication engine
+- Vendored WorkLoom-video-edit post-production, subtitles, color, BGM,
+  transitions, cover, delivery package and feedback-triage engine
+- Unified server, JSON event ledger and media-job history
+- Unified dashboard tabs for GEO engine metrics and media production
+
+### Verified
+
+- 12/12 real personal DeepSeek queries
+- 10 personal article drafts
+- Two real 640x360 six-second video variants with covers, subtitles and
+  technical quality receipts
+- Model-driven GitHub Issue publication
+
 ## 0.3.0-alpha.1 - 2026-10-18
 
 ### Added

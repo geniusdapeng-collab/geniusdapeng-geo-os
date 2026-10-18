@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "workloom.style-variant/v1",
+  "id": "warm-story",
+  "name": "暖心版",
+  "positioning": "情感/文旅/民宿/人物：暖调胶片、慢转场、留白文案",
+  "colorPolicy": "grade",
+  "platforms": [
+    "抖音/快手",
+    "视频号",
+    "小红书",
+    "B站"
+  ],
+  "color": {
+    "profile": "warm-film",
+    "intensity": 0.3,
+    "lookLabel": "暖心版（轻暖胶片 30%）",
+    "note": "2026-10-18 清晰度审计后收敛：旧 high-contrast-social + 暖 LUT 50% 同时压黑、提对比和提饱和，叠加逐镜去雾后处理感过强。本版只保留 warm-film 的轻暖色与微弱层次，不再叠第二层暖 LUT；单镜灰雾继续走共享 clarity 或显式 --color-map。"
+  },
+  "transitions": {
+    "mode": "fade",
+    "fadeSec": 0.6,
+    "note": "慢入慢出，情绪连贯；适合叙事线（整段口径；有逐切计划时按 intentMap 逐刀执行）",
+    "scale": 1.15,
+    "intentMap": {
+      "dissolve": {
+        "type": "fadeslow",
+        "durationSec": 0.65
+      },
+      "fade_from_black": {
+        "type": "fadeblack",
+        "durationSec": 0.7
+      },
+      "fade_to_black": {
+        "type": "fadeblack",
+        "durationSec": 0.7
+      },
+      "wipe": {
+        "type": "smoothleft",
+        "durationSec": 0.55
+      },
+      "whip_pan": {
+        "type": "smoothright",
+        "durationSec": 0.35
+      },
+      "zoom_blur": {
+        "type": "zoomin",
+        "durationSec": 0.4
+      }
+    },
+    "intentNote": "暖心版：叠化用 fadeslow（自带慢入曲线）拉长情绪，擦除用柔边推移，不用硬边切片"
+  },
+  "bgm": {
+    "mood": "温暖自在",
+    "style": "acoustic-warm",
+    "policy": "keep-dialogue",
+    "musicLevelDb": -23,
+    "targetLufs": -14,
+    "fadeInSec": 1.4,
+    "fadeOutSec": 2.0,
+    "section": "auto",
+    "note": "木质原声；按声明 -23dB 电平、让位和单次 -14 LUFS 请求滤镜执行，不把目标值当实测，不按人声余量自动重试。"
+  },
+  "cover": {
+    "template": "留白题签",
+    "at": 0.32,
+    "alignment": 2,
+    "marginRatio": 0.1,
+    "note": "下半留白压两行题签（主标题 + 一句话钩子），与暖调画面同色温"
+  },
+  "copy": {
+    "tone": "温暖克制",
+    "titleTemplate": "{title}",
+    "opening": "有些地方，值得慢一点看。",
+    "closing": "收藏起来，等一个合适的周末。",
+    "cta": "想去的扣个「想去」，我把路线发你",
+    "hashtags": [
+      "#旅行推荐",
+      "#慢生活",
+      "#周末去哪儿"
+    ]
+  },
+  "subtitleStyle": {
+    "scene": "字幕",
+    "note": "细描边、不上重底衬，字幕位置按平台安全区（抖音上抬 18%）"
+  }
+}

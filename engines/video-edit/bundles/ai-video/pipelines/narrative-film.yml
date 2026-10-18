@@ -1,0 +1,121 @@
+# 叙事片管线 · fusion-design §4
+# 每步 = Quest 任务卡；断点续跑继承 dsh replay；每步产物写 biz_events 五元事件
+quest: narrative-film
+name: 叙事片管线
+version: v2
+description: 剧本→场景→片头→视听→连贯审查→提示词融合→字段质检→定妆照→预生产确认→渲染→后期→调色→字幕→原声保留或显式配音→配乐→多风格交付→成片入库→返修闭环
+steps:
+  - step_key: script
+    name: 剧本蓝图
+    owner: scriptwriter
+    outputs: [script_blueprint]
+  - step_key: scene
+    name: 场景设计
+    owner: scene-designer
+    outputs: [scene_card]
+  - step_key: opening
+    name: 片头设计
+    owner: opening-designer
+    outputs: [shot_card]            # 片头 30 字段卡（25+5 专属）
+  - step_key: visual
+    name: 视觉语言设计
+    owner: visual-director
+    outputs: [shot_card]
+  - step_key: audio
+    name: 音频设计
+    owner: audio-designer
+    outputs: [shot_card]
+  - step_key: continuity
+    name: 连贯性导演评审
+    owner: continuity-reviewer
+    outputs: [review_report]        # 6 问评审 + 5 维评分，硬阻断直接打回
+  - step_key: prompt-fuse
+    name: 逐镜提示词融合
+    owner: prompt-fuser
+    outputs: [prompt_package]
+  - step_key: field-check
+    name: 字段质检与修复
+    owner: field-inspector
+    outputs: [prompt_package]       # 25/30 字段规则+LLM 混合质检
+  - step_key: g6-prompt-confirm
+    name: 提示词审核
+    owner: director
+    gate: G6
+    outputs: [prompt_package]       # 含导演评分报告的审批卡
+  - step_key: micromotion
+    name: 微动作增强
+    owner: micromotion-stylist
+    outputs: [prompt_package]       # 5 路流水线：面部/身体/眼神/呼吸/融合
+  - step_key: portrait
+    name: 定妆照制作
+    owner: portrait-artist
+    outputs: [portrait_set]
+  - step_key: g5-portrait-confirm
+    name: 定妆照确认
+    owner: director
+    gate: G5
+    outputs: [portrait_set]
+  - step_key: g7-preproduction
+    name: 预生产最终确认
+    owner: director
+    gate: G7
+    outputs: [video_project]
+  - step_key: render-script
+    name: 渲染脚本生成入 CMS
+    owner: render-operator
+    outputs: [render_script]        # MD 正文 + 25/30 字段 JSON + 字符数校验快照，v1 起版本链
+  - step_key: material-generate
+    name: 真实素材 → 构建视频场景（素材只作实景依据）
+    owner: render-operator
+    gate: G-MAT1                    # 新提交前的用途/参考形态/授权门；成功渲染后只保存任务与来源字节回执
+    outputs: [render_job, video_asset]   # 真实实拍素材只作**实景依据**（reference_image，不作 first_frame）：
+                                         # 由生成模型构建**完整视频场景**（自有机位/视差/环境运动），
+                                         # **严禁把素材当镜头直接入时间线**，也**严禁把参考图做成"被推动的照片"**
+                                         # （产品所有者 2026-09-25 三轮口径：素材是场景参考，成片必须是视频）
+  - step_key: g8-render-submit
+    name: 渲染提交审批
+    owner: director
+    gate: G8
+    outputs: [render_job]
+  - step_key: render
+    name: Seedance 渲染与回填
+    owner: render-operator
+    outputs: [render_job, video_asset]
+  - step_key: post
+    name: 成功素材直接后期合成
+    owner: post-editor
+    outputs: [final_video]
+  - step_key: color
+    name: 成片调色
+    owner: colorist
+    outputs: [color_report, final_video]   # 对母版只调一次；平台变体/二剪变体从已调色母版派生，不重复调色
+  - step_key: subtitle
+    name: 标题字幕制作
+    owner: subtitle-stylist
+    outputs: [subtitle_track, subtitle_report, final_video]   # 文字层收口：字体许可与解析、ASS/时间轴、平台请求版式与实际文件。**字幕以旁挂文件交付（srt/ass/vtt + 清单），母版不烧字**（G-DLV2）；要带字幕的片子由软字幕轨（softmux，画面逐帧零改动）或另存烧字副本派生
+  - step_key: voice
+    name: 原声保留或显式配音
+    owner: voice-artist
+    outputs: [voice_track, voice_report, final_video]   # 默认保留原声；仅显式请求时调用配音引擎，视频轨 copy；克隆授权仍前置
+  - step_key: bgm
+    name: 成片配乐
+    owner: bgm-composer
+    outputs: [bgm_track, bgm_report, final_video]   # 后期音频链路收口：原声保留策略 + BGM 让位 + 实际响度/真峰值；默认 report，明确 block 合同才按其阈值阻断
+  - step_key: deliver
+    name: 多风格交付包
+    owner: post-editor
+    gate: G-DLV1                  # 核对请求的变体文件、目标规格、来源与实际工具执行，不做品质差异评分
+    outputs: [delivery_package, final_video, subtitle_track]   # 干净母版 + 旁挂字幕 + 2–3 个风格变体（封面/文案/BGM/调色/转场）+ 软字幕轨版 + 交付清单 + 工程文件；quality=uhd 按目标画布编码；仅显式增强请求才调用本地模型并核对来源（G-DLV8/9）；镜头只生成一次，变体零 token
+  - step_key: post-quality
+    name: 交付前后期技术质检
+    owner: post-quality-inspector
+    outputs: [qa_report]
+    note: 重新读取当前媒体与真实加工链；失败仅本地返修，技术状态与艺术审片分别记录
+  - step_key: archive
+    name: 成片入库
+    owner: post-editor
+    outputs: [final_video, video_asset]
+  - step_key: revise
+    name: 返修闭环（反馈 → 分诊 → 本地重合成）
+    owner: post-editor
+    outputs: [revision_report, delivery_package]   # 变更影响分析 → 层增量重合成（不重新生成镜头）；点名到画面内容才走 G8 人审 + 只重跑点名镜头；复用带 sha256 证据（G-DLV4/G-DLV5/G-DLV7）

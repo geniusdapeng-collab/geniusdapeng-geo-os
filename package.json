@@ -1,8 +1,9 @@
 {
   "name": "geniusdapeng-geo-os",
-  "version": "0.3.0-alpha.1",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.25.0",
   "description": "天才大鹏：私人个人 GEO 与全网社媒运营控制面",
   "engines": {
     "node": ">=22"
@@ -10,13 +11,22 @@
   "scripts": {
     "dev": "node --watch src/server.mjs",
     "start": "node src/server.mjs",
-    "test": "node --test",
+    "test": "node --test tests/*.test.mjs",
+    "test:engines": "node --test engines/geo-evidence/test/*.test.mjs tests/integrated-engines.test.mjs",
     "check": "node --check src/server.mjs && node --check public/app.js",
+    "acceptance": "node scripts/acceptance.mjs",
     "smoke": "node scripts/smoke.mjs",
     "live:deepseek": "node scripts/live-deepseek-collect.mjs",
     "live:geoevidence": "node scripts/live-geoevidence.mjs",
     "live:video-edit": "node scripts/live-video-edit.mjs",
-    "live:github": "node scripts/live-github-publish.mjs"
+    "live:github": "node scripts/live-github-publish.mjs",
+    "live:media": "node scripts/live-media-render.mjs",
+    "live:geo": "node scripts/live-geo-integrated.mjs"
+  },
+  "devDependencies": {
+    "tsx": "4.23.12",
+    "yaml": "2.9.0",
+    "zod": "4.6.5"
   },
   "license": "UNLICENSED"
 }

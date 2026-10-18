@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "workloom.style-variants/v1",
+  "updatedAt": "2026-10-07",
+  "principle": "同一批成功镜头、同一份字幕文件，按用户请求的调色 / BGM / 转场 / 封面 / 文案五轴配方各执行一次本地后期，原片只读并默认保留完整节目声音。配方参数和实际产物 SHA256 进入清单；画面像素差、声音品质、余量和可闻度不默认测量，不以分数拒绝、自动重试或降级。实际缺件、来源/授权不符及工具加工失败必须明确。",
+  "axes": [
+    "调色",
+    "BGM 配乐",
+    "转场节奏",
+    "封面设计",
+    "文案口吻"
+  ],
+  "defaults": [
+    "warm-story",
+    "clean-tech",
+    "bold-promo"
+  ],
+  "variants": [
+    {
+      "id": "warm-story",
+      "file": "warm-story.json",
+      "name": "暖心版",
+      "positioning": "情感/文旅/民宿/人物：暖调胶片、慢转场、留白文案"
+    },
+    {
+      "id": "clean-tech",
+      "file": "clean-tech.json",
+      "name": "标准版",
+      "positioning": "产品/科技/知识：冷净调、硬切、信息优先文案"
+    },
+    {
+      "id": "bold-promo",
+      "file": "bold-promo.json",
+      "name": "欢快版",
+      "positioning": "带货/本地生活/促销：高对比、快切、直给卖点文案"
+    },
+    {
+      "id": "natural-clean",
+      "file": "natural-clean.json",
+      "name": "自然高清版",
+      "positioning": "少调色、少处理、保留原节目声音"
+    }
+  ]
+}

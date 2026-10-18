@@ -1,0 +1,14 @@
+This directory contains an adapted subset of WorkLoom-video-edit.
+
+Upstream:
+https://github.com/geniusdapeng-collab/WorkLoom-video-edit
+
+Imported source commit:
+2412a5b4e49f2d19601752758ce5274d2e88772c
+
+License:
+Apache License 2.0. See LICENSE and UPSTREAM_README.md.
+
+The upstream desktop shell, WorkLoom server runtime, database, product
+context and unrelated industry bundles are not included. The imported
+media pipeline and connector code remain under the upstream license.

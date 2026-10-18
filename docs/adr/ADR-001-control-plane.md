@@ -1,6 +1,6 @@
 # ADR 001: Use a lightweight control plane with pinned engine adapters
 
-Status: accepted
+Status: superseded by ADR-002
 
 Date: 2026-10-18
 

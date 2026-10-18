@@ -1,0 +1,443 @@
+/**
+ * edit/post-auto.ts —— 后期自动决策（封面取帧 / 分段调色）纯函数。
+ *
+ * 为什么单独一层：过去的后期默认值里有"只为某一支演示片调过"的硬编码
+ * （固定取帧秒 35.5/6.6/24.6、固定 场景1..4 → LUT 映射）。对用户随手丢进来的素材，
+ * 这些默认值等于随机。这里把两条决定做成可解释、可复算的规则：
+ *   · 封面：优先吃素材理解产出的关键帧候选（composition_best / emotion_peak），
+ *     映射到成片主轨时间；没有解析结果时如实回退到配方比例并标注 basis；
+ *   · 分段调色：把"家里暖 / 城市冷"变成可追溯的投票——镜头理解给的调色建议、
+ *     场景类型、情绪效价、场景组名称/情绪关键词 + 调色配方库匹配，最后产出每组 LUT 与强度。
+ *
+ * 边界：本模块不做审美判断，也不改时间轴/交付包字段；只输出"选哪一帧、用哪支 LUT"的计划，
+ * 执行仍由 post-bridge / color-bridge 完成（同一份 plan 可复算、可复核）。
+ */
+
+import type { EditTimeline } from "./timeline.js";
+
+export interface PostAnalysisDoc {
+  asset?: { sha256?: string; localPath?: string };
+  /** 整片内容领域（footage-analysis 的 contentDomain），用于封面主题/调色投票 */
+  contentDomain?: string | null;
+  shots?: Array<{
+    shotId?: string;
+    inTimecode?: string;
+    outTimecode?: string;
+    sceneType?: string;
+    content?: { keyEntities?: string[]; onScreenText?: string | null; speechText?: string | null; coreMessage?: string | null } | null;
+    emotion?: { dominant?: string | null; intensity?: number | null; valence?: number | null } | null;
+    editing?: { colorGradeBase?: string | null; textSafeZone?: string | null; usage?: string[] } | null;
+  }>;
+  keyframes?: Array<{
+    keyframeId?: string;
+    shotId?: string;
+    kind?: "emotion_peak" | "action_peak" | "composition_best";
+    timecode?: string;
+    score?: number;
+    technical?: { sharpness?: number | null; stability?: number | null; textSafe?: boolean | null; faceVisible?: boolean | null } | null;
+    usage?: string[];
+  }>;
+}
+
+type AnalysisShot = NonNullable<PostAnalysisDoc["shots"]>[number];
+
+export interface CoverMomentPlan {
+  /** 0–1 的成片比例（直接写进变体配方的 `cover.at`） */
+  ratio: number;
+  masterSeconds: number;
+  basis: "keyframe-composition" | "keyframe-emotion" | "keyframe-any" | "fallback";
+  keyframeId?: string;
+  shotId?: string;
+  segmentId?: string;
+  note: string;
+}
+
+function parseTimecodeSeconds(value: string | undefined | null): number | null {
+  if (!value) return null;
+  const matched = /^(\d{2}):(\d{2}):(\d{2})\.(\d{3})$/u.exec(value);
+  if (!matched) return null;
+  return Number(matched[1]) * 3600 + Number(matched[2]) * 60 + Number(matched[3]) + Number(matched[4]) / 1000;
+}
+
+function clampRatio(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Number(Math.min(0.95, Math.max(0, value)).toFixed(4));
+}
+
+/**
+ * 自动选封面时刻：关键帧候选 → 主轨比例。
+ *
+ * 优先级：`composition_best`（构图最优） > `emotion_peak`（情绪峰值） > 其他关键帧；
+ * 同一类按 score 降序；跳过 `technical.textSafe === false` 与 `sharpness < 0.5` 的候选
+ * （封面会被平台 UI 挡或糊）；全部不可用时回退 `fallbackRatio`（默认变体配方 0.35）。
+ */
+export function planCoverMoment(input: {
+  timeline: EditTimeline;
+  analyses?: PostAnalysisDoc[];
+  fallbackRatio?: number;
+}): CoverMomentPlan {
+  const { candidates, total } = collectCoverCandidates(input.timeline, input.analyses ?? []);
+  const fallbackRatio = clampRatio(input.fallbackRatio ?? 0.35, 0.35);
+  if (!(total > 0)) {
+    return { ratio: fallbackRatio, masterSeconds: 0, basis: "fallback", note: "时间轴为空，使用配方默认比例" };
+  }
+  const best = [...candidates].sort((a, b) => kindRank(b.kind) - kindRank(a.kind) || b.score - a.score)[0];
+  if (!best) {
+    return {
+      ratio: fallbackRatio,
+      masterSeconds: Number((total * fallbackRatio).toFixed(3)),
+      basis: "fallback",
+      note: "没有可用的关键帧候选（未跑镜头理解/高光，或候选均未过安全与清晰度门槛）：回退配方默认比例",
+    };
+  }
+  const basis = best.kind === "composition_best" ? "keyframe-composition" : best.kind === "emotion_peak" ? "keyframe-emotion" : "keyframe-any";
+  return {
+    ratio: clampRatio(best.masterSeconds / total, fallbackRatio),
+    masterSeconds: best.masterSeconds,
+    basis,
+    keyframeId: best.keyframeId,
+    shotId: best.shotId,
+    segmentId: best.segmentId,
+    note: `封面取帧来自${best.kind}关键帧（score ${best.score}）映射到主轨 ${best.masterSeconds}s`,
+  };
+}
+
+interface CoverCandidate {
+  kind: string;
+  score: number;
+  keyframeId?: string;
+  shotId?: string;
+  segmentId: string;
+  masterSeconds: number;
+}
+
+function kindRank(kind: string): number {
+  return kind === "composition_best" ? 2 : kind === "emotion_peak" ? 1 : 0;
+}
+
+/** 关键帧候选收集：只收镜内、过安全与清晰度门槛的候选。 */
+function collectCoverCandidates(timeline: EditTimeline, analyses: PostAnalysisDoc[]): { candidates: CoverCandidate[]; total: number } {
+  const segments = timeline.segments ?? [];
+  let cursor = 0;
+  const masterSpans = segments.map((segment) => {
+    const start = cursor;
+    cursor = Number((cursor + segment.durationSeconds).toFixed(3));
+    return { segment, start, end: cursor };
+  });
+  const total = cursor;
+  const sourceById = new Map((timeline.sources ?? []).map((source) => [source.sourceId, source]));
+  const analysisFor = (sourceId: string): PostAnalysisDoc | null => {
+    const source = sourceById.get(sourceId);
+    if (!source) return null;
+    return analyses.find((doc) => doc?.asset?.sha256 === source.sha256 || (doc?.asset?.localPath && doc.asset.localPath === source.path)) ?? null;
+  };
+  const candidates: CoverCandidate[] = [];
+  for (const span of masterSpans) {
+    const doc = analysisFor(span.segment.sourceId);
+    if (!doc) continue;
+    for (const keyframe of doc.keyframes ?? []) {
+      if (keyframe.technical?.textSafe === false) continue;
+      if (typeof keyframe.technical?.sharpness === "number" && keyframe.technical.sharpness < 0.5) continue;
+      const time = parseTimecodeSeconds(keyframe.timecode);
+      if (time === null) continue;
+      if (time < span.segment.sourceIn || time >= span.segment.sourceOut) continue;
+      const speed = span.segment.speed ?? 1;
+      const masterSeconds = Number((span.start + (time - span.segment.sourceIn) / speed).toFixed(3));
+      candidates.push({
+        kind: keyframe.kind ?? "any",
+        score: Number.isFinite(keyframe.score as number) ? (keyframe.score as number) : 0,
+        keyframeId: keyframe.keyframeId,
+        shotId: keyframe.shotId,
+        segmentId: span.segment.segmentId,
+        masterSeconds,
+      });
+    }
+  }
+  return { candidates, total };
+}
+
+/**
+ * 一次选出**多个互不相同**的封面时刻（每个变体一张），这是"几个版本封面都一样"的正面修复：
+ *   · 优先吃关键帧候选（composition_best > emotion_peak），**同一镜头只用一次**；
+ *   · 候选不足时用一组分散的兜底比例补齐（0.35 / 0.62 / 0.18 / 0.82 …），保证变体之间不同帧；
+ *   · 每条都带 basis/note，进回执可复核。
+ */
+export function planCoverMoments(input: {
+  timeline: EditTimeline;
+  analyses?: PostAnalysisDoc[];
+  count: number;
+  fallbackRatio?: number;
+}): CoverMomentPlan[] {
+  const count = Math.max(1, Math.round(Number(input.count) || 1));
+  const fallbackRatio = clampRatio(input.fallbackRatio ?? 0.35, 0.35);
+  const { candidates, total } = collectCoverCandidates(input.timeline, input.analyses ?? []);
+  const ranked = [...candidates].sort((a, b) => kindRank(b.kind) - kindRank(a.kind) || b.score - a.score);
+  const chosen: CoverCandidate[] = [];
+  const usedSegments = new Set<string>();
+  for (const candidate of ranked) {
+    if (chosen.length >= count) break;
+    if (usedSegments.has(candidate.segmentId)) continue;
+    chosen.push(candidate);
+    usedSegments.add(candidate.segmentId);
+  }
+  const moments: CoverMomentPlan[] = chosen.map((candidate) => ({
+    ratio: total > 0 ? clampRatio(candidate.masterSeconds / total, fallbackRatio) : fallbackRatio,
+    masterSeconds: candidate.masterSeconds,
+    basis: candidate.kind === "composition_best" ? "keyframe-composition" : candidate.kind === "emotion_peak" ? "keyframe-emotion" : "keyframe-any",
+    keyframeId: candidate.keyframeId,
+    shotId: candidate.shotId,
+    segmentId: candidate.segmentId,
+    note: `封面取帧来自${candidate.kind}关键帧（score ${candidate.score}）映射到主轨 ${candidate.masterSeconds}s`,
+  }));
+  /** 兜底比例：按"相隔足够远"填充，避免多个变体落在同一帧。 */
+  const spread = [0.35, 0.62, 0.18, 0.82, 0.48, 0.28, 0.72, 0.42];
+  let cursor = 0;
+  while (moments.length < count) {
+    let ratio = spread[cursor % spread.length]!;
+    cursor += 1;
+    let guard = 0;
+    while (moments.some((moment) => Math.abs(moment.ratio - ratio) < 0.04) && guard < spread.length) {
+      ratio = clampRatio(ratio + 0.06, fallbackRatio);
+      guard += 1;
+    }
+    moments.push({
+      ratio,
+      masterSeconds: Number((total * ratio).toFixed(3)),
+      basis: "fallback",
+      note: "关键帧候选不足：按分散兜底比例取帧（保证各变体封面不同帧）",
+    });
+  }
+  return moments.slice(0, count);
+}
+
+export interface ColorRecipe {
+  id: string;
+  genre?: string;
+  scene?: string;
+  mood?: string;
+  profile: string;
+  lut: string;
+  intensity: number;
+  platforms?: string[];
+}
+
+export interface SegmentColorAssignment {
+  segmentId: string;
+  groupId: string;
+  profile: string;
+  lut: string | null;
+  intensity: number;
+  basis: string;
+}
+
+export interface SegmentColorPlan {
+  assignments: SegmentColorAssignment[];
+  groups: Array<{ groupId: string; profile: string; lut: string | null; intensity: number; votes: { warm: number; cool: number; neutral: number }; basis: string }>;
+  warnings: string[];
+}
+
+interface ColorVotes {
+  warm: number;
+  cool: number;
+  neutral: number;
+}
+
+const WARM_WORDS = /(家|团圆|饭桌|美食|厨房|暖|治愈|回忆|亲子|故乡|老屋|果园|收获|羊汤|火锅|夜宵|民宿)/u;
+const COOL_WORDS = /(城市|都市|科技|产品|商务|夜|冷|雨|雪|海|山|公路|旅行|街|人潮|机场|地铁|屏幕|数码)/u;
+const NEUTRAL_WORDS = /(纪录|纪实|口播|访谈|教学|教程|screen|录屏)/iu;
+
+/**
+ * 分段调色计划：按场景组投票（暖/冷/中性），输出每组 LUT 与强度。
+ *
+ * 投票来源（全部可解释）：
+ *   · 镜头理解 `editing.colorGradeBase`：暖调/冷调/保持原色（每镜 1 票，重复计权）；
+ *   · 镜头 `sceneType`：screen_recording/studio_talking → 中性 1 票挑；
+ *   · 情绪效价：≥0.2 → 暖 1 票，≤-0.2 → 冷 1 票；
+ *   · 场景组名称/情绪关键词：命中暖词/冷词/中性词各 1–2 票。
+ *
+ * 输出 LUT 必须来自 `recipes`（调色配方库）或 `availableLuts` 白名单；两者都缺时回退到
+ * warm-film / cool-technical 的随仓 LUT 名并给出 warning（调用方决定是否继续）。
+ */
+export function planSegmentColor(input: {
+  timeline: EditTimeline;
+  analyses?: PostAnalysisDoc[];
+  recipes?: ColorRecipe[];
+  availableLuts?: string[];
+  /** 兼容旧参数：显式组名 → LUT（优先于自动投票） */
+  legacyGroupMap?: Record<string, { lut: string; intensity: number; label?: string }>;
+}): SegmentColorPlan {
+  const { timeline } = input;
+  const analyses = input.analyses ?? [];
+  const recipes = input.recipes ?? [];
+  const luts = input.availableLuts ? new Set(input.availableLuts) : null;
+  const warnings: string[] = [];
+  const sourceById = new Map((timeline.sources ?? []).map((source) => [source.sourceId, source]));
+  const analysisFor = (sourceId: string): PostAnalysisDoc | null => {
+    const source = sourceById.get(sourceId);
+    if (!source) return null;
+    return analyses.find((doc) => doc?.asset?.sha256 === source.sha256 || (doc?.asset?.localPath && doc.asset.localPath === source.path)) ?? null;
+  };
+  const groupOf = (segment: EditTimeline["segments"][number]): string => segment.groupId ?? "(未分组)";
+  const groups = new Map<string, ColorVotes>();
+  const votesOf = (groupId: string): ColorVotes => {
+    let votes = groups.get(groupId);
+    if (!votes) {
+      votes = { warm: 0, cool: 0, neutral: 0 };
+      groups.set(groupId, votes);
+    }
+    return votes;
+  };
+
+  // 场景组关键词先投票（组名 + 组情绪）
+  for (const group of timeline.groups ?? []) {
+    const text = `${group.name ?? ""} ${group.storyline ?? ""} ${group.emotion ?? ""}`;
+    const votes = votesOf(group.groupId ?? "(未分组)");
+    if (WARM_WORDS.test(text)) votes.warm += 2;
+    if (COOL_WORDS.test(text)) votes.cool += 2;
+    if (NEUTRAL_WORDS.test(text)) votes.neutral += 2;
+  }
+
+  // 逐镜信号投票 + 记录每段的来源镜头
+  const segmentShots = new Map<string, AnalysisShot[]>();
+  for (const segment of timeline.segments ?? []) {
+    const doc = analysisFor(segment.sourceId);
+    const shots = (doc?.shots ?? []).filter((shot) => {
+      const start = parseTimecodeSeconds(shot.inTimecode);
+      const end = parseTimecodeSeconds(shot.outTimecode);
+      if (start === null || end === null) return false;
+      return start < segment.sourceOut && end > segment.sourceIn;
+    });
+    segmentShots.set(segment.segmentId, shots);
+    const votes = votesOf(groupOf(segment));
+    for (const shot of shots) {
+      const base = String(shot.editing?.colorGradeBase ?? "");
+      if (/暖/u.test(base)) votes.warm += 1;
+      if (/冷/u.test(base)) votes.cool += 1;
+      if (/保持|原色|不变/u.test(base)) votes.neutral += 1;
+      /**
+       * 实体/画面文字也参与投票：食物、家、厨房 → 暖；海、山、城市、科技 → 冷（产品口径：
+       * "食物是暖色、风景是冷色"）。只在命中时加 1 票，不覆盖镜头理解的显式调色建议。
+       */
+      const contentText = [
+        ...(shot.content?.keyEntities ?? []),
+        shot.content?.onScreenText ?? "",
+        shot.content?.coreMessage ?? "",
+      ].join(" ");
+      if (WARM_WORDS.test(contentText)) votes.warm += 1;
+      if (COOL_WORDS.test(contentText)) votes.cool += 1;
+      if (shot.sceneType === "screen_recording") votes.neutral += 1;
+      if (shot.sceneType === "studio_talking") votes.neutral += 1;
+      const valence = shot.emotion?.valence;
+      if (typeof valence === "number" && Number.isFinite(valence)) {
+        if (valence >= 0.2) votes.warm += 1;
+        if (valence <= -0.2) votes.cool += 1;
+      }
+    }
+  }
+
+  const pickRecipe = (profile: string, groupText: string): ColorRecipe | null => {
+    const candidates = recipes.filter((recipe) => recipe.profile === profile);
+    if (candidates.length === 0) return null;
+    const scored = candidates.map((recipe) => {
+      const haystack = `${recipe.genre ?? ""} ${recipe.scene ?? ""} ${recipe.mood ?? ""}`;
+      let score = 0;
+      for (const word of ["美食", "菜", "餐", "汤", "果园", "家", "旅行", "旅拍", "夜景", "都市", "产品", "口播", "访谈", "纪录", "亲子"]) {
+        if (groupText.includes(word) && haystack.includes(word)) score += 1;
+      }
+      return { recipe, score };
+    }).sort((a, b) => b.score - a.score);
+    return scored[0]!.recipe;
+  };
+
+  const assignments: SegmentColorAssignment[] = [];
+  const groupPlans: SegmentColorPlan["groups"] = [];
+  for (const [groupId, votes] of groups) {
+    const groupSegments = (timeline.segments ?? []).filter((segment) => groupOf(segment) === groupId);
+    const groupText = `${groupId} ${(timeline.groups ?? []).filter((group) => (group.groupId ?? "(未分组)") === groupId).map((group) => `${group.name ?? ""} ${group.emotion ?? ""}`).join(" ")} ${groupSegments.map((segment) => segmentShots.get(segment.segmentId)?.map((shot) => shot.editing?.usage?.join(" ") ?? "").join(" ") ?? "").join(" ")}`;
+    const ranked = (Object.entries(votes) as Array<[keyof ColorVotes, number]>).sort((a, b) => b[1] - a[1]);
+    const top = ranked[0] ?? (["neutral", 0] as [keyof ColorVotes, number]);
+    const runnerUp = ranked[1] ?? (["neutral", 0] as [keyof ColorVotes, number]);
+    const margin = top[1] - runnerUp[1];
+    const legacy = input.legacyGroupMap?.[groupId];
+    /** 显式覆盖（legacy map / `--color-map`）优先级最高：即使该组零票也必须生效，否则"显式指定"名不副实。 */
+    const votedProfile = top[1] === 0 ? null : top[0] === "warm" ? "warm-film" : top[0] === "cool" ? "cool-technical" : null;
+    /**
+     * 显式覆盖的 LUT 家族：能识别暖/冷就按家族走；识别不了（自定义 LUT）则不臆测家族，
+     * 由下面"投票兜底 + 白名单回退"决定；两者都没有时才原样保留（执行器的存在性检查负责 fail-fast）。
+     */
+    const legacyProfile = legacy
+      ? (legacy.lut.toLowerCase().includes("warm") ? "warm-film" : legacy.lut.toLowerCase().includes("cool") ? "cool-technical" : null)
+      : null;
+    const profile = legacyProfile ?? votedProfile;
+    const basisVotes = `votes warm=${votes.warm} cool=${votes.cool} neutral=${votes.neutral}`;
+    if (!profile || profile === null) {
+      for (const segment of groupSegments) {
+        assignments.push({ segmentId: segment.segmentId, groupId, profile: "none", lut: null, intensity: 0, basis: `中性/证据不足：不叠加统一调色（${basisVotes}）` });
+      }
+      groupPlans.push({ groupId, profile: "none", lut: null, intensity: 0, votes, basis: `不调色（${basisVotes}）` });
+      continue;
+    }
+    const recipe = pickRecipe(profile, groupText);
+    const lutName = legacy?.lut ?? recipe?.lut ?? (profile === "warm-film" ? "look-warm-film.cube" : "look-cool-technical.cube");
+    const baseIntensity = legacy?.intensity ?? recipe?.intensity ?? (profile === "warm-film" ? 0.7 : 0.6);
+    /** 显式覆盖的强度原样使用（"指定 0.55 就是 0.55"）；自动投票的强度才按票差微调。 */
+    const intensity = legacy
+      ? Number(Math.min(1, Math.max(0, legacy.intensity)).toFixed(2))
+      : Number(Math.min(0.85, Math.max(0.4, baseIntensity + Math.min(0.15, margin * 0.05))).toFixed(2));
+    if (luts && !luts.has(lutName)) {
+      warnings.push(`场景组「${groupId}」选择的 LUT ${lutName} 不在随仓 LUT 清单里，已回退到受控配方默认`);
+    }
+    const missingFromWhitelist = Boolean(luts && !luts.has(lutName));
+    const safeLut = missingFromWhitelist
+      ? (profile === "warm-film" ? "look-warm-film.cube" : profile === "cool-technical" ? "look-cool-technical.cube" : lutName)
+      : lutName;
+    const basis = legacy
+      ? `显式覆盖（legacy map）→ ${safeLut}@${intensity}`
+      : `内容投票 ${basisVotes}｜配方 ${recipe?.id ?? "默认"} → ${safeLut}@${intensity}`;
+    for (const segment of groupSegments) {
+      assignments.push({ segmentId: segment.segmentId, groupId, profile, lut: safeLut, intensity, basis });
+    }
+    groupPlans.push({ groupId, profile, lut: safeLut, intensity, votes, basis });
+  }
+
+  return { assignments, groups: groupPlans, warnings };
+}
+
+/**
+ * 封面主题派生（内容驱动，替代"主题=旅行"这类演示片默认值）。
+ *
+ * 依据（按优先级）：contentDomain → 实体/画面文字关键词 → 场景类型；
+ * 全部命不中时给"生活"（通用），并在 note 里如实说明"未命中关键词"。
+ */
+export function deriveCoverTheme(input: {
+  analyses?: PostAnalysisDoc[];
+}): { theme: string; basis: string; keywords: string[] } {
+  const analyses = input.analyses ?? [];
+  const haystack: string[] = [];
+  for (const doc of analyses) {
+    if (doc.contentDomain) haystack.push(String(doc.contentDomain));
+    for (const shot of doc.shots ?? []) {
+      for (const entity of shot.content?.keyEntities ?? []) haystack.push(String(entity));
+      const onScreenText = shot.content?.onScreenText;
+      if (onScreenText) haystack.push(String(onScreenText));
+      if (shot.sceneType) haystack.push(String(shot.sceneType));
+    }
+  }
+  const text = haystack.join(" ");
+  const table: Array<{ theme: string; pattern: RegExp }> = [
+    { theme: "美食", pattern: /(美食|菜|餐|汤|火锅|烧烤|烘焙|甜品|小吃|夜宵|果园|食材)/u },
+    { theme: "旅行", pattern: /(旅行|旅拍|风景|山|海|湖|古城|景区|露营|自驾|日出|日落)/u },
+    { theme: "科技", pattern: /(科技|数码|产品|评测|SaaS|软件|AI|芯片|手机|电脑)/u },
+    { theme: "知识", pattern: /(知识|科普|教学|课程|教程|方法|步骤|原理|数据)/u },
+    { theme: "亲子", pattern: /(亲子|孩子|儿童|宝宝|家庭|一家人|父母)/u },
+    { theme: "情感", pattern: /(情感|回忆|家|故乡|团圆|老屋|爸妈|故事)/u },
+    { theme: "生活", pattern: /(生活|日常|vlog|记录|整理|居家|宠物)/iu },
+  ];
+  for (const entry of table) {
+    const matched = text.match(new RegExp(entry.pattern.source, "gu")) ?? [];
+    if (matched.length > 0) {
+      return { theme: entry.theme, basis: `内容命中「${entry.theme}」关键词：${[...new Set(matched)].slice(0, 5).join("、")}`, keywords: [...new Set(matched)].slice(0, 5) };
+    }
+  }
+  return { theme: "生活", basis: "未命中题材关键词（未跑镜头理解或实体为空）：回退通用主题「生活」", keywords: [] };
+}

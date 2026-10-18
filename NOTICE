@@ -1,7 +1,8 @@
-This project references architectural ideas and interfaces from:
+This project contains adapted source from:
 
 - GeoEvidence Studio, licensed under Apache-2.0
 - WorkLoom-video-edit, licensed under Apache-2.0
 
-No source code from those repositories is copied into this repository.
-Their licenses and notices remain in their respective repositories.
+The imported source and license files are kept under `engines/geo-evidence`
+and `engines/video-edit`. The integrated system uses those engines in-process
+and does not require the external repositories at runtime.

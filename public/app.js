@@ -1,5 +1,8 @@
 const state = {
   data: null,
+  engineSummary: null,
+  engineSamples: [],
+  mediaJobs: [],
   view: "overview",
 };
 
@@ -140,6 +143,7 @@ async function loadAdapterHealth() {
       github: "GitHub API",
       geoEvidence: "GeoEvidence",
       videoEdit: "video-edit",
+      mediaEngine: "媒体渲染引擎",
     };
     target.innerHTML = Object.entries(health)
       .map(([name, item]) => {
@@ -149,9 +153,11 @@ async function loadAdapterHealth() {
             ? item.model || item.baseUrl
             : name === "github"
               ? item.repository
-              : name === "geoEvidence"
+            : name === "geoEvidence"
                 ? item.health?.case || item.baseUrl
-                : `${item.topics ?? 0} topics · ${item.platformDrifts?.length ?? 0} drifts`;
+                : name === "mediaEngine"
+                  ? item.ffmpeg
+                  : `${item.topics ?? 0} topics · ${item.platformDrifts?.length ?? 0} drifts`;
         return `
           <div class="adapter-card">
             <span class="adapter-state ${ok ? "" : "offline"}">${ok ? "已连接" : "未就绪"}</span>
@@ -232,13 +238,31 @@ function renderContent() {
 }
 
 function renderGeo() {
-  const metrics = state.data.metrics;
-  const formatRate = (value) => (value === null ? "—" : `${Math.round(value * 100)}%`);
+  const metrics = state.engineSummary?.metrics ?? state.data.metrics;
+  const statusCopy = document.querySelector("#geo-status-copy");
+  if (statusCopy) {
+    statusCopy.textContent =
+      (metrics.successfulSamples ?? metrics.qualifiedSamples ?? 0) > 0
+        ? `${metrics.successfulSamples ?? metrics.qualifiedSamples} 条 real/imported 样本 · 结论仍需结合样本量判断`
+        : "没有 real 或 imported 样本，不输出效果结论。";
+  }
+  const formatRate = (value) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? `${Math.round(value * 100)}%`
+      : "—";
   const cards = [
     ["实体提及率", formatRate(metrics.mentionRate), "合格样本"],
     ["自有来源引用率", formatRate(metrics.ownedCitationRate), "GitHub / CNB / 官网"],
-    ["负面提及率", formatRate(metrics.negativeMentionRate), "需人工复盘"],
-    ["查询覆盖率", formatRate(metrics.queryCoverage), `${metrics.observedQueries}/${metrics.totalQueries}`],
+    [
+      "负面提及率",
+      formatRate(metrics.negativeMentionRate ?? metrics.brandNegativeMentionRate),
+      "需人工复盘",
+    ],
+    [
+      "查询覆盖率",
+      formatRate(metrics.queryCoverage ?? state.engineSummary?.queryCoverage),
+      `${metrics.observedQueries ?? state.engineSummary?.observedQueries ?? 0}/${metrics.totalQueries ?? state.engineSummary?.totalQueries ?? 0}`,
+    ],
   ];
   document.querySelector("#geo-metrics").innerHTML = cards
     .map(
@@ -265,22 +289,120 @@ function renderGeo() {
     )
     .join("");
 
+  const observations =
+    state.engineSamples.length > 0
+      ? state.engineSamples
+      : state.data.observations;
   document.querySelector("#observation-list").innerHTML =
-    state.data.observations.length === 0
+    observations.length === 0
       ? '<div class="empty-panel">尚无采样。fixture 只能验证流程，不能证明效果。</div>'
-      : state.data.observations
+      : observations
           .slice(-8)
           .reverse()
           .map(
             (observation) => `
               <div class="query-row">
-                <code>${escapeHtml(observation.dataMode)}</code>
-                <p>${escapeHtml(observation.surface)} · ${observation.derived.mentioned ? "提及实体" : "未提及"}</p>
-                <span>${escapeHtml(observation.derived.ownedCitationCount)} 个自有引用</span>
+                <code>${escapeHtml(observation.dataMode ?? observation.data_mode)}</code>
+                <p>${escapeHtml(observation.surface ?? observation.platform)} · ${
+                  (observation.derived?.mentioned ?? observation.analysis?.brandMentioned)
+                    ? "提及实体"
+                    : "未提及"
+                }</p>
+                <span>${escapeHtml(
+                  observation.derived?.ownedCitationCount ??
+                    observation.analysis?.ownedCitations?.length ??
+                    0,
+                )} 个自有引用</span>
               </div>
             `,
           )
           .join("");
+}
+
+function renderIntegratedEngines() {
+  const engineMetrics = state.engineSummary?.metrics;
+  const target = document.querySelector("#geo-engine-grid");
+  if (target) {
+    if (!engineMetrics) {
+      target.innerHTML =
+        '<div class="empty-panel">个人 GEO 引擎尚无运行样本。</div>';
+    } else {
+      const pct = (value) =>
+        value === null || value === undefined ? "—" : `${Math.round(value * 100)}%`;
+      const cards = [
+        [
+          "证据成功率",
+          pct(engineMetrics.successRate),
+          `${engineMetrics.successfulSamples}/${engineMetrics.totalSamples} 样本`,
+        ],
+        [
+          "实体提及率",
+          pct(engineMetrics.mentionRate),
+          "95% CI " +
+            `${pct(engineMetrics.mentionRate95?.low)}–${pct(engineMetrics.mentionRate95?.high)}`,
+        ],
+        [
+          "引用覆盖率",
+          pct(engineMetrics.citationPresenceRate),
+          "真实回答中可追溯来源",
+        ],
+        [
+          "品牌负面率",
+          pct(engineMetrics.brandNegativeMentionRate),
+          `${engineMetrics.brandNegativeSamples} 个提及样本`,
+        ],
+      ];
+      target.innerHTML = cards
+        .map(
+          ([label, value, note]) => `
+            <article class="stat-card">
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(value)}</strong>
+              <small>${escapeHtml(note)}</small>
+            </article>
+          `,
+        )
+        .join("");
+    }
+  }
+
+  const jobs = document.querySelector("#media-jobs");
+  if (jobs) {
+    jobs.innerHTML =
+      state.mediaJobs.length === 0
+        ? '<div class="empty-panel">还没有完成过媒体任务。</div>'
+        : state.mediaJobs
+            .map(
+              (job) => `
+                <article class="content-card">
+                  <div>
+                    <h3>${escapeHtml(job.title)}</h3>
+                    <p>${escapeHtml(job.platform)} · ${escapeHtml(job.variants.join(" / "))}</p>
+                    <div class="meta-row">
+                      <span class="meta">${escapeHtml(job.jobId)}</span>
+                      <span class="meta">${job.outputCount} 个媒体产物</span>
+                      <span class="meta">${escapeHtml(job.finalDir)}</span>
+                    </div>
+                  </div>
+                  <span class="status-chip published">${escapeHtml(job.status)}</span>
+                </article>
+              `,
+            )
+            .join("");
+  }
+}
+
+async function loadIntegratedEngineData() {
+  const [engineSummary, engineSamples, mediaJobs] = await Promise.all([
+    api("/api/geo/engine/summary"),
+    api("/api/geo/engine/samples?limit=20"),
+    api("/api/media/jobs"),
+  ]);
+  state.engineSummary = engineSummary;
+  state.engineSamples = engineSamples;
+  state.mediaJobs = mediaJobs;
+  renderGeo();
+  renderIntegratedEngines();
 }
 
 function populateContentForm() {
@@ -331,6 +453,7 @@ async function loadData() {
   try {
     state.data = await api("/api/bootstrap");
     renderAll();
+    await loadIntegratedEngineData();
     await loadAdapterHealth();
     setLoading(false);
     const initialView = window.location.hash.replace("#", "") || "overview";
@@ -406,6 +529,40 @@ document.querySelector("#interaction-form").addEventListener("submit", async (ev
     `;
   } catch (error) {
     showError(error);
+  }
+});
+
+document.querySelector("#media-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearError();
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+  const status = document.querySelector("#media-form-status");
+  const button = formElement.querySelector('button[type="submit"]');
+  const sources = String(form.get("sources") || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  status.textContent = "正在运行 FFmpeg 后期、封面和打包，可能需要数分钟。";
+  button.disabled = true;
+  try {
+    const result = await api("/api/live/media/render", {
+      method: "POST",
+      body: JSON.stringify({
+        confirm: true,
+        title: form.get("title"),
+        platform: form.get("platform"),
+        sources,
+        subtitleText: form.get("subtitleText"),
+      }),
+    });
+    await loadIntegratedEngineData();
+    status.textContent = `完成：${result.jobId}`;
+  } catch (error) {
+    status.textContent = "";
+    showError(error);
+  } finally {
+    button.disabled = false;
   }
 });
 

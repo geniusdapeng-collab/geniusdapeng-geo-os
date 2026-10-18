@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>GeoEvidence Studio</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">GE</div>
+      <div>
+        <p class="eyebrow">Evidence-first GEO operations</p>
+        <h1>GeoEvidence Studio</h1>
+      </div>
+      <div class="case-chip">
+        <span class="pulse"></span>
+        <span id="case-name">Loading case…</span>
+      </div>
+      <button id="refresh" class="button ghost" type="button">刷新</button>
+    </header>
+
+    <main>
+      <section class="hero panel">
+        <div>
+          <p class="eyebrow">AI answer visibility · citation intelligence · brand safety</p>
+          <h2>把“AI 怎么提我们、引用谁、有没有负面”变成可复核证据。</h2>
+          <p class="muted" id="run-note">正在加载运行状态…</p>
+        </div>
+        <div class="hero-actions">
+          <button id="run-fixture" class="button primary" type="button">运行夹具样本</button>
+          <button id="generate-articles" class="button" type="button">生成文章草案</button>
+        </div>
+      </section>
+
+      <section id="stats" class="stats" aria-label="GEO metrics"></section>
+
+      <section class="grid two">
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Signal</p>
+              <h2>按问题类别</h2>
+            </div>
+            <span class="tag">合格样本分母</span>
+          </div>
+          <div id="category-chart" class="bars"></div>
+        </article>
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Coverage</p>
+              <h2>运行与数据模式</h2>
+            </div>
+          </div>
+          <div id="runs" class="stack"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Answer evidence</p>
+            <h2>最近样本</h2>
+          </div>
+          <div class="filters">
+            <button class="filter active" data-filter="all" type="button">全部</button>
+            <button class="filter" data-filter="brand" type="button">提及品牌</button>
+            <button class="filter" data-filter="negative" type="button">品牌负面</button>
+            <button class="filter" data-filter="cited" type="button">有引用</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问题</th>
+                <th>平台 / 模式</th>
+                <th>品牌</th>
+                <th>情感</th>
+                <th>引用</th>
+                <th>证据</th>
+              </tr>
+            </thead>
+            <tbody id="samples"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Brand safety</p>
+              <h2>负面事件</h2>
+            </div>
+            <span id="incident-count" class="tag danger">0</span>
+          </div>
+          <div id="incidents" class="stack"></div>
+        </article>
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Content</p>
+              <h2>文章与发布</h2>
+            </div>
+          </div>
+          <div id="articles" class="stack"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Query lab</p>
+            <h2>未来前台问题集</h2>
+          </div>
+          <span id="query-count" class="tag">0 queries</span>
+        </div>
+        <div id="queries" class="query-grid"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

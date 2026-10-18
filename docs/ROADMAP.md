@@ -24,6 +24,15 @@
 - Store asset hashes and license sidecars
 - Separate private masters from approved public exports
 
+## v0.4: integrated independent system — completed 2026-10-18
+
+- [x] Vendor GeoEvidence production code and personalize its case/query/metrics
+- [x] Vendor video-edit production code and run it from the same repository
+- [x] Unified HTTP API, event ledger and dashboard
+- [x] Real 12-query GEO baseline and 10 article drafts
+- [x] Real two-variant FFmpeg delivery with subtitles, covers, BGM and QC
+- [x] Real model-driven GitHub Issue publication
+
 ## v0.4: manual multi-platform packages
 
 - Generate account-aware article, image-text and video packages

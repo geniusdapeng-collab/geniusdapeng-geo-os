@@ -280,6 +280,15 @@ h3 {
   margin-bottom: 18px;
 }
 
+.compact-grid {
+  margin-bottom: 0;
+}
+
+.compact-grid .stat-card {
+  box-shadow: none;
+  background: #f9fbfd;
+}
+
 .stat-card {
   padding: 20px;
   border: 1px solid var(--line);
@@ -620,6 +629,12 @@ textarea {
 .form-actions {
   justify-content: flex-end;
   margin-top: 17px;
+}
+
+.form-status {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .risk-grid {

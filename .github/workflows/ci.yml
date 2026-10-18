@@ -16,12 +16,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts
       - name: Syntax check
         run: |
           node --check src/server.mjs
           node --check public/app.js
       - name: Unit and integration tests
-        run: node --test
+        run: node --test tests/*.test.mjs
+      - name: Engine regression tests
+        run: node --test engines/geo-evidence/test/*.test.mjs tests/integrated-engines.test.mjs
       - name: Smoke test
         run: node scripts/smoke.mjs
       - name: Secret scan

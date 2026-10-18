@@ -1,0 +1,69 @@
+/**
+ * @hyperreality/video-studio —— SuperMickey 制作引擎 ↔ 视频经理运行时 适配层
+ */
+export * from "./gates.js";
+export * from "./llm-adapter.js";
+export * from "./material-policy.js";
+export * from "./av-sync.js";
+export * from "./beat-verify.js";
+export * from "./library-bpm.js";
+export * from "./character-consistency.js";
+export * from "./shot-order.js";
+export * from "./cover-design.js";
+export * from "./cover-platforms.js";
+export * from "./platform-intent.js";
+export * from "./sfx-synth.js";
+export * from "./portrait-runtime.js";
+export * from "./portrait-binding.js";
+export * from "./character-archive.js";
+export * from "./portrait-agent.js";
+export * from "./portrait-decision.js";
+export * from "./likeness-policy.js";
+export * from "./producer-gate.js";
+export * from "./shot-spec.js";
+export * from "./route-preflight.js";
+export * from "./real-person-asset-sync.js";
+export * from "./duration-rules.js";
+export * from "./vendor-compat.js";
+export * from "./confirmation.js";
+export * from "./studio.js";
+export * from "./render-scripts.js";
+export * from "./stage-registry.js";
+export * from "./micromotion.js";
+export * from "./continuity.js";
+export * from "./gate-ledger.js";
+export * from "./plate-prompt.js";
+export * from "./plate-cache.js";
+export * from "./narration.js";
+export * from "./pronunciation.js";
+export * from "./prompt-language.js";
+export * from "./deliver.js";
+export * from "./revise.js";
+export * from "./pipeline-router.js";
+export * from "./archive/index.js";
+export * from "./scene-bible.js";
+export * from "./scene-policy.js";
+export * from "./opening-hook.js";
+export * from "./device-policy.js";
+export * from "./quality-evidence.js";
+/** 固定影片工位的受限通道与服务客户端（T-2026-0927-0039）。 */
+export * from "./film-worker-channel.js";
+export * from "./film-worker-runtime.js";
+export * from "./film-service-client.js";
+/** 影片作者合同与监制评审（服务侧固定工位用冻结原稿构建合同）。 */
+export * from "./film-contracts.js";
+/** 真实商品档案：涉及公司/品牌的片子必须绑定真实产品图（客户上传优先，系统检索次之）。 */
+export * from "./product-archive.js";
+/** 认证真人素材主档与一致性门（人物属性唯一事实源；禁止猜）。 */
+export * from "./real-person-asset.js";
+/** 花钱前的提示词红线 linter（提高一次过率）。 */
+export * from "./prompt-redlines.js";
+/** 一次过就绪度（花钱前判定风险与改卡建议；高风险先渲）。 */
+export * from "./first-pass.js";
+export * from "./dialogue-contract.js";
+export * from "./plausibility-review.js";
+
+/** 成功渲染素材默认接收，不按后置品质裁决重复付费。 */
+export * from "./rendered-shot-acceptance.js";
+export * from "./rhythm-plan.js";
+export * from "./cinematic-contract.js";

@@ -17,7 +17,8 @@ This repository is a private, local-first personal GEO control plane.
 ```bash
 node --check src/server.mjs
 node --check public/app.js
-node --test
+node --test tests/*.test.mjs
+node --test engines/geo-evidence/test/*.test.mjs
 node scripts/smoke.mjs
 node scripts/security-scan.mjs
 ```

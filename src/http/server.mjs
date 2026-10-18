@@ -109,7 +109,7 @@ async function serveStatic(request, response, publicDir, pathname) {
   createReadStream(filePath).pipe(response);
 }
 
-export function createGeoOsServer({ service, livePipeline, publicDir }) {
+export function createGeoOsServer({ service, livePipeline, geoEngine, publicDir }) {
   return createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     const path = url.pathname;
@@ -167,6 +167,70 @@ export function createGeoOsServer({ service, livePipeline, publicDir }) {
         return;
       }
 
+      if (path === "/api/media/jobs") {
+        if (request.method !== "GET") {
+          methodNotAllowed(response, ["GET"]);
+          return;
+        }
+        if (!livePipeline?.mediaEngine) {
+          throw new ApiError(503, "MEDIA_ENGINE_UNAVAILABLE", "内置媒体引擎未启用。");
+        }
+        writeJson(response, 200, await livePipeline.mediaEngine.listJobs());
+        return;
+      }
+
+      if (path.startsWith("/api/geo/engine/")) {
+        if (!geoEngine) {
+          throw new ApiError(503, "GEO_ENGINE_UNAVAILABLE", "内置 GEO 引擎未启用。");
+        }
+        if (path === "/api/geo/engine/summary" && request.method === "GET") {
+          writeJson(response, 200, geoEngine.summary());
+          return;
+        }
+        if (path === "/api/geo/engine/queries" && request.method === "GET") {
+          writeJson(response, 200, geoEngine.listQueries({
+            category: url.searchParams.get("category") || undefined,
+            risk: url.searchParams.has("risk")
+              ? url.searchParams.get("risk") === "true"
+              : undefined,
+            limit: Number(url.searchParams.get("limit") || 1000),
+          }));
+          return;
+        }
+        if (path === "/api/geo/engine/samples" && request.method === "GET") {
+          writeJson(response, 200, geoEngine.listSamples({
+            runId: url.searchParams.get("runId") || undefined,
+            queryId: url.searchParams.get("queryId") || undefined,
+            limit: Number(url.searchParams.get("limit") || 500),
+          }));
+          return;
+        }
+        if (path === "/api/geo/engine/incidents" && request.method === "GET") {
+          writeJson(response, 200, geoEngine.listIncidents({
+            status: url.searchParams.get("status") || "open",
+            limit: Number(url.searchParams.get("limit") || 200),
+          }));
+          return;
+        }
+        if (path === "/api/geo/engine/articles" && request.method === "GET") {
+          writeJson(response, 200, geoEngine.listArticles(1000));
+          return;
+        }
+        if (path === "/api/geo/engine/articles/generate" && request.method === "POST") {
+          const body = await readJsonBody(request);
+          if (body.confirm !== true) {
+            throw new ApiError(
+              400,
+              "LIVE_RUN_CONFIRMATION_REQUIRED",
+              "文章生成会写入数据库，请求体必须显式设置 confirm=true。",
+            );
+          }
+          writeJson(response, 201, geoEngine.generateArticles(body));
+          return;
+        }
+        throw new ApiError(404, "GEO_ENGINE_ENDPOINT_NOT_FOUND", "GEO 引擎接口不存在。");
+      }
+
       if (path.startsWith("/api/live/")) {
         if (!livePipeline) {
           throw new ApiError(503, "ADAPTERS_UNAVAILABLE", "实时适配器未启用。");
@@ -198,6 +262,10 @@ export function createGeoOsServer({ service, livePipeline, publicDir }) {
         }
         if (path === "/api/live/video-edit/cover") {
           writeJson(response, 200, await livePipeline.enrichCover(body));
+          return;
+        }
+        if (path === "/api/live/media/render") {
+          writeJson(response, 201, await livePipeline.renderMedia(body));
           return;
         }
         if (path === "/api/live/github/publish") {
@@ -296,7 +364,9 @@ export function createGeoOsServer({ service, livePipeline, publicDir }) {
           return;
         }
         if (request.method === "POST") {
-          writeJson(response, 201, await service.createQuery(await readJsonBody(request)));
+          const created = await service.createQuery(await readJsonBody(request));
+          geoEngine?.upsertControlQueries([created]);
+          writeJson(response, 201, created);
           return;
         }
         methodNotAllowed(response, ["GET", "POST"]);

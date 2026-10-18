@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "integrated-model-content-media-pipeline",
+  "completedAt": "2026-10-18T15:57:40.539Z",
+  "content": {
+    "id": "CNT-005",
+    "title": "个人GEO为什么要留下证据链？",
+    "status": "scheduled",
+    "version": 4,
+    "claimIds": [
+      "C003",
+      "C005"
+    ],
+    "generation": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "responseId": "86e2db2f-8f07-4978-9e4b-724a649e7f1d",
+      "responseHash": "6d9c5f00750cd642dde092b18fa149631981b8f4f978203fef71bab29028abd1",
+      "hook": "个人做GEO，别只盯“让AI说好话”。",
+      "cta": "发布前先问：Claim、证据、审批、回执、复测，五件事是否都能回看？",
+      "hashtags": [
+        "#GEO",
+        "#个人GEO",
+        "#内容审核",
+        "#证据链",
+        "#GeoEvidenceStudio"
+      ],
+      "generatedAt": "2026-10-18T15:57:25.571Z"
+    }
+  },
+  "model": {
+    "name": "deepseek-flash",
+    "responseId": "86e2db2f-8f07-4978-9e4b-724a649e7f1d",
+    "usage": {
+      "input_tokens": 230,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 2219,
+      "output_tokens_details": {
+        "reasoning_tokens": 1828
+      },
+      "total_tokens": 2449
+    },
+    "responseHash": "6d9c5f00750cd642dde092b18fa149631981b8f4f978203fef71bab29028abd1"
+  },
+  "geo": {
+    "caseId": "pengstack-personal-geo",
+    "metrics": {
+      "totalSamples": 12,
+      "successfulSamples": 12,
+      "successRate": 1,
+      "evidenceCoverageRate": 1,
+      "mentionRate": 0.16666666666666666,
+      "mentionRate95": {
+        "low": 0.04696414761482223,
+        "high": 0.44803635738467273
+      },
+      "firstRecommendationRate": 0.16666666666666666,
+      "citationPresenceRate": 0.9166666666666666,
+      "ownedCitationRate": 0.08333333333333333,
+      "brandNegativeMentionRate": 0,
+      "negativeExposureRate": 0,
+      "negativeCitationRate": 0,
+      "industryNegativeRate": 0,
+      "brandSafetyRate": 1,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 2,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    }
+  },
+  "media": {
+    "jobId": "media-1792339045587-92437d0d",
+    "variants": [
+      "clean-tech",
+      "natural-clean"
+    ],
+    "outputs": [
+      {
+        "file": "var/media/jobs/media-1792339045587-92437d0d/final/个人GEO为什么要留下证据链？-标准版-640x360.mp4",
+        "bytes": 227557,
+        "sha256": "8e23161669136c15182d4a6920b59667a3d2c0fde9e8131e99f724c1c613ef9b"
+      },
+      {
+        "file": "var/media/jobs/media-1792339045587-92437d0d/final/个人GEO为什么要留下证据链？-自然高清版-640x360.mp4",
+        "bytes": 188345,
+        "sha256": "8a4c8be73db868612fddfc28dcbce82fcde163da184933d4883b4b7d9d6b472a"
+      }
+    ],
+    "postQuality": {
+      "path": "/Users/mac/Documents/Codex/2026-10-18/geo-cbn-workloom-harness-a8-deepseek/work/geniusdapeng-geo-os/var/media/jobs/media-1792339045587-92437d0d/delivery/quality/post-quality-post-final.json",
+      "sha256": "5275491480412384f3bfe01b86644dcd4bdc14c3a60cd983c911216d4780f7c9",
+      "passed": true
+    },
+    "manifestHash": "3304d2988e8650e1b48245cd123a68e184b8daac38d16cd45f6c79596182f9d6"
+  },
+  "state": {
+    "contentStatus": "scheduled",
+    "mediaJobs": 1,
+    "revision": 13
+  }
+}

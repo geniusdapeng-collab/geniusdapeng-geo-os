@@ -1,7 +1,8 @@
 {
-  "schemaVersion": "pengstack.live-suite/v1",
-  "completedAt": "2026-10-18T10:58:36.636Z",
-  "deepseek": {
+  "schemaVersion": "pengstack.live-suite/v3",
+  "completedAt": "2026-10-18T15:57:40.539Z",
+  "architecture": "independent integrated monorepo",
+  "deepseekAdapter": {
     "successful": 12,
     "failed": 0,
     "metrics": {
@@ -22,28 +23,150 @@
     },
     "receiptHash": "2ce14bd20e75bfe6d97f097f4df90cedfba4bf15bb616bd6f6f9b747aeca8724"
   },
-  "geoevidence": {
-    "runId": "run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
-    "dataMode": "real",
-    "successful": 1,
+  "personalGeoEngine": {
+    "runId": "run-6c71c67d-17e4-4d98-9b6f-b966c0b69fe6",
+    "successful": 12,
     "failed": 0,
+    "metrics": {
+      "totalSamples": 12,
+      "successfulSamples": 12,
+      "successRate": 1,
+      "evidenceCoverageRate": 1,
+      "mentionRate": 0.16666666666666666,
+      "mentionRate95": {
+        "low": 0.04696414761482223,
+        "high": 0.44803635738467273
+      },
+      "firstRecommendationRate": 0.16666666666666666,
+      "citationPresenceRate": 0.9166666666666666,
+      "ownedCitationRate": 0.08333333333333333,
+      "brandNegativeMentionRate": 0,
+      "negativeExposureRate": 0,
+      "negativeCitationRate": 0,
+      "industryNegativeRate": 0,
+      "brandSafetyRate": 1,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 2,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    },
+    "receipt": {
+      "synced": true,
+      "mode": "real",
+      "verifiedAt": "2026-10-18T14:48:47.361Z",
+      "snapshotUri": "geo-personal://run/run-6c71c67d-17e4-4d98-9b6f-b966c0b69fe6"
+    },
+    "articlesCreated": 10,
+    "responseHash": "315f7b2f6934715f337228d8b8997a7c415c22161c6bf6e05c4c722ba2474e76"
+  },
+  "geoEvidenceExternalAdapter": {
+    "runId": "run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
+    "successful": 1,
+    "dataMode": "real",
     "receipt": {
       "synced": true,
       "snapshot_uri": "geo-evidence://run/run-6382fdd5-ba7d-4a8a-8967-70141c6521e2",
       "verified_at": "2026-10-18T10:36:37.006Z",
       "mode": "real"
-    },
-    "responseHash": "921a13d516d984d7f43f2a2bbbc7148a4509da56f29a35a17db17093d0aa527b"
+    }
   },
-  "videoEdit": {
+  "videoEditAdapter": {
     "topics": 14,
-    "mappingRows": 161,
-    "paramRows": 137,
     "platformDrifts": 0,
     "hintCount": 2,
-    "traceCount": 2,
-    "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab",
     "triageHash": "d249b136fe501f964b624aa9af693160c8398f9b73a35e68da26fcd7bb1c61e5"
+  },
+  "mediaEngine": {
+    "jobId": "media-1792334601496-b9efd87d",
+    "variants": [
+      "clean-tech",
+      "natural-clean"
+    ],
+    "postQuality": {
+      "path": "/Users/mac/Documents/Codex/2026-10-18/geo-cbn-workloom-harness-a8-deepseek/work/geniusdapeng-geo-os/var/media/jobs/media-1792334601496-b9efd87d/delivery/quality/post-quality-post-final.json",
+      "sha256": "f5981c58d33fed5ca5d2fee76bf4a8fe9dc76107f658d85c24afa0776e957204",
+      "passed": true
+    },
+    "outputCount": 2,
+    "outputs": [
+      {
+        "file": "var/media/jobs/media-1792334601496-b9efd87d/final/证据优先的 AI 产品系统-标准版-640x360.mp4",
+        "bytes": 221965,
+        "sha256": "daf4f72ebb8df5d9e1abe11fb57a797c3b788da63a6f89899d655ececf66d708"
+      },
+      {
+        "file": "var/media/jobs/media-1792334601496-b9efd87d/final/证据优先的 AI 产品系统-自然高清版-640x360.mp4",
+        "bytes": 181403,
+        "sha256": "e851bb741fdc7be34d84110c175ffc17cdcb1580a2cbe2850225a2555c52debb"
+      }
+    ],
+    "manifestHash": "7ece9d1bd8ca48efb09b4e8ca1fd4f11ff8a0ca39626bc7a82fe815354f1a5b8"
+  },
+  "fullSystem": {
+    "contentId": "CNT-005",
+    "contentStatus": "scheduled",
+    "model": {
+      "name": "deepseek-flash",
+      "responseId": "86e2db2f-8f07-4978-9e4b-724a649e7f1d",
+      "usage": {
+        "input_tokens": 230,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 2219,
+        "output_tokens_details": {
+          "reasoning_tokens": 1828
+        },
+        "total_tokens": 2449
+      },
+      "responseHash": "6d9c5f00750cd642dde092b18fa149631981b8f4f978203fef71bab29028abd1"
+    },
+    "mediaJobId": "media-1792339045587-92437d0d",
+    "mediaOutputs": [
+      {
+        "file": "var/media/jobs/media-1792339045587-92437d0d/final/个人GEO为什么要留下证据链？-标准版-640x360.mp4",
+        "bytes": 227557,
+        "sha256": "8e23161669136c15182d4a6920b59667a3d2c0fde9e8131e99f724c1c613ef9b"
+      },
+      {
+        "file": "var/media/jobs/media-1792339045587-92437d0d/final/个人GEO为什么要留下证据链？-自然高清版-640x360.mp4",
+        "bytes": 188345,
+        "sha256": "8a4c8be73db868612fddfc28dcbce82fcde163da184933d4883b4b7d9d6b472a"
+      }
+    ],
+    "mediaQuality": {
+      "path": "/Users/mac/Documents/Codex/2026-10-18/geo-cbn-workloom-harness-a8-deepseek/work/geniusdapeng-geo-os/var/media/jobs/media-1792339045587-92437d0d/delivery/quality/post-quality-post-final.json",
+      "sha256": "5275491480412384f3bfe01b86644dcd4bdc14c3a60cd983c911216d4780f7c9",
+      "passed": true
+    },
+    "geoMetrics": {
+      "totalSamples": 12,
+      "successfulSamples": 12,
+      "successRate": 1,
+      "evidenceCoverageRate": 1,
+      "mentionRate": 0.16666666666666666,
+      "mentionRate95": {
+        "low": 0.04696414761482223,
+        "high": 0.44803635738467273
+      },
+      "firstRecommendationRate": 0.16666666666666666,
+      "citationPresenceRate": 0.9166666666666666,
+      "ownedCitationRate": 0.08333333333333333,
+      "brandNegativeMentionRate": 0,
+      "negativeExposureRate": 0,
+      "negativeCitationRate": 0,
+      "industryNegativeRate": 0,
+      "brandSafetyRate": 1,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 2,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    },
+    "state": {
+      "contentStatus": "scheduled",
+      "mediaJobs": 1,
+      "revision": 13
+    }
   },
   "github": {
     "contentId": "CNT-004",

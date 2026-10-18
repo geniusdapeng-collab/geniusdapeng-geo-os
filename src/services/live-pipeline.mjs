@@ -7,14 +7,17 @@ export class LivePipelineService {
     deepSeek,
     github,
     geoEvidence,
+    geoEngine,
     videoEdit,
+    mediaEngine,
     clock = () => new Date(),
   }) {
     this.service = service;
     this.deepSeek = deepSeek;
     this.github = github;
-    this.geoEvidence = geoEvidence;
+    this.geoEngine = geoEngine ?? geoEvidence;
     this.videoEdit = videoEdit;
+    this.mediaEngine = mediaEngine;
     this.clock = clock;
   }
 
@@ -23,8 +26,9 @@ export class LivePipelineService {
       Object.entries({
         deepSeek: this.deepSeek,
         github: this.github,
-        geoEvidence: this.geoEvidence,
+        geoEvidence: this.geoEngine,
         videoEdit: this.videoEdit,
+        mediaEngine: this.mediaEngine,
       }).map(async ([name, adapter]) => [name, await adapter.health()]),
     );
     return Object.fromEntries(entries);
@@ -104,49 +108,69 @@ export class LivePipelineService {
   }
 
   async collectDeepSeek({ queryIds, limit = 12 } = {}) {
-    const state = this.service.store.snapshot();
-    const selected = queryIds?.length
-      ? state.queries.filter((query) => queryIds.includes(query.id))
-      : state.queries.slice(0, Math.max(1, Math.min(Number(limit) || 12, 50)));
-    if (selected.length === 0) {
+    const run = await this.geoEngine.runVisibility({
+      provider: "deepseek-search",
+      limit: Math.max(1, Math.min(Number(limit) || 12, 50)),
+      queryIds,
+      platform: "deepseek",
+    });
+    if (run.successful + run.failed === 0) {
       throw new ApiError(400, "QUERY_REQUIRED", "没有可采集的查询。");
     }
 
     const results = [];
-    for (const query of selected) {
-      try {
-        const answer = await this.deepSeek.answerQuery(query);
+    for (const sample of run.samples) {
+      if (sample.status === "success") {
         const observation = await this.service.recordObservation({
-          queryId: query.id,
-          surface: answer.evidence.surface,
-          answer: answer.answer,
-          citations: answer.citations,
+          queryId: sample.query_id,
+          surface: `${sample.platform} · ${sample.provider}`,
+          answer: sample.answer,
+          citations: sample.citations,
           dataMode: "real",
-          collectedAt: this.clock().toISOString(),
-          actor: "DeepSeek live collector",
+          collectedAt: sample.captured_at,
+          actor: "Integrated GeoEvidence collector",
+          providerEvidence: {
+            engineRunId: run.runId,
+            sampleId: sample.id,
+            evidenceHash: sample.evidenceHash,
+            evidenceUri: sample.screenshotUri,
+            model: sample.model,
+            provider: sample.provider,
+          },
         });
         results.push({
-          queryId: query.id,
+          queryId: sample.query_id,
           status: "success",
           observationId: observation.id,
           answerHash: observation.answerHash,
-          evidence: answer.evidence,
+          evidence: {
+            engineRunId: run.runId,
+            sampleId: sample.id,
+            evidenceHash: sample.evidenceHash,
+            evidenceUri: sample.screenshotUri,
+            citations: sample.citations,
+          },
         });
-      } catch (error) {
+      } else {
         results.push({
-          queryId: query.id,
+          queryId: sample.query_id,
           status: "failed",
-          error: error.message,
+          error: sample.error,
         });
       }
     }
 
     return {
-      requested: selected.length,
+      runId: run.runId,
+      provider: run.provider,
+      dataMode: run.dataMode,
+      requested: run.planned,
       successful: results.filter((result) => result.status === "success").length,
       failed: results.filter((result) => result.status === "failed").length,
       results,
-      metrics: this.service.metrics(),
+      metrics: run.metrics,
+      controlMetrics: this.service.metrics(),
+      engineReceipt: run.receipt,
       receiptHash: hashObject({
         results: results.map((result) => ({
           queryId: result.queryId,
@@ -160,11 +184,47 @@ export class LivePipelineService {
   }
 
   async runGeoEvidence(input) {
-    return this.geoEvidence.runVisibility(input);
+    return this.geoEngine.runVisibility(input);
   }
 
   async enrichCover(input) {
     return this.videoEdit.enrichCover(input);
+  }
+
+  async renderMedia(input) {
+    if (!this.mediaEngine) {
+      throw new ApiError(503, "MEDIA_ENGINE_UNAVAILABLE", "内置媒体引擎未启用。");
+    }
+    const result = await this.mediaEngine.render(input);
+    await this.service.store.mutate(
+      {
+        type: "media.job_completed",
+        actor: "VideoMediaEngine",
+        payload: {
+          jobId: result.jobId,
+          platform: result.platform,
+          variants: result.variants,
+          manifestHash: result.manifestHash,
+        },
+      },
+      (state) => {
+        state.mediaJobs ??= [];
+        const summary = {
+          jobId: result.jobId,
+          status: result.status,
+          title: result.title,
+          platform: result.platform,
+          variants: result.variants,
+          manifestHash: result.manifestHash,
+          outputCount: result.outputs.length,
+          finalDir: result.finalDir,
+          completedAt: result.completedAt,
+        };
+        state.mediaJobs.push(summary);
+        return summary;
+      },
+    );
+    return result;
   }
 
   async publishContentToGitHub({

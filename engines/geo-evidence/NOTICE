@@ -1,0 +1,16 @@
+GeoEvidence Studio
+Copyright 2026 Dapeng Li
+
+This product includes software derived from WorkLoom:
+https://cnb.cool/workloom-ai/workloom
+Upstream commit: f608da6cfae516577bf3c2db3ee9478946a9ea76
+
+WorkLoom and the derived source distribution are provided under the
+Apache License, Version 2.0. The original LICENSE file is retained.
+
+GeoEvidence Studio adds:
+- an evidence-first GEO application under apps/geo-evidence-studio;
+- a 100-question Future Front Desk case;
+- DeepSeek and fixture answer providers;
+- local evidence storage, metrics, brand-safety analysis and publication receipts;
+- a WorkLoom geo-growth tool connector.
