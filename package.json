@@ -17,7 +17,7 @@
     "acceptance": "node scripts/acceptance.mjs",
     "smoke": "node scripts/smoke.mjs",
     "test:vendor": "node --test engines/video-edit/bundles/ai-video/connectors/post-bridge/*.test.mjs && vitest run engines/video-edit/bundles/ai-video/connectors/cover-kb-bridge/core.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/post-cli-media.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/revision-concurrency.test.ts",
-    "test:ci": "node --test engines/video-edit/bundles/ai-video/connectors/post-bridge/*.test.mjs && vitest run engines/video-edit/bundles/ai-video/connectors/cover-kb-bridge/core.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/revision-concurrency.test.ts",
+    "test:ci": "node --test engines/video-edit/bundles/ai-video/connectors/post-bridge/*.test.mjs && vitest run engines/video-edit/bundles/ai-video/connectors/cover-kb-bridge/core.test.ts",
     "live:deepseek": "node scripts/live-deepseek-collect.mjs",
     "live:geoevidence": "node scripts/live-geoevidence.mjs",
     "live:video-edit": "node scripts/live-video-edit.mjs",
