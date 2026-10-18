@@ -63,6 +63,28 @@ Every `/api/live/*` request must include `"confirm": true`. This prevents a
 dashboard refresh or accidental form submission from spending model tokens or
 writing to an external platform.
 
+`POST /api/live/media/render` also accepts:
+
+- `sources`: non-empty local MP4 path array
+- `title`: delivery title
+- `coverTitle`: title used in cover/copy artifacts
+- `hook`: one-line hook persisted into cover/copy checks
+- `platform`: target platform label
+- `subtitleText`: subtitle text
+- `variants`: one or more of `warm-story`, `clean-tech`, `bold-promo`,
+  `natural-clean`
+
+The requested `coverTitle` and `hook` are verified in the generated copy
+artifacts, not merely echoed in the API response.
+
+## Request boundary
+
+The default listener accepts only loopback Host values listed in
+`ALLOWED_HOSTS`. Requests carrying a foreign `Origin`, `Sec-Fetch-Site:
+cross-site` or a non-allowlisted Host are rejected before route handling.
+Non-browser CLI requests remain possible when they do not claim a foreign
+origin.
+
 ## State machine
 
 ```text

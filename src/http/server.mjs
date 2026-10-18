@@ -18,10 +18,78 @@ function securityHeaders() {
   return {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    "Content-Security-Policy":
+      "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; " +
+      "script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+      "font-src 'self' data:; connect-src 'self'; form-action 'self'",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Cross-Origin-Resource-Policy": "same-origin",
   };
+}
+
+function parseLimit(raw, fallback, maximum, field) {
+  if (raw === null || raw === "") {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    throw new ApiError(
+      400,
+      "INVALID_LIMIT",
+      `${field} 必须是 1 到 ${maximum} 之间的整数。`,
+    );
+  }
+  return value;
+}
+
+function validateRequestSource(request, allowedHosts) {
+  const hostHeader = request.headers.host;
+  if (!hostHeader) {
+    throw new ApiError(400, "HOST_REQUIRED", "请求缺少 Host 头。");
+  }
+
+  let requestUrl;
+  try {
+    requestUrl = new URL(`http://${hostHeader}`);
+  } catch {
+    throw new ApiError(400, "HOST_INVALID", "请求 Host 头无效。");
+  }
+
+  const hostname = requestUrl.hostname.toLowerCase();
+  const allowed = new Set(allowedHosts.map((value) => String(value).toLowerCase()));
+  if (!allowed.has(hostname)) {
+    throw new ApiError(403, "HOST_NOT_ALLOWED", "服务只接受显式允许的本地 Host。");
+  }
+
+  const fetchSite = String(request.headers["sec-fetch-site"] ?? "").toLowerCase();
+  if (fetchSite === "cross-site") {
+    throw new ApiError(
+      403,
+      "CROSS_ORIGIN_REQUEST_BLOCKED",
+      "拒绝跨站浏览器写入请求。",
+    );
+  }
+
+  const origin = request.headers.origin;
+  if (origin) {
+    let originUrl;
+    try {
+      originUrl = new URL(origin);
+    } catch {
+      throw new ApiError(403, "CROSS_ORIGIN_REQUEST_BLOCKED", "请求 Origin 无效。");
+    }
+    if (
+      !["http:", "https:"].includes(originUrl.protocol) ||
+      originUrl.host.toLowerCase() !== requestUrl.host.toLowerCase()
+    ) {
+      throw new ApiError(
+        403,
+        "CROSS_ORIGIN_REQUEST_BLOCKED",
+        "拒绝跨站浏览器写入请求。",
+      );
+    }
+  }
 }
 
 async function readJsonBody(request) {
@@ -109,12 +177,19 @@ async function serveStatic(request, response, publicDir, pathname) {
   createReadStream(filePath).pipe(response);
 }
 
-export function createGeoOsServer({ service, livePipeline, geoEngine, publicDir }) {
+export function createGeoOsServer({
+  service,
+  livePipeline,
+  geoEngine,
+  publicDir,
+  allowedHosts = ["127.0.0.1", "localhost", "::1"],
+}) {
   return createServer(async (request, response) => {
-    const url = new URL(request.url ?? "/", "http://127.0.0.1");
-    const path = url.pathname;
-
     try {
+      validateRequestSource(request, allowedHosts);
+      const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
+      const path = url.pathname;
+
       if (path === "/api/health") {
         if (request.method !== "GET") {
           methodNotAllowed(response, ["GET"]);
@@ -193,7 +268,7 @@ export function createGeoOsServer({ service, livePipeline, geoEngine, publicDir 
             risk: url.searchParams.has("risk")
               ? url.searchParams.get("risk") === "true"
               : undefined,
-            limit: Number(url.searchParams.get("limit") || 1000),
+            limit: parseLimit(url.searchParams.get("limit"), 1000, 2000, "limit"),
           }));
           return;
         }
@@ -201,14 +276,14 @@ export function createGeoOsServer({ service, livePipeline, geoEngine, publicDir 
           writeJson(response, 200, geoEngine.listSamples({
             runId: url.searchParams.get("runId") || undefined,
             queryId: url.searchParams.get("queryId") || undefined,
-            limit: Number(url.searchParams.get("limit") || 500),
+            limit: parseLimit(url.searchParams.get("limit"), 500, 5000, "limit"),
           }));
           return;
         }
         if (path === "/api/geo/engine/incidents" && request.method === "GET") {
           writeJson(response, 200, geoEngine.listIncidents({
             status: url.searchParams.get("status") || "open",
-            limit: Number(url.searchParams.get("limit") || 200),
+            limit: parseLimit(url.searchParams.get("limit"), 200, 1000, "limit"),
           }));
           return;
         }
@@ -414,6 +489,13 @@ export function createGeoOsServer({ service, livePipeline, geoEngine, publicDir 
           : { error: { code: "INTERNAL_ERROR", message: "服务处理失败。" } };
 
       if (!(error instanceof ApiError)) {
+        const path = (() => {
+          try {
+            return new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+          } catch {
+            return request.url ?? "/";
+          }
+        })();
         console.error(
           `request failed: ${request.method} ${path} ${error?.name || "Error"} ${error?.code || ""}`,
         );

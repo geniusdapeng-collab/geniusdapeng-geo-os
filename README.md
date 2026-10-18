@@ -38,6 +38,7 @@ node src/server.mjs
 ```bash
 node --test tests/*.test.mjs
 node --test engines/geo-evidence/test/*.test.mjs
+pnpm test:vendor
 node --check src/server.mjs
 node --check public/app.js
 ```
@@ -62,6 +63,8 @@ GITHUB_TOKEN=... node scripts/live-github-publish.mjs
 ## 安全边界
 
 - 不把令牌、密码、Cookie、验证码或个人敏感信息写入仓库、日志或事件账本。
+- 本地控制面只接受 `ALLOWED_HOSTS` 中的 Host，并拒绝跨站浏览器写请求。
+- 页面启用 CSP、禁止被框架嵌入，并使用同源连接。
 - 不在未安装依赖的情况下自动发布到外部平台。
 - 平台规则未确认时按人工内容包处理。
 - 公开导出只允许 `approved_public` 且未过期的事实。
@@ -69,6 +72,9 @@ GITHUB_TOKEN=... node scripts/live-github-publish.mjs
 - 当前真实写接口只验证了 GitHub Issue；其他平台没有凭据时继续 fail-closed。
 
 最近一次真实运行结果见 [docs/LIVE-VERIFICATION.md](docs/LIVE-VERIFICATION.md)。
+
+2026-10-19 深度审计、修复台账、覆盖率声明和真机测试结果见
+[docs/AUDIT-2026-10-19.md](docs/AUDIT-2026-10-19.md)。
 
 ## 目录
 

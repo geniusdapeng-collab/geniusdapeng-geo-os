@@ -154,7 +154,7 @@ async function loadAdapterHealth() {
             : name === "github"
               ? item.repository
             : name === "geoEvidence"
-                ? item.health?.case || item.baseUrl
+                ? item.caseId || item.health?.case || item.baseUrl || item.mode
                 : name === "mediaEngine"
                   ? item.ffmpeg
                   : `${item.topics ?? 0} topics · ${item.platformDrifts?.length ?? 0} drifts`;

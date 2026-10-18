@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "integrated-personal-geo-engine",
+  "completedAt": "2026-10-18T20:23:43.289Z",
+  "engine": {
+    "mode": "in-process-personal-geo-engine",
+    "upstreamCommit": "06b47a15fd114541bd3147dc5c07b944c36bc8da",
+    "caseId": "pengstack-personal-geo",
+    "database": "var/live-audit-final/geo-engine.sqlite"
+  },
+  "run": {
+    "runId": "run-f9f133af-5f11-4569-b3a3-cca5bcb76394",
+    "status": "completed",
+    "provider": "deepseek-search",
+    "dataMode": "real",
+    "planned": 12,
+    "successful": 12,
+    "failed": 0,
+    "metrics": {
+      "totalSamples": 12,
+      "successfulSamples": 12,
+      "successRate": 1,
+      "evidenceCoverageRate": 1,
+      "mentionRate": 0.16666666666666666,
+      "mentionRate95": {
+        "low": 0.04696414761482223,
+        "high": 0.44803635738467273
+      },
+      "firstRecommendationRate": 0.16666666666666666,
+      "citationPresenceRate": 1,
+      "ownedCitationRate": 0.08333333333333333,
+      "brandNegativeMentionRate": 0,
+      "negativeExposureRate": 0,
+      "negativeCitationRate": 0,
+      "industryNegativeRate": 0,
+      "brandSafetyRate": 1,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 2,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    },
+    "receipt": {
+      "synced": true,
+      "mode": "real",
+      "verifiedAt": "2026-10-18T20:23:43.258Z",
+      "snapshotUri": "geo-personal://run/run-f9f133af-5f11-4569-b3a3-cca5bcb76394"
+    },
+    "responseHash": "ff33c2a2f5e983f92ab43295a78b2a98ece22229eb65f2f4ed8226c4ecf53915",
+    "samples": [
+      {
+        "sampleId": "sample-3eedfa74-baa1-48f4-80c5-3584ee30f0fb",
+        "queryId": "Q012",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "dfa66f873abdd664a512f1d114340ae1f5f637f3679528618e6f3d45a514a287",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-30da596f-b422-40b9-9329-1e47727c15a4",
+        "queryId": "Q009",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "f5d49aefb91e7a430b2c5c2dc752147fa5812c4f219e53812776765ca9ec1f46",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-75c3e23e-a861-4a78-a94a-bf616cdba8c1",
+        "queryId": "Q008",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "6010af00f001ffbf5084e751ac76624ce18ca4325a88544b0bfbc090efb438ce",
+        "citationCount": 6,
+        "error": null
+      },
+      {
+        "sampleId": "sample-fd44c7b6-b6cd-4352-8fb3-8ef1454e6404",
+        "queryId": "Q010",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "7e1e01ce21c21c9fd6569ae1f8fec2c5180f19a8c6afdd4bf080c074a98c3246",
+        "citationCount": 7,
+        "error": null
+      },
+      {
+        "sampleId": "sample-de4cd3f1-6a1e-44ba-816a-1947ac79e117",
+        "queryId": "Q011",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "d0abc464116b0c823d710ed185e41d62dcac0dd28cb8198fca8f16d2260c5053",
+        "citationCount": 1,
+        "error": null
+      },
+      {
+        "sampleId": "sample-c6349a14-2094-440a-84e9-bbf65f952fee",
+        "queryId": "Q005",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "beee4f8e061d7508d3125de877b89e87b1c06d914f87929ca48fa6200e0bcc79",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-df937f6c-43ed-4b08-97e5-5ff83dff200b",
+        "queryId": "Q006",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "eb5df3c8125924be53005345c738a76b4f0b5104fa8459252812359853939767",
+        "citationCount": 8,
+        "error": null
+      },
+      {
+        "sampleId": "sample-de2c5137-b02d-4154-839e-f26bd99381ac",
+        "queryId": "Q004",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "e0451b3d03f10ba80af0dcfb6b85834b6bf259db719621b48f6ae82530f746e9",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-b1d63f0c-8d3a-428a-8461-98cea4e32d1a",
+        "queryId": "Q003",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "fa6d2e3f90484f375ee427ab138340f1f56f345b3d3b6af690f839b9a5417870",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-b9f9aa3d-8a44-49bb-abeb-c34c7aa13731",
+        "queryId": "Q002",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "2da4e850bde7aff0c64266ff212addc853b72269bc68c895ed47a894e699390f",
+        "citationCount": 6,
+        "error": null
+      },
+      {
+        "sampleId": "sample-a03362a8-4249-4606-b4fd-6482bed49d93",
+        "queryId": "Q007",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "45f56ed3443e6fc9ec132fac8ec0c7b51412d138b2dd4df69f145903a5015f85",
+        "citationCount": 5,
+        "error": null
+      },
+      {
+        "sampleId": "sample-c219974b-084d-4bc3-8913-f31ab35adc32",
+        "queryId": "Q001",
+        "status": "success",
+        "model": "deepseek-flash",
+        "evidenceHash": "9463447a06c0472f2e83d13c110ad45d6474f435a2acfb572952479aabff2709",
+        "citationCount": 5,
+        "error": null
+      }
+    ]
+  },
+  "articles": {
+    "created": 10,
+    "total": 10,
+    "ids": [
+      "article-34c72a0f-5cd3-4c4b-8662-cd5fe52fa153",
+      "article-5cb00379-c8fb-4e2a-8cc1-2971e5e7f043",
+      "article-43f64c1d-7fb2-4a5b-aa88-54343e1cb531",
+      "article-385e52e7-2ad3-4071-ae0f-0bf9b84ac21d",
+      "article-5037746e-53a3-442a-ab22-c14dddafd31c",
+      "article-8886cce6-b1ec-45bf-a7f0-6ebde07d1d8d",
+      "article-2f6854e0-8570-46c4-9646-20621f926edd",
+      "article-85e302e3-3807-4f0a-8d1f-cd738490de9c",
+      "article-44539444-358f-497b-b66a-e2430ae5e6f2",
+      "article-f5c8da5c-acd0-4a56-be85-58f97b439e9d"
+    ]
+  },
+  "fullEvidence": "var/geo-engine/evidence/personal-geo-run-f9f133af-5f11-4569-b3a3-cca5bcb76394.json"
+}

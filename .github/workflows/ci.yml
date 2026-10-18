@@ -28,6 +28,8 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Engine regression tests
         run: node --test engines/geo-evidence/test/*.test.mjs tests/integrated-engines.test.mjs
+      - name: Embedded video engine tests
+        run: npm run test:vendor
       - name: Smoke test
         run: node scripts/smoke.mjs
       - name: Secret scan

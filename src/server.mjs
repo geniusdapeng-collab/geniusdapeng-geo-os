@@ -16,6 +16,13 @@ const port = Number(process.env.PORT || 4318);
 const dataFile = resolve(rootDir, process.env.DATA_FILE || "var/state.json");
 const dataDir = join(rootDir, "data", "seed");
 const publicDir = join(rootDir, "public");
+const configuredHosts = process.env.ALLOWED_HOSTS
+  ?.split(",")
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+const allowedHosts = configuredHosts?.length
+  ? configuredHosts
+  : ["127.0.0.1", "localhost", "::1", "[::1]"];
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error("PORT must be an integer between 1 and 65535.");
@@ -43,7 +50,13 @@ const livePipeline = new LivePipelineService({
   }),
   mediaEngine,
 });
-const server = createGeoOsServer({ service, livePipeline, geoEngine, publicDir });
+const server = createGeoOsServer({
+  service,
+  livePipeline,
+  geoEngine,
+  publicDir,
+  allowedHosts,
+});
 
 server.listen(port, host, () => {
   console.log(`天才大鹏 control center: http://${host}:${port}`);

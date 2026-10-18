@@ -1,14 +1,14 @@
 import { execFile } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import { VideoEditAdapter } from "../src/adapters/video-edit.mjs";
 
 const execFileAsync = promisify(execFile);
 const rootDir = resolve(import.meta.dirname, "..");
+const defaultEngineRoot = join(rootDir, "engines", "video-edit");
 const upstreamRoot = resolve(
-  process.env.VIDEO_EDIT_ROOT ||
-    join(rootDir, "..", "upstreams", "WorkLoom-video-edit"),
+  process.env.VIDEO_EDIT_ROOT || defaultEngineRoot,
 );
 const adapter = new VideoEditAdapter({ upstreamRoot });
 const health = await adapter.health();
@@ -24,9 +24,12 @@ const enrichment = await adapter.enrichCover({
 const feedbackTriage = await adapter.triageFeedback({
   feedback: "封面文字太挤，配乐再安静一点",
 });
-const commit = (
-  await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: upstreamRoot })
-).stdout.trim();
+const pin = JSON.parse(
+  await readFile(join(rootDir, "upstreams", "workloom-video-edit.pin.json"), "utf8"),
+);
+const commit = process.env.VIDEO_EDIT_ROOT
+  ? (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: upstreamRoot })).stdout.trim()
+  : pin.commit;
 const date = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
   year: "numeric",
@@ -43,7 +46,7 @@ const receipt = {
   },
   health: {
     ...health,
-    upstreamRoot: "../upstreams/WorkLoom-video-edit",
+    upstreamRoot: relative(rootDir, upstreamRoot),
   },
   enrichment,
   feedbackTriage,

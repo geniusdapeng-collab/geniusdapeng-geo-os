@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "integrated-model-content-media-pipeline",
+  "completedAt": "2026-10-18T20:26:45.749Z",
+  "content": {
+    "id": "CNT-005",
+    "title": "个人 GEO 为什么需要一条可复核证据链",
+    "status": "scheduled",
+    "version": 4,
+    "claimIds": [
+      "C003",
+      "C005"
+    ],
+    "generation": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "responseId": "c794dde3-19e6-4104-a58d-3a073afc82d9",
+      "responseHash": "72ba2b5cf3a86f54e7ba63e4561d18357c5f25fb0dcebce4063b308469e37541",
+      "hook": "个人 GEO，不是发完内容就结束。",
+      "cta": "关注鹏栈，按可复核的方式做个人 GEO。",
+      "hashtags": [
+        "#鹏栈",
+        "#PengStack",
+        "#个人GEO",
+        "#GeoEvidenceStudio",
+        "#证据链",
+        "#复测"
+      ],
+      "generatedAt": "2026-10-18T20:26:31.851Z"
+    }
+  },
+  "model": {
+    "name": "deepseek-flash",
+    "responseId": "c794dde3-19e6-4104-a58d-3a073afc82d9",
+    "usage": {
+      "input_tokens": 230,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 3593,
+      "output_tokens_details": {
+        "reasoning_tokens": 3336
+      },
+      "total_tokens": 3823
+    },
+    "responseHash": "72ba2b5cf3a86f54e7ba63e4561d18357c5f25fb0dcebce4063b308469e37541"
+  },
+  "geo": {
+    "caseId": "pengstack-personal-geo",
+    "metrics": {
+      "totalSamples": 0,
+      "successfulSamples": 0,
+      "successRate": null,
+      "evidenceCoverageRate": null,
+      "mentionRate": null,
+      "mentionRate95": {
+        "low": null,
+        "high": null
+      },
+      "firstRecommendationRate": null,
+      "citationPresenceRate": null,
+      "ownedCitationRate": null,
+      "brandNegativeMentionRate": null,
+      "negativeExposureRate": null,
+      "negativeCitationRate": null,
+      "industryNegativeRate": null,
+      "brandSafetyRate": null,
+      "shareOfVoice": null,
+      "brandMentionedSamples": 0,
+      "brandNegativeSamples": 0,
+      "industryNegativeSamples": 0
+    }
+  },
+  "media": {
+    "jobId": "media-1792355191867-b1820263",
+    "variants": [
+      "clean-tech",
+      "natural-clean"
+    ],
+    "outputs": [
+      {
+        "file": "var/media/jobs/media-1792355191867-b1820263/final/个人 GEO 为什么需要一条可复核证据链-标准版-640x360.mp4",
+        "bytes": 274283,
+        "sha256": "f5297cd68d8ebfef36a82ffbd9d42869d42452d17e614ec80cce5aafcd13ecb7"
+      },
+      {
+        "file": "var/media/jobs/media-1792355191867-b1820263/final/个人 GEO 为什么需要一条可复核证据链-自然高清版-640x360.mp4",
+        "bytes": 234668,
+        "sha256": "02e9ddcfa2320d6f3e56bd612b51e643238b8976044205bd8ead9750a15f8d88"
+      }
+    ],
+    "postQuality": {
+      "path": "var/media/jobs/media-1792355191867-b1820263/delivery/quality/post-quality-post-final.json",
+      "sha256": "4ffdfd83fb8a15b7a2cd946bc7881b4f824765cb4a6604ab3463beeab139a861",
+      "passed": true
+    },
+    "manifestHash": "2df67f7eff3f17e56c129916256590c0e1ba49919d6ac1a189a76c8100dc4901"
+  },
+  "state": {
+    "contentStatus": "scheduled",
+    "mediaJobs": 2,
+    "revision": 14
+  }
+}

@@ -297,7 +297,13 @@ export class GeoOsService {
         const contentIndex = state.content.findIndex((item) => item.id === contentId);
         const account = state.accounts.find((item) => item.id === accountId);
         const content = state.content[contentIndex];
-        validatePublication({ account, content, receipt, now: this.clock() });
+        validatePublication({
+          account,
+          content,
+          receipt,
+          claims: state.claims,
+          now: this.clock(),
+        });
 
         const at = this.clock().toISOString();
         const contentHash = hashText(`${content.title}\n${content.body}`);

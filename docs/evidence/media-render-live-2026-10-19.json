@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "pengstack.live-receipt/v1",
+  "kind": "integrated-video-edit-media-render",
+  "completedAt": "2026-10-18T20:22:21.091Z",
+  "jobId": "media-1792354927155-feee5322",
+  "engine": {
+    "mode": "in-process-video-edit-engine",
+    "upstreamCommit": "2412a5b4e49f2d19601752758ce5274d2e88772c"
+  },
+  "title": "证据优先的 AI 产品系统",
+  "platform": "微信视频号",
+  "variants": [
+    "clean-tech",
+    "natural-clean"
+  ],
+  "sourceMeta": [
+    {
+      "sourceId": "S1",
+      "file": "var/media/fixtures/pengstack-live-source-1.mp4",
+      "sha256": "424e57dedffd6312782ed0d1b81b204616bdfdf2cf37f5a1fc568de16023efd4",
+      "durationSeconds": 3
+    },
+    {
+      "sourceId": "S2",
+      "file": "var/media/fixtures/pengstack-live-source-2.mp4",
+      "sha256": "71452047404ff0ea3879e90f03cdcb1b556a11928917555f377b575f8ce22267",
+      "durationSeconds": 3
+    }
+  ],
+  "manifestHash": "1ca567e46f40c2a2b1d29ad545c3abfa063e9cfaf9e4a2d72e1a2ae5c031058a",
+  "postQuality": {
+    "path": "var/media/jobs/media-1792354927155-feee5322/delivery/quality/post-quality-post-final.json",
+    "sha256": "033677a7786381c044f8c46615c554baf72aceaffbdeb6fb681da7e0bf1313dd",
+    "passed": true
+  },
+  "outputs": [
+    {
+      "file": "var/media/jobs/media-1792354927155-feee5322/final/证据优先的 AI 产品系统-标准版-640x360.mp4",
+      "bytes": 221965,
+      "sha256": "daf4f72ebb8df5d9e1abe11fb57a797c3b788da63a6f89899d655ececf66d708"
+    },
+    {
+      "file": "var/media/jobs/media-1792354927155-feee5322/final/证据优先的 AI 产品系统-自然高清版-640x360.mp4",
+      "bytes": 181403,
+      "sha256": "e851bb741fdc7be34d84110c175ffc17cdcb1580a2cbe2850225a2555c52debb"
+    }
+  ],
+  "finalDir": "var/media/jobs/media-1792354927155-feee5322/final"
+}

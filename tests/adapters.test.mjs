@@ -98,6 +98,37 @@ test("DeepSeek adapter falls back to Responses when chat reasoning exhausts the 
   assert.equal(result.evidence.completionSurface, "deepseek-responses");
 });
 
+test("DeepSeek search citations reject non-HTTP schemes", async () => {
+  const adapter = new DeepSeekAdapter({
+    apiKey: "test-key",
+    baseUrl: "http://deepseek.test",
+    fetchImpl: async (url) => {
+      if (String(url).endsWith("/v1/tools/search")) {
+        return jsonResponse({
+          results: [
+            { title: "Unsafe", url: "javascript:alert(1)", content: "unsafe" },
+            { title: "Unsafe file", url: "file:///tmp/secret", content: "unsafe" },
+            { title: "Safe", url: "https://example.com/source", content: "safe" },
+          ],
+        });
+      }
+      return jsonResponse({
+        id: "chat-safe",
+        model: "deepseek-flash",
+        choices: [{ message: { content: "Safe answer." } }],
+      });
+    },
+  });
+  const result = await adapter.answerQuery({
+    id: "Q-safe",
+    text: "safe links",
+    locale: "zh-CN",
+  });
+  assert.deepEqual(result.citations.map((citation) => citation.url), [
+    "https://example.com/source",
+  ]);
+});
+
 test("DeepSeek adapter parses model-generated content and rejects sensitive output", async () => {
   const adapter = new DeepSeekAdapter({
     apiKey: "test-key",

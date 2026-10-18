@@ -17,7 +17,7 @@
  *     [--variants warm-story,clean-tech,bold-promo] [--subtitle <字幕.srt>]
  *     [--analysis <probe.json>]…（封面自动取帧与分段调色投票用）
  *     [--bgm-section auto|climax|calm|full] [--bgm-cut-driven]
- *     [--title "标题"] [--hook "一句话钩子"] [--platform "微信视频号"]
+ *     [--title "标题"] [--cover-title "封面标题"] [--hook "一句话钩子"] [--platform "微信视频号"]
  *     [--width <显式宽> --height <显式高>] [--allow-downscale] [--fps 30] [--crf 16] [--no-burn-subtitles] [--json]
  *     [--transitions hard|pack|declared|auto] [--transitions-easing native|smooth]
  *     [--transition-pack documentary|vlog|fast_cut|information]
@@ -309,6 +309,7 @@ async function main(): Promise<void> {
   });
   const platform = arg("--platform", timeline.target?.platform ?? "微信视频号");
   const title = arg("--title", timeline.filmId ?? timeline.timelineId);
+  const coverTitle = arg("--cover-title", title);
   const hook = arg("--hook", "");
 
   /**
@@ -903,7 +904,7 @@ async function main(): Promise<void> {
       ? { mode: "xfade" as const, fadeSec: 0, perCut: planToPerCut(transitionPlan), easing: transitionsEasing }
       : { mode: "hard" as const, fadeSec: 0 },
     copy: {
-      title,
+      title: coverTitle,
       hook,
       tone: "温暖克制",
     },

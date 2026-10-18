@@ -107,7 +107,10 @@ try {
         bytes: output.bytes,
         sha256: output.sha256,
       })),
-      postQuality: media.manifest.postQuality,
+      postQuality: {
+        ...media.manifest.postQuality,
+        path: relative(rootDir, media.manifest.postQuality.path),
+      },
       manifestHash: media.manifestHash,
     },
     state: {

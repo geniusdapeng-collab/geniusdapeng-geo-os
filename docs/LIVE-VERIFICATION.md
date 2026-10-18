@@ -1,8 +1,33 @@
 # Live Verification
 
-Verified on 2026-10-18 Asia/Shanghai against the local Mac sandbox.
+Originally verified on 2026-10-18 and revalidated on 2026-10-19
+Asia/Shanghai against the local Mac sandbox.
 
 Aggregate result: `passed` in `docs/evidence/live-suite-2026-10-18.json`.
+
+## 2026-10-19 deep-audit rerun
+
+- Root/GEO regressions: 49 automated tests passed.
+- Embedded video engine: 74 Node tests and 74 integration tests passed.
+- DeepSeek Search: 12 requested, 12 successful, 0 failed.
+- Unified model-to-media chain: real `deepseek-flash` response, scheduled
+  content, two real FFmpeg variants and technical QC `passed=true`.
+- Browser: Google Chrome 155 rendered all six dashboard views at 1440 px and
+  overview/media at 390 px with no horizontal overflow, console error or failed
+  request.
+- GitHub: model-generated content passed Claim, approval, scheduling and
+  publication preflight, then produced official REST Issue
+  [#2](https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/2);
+  API readback confirmed `open`, title and `geo-live-smoke` label.
+- Dependencies: `pnpm audit --prod` reported no known vulnerabilities.
+
+Receipts:
+
+- `docs/evidence/personal-geo-live-2026-10-19.json`
+- `docs/evidence/media-render-live-2026-10-19.json`
+- `docs/evidence/full-system-live-2026-10-19.json`
+- `docs/evidence/github-live-2026-10-19.json`
+- `docs/evidence/video-edit-live-2026-10-19.json`
 
 ## Current model and DeepSeek API
 
