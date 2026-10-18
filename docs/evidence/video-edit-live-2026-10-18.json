@@ -1,7 +1,7 @@
 {
   "schemaVersion": "pengstack.live-receipt/v1",
   "kind": "video-edit-production-adapter",
-  "completedAt": "2026-10-18T10:36:50.306Z",
+  "completedAt": "2026-10-18T10:58:36.636Z",
   "upstream": {
     "repository": "geniusdapeng-collab/WorkLoom-video-edit",
     "commit": "2d112904dc23e7fde94dab2ec26933abbb51cb31"
@@ -9,7 +9,7 @@
   "health": {
     "configured": true,
     "upstreamRoot": "../upstreams/WorkLoom-video-edit",
-    "mode": "official-video-edit-cover-bridge-cli",
+    "mode": "official-video-edit-cover-and-post-cli",
     "ok": true,
     "topics": 14,
     "mappingRows": 161,
@@ -39,5 +39,9 @@
     "conflicts": [],
     "source": "kb",
     "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab"
+  },
+  "feedbackTriage": {
+    "output": "归因：rev.audio.mix、rev.text.track、rev.cover.layout（audio/text/cover）\n受影响层：audio → text → cover\n是否需要重生成镜头：否（本地重合成）\n成本：本地重合成即可，无需重新生成镜头\n回复用户：配乐问题走本地重混：换曲/调音量只重算音频层，画面逐帧不动。 字幕问题走本地重出：旁挂字幕文件 + 软字幕轨重算，画面逐帧不动。 封面问题只重出封面图，成片不动。\n下一步：\n  ① 生成 patch（只含受影响层）\n  ② 调 postwrite.reedit：本地重合成出新版本（镜头与未受影响层复用）\n  ③ 对比新旧版本 sha256 与差异，出返修回执\npatch 提示：{\"subtitles\":{\"zhText\":\"<新字幕文本或路径>\"},\"bgm\":{\"trackId\":\"<曲目 id> 或 mood/style\"},\"cover\":{\"at\":0.35}}",
+    "outputHash": "d249b136fe501f964b624aa9af693160c8398f9b73a35e68da26fcd7bb1c61e5"
   }
 }

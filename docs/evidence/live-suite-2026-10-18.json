@@ -1,6 +1,6 @@
 {
   "schemaVersion": "pengstack.live-suite/v1",
-  "completedAt": "2026-10-18T10:40:06.988Z",
+  "completedAt": "2026-10-18T10:58:36.636Z",
   "deepseek": {
     "successful": 12,
     "failed": 0,
@@ -42,7 +42,8 @@
     "platformDrifts": 0,
     "hintCount": 2,
     "traceCount": 2,
-    "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab"
+    "payloadHash": "b019ce068444b485ef08ed430fa469d6e595d4a9b02c5847ed952c1da5b170ab",
+    "triageHash": "d249b136fe501f964b624aa9af693160c8398f9b73a35e68da26fcd7bb1c61e5"
   },
   "github": {
     "contentId": "CNT-004",

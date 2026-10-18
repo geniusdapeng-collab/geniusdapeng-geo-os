@@ -27,7 +27,7 @@ export class VideoEditAdapter {
     return {
       configured: Boolean(this.upstreamRoot),
       upstreamRoot: this.upstreamRoot,
-      mode: "official-video-edit-cover-bridge-cli",
+      mode: "official-video-edit-cover-and-post-cli",
     };
   }
 
@@ -38,15 +38,7 @@ export class VideoEditAdapter {
     return this.upstreamRoot;
   }
 
-  async #cli(args) {
-    const script = join(
-      this.#root(),
-      "bundles",
-      "ai-video",
-      "connectors",
-      "cover-kb-bridge",
-      "cli.mjs",
-    );
+  async #run(script, args, label) {
     await access(script);
     try {
       const { stdout, stderr } = await execFileAsync(this.nodePath, [script, ...args], {
@@ -61,8 +53,20 @@ export class VideoEditAdapter {
       return { stdout, stderr };
     } catch (error) {
       const detail = String(error.stderr || error.message || "").trim().slice(0, 800);
-      throw new Error(`video-edit cover CLI 失败：${detail}`);
+      throw new Error(`video-edit ${label} CLI 失败：${detail}`);
     }
+  }
+
+  async #cli(args) {
+    const script = join(
+      this.#root(),
+      "bundles",
+      "ai-video",
+      "connectors",
+      "cover-kb-bridge",
+      "cli.mjs",
+    );
+    return this.#run(script, args, "cover");
   }
 
   async health() {
@@ -111,6 +115,30 @@ export class VideoEditAdapter {
       conflicts: payload.conflicts,
       source: payload.source,
       payloadHash: hashObject(payload),
+    };
+  }
+
+  async triageFeedback({ feedback }) {
+    const script = join(
+      this.#root(),
+      "bundles",
+      "ai-video",
+      "connectors",
+      "post-bridge",
+      "cli.mjs",
+    );
+    const { stdout } = await this.#run(
+      script,
+      ["triage", "--feedback", String(feedback)],
+      "post triage",
+    );
+    const output = String(stdout).trim();
+    if (!output) {
+      throw new Error("video-edit 反馈分诊没有返回结果。");
+    }
+    return {
+      output,
+      outputHash: hashObject({ feedback, output }),
     };
   }
 }

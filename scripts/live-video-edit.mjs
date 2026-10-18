@@ -21,6 +21,9 @@ const enrichment = await adapter.enrichCover({
   theme: process.env.VIDEO_COVER_THEME || "知识科普",
   text: "为什么 GEO 需要证据控制面",
 });
+const feedbackTriage = await adapter.triageFeedback({
+  feedback: "封面文字太挤，配乐再安静一点",
+});
 const commit = (
   await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: upstreamRoot })
 ).stdout.trim();
@@ -43,6 +46,7 @@ const receipt = {
     upstreamRoot: "../upstreams/WorkLoom-video-edit",
   },
   enrichment,
+  feedbackTriage,
 };
 const receiptDir = join(rootDir, "docs", "evidence");
 await mkdir(receiptDir, { recursive: true });
