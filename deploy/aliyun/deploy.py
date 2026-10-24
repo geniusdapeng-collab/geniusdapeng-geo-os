@@ -114,9 +114,10 @@ def install_runtime_env(source, domain):
 
 def run(argv, cwd=None, capture=True, allow_failure=False):
     environment = dict(os.environ)
-    # The installer never forwards operator cloud/model credentials to package tools.
+    # Package tools must not inherit operator npm configuration or credentials.
     for key in list(environment):
-        if any(word in key.upper() for word in ("TOKEN", "PASSWORD", "SECRET", "API_KEY", "ACCESS_KEY", "COOKIE", "CREDENTIAL")):
+        if key.upper().startswith("NPM_CONFIG_") or any(word in key.upper() for word in
+                ("TOKEN", "PASSWORD", "SECRET", "API_KEY", "ACCESS_KEY", "COOKIE", "CREDENTIAL")):
             environment.pop(key)
     environment["PATH"] = f"{BASE}/node-current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     result = subprocess.run([str(value) for value in argv], cwd=cwd, env=environment,
@@ -459,9 +460,15 @@ def ensure_runtime(source, account):
     pnpm = tooling / "lib/node_modules/pnpm/bin/pnpm.cjs"
     if not pnpm.is_file():
         tooling.mkdir(parents=True, exist_ok=True)
-        run([runtime / "bin/node", runtime / "lib/node_modules/npm/bin/npm-cli.js", "install", "--global",
-             "--prefix", tooling, "--cache", BASE / "npm-cache", "--userconfig", "/dev/null", "--globalconfig", "/dev/null",
-             "--ignore-scripts", "--no-audit", "--no-fund", manager], capture=False)
+        # npm rejects loading the same path as both user and global config.
+        # A fresh 0700 directory and exclusive 0600 empty file isolate both
+        # configuration layers without reading an operator's npmrc.
+        with tempfile.TemporaryDirectory(prefix=".npm-config-", dir=tooling) as directory:
+            global_config = Path(directory) / "global.npmrc"
+            private_write(global_config, "")
+            run([runtime / "bin/node", runtime / "lib/node_modules/npm/bin/npm-cli.js", "install", "--global",
+                 "--prefix", tooling, "--cache", BASE / "npm-cache", "--userconfig", "/dev/null", "--globalconfig", global_config,
+                 "--ignore-scripts", "--no-audit", "--no-fund", manager], capture=False)
     require(run([runtime / "bin/node", pnpm, "--version"]).strip() == pnpm_version, "Private pnpm pin verification failed.")
     return runtime / "bin/node", pnpm
 

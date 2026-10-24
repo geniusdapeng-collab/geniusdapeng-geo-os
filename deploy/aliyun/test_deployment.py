@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -201,6 +202,65 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(DEPLOY.DeployError, "symlink"):
                 DEPLOY.managed_directory(tooling / "version")
         self.assertEqual(list(outside.iterdir()), [])
+
+    def test_real_npm_bootstrap_config_load_ignores_operator_npmrc(self):
+        node = os.environ.get("NODE_BINARY", "node")
+        actual_node = Path(subprocess.run([node, "-p", "process.execPath"],
+                                         capture_output=True, text=True, check=True).stdout.strip())
+        npm = os.environ.get("NPM_CLI_PATH")
+        if not npm:
+            bundled = actual_node.parent.parent / "lib/node_modules/npm/bin/npm-cli.js"
+            npm = str(bundled) if bundled.is_file() else shutil.which("npm")
+        if not npm or not Path(npm).is_file():
+            self.skipTest("Real npm regression requires bundled npm or NPM_CLI_PATH; no packages are downloaded.")
+        npm = Path(npm).resolve()
+        base, source = self.path / "opt", self.path / "source"
+        (source / "deploy/aliyun").mkdir(parents=True)
+        pin = json.loads((HERE / "runtime.json").read_text())
+        manager = json.loads((ROOT / "package.json").read_text())["packageManager"]
+        (source / "deploy/aliyun/runtime.json").write_text(json.dumps(pin))
+        (source / "package.json").write_text(json.dumps({"packageManager": manager}))
+        runtime = base / "runtimes" / f"node-v{pin['nodeVersion']}-linux-x64"
+        runtime.mkdir(parents=True)
+        operator_config = self.path / "operator.npmrc"
+        operator_config.write_text("registry=https://operator-config-must-not-load.invalid/\n")
+        configs = []
+        fail_install = [False]
+        real_run = DEPLOY.run
+        def config_only(argv, **kwargs):
+            values = [str(value) for value in argv]
+            if values[1:] == ["--version"]:
+                return f"v{pin['nodeVersion']}\n"
+            if values[-1] == "--version":
+                return manager.split("@")[1] + "\n"
+            self.assertEqual(values[2:4], ["install", "--global"])
+            path = Path(values[values.index("--globalconfig") + 1])
+            configs.append(path)
+            self.assertNotEqual(str(path), "/dev/null")
+            self.assertEqual(path.read_bytes(), b"")
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+            self.assertTrue(path.is_relative_to(base / "tooling"))
+            # Execute the real npm loader using the installer's exact config,
+            # prefix and cache flags; only the install command is replaced.
+            with mock.patch.dict(os.environ, {"npm_config_userconfig": str(operator_config),
+                                              "NPM_CONFIG_GLOBALCONFIG": str(operator_config)}, clear=True):
+                registry = real_run([actual_node, npm, "config", "get", "registry", *values[3:-1]], cwd=self.path)
+            self.assertEqual(registry.strip(), "https://registry.npmjs.org/")
+            if fail_install[0]:
+                raise DEPLOY.DeployError("fixture npm install failed")
+            return ""
+        with mock.patch.object(DEPLOY, "BASE", base), \
+                mock.patch.object(DEPLOY.platform, "machine", return_value="x86_64"), \
+                mock.patch.object(DEPLOY, "run", side_effect=config_only):
+            DEPLOY.ensure_runtime(source, SimpleNamespace())
+            fail_install[0] = True
+            with self.assertRaisesRegex(DEPLOY.DeployError, "fixture npm install failed"):
+                DEPLOY.ensure_runtime(source, SimpleNamespace())
+        self.assertEqual(len(configs), 2)
+        self.assertNotEqual(configs[0], configs[1])
+        self.assertTrue(all(not path.parent.exists() for path in configs))
+        self.assertEqual(operator_config.read_text(), "registry=https://operator-config-must-not-load.invalid/\n")
 
     def test_restore_preserves_previous_data_and_private_modes(self):
         archive = self.path / "backup.tar.gz"

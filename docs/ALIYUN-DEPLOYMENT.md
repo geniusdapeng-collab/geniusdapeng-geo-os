@@ -179,6 +179,8 @@ nginx 模式证书默认独立存放在 `/etc/letsencrypt/live/pengmanager-syste
 
 Node 固定版本与 Linux x64／arm64 的校验值在 [`runtime.json`](../deploy/aliyun/runtime.json)，来源为[官方 Node v24.22.1 校验表](https://nodejs.org/dist/v24.22.1/SHASUMS256.txt)。安装会同时比较提交的 pin、官方校验表、下载文件三者，不运行 `curl | sh`。pnpm 版本由 `package.json` 精确锁定；通过私有 prefix 安装，依赖安装使用 `--frozen-lockfile --ignore-scripts --prod=false`，不更改宿主 Node／pnpm。
 
+引导 pnpm 时，npm 的用户配置固定为 `/dev/null`，全局配置使用私有 tooling 临时目录中的独立空文件（目录0700、文件0600），完成或失败后清理；子进程清除继承的 `NPM_CONFIG_*` 环境项，不读取操作者的用户或全局 npmrc。两层配置不能共用同一路径，[该 Node 版本附带的 npm 配置加载器](https://github.com/nodejs/node/blob/v24.22.1/deps/npm/node_modules/%40npmcli/config/lib/index.js)会拒绝重复加载。部署测试会用实际 npm 执行配置加载，不安装业务依赖；默认寻找 Node 配套的 npm，也可通过 `NPM_CLI_PATH` 指定已校验的 `npm-cli.js`，缺失时明确跳过该项。
+
 Caddy 通过[官方 stable 软件源](https://caddyserver.com/docs/install)安装。已有 Caddy 必须使用标准 `caddy.service` 和 `/etc/caddy/Caddyfile`；配置仅增加独立绝对路径 import，保留原文件和其他站点，先 `caddy validate` 后 reload。发现同域名或覆盖该域名的通配符已有路由会拒绝变更；API／自定义配置的 Caddy 需单独审查接入，不能强行覆盖。
 
 域名A记录指向机器公网IPv4；仅在IPv6路由真实可达时配置AAAA。根据[官方 Caddy 自动 HTTPS](https://caddyserver.com/docs/automatic-https)，域名和80／443可达后自动申请并续期证书；[Let's Encrypt](https://letsencrypt.org/about/)证书本身免费。不购买付费证书，也不把阿里云的[个人测试证书](https://help.aliyun.com/zh/ssl-certificate/functions-and-features)用于生产。
