@@ -13,6 +13,7 @@ import { transitionContent } from "../domain/state-machine.mjs";
 import { verifyEventChain } from "../storage/json-store.mjs";
 import { MAIN_PROFILE, SYSTEM_IDENTITY } from "../domain/identity.mjs";
 import { requirePublicUrl } from "../domain/public-url.mjs";
+import { isFinalContent } from "../../public/final-backup-format.js";
 
 const CONTENT_TYPES = new Set([
   "article",
@@ -71,9 +72,16 @@ function publicClaim(claim) {
 }
 
 export class GeoOsService {
-  constructor({ store, clock = () => new Date() }) {
+  constructor({ store, clock = () => new Date(), finalContentBackup = null }) {
     this.store = store;
     this.clock = clock;
+    this.finalContentBackup = finalContentBackup;
+  }
+
+  async backupFinalContent(content) {
+    if (!this.finalContentBackup || !isFinalContent(content)) return null;
+    try { return await this.finalContentBackup.save(content); }
+    catch { return { status: "error", code: "FINAL_BACKUP_IO_ERROR" }; }
   }
 
   get entity() {
@@ -100,6 +108,7 @@ export class GeoOsService {
       summary: this.summary(),
       eventHead: state.events.at(-1)?.hash ?? null,
       updatedAt: state.updatedAt,
+      ...(this.finalContentBackup ? { finalBackup: this.finalContentBackup.status() } : {}),
     };
   }
 
@@ -285,7 +294,8 @@ export class GeoOsService {
         return state.content[index];
       },
     );
-    return result;
+    const finalBackup = await this.backupFinalContent(result);
+    return finalBackup ? { ...result, finalBackup } : result;
   }
 
   async recordPublication(input) {
@@ -360,7 +370,8 @@ export class GeoOsService {
         return publication;
       },
     );
-    return result;
+    const finalBackup = await this.backupFinalContent(this.store.snapshot().content.find(row => row.id === contentId));
+    return finalBackup ? { ...result, finalBackup } : result;
   }
 
   classifyInteraction(input) {

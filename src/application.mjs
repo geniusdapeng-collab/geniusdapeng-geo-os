@@ -12,6 +12,7 @@ import { VideoMediaEngine } from "./engines/video-media.mjs";
 import { createVideoRuntime } from "./video-runtime/index.mjs";
 import { createAdminAuth } from "./security/admin-auth.mjs";
 import { AccountOperationsService } from "./services/account-operations.mjs";
+import { createMacFinalContentBackup } from "./services/final-content-backup.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 
@@ -21,6 +22,7 @@ export async function createPengManagerApplication({
   rootDir = defaultRoot, env = process.env, videoRuntime, runtimeFactory = createVideoRuntime,
   logger = console, geoEngine: suppliedGeoEngine, mediaEngine: suppliedMediaEngine,
   livePipeline: suppliedLivePipeline,
+  finalContentBackup = createMacFinalContentBackup(),
 } = {}) {
   const host = env.HOST || "127.0.0.1";
   const port = Number(env.PORT || 4318);
@@ -33,7 +35,11 @@ export async function createPengManagerApplication({
   const store = new JsonStore({ filePath: dataFile });
   await store.open(() => loadSeedState(dataDir));
   await migratePengManagerIdentity(store, dataDir);
-  const service = new GeoOsService({ store });
+  const service = new GeoOsService({ store, finalContentBackup });
+  if (finalContentBackup) {
+    await finalContentBackup.prepare();
+    for (const content of store.snapshot().content) await service.backupFinalContent(content);
+  }
   const accountOperations = new AccountOperationsService({ service });
   const geoEngine = suppliedGeoEngine ?? new PersonalGeoEngine({
     rootDir, ...(env.GEO_ENGINE_DB ? { databasePath: resolve(rootDir, env.GEO_ENGINE_DB) } : {}),
@@ -67,7 +73,7 @@ export async function createPengManagerApplication({
   let listening = false;
   let stopping = false;
   return {
-    server, service, store, geoEngine, mediaEngine, auth, accountOperations, videoRuntime: runtime,
+    server, service, store, geoEngine, mediaEngine, auth, accountOperations, videoRuntime: runtime, finalContentBackup,
     get videoStart() { return videoStart; },
     async listen(options = {}) {
       if (stopping) throw new Error("APPLICATION_STOPPED");
@@ -80,7 +86,7 @@ export async function createPengManagerApplication({
         });
         listening = true;
         logger.log?.(`鹏经理系统 · PengManager System: http://${options.host ?? host}:${server.address().port}`);
-        videoStart = Promise.resolve().then(() => stopping ? false : runtime.start()).then(
+        videoStart = Promise.resolve().then(() => stopping || env.ENABLE_MEDIA_RENDER === "false" ? false : runtime.start()).then(
           result => result,
           () => { logger.error?.("视频工作台启动未完成；现有控制台继续运行，请查看视频工作台状态并运行本地诊断。"); return false; },
         );

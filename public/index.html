@@ -10,6 +10,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/operations.css" />
+    <link rel="stylesheet" href="/final-backup.css" />
   </head>
   <body>
     <div class="shell">
@@ -55,6 +56,14 @@
         </header>
 
         <div id="global-error" class="error-banner" role="alert" hidden></div>
+        <section id="final-backup" class="final-backup" data-state="permission" aria-labelledby="final-backup-title">
+          <div>
+            <h2 id="final-backup-title">终稿自动备份</h2>
+            <p id="final-backup-status" class="final-backup-status" role="status" aria-live="polite">正在检查本机备份授权…</p>
+            <p>保存到本机下载文件夹的“pengmanager 备份”。已批准、已排期和已发布的正文原样保存，历史版本保留。页面打开且已登录时每 30 秒检查；关闭后暂停，下次打开并授权后补齐。</p>
+          </div>
+          <button id="final-backup-enable" class="ghost-button" type="button">启用本机终稿备份</button>
+        </section>
         <div id="loading" class="loading-card" aria-live="polite">
           <span class="loader" aria-hidden="true"></span>
           正在读取本地证据账本

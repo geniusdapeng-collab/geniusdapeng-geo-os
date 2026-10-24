@@ -2,6 +2,26 @@
 
 This repository is a private, local-first personal GEO control plane.
 
+## Mandatory first read for every AI agent
+
+After cloning, pulling, switching branches, or beginning a task in this
+repository, read this file and the complete
+[AI Agent usage guide](docs/AI-AGENT-GUIDE.md) **before planning, making changes,
+calling business APIs, starting live scripts, or operating an external
+platform**. Do not substitute the README, a summary, or a previous agent's
+memory for the guide. Re-read it when these instructions or the guide change.
+If the guide is unavailable, report that missing prerequisite rather than
+guessing its authorization and receipt rules.
+
+Use the guide's actual distinction between administrator preparation, scoped
+HTTP Agent execution, local browser actions, and native video CLI/MCP. In
+particular, an Agent bearer token cannot create or approve content or operations.
+Read the linked implementation for the specific task before editing code; use
+the target service's actual response to distinguish deployed behavior from a
+newer checkout. Preserve exact approved text, account identity, real readback
+and idempotent receipt recovery. Do not claim Mac Downloads backup unless the
+documented browser or local process has actually written and verified it.
+
 ## Required boundaries
 
 - Never write tokens, cookies, passwords, private keys, customer data or private contact details into the repository, logs, tests, fixtures or screenshots.
