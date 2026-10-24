@@ -9,6 +9,8 @@ import { GitHubAdapter } from "./adapters/github.mjs";
 import { VideoEditAdapter } from "./adapters/video-edit.mjs";
 import { PersonalGeoEngine } from "./engines/geo-evidence.mjs";
 import { VideoMediaEngine } from "./engines/video-media.mjs";
+import { createAdminAuth } from "./security/admin-auth.mjs";
+import { AccountOperationsService } from "./services/account-operations.mjs";
 
 const rootDir = resolve(import.meta.dirname, "..");
 const host = process.env.HOST || "127.0.0.1";
@@ -23,6 +25,7 @@ const configuredHosts = process.env.ALLOWED_HOSTS
 const allowedHosts = configuredHosts?.length
   ? configuredHosts
   : ["127.0.0.1", "localhost", "::1", "[::1]"];
+const auth = createAdminAuth({ env: process.env, host, allowedHosts });
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error("PORT must be an integer between 1 and 65535.");
@@ -33,6 +36,7 @@ await store.open(() => loadSeedState(dataDir));
 await migratePengManagerIdentity(store, dataDir);
 
 const service = new GeoOsService({ store });
+const accountOperations = new AccountOperationsService({ service });
 const geoEngine = new PersonalGeoEngine({
   rootDir,
   ...(process.env.GEO_ENGINE_DB
@@ -57,6 +61,10 @@ const server = createGeoOsServer({
   geoEngine,
   publicDir,
   allowedHosts,
+  auth,
+  accountOperations,
+  publicWebsite: process.env.PUBLIC_WEBSITE === "1",
+  mediaRenderEnabled: process.env.ENABLE_MEDIA_RENDER !== "false",
 });
 
 server.listen(port, host, () => {
@@ -75,4 +83,4 @@ function shutdown(signal) {
 process.once("SIGINT", () => shutdown("SIGINT"));
 process.once("SIGTERM", () => shutdown("SIGTERM"));
 
-export { server, service, store, geoEngine, mediaEngine };
+export { server, service, store, geoEngine, mediaEngine, auth, accountOperations };

@@ -20,7 +20,59 @@ All write endpoints accept JSON and return structured errors:
 }
 ```
 
-## Read
+## Public website and authentication
+
+With `PUBLIC_WEBSITE=1`, `GET /` serves the public personal website. `GET /about`
+also serves that website. `GET /admin` serves the operational dashboard and is
+protected when administrator authentication is enabled. The default local-only
+development listener keeps the dashboard at `/` as well.
+
+| Method | Path | Access and response |
+|---|---|---|
+| GET / HEAD | `/healthz` | Public minimal liveness: `ok`, `service`; no operational counts |
+| GET | `/public-api/profile` | Public bilingual identity and filtered public claims |
+| GET | `/login` | Public login page; does not grant access to private state |
+| GET | `/api/auth/status` | `enabled`, `authenticated`; an authenticated session also identifies its server-derived actor and expiry |
+| POST | `/api/auth/login` | JSON `{ "password": "…" }`; returns authentication status and sets an HttpOnly, SameSite=Strict session cookie |
+| POST | `/api/auth/logout` | Revokes the current browser session and expires its cookie |
+
+Public/production configurations require a valid `ADMIN_PASSWORD_HASH`, an HTTPS
+`PUBLIC_ORIGIN`, and its matching allowed Host. Startup fails closed if the
+configuration is incomplete. Production cookies are Secure and host-only.
+Passwords are scrypt hashes in service configuration; plaintext passwords are
+not stored. The login endpoint bounds failed attempts and concurrent password
+verification. Authentication expiry returns 401 for private APIs; opening the
+protected dashboard redirects to `/login`.
+
+The optional `ADMIN_AGENT_TOKEN_HASH` enables a separate bearer credential. Its
+plaintext value is sent only in an `Authorization: Bearer …` request header,
+never in a URL, operation, receipt, repository or screenshot. Server configuration
+contains only its hash. Its exact route scope is:
+
+- GET `/api/bootstrap`, `/api/summary`, `/api/events`, `/api/content`,
+  `/api/interactions`, `/api/operations`.
+- POST `/api/interactions` and `/api/operations/:id/start`, `complete`, `fail`.
+- Operation writes additionally require an existing administrator approval,
+  `executionMode: "browser"`, and a non-L0/non-L3 interaction.
+
+The Agent cannot create or approve operations, update accounts, approve claims
+or content, call live publishing/model routes, or bypass the workflow through
+`POST /api/publications/manual`. Supplying a bearer credential never falls back
+to a more privileged browser cookie. The server derives mutation actors from
+the authenticated principal on account/operation/interaction/receipt routes;
+operation approval uses that administrator identity. For Agent completion,
+`capturedBy` and `verifiedBy` are set to the Agent identity and
+`verificationMethod` is forced to `browser_readback`, even if the request tries
+to name a human reviewer.
+
+`/public-api/profile` does not return aliases, account records, private facts,
+content, operations, interaction text, media paths or operational counts. Claims
+must be `approved_public`, approved, unexpired and free of sensitive text, have
+`source.visibility: "public"`, and not declare a sensitivity other than `low`.
+Only a safe source `label`, `url`, and `visibility` are exported; arbitrary
+source notes are omitted. Credential-bearing source URLs are excluded.
+
+## Private read
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -31,6 +83,7 @@ All write endpoints accept JSON and return structured errors:
 | GET | `/api/claims` | Claim ledger |
 | GET | `/api/content` | Content objects |
 | GET | `/api/interactions` | Classified interactions |
+| GET | `/api/operations` | Account-operation drafts, authorization snapshots and receipts |
 | GET | `/api/geo/queries` | GEO query set |
 | GET | `/api/geo/observations` | AI answer samples |
 | GET | `/api/geo/metrics` | Mention, citation, negative and coverage metrics |
@@ -91,6 +144,12 @@ display name. Existing data is upgraded at server startup as described in
 
 | Method | Path | Purpose |
 |---|---|---|
+| PATCH | `/api/accounts/:id` | Update actual handle/profile URL, account status and platform-rule review |
+| POST | `/api/operations` | Create one publish or reply operation draft |
+| POST | `/api/operations/:id/approve` | Record one administrator authorization for the exact operation |
+| POST | `/api/operations/:id/start` | Mark an authorized operation in progress; no external post is sent |
+| POST | `/api/operations/:id/complete` | Record actual platform readback and complete; publications also update the content ledger |
+| POST | `/api/operations/:id/fail` | Preserve a failure reason and end an incomplete operation |
 | POST | `/api/claims/:id/approve` | Approve a claim and choose `private` or `approved_public` |
 | POST | `/api/content` | Create a draft |
 | POST | `/api/content/:id/transition` | Move through fact check and approval states |
@@ -127,13 +186,21 @@ artifacts, not merely echoed in the API response.
 
 ## Request boundary
 
-The default listener accepts only loopback Host values listed in
-`ALLOWED_HOSTS`. Requests carrying a foreign `Origin`, `Sec-Fetch-Site:
-cross-site` or a non-allowlisted Host are rejected before route handling.
-Non-browser CLI requests remain possible when they do not claim a foreign
-origin.
+The default listener accepts only allowlisted loopback Hosts. Public deployment
+uses the exact configured HTTPS origin and Host, independently of caller-supplied
+forwarded host/protocol headers. Foreign Origins and cross-site API requests are
+rejected before route handling. Ordinary cross-site navigation to the public
+website/login shell is permitted; it does not authorize access to private APIs.
+A CLI client may omit browser Origin headers but must still provide the required
+session or scoped Agent authentication.
 
-## State machine
+JSON request bodies must be objects, are limited to 1 MB, and invalid JSON,
+arrays or null return a structured client error. Platform cookies, passwords,
+access tokens and other login credentials are not operation fields. Sensitive
+operation text and nested credential-shaped fields are rejected before writes.
+
+
+## Content state machine
 
 ```text
 draft -> fact_check -> approved -> scheduled
@@ -152,6 +219,125 @@ published -> archived
 - `receipt.capturedBy`
 - `receipt.dataMode` equal to `real` or `imported`
 
+The administrator-only legacy endpoint retains public HTTP/HTTPS URLs and its
+original required fields. New writes reject credentials, local/numeric/example
+hosts, and credential-bearing query/fragment values; existing stored receipts
+are preserved. Agent execution uses the stricter operation-completion workflow
+below.
+
+## Account settings
+
+`PATCH /api/accounts/:id` accepts any of:
+
+```json
+{
+  "handle": "actual-platform-handle",
+  "profileUrl": "https://github.com/geniusdapeng-collab",
+  "status": "active",
+  "policyStatus": "reviewed",
+  "policyCheckedAt": "2026-10-24T00:00:00+08:00"
+}
+```
+
+`status` is `draft`, `active`, or `paused`; `policyStatus` is `reviewed` or
+`manual_review_required`. Reviewed rules require a valid review date and record
+the server-derived reviewing actor. `profileUrl` may be empty to clear the URL;
+a non-empty value must be a public HTTPS URL without credentials. This updates
+the internal account record, not the platform's remote profile or login session.
+
+## Account-operation state machine
+
+```text
+draft -> approved -> in_progress -> completed
+draft / approved / in_progress -> failed
+```
+
+`failed` and `completed` are terminal. A failed operation can be replaced by a
+new draft. A second active publish operation for the same content is rejected;
+the existing content state machine supports one publication per content object.
+Use separately approved content objects for different platform/account posts.
+
+Create a publish draft with `accountId`, `type: "publish"`, `contentId`, and
+`executionMode: "browser"` or `"manual"`. The service records an immutable
+`contentSnapshot` (`title`, `body`, `version`), `contentHash`, and
+`accountSnapshot` (`id`, `platform`, `handle`, `profileUrl`). Creation does not
+publish anything. Approval requires content already in `scheduled` and rechecks
+account activation, platform rules, target platform and current Claim validity.
+
+Create a reply draft with:
+
+```json
+{
+  "accountId": "github",
+  "type": "reply",
+  "executionMode": "browser",
+  "targetUrl": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/1",
+  "replyText": "The exact complete reply authorized for this action.",
+  "interactionId": "INT-0001"
+}
+```
+
+`interactionId` is optional. When present, the original interaction text remains
+part of risk classification. L0 is human-only and requires `manual`; L3 cannot
+be authorized for a reply. The service hashes the exact reply body.
+
+`POST /api/operations/:id/approve` requires `authorizationNote`; it records
+`approvedBy`, `approvedAt`, and the approved `contentHash`. Approval is an
+administrator action. `start` marks execution and its actor/time, with no
+external-platform request. Content and account identity are rechecked at
+approval, start and completion; changing a handle/profile URL returns
+`ACCOUNT_IDENTITY_CHANGED`, and changing body text returns
+`OPERATION_CONTENT_CHANGED`. Old authorization cannot be reused for the changed
+account or text. Historical operation displays retain the original handle.
+
+After actually publishing/replying in the authorized local browser, open the
+platform result and compare it with the approved text. Complete the operation
+with:
+
+```json
+{
+  "receipt": {
+    "url": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/1#issuecomment-123",
+    "publishedAt": "2026-10-24T10:00:00.000Z",
+    "capturedBy": "PengManager",
+    "dataMode": "real",
+    "verificationMethod": "browser_readback",
+    "verifiedAt": "2026-10-24T10:01:00.000Z",
+    "verifiedBy": "PengManager"
+  }
+}
+```
+
+The example is a schema illustration, not evidence that its URL was published.
+The actual receipt must identify the real result. `dataMode` is `real` or
+`imported`; `verificationMethod` is `browser_readback` or `manual_readback`.
+All shown fields are required. `contentHash` is optional in the request, but if
+provided must match; the server always records the authorized hash. Dates must
+be valid and cannot be more than one minute in the future. Readback cannot
+precede publication. Result/target URLs must be public HTTPS and exclude
+loopback/numeric/example hosts, userinfo, credential query parameters and
+credential-bearing URL fragments, including encoded fragments. Normal platform
+comment anchors are retained.
+
+The service records the executor's readback statement; it does not fetch the
+platform page or independently prove that a supplied URL was published. For
+publishing, completion calls `GeoOsService.recordPublication`, preserving the
+content/Claim gates and content hash. For replies, the operation stores the
+exact reply, target, readback and receipt hash without fabricating a content
+publication record. Both paths append events.
+
+Submitting the same normalized receipt again returns the completed operation
+without duplicate ledger/event writes, including concurrent requests sharing
+the same store. A different receipt returns `RECEIPT_CONFLICT`. A platform URL
+already used by a different operation on that account returns
+`DUPLICATE_PLATFORM_RECEIPT`. If publication was persisted but the operation's
+second write failed, retry the same receipt to finish recovery; do not republish
+or mark the already-recorded publication as failed. Run only one writable
+process per JSON data file.
+
+`POST /api/operations/:id/fail` requires `reason`; the authenticated actor and
+time are retained. A recorded publication cannot be overwritten by failure.
+
 ## Example
 
 Create a draft:
@@ -169,4 +355,4 @@ curl -sS http://127.0.0.1:4318/api/content \
   }'
 ```
 
-The default seed claims are private and unapproved. Approve a claim before moving related content into `approved`.
+The default seed claims are private and unapproved. Approve a claim before moving related content into `approved`. The curl example targets local development; protected deployment additionally requires a valid administrator session. Use the operational workflow above for browser execution and readback receipts.
