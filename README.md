@@ -2,7 +2,7 @@
 
 鹏经理系统是李大鹏（PengManager）的个人网站与私有经营后台。公开主页展示中英文介绍和已经批准公开的事实；登录后的后台管理账号矩阵、内容准备、授权、发布与回复回执，以及 AI 搜索观察。系统保留本地优先的数据方式，也提供阿里云单机部署、HTTPS、登录、停服备份和更新恢复支持。
 
-系统内置个人 GEO 证据引擎和视频后期引擎，可在同一仓库内完成查询采集、引用与提及分析、文章草稿、字幕、调色、BGM、封面和视频打包。GeoEvidence Studio 与 WorkLoom-video-edit 的相关代码已纳入 `engines/`，无需另外启动这两个上游项目。
+系统内置个人 GEO 证据引擎与完整视频生产引擎，覆盖 AI 视频生成、AI 剪辑、AI 口播、Compositor 作图，以及对应的数字员工、技能、工具和素材库。视频引擎保留原生 PostgreSQL 事务、身份、预算、授权、审批和生产档案；根服务统一管理独立数据库、视频后端与工作台，无需运行另一个 Edit 项目。
 
 仓库地址继续使用 [`geniusdapeng-collab/geniusdapeng-geo-os`](https://github.com/geniusdapeng-collab/geniusdapeng-geo-os)。项目展示名称与主账号资料已统一为 PengManager；GitHub 仓库路径与既有证据地址保持兼容。
 
@@ -38,16 +38,19 @@ English bio:
 | 运营动作与回执 | 为每次发布或回复建立草稿、记录具体授权、执行状态与实际结果；完成发布时同步既有内容账本 | 账号身份快照、正文哈希、真实 URL、发布与回读时间、核验人 |
 | 互动分流 | 将评论、私信和线索分为 L0–L3，识别需人工处理的场景 | 分类记录与人工处理边界 |
 | 个人 GEO | 管理查询、采集 AI 回答、保存引用、计算提及率和引用指标 | 真实或导入样本、证据哈希与采集时间 |
-| 视频生产 | 基于本地视频素材生成后期、字幕、封面、风格变体和交付包 | 媒体任务、产物哈希与技术质检回执 |
+| 完整视频工作台 | 从创作意图进入事实情报、策划分镜、素材授权、预算资格、AI 生成、剪辑、口播、后期、返修和交付 | 原生项目、围栏审批、预算账本、生产档案与当前字节回执 |
+| 能力与数字员工目录 | 检索完整角色、技能、工具、能力和安装项，查看来源、绑定和验证状态 | 本地受控清单与独立工位诊断，声明不冒充产出 |
+| 本地快捷后期 | 对已有本地片段执行字幕、调色、合成环境音、封面、风格变体和打包；默认每段最多 4 秒 | 本地任务与技术质检，不替代完整 AI 生产流程 |
 | 事件账本 | 为数据变更追加前后相连的 SHA-256 事件 | 可验证的哈希事件链 |
 
 种子数据包含 120 条内容选题和工作流示例，初始事实仍需审核。系统不会把草稿、演示数据、本地产物或一次 HTTP 成功响应当成外部发布完成。
 
-## 三个典型工作流程
+## 典型工作流程
 
 1. **统一个人账号资料**：核对主账号与各平台档案，使用同一套中英文展示名和简介，再按各平台实际规则人工更新外部主页。
 2. **交付内容并回复读者**：选题 → 批准 Claim → 事实核验 → 内容审批与排期 → 建立单账号发布动作 → 本次授权 → 本人在浏览器操作，或由获授权的 Codex 使用本机已登录浏览器执行 → 打开平台结果核对 → 回写 URL 与回执。回复同样记录目标帖子、精确正文、授权与回读；高风险互动由本人手工处理。
 3. **检验 AI 是否正确识别个人品牌**：固定查询 → 采集 AI 回答与引用 → 对比实体提及、同名歧义及负面样本 → 根据证据补充内容 → 下一轮复测。
+4. **生产 AI 视频、口播或作图**：视频工作台 → 原生项目与数字员工 → 事实和素材核验 → 所需人工审批与预算资格 → 配置的模型/本机工位 → 剪辑后期 → 质量证据与交付。供应商和依赖未就绪时明确显示缺项；付费调用与发布需相应授权。
 
 ## 本地启动
 
@@ -55,8 +58,26 @@ English bio:
 
 ```bash
 pnpm install --ignore-scripts
+node scripts/video-setup.mjs --install --build --postgres-root /path/to/postgresql-17
 node src/server.mjs
 ```
+
+首次安装需要完整的 PostgreSQL 17 工具包及 pgvector，`--postgres-root` 指向其安装前缀（含 `bin/lib/share`）；安装器把工具复制到鹏经理私有存储，不复制已有数据库。依赖安装与构建使用内置引擎的锁文件。已有完整依赖和构建时可省略 `--install --build`；诊断命令为 `node scripts/video-doctor.mjs`。实际选项与依赖缺项以命令输出为准。
+
+当前以 CLI/MCP 调用为主，默认不启动视频网页。查看完整员工、技能、工具目录与已审定的 Agent 调用入口：
+
+```bash
+node scripts/agent.mjs status
+node scripts/agent.mjs capabilities
+node scripts/agent.mjs list
+node scripts/agent.mjs describe growth.video.production.shots
+node scripts/agent.mjs invoke core.workspace.profile
+node scripts/agent-mcp.mjs
+```
+
+`invoke` 接受 `--input-file <JSON文件或->`，`-` 从标准输入读取。MCP 使用 stdio，提供与 CLI 相同的已登记工具和 `pengmanager_video_status`、`pengmanager_video_capabilities`。完整目录包括全部内置角色、技能、工具；可直接调用的 Agent 工具以 `list` 的登记项为准，其他完整引擎能力保留原生 CLI/SDK 入口。原生调用通过真实本机身份进入原有权限、租户、审批、预算与回执流程，不提供任意 RPC 路径或自动审批。
+
+独立 Agent 进程在首次需要原生服务时管理自己的服务生命周期，退出时清理；同一私有数据目录一次运行一个监督进程。已有会话可通过当前进程的 `WORKLOOM_ACCESS_TOKEN` 和相同的 `PENGMANAGER_VIDEO_BACKEND_PORT` 附着正在运行的本机后端，不会另起或停止它，令牌不写入文件或命令参数。网页可后续选择启用：`node scripts/video-start.mjs --with-workbench`，或设置 `PENGMANAGER_VIDEO_WORKBENCH=1`。根控制台仍位于 <http://127.0.0.1:4318>；查看状态和目录不会调用模型或提交生成任务。
 
 打开 <http://127.0.0.1:4318> 或 <http://127.0.0.1:4318/admin>。默认开发模式只监听本机回环地址；未启用密码时仅供本机使用。未配置模型或平台凭据时，对应实时适配器会报告不可用；账号、事实、草稿与运营记录仍可使用。
 
@@ -71,6 +92,8 @@ Codex 回写可使用独立、受限的 Agent 令牌：它只能读取允许的�
 - `var/media/jobs/`：媒体任务、过程文件、最终产物与任务回执。
 
 如通过 `DATA_FILE` 或 `GEO_ENGINE_DB` 改过存储位置，备份时也要包含对应路径。
+
+完整视频数据库、凭据和产物另保存在仓库外的私有目录。macOS 默认为 `~/Library/Application Support/PengManager/video-runtime`；其他系统默认目录由 `src/video-runtime/config.mjs` 定义，也可设置 `PENGMANAGER_VIDEO_DATA_DIR`。该目录含受保护凭据与 PostgreSQL 数据，不能提交、复制进仓库或放入公开证据。备份与恢复必须同时覆盖这两组数据，见运维说明。
 
 ## 现有数据与名称兼容
 
@@ -135,7 +158,8 @@ GitHub 适配器从当前进程的 `GITHUB_TOKEN` 读取令牌；模型适配器
 ```text
 src/                  领域规则、状态机、存储与 HTTP 服务
 engines/geo-evidence/  个人 GEO SQLite 与采集、指标、文章引擎
-engines/video-edit/    后期、字幕、调色、封面与打包代码
+engines/video-edit/    完整锁定 Edit 引擎、原生服务/UI/数据库/数字员工/技能/工具/素材
+src/video-runtime/    独立数据库、原生身份、受管服务与工作台生命周期
 public/               公开个人主页、登录页与响应式私有后台
 deploy/aliyun/        阿里云单机预检、安装、更新、备份与恢复
 data/seed/            账号、事实、查询、示例与 120 条选题
@@ -145,4 +169,4 @@ tests/                单元与 HTTP 集成测试
 var/                  已忽略的私有运行数据与本地产物
 ```
 
-GeoEvidence Studio 与 WorkLoom-video-edit 的上游版本、许可证和来源保留在 `upstreams/` 与相应引擎目录。WorkLoom 桌面壳、PostgreSQL、租户系统与无关行业包未纳入本系统。
+GeoEvidence Studio 与 WorkLoom-video-edit 的上游版本、许可证和来源保留在 `upstreams/` 与相应引擎目录。完整 Edit 源码按受控快照保留，PengManager 用自己的私有数据库和真实本机工作区启动；不连接另一套运行中的 Edit 服务，不导入上游经营样本或自动批准队列。目录声明、依赖就绪和实际产出分别记录；完整目录不代表所有供应商已经配置或所有能力完成生产验收。

@@ -1,0 +1,43 @@
+{
+  "version": "hotel-connectors/v1",
+  "note": "酒店获客外部连接器清单（mock 先行，接口标准化；签下首家真实客户后按厂商定向对接）",
+  "connectors": [
+    {
+      "key": "pms",
+      "name": "PMS 酒店管理系统",
+      "direction": "read",
+      "objects": ["room_calendar", "booking_order", "guest"],
+      "driver": "mock",
+      "vendor_field": "archive.property.pms_vendor",
+      "purpose": "房态/订单回传——内容排期房态联动与成交核销对账的数据源",
+      "env": "PMS_DRIVER"
+    },
+    {
+      "key": "douyin-local",
+      "name": "抖音本地生活",
+      "direction": "read_write",
+      "objects": ["poi_store", "coupon_sku", "live_campaign"],
+      "driver": "mock",
+      "purpose": "POI 门店绑定/券核销数据/直播场次数据——团购券成交归因的关键数据源",
+      "env": "DOUYIN_LOCAL_DRIVER"
+    },
+    {
+      "key": "ota-watch",
+      "name": "OTA 监测（携程/美团/飞猪）",
+      "direction": "read",
+      "objects": ["channel", "review"],
+      "driver": "mock",
+      "purpose": "价格与评论监测——竞对情报与差评 SLA 联动（R19）；差评关键词入意图雷达",
+      "env": "OTA_WATCH_DRIVER"
+    },
+    {
+      "key": "wecom",
+      "name": "企业微信",
+      "direction": "write",
+      "objects": ["lead", "member"],
+      "driver": "mock",
+      "purpose": "私域承接——A 级线索分配服务顾问侧边栏跟进；复购唤醒触达通道",
+      "env": "WECOM_DRIVER"
+    }
+  ]
+}

@@ -156,7 +156,7 @@ export function inferEditIntent(input: {
   const contentDomain = analyses.map((doc) => doc.contentDomain).find((domain) => domain && domain.length > 0) ?? null;
   const domainHint = DOMAIN_HINTS.find((hint) => hint.pattern.test(`${contentDomain ?? ""} ${firstWithAsset?.asset?.filename ?? ""}`)) ?? null;
 
-  // —— 平台 ——
+  // —— 平台 —— 
   let platform: string;
   let platformBasis: string;
   if (input.platformHint) {
@@ -179,7 +179,7 @@ export function inferEditIntent(input: {
     platformBasis = `未取得画幅信息，按内容领域${domainHint ? `「${domainHint.platform}」` : "的通用选择"}给出默认`;
   }
 
-  // —— 时长带（平台默认 × 素材可用量上限）——
+  // —— 时长带（平台默认 × 素材可用量上限）—— 
   const band = PLATFORM_BANDS[platform] ?? PLATFORM_BANDS["微信视频号"]!;
   let minSeconds = band.minSeconds;
   let maxSeconds = band.maxSeconds;
@@ -199,7 +199,7 @@ export function inferEditIntent(input: {
     notes.push(`可用素材仅 ${Math.round(totalFootageSeconds)}s：成片会偏短，建议补料或降低目标时长`);
   }
 
-  // —— 节奏档案 ——
+  // —— 节奏档案 —— 
   const speechRatio = totalFootageSeconds > 0 ? speechSeconds / totalFootageSeconds : 0;
   const talkLike = analyses.length === 1 && speechRatio >= 0.5;
   const pacingProfile: InferredIntent["pacingProfile"] = talkLike ? "talk" : band.pacing;
@@ -207,7 +207,7 @@ export function inferEditIntent(input: {
     ? `单条素材且语音占比 ${(speechRatio * 100).toFixed(0)}%：口播精剪节奏（内容推进，不堆切点）`
     : `按平台体裁默认：${band.pacing}`;
 
-  // —— 受众 / 情绪目标 ——
+  // —— 受众 / 情绪目标 —— 
   const dominantEmotions = new Map<string, number>();
   for (const doc of analyses) {
     for (const shot of doc.shots ?? []) {
@@ -225,7 +225,7 @@ export function inferEditIntent(input: {
     notes.push("素材没有可用的情绪标签（未跑镜头理解或标签为空）：情绪目标按平台通用值给默认，建议跑一次镜头理解后复核");
   }
 
-  // —— 选题候选 ——
+  // —— 选题候选 —— 
   const topicCandidates = extractTopicCandidates(analyses);
   if (topicCandidates.length === 0) {
     notes.push("没有从画面文字/实体里抽到选题候选：建议先跑镜头理解（keyEntities）或 OCR，再让创意岗出候选");

@@ -65,3 +65,4 @@ print(json.dumps({
 sys.exit(0 if ok else 4)
 PY
 echo "✓ 工位自检通过；产物在 $OUT"
+

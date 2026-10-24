@@ -1,0 +1,744 @@
+{
+  "schemaVersion": "workloom.client-foundation-state/v1",
+  "baseRepository": "workloom-ai/workloom-im",
+  "version": "0.1.19",
+  "sourceRef": "refs/tags/ui-v0.1.19",
+  "sourceCommit": "2c5a02e8b4b3fb40b72549bc0a2c51539914c059",
+  "updatePolicy": "upgrade-pr-only",
+  "clients": {
+    "bPc": "apps/web",
+    "bMobile": "apps/webb",
+    "cMobile": "apps/webc"
+  },
+  "allowedIndustryExtensionPaths": [
+    "apps/*/src/extensions/**",
+    "apps/*/src/projections/**",
+    "apps/*/src/config/industry/**",
+    "apps/*/src/theme/industry/**",
+    "apps/*/public/industry/**"
+  ],
+  "managedFiles": {
+    "apps/web/consumer-e2e/clients.playwright.ts": {
+      "sha256": "91fa35369fdad9280a15e647ffad72961b41a5d478d3c50d69e1df408a423e8f",
+      "mode": 420
+    },
+    "apps/web/index.html": {
+      "sha256": "ac4734f030587b91b9064ebbbbb30a7970ac5411a41f0ad9918857f2906fea6e",
+      "mode": 420
+    },
+    "apps/web/package.json": {
+      "sha256": "17273b001dea29afe53c13a4f3cdd17685cea4081bde2521ab5157ec45a1081b",
+      "mode": 420
+    },
+    "apps/web/playwright.consumer.config.ts": {
+      "sha256": "04f53ae00b39c3af426482d4b9bd28dd13aff3db7879dcb51573de5fcddf1c21",
+      "mode": 420
+    },
+    "apps/web/public/live2d/live2d.min.js": {
+      "sha256": "e4ea1f18bdd44b65394ffd5a1bab16982e88757d45134d1bd0737c8a6b3ddd08",
+      "mode": 420
+    },
+    "apps/web/public/live2d/live2dcubismcore.min.js": {
+      "sha256": "25ae938cb4fe282ce189b357bcc97e603d1e1f7ec78bf04150d401c23cdc792f",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_01.exp3.json": {
+      "sha256": "afbe54559e428acdaf43190d1c497792048c35ed37979f33d9a37c70181ddf5b",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_02.exp3.json": {
+      "sha256": "6d35132627f9e362e526c0ce8c2152ece2b305c9abd3368da43460c2af8538f6",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_03.exp3.json": {
+      "sha256": "460a3077d61adfdd1e6b9a062d0d7c3fcc2fb74c80f67ec3649982a9fab49bee",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_04.exp3.json": {
+      "sha256": "abad61f4ec7f1a157d6b914643e5bd4ffb29964e67f538cace420ebc9f69a716",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_05.exp3.json": {
+      "sha256": "331fe0d9c78861496a9cc9acba9650f295a72af8c36df7036ab8a372840d2cc1",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_06.exp3.json": {
+      "sha256": "52f1e391008d61efb17a33602c004a637a42bdb8af8aca3d2319ac5dac215ed1",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_07.exp3.json": {
+      "sha256": "8bf587d3d7bef509166c8ff95cc9f47c23c895eaf55f9d95110263e44452a53a",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/expressions/exp_08.exp3.json": {
+      "sha256": "761190452e48d22727fce91e76270af2c27b0bb0ee3d04b2c6b0dc6cec49f88d",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.2048/texture_00.png": {
+      "sha256": "0b97283d69e62d346bcca25f8a91a5dd477f2e668ad9801b15fa7f108631c624",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.cdi3.json": {
+      "sha256": "f261069f302c013f1c60b48045aa4bf5ac2cb086ebb54917f7e5c3f47e5c8f81",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.moc3": {
+      "sha256": "ad5195b39e35e0da8ba0c825ad9cc2d60571502007f6f7d4f00963b768bb90d8",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.model3.json": {
+      "sha256": "d5fb29f93ef3cf3eba96b5aa9538eca063abbebee81a8d2dbeecea0cef4fecba",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.physics3.json": {
+      "sha256": "27de73695ca6418a84953a0b2776e78160f9d0b988521e9bbfa02ff913f20a6d",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/Mao.pose3.json": {
+      "sha256": "efac160eccb7183ee6555d4e53a739042e1c55b92f59a99c2e4bed8e73a5ab91",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/mtn_01.motion3.json": {
+      "sha256": "4a17c9b0b4ffd42ee5b8386cba0ae18916953ac693d79f44cd831bf5d59877f6",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/mtn_02.motion3.json": {
+      "sha256": "aa8c78c03f1d5fe143eedecfb7d077e7e4a7804c93723ba661eef2dd6a5d5ae0",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/mtn_03.motion3.json": {
+      "sha256": "e31eab8c371a253322c68968dbe5895e3029562f31a5b8d277012e94b0a6badd",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/mtn_04.motion3.json": {
+      "sha256": "a95f67d35c81755dee7f3be1e5e60171f090026725f628c99a1e3585985a1ac1",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/sample_01.motion3.json": {
+      "sha256": "21293d1d7c91f8d8b055f5215274df663e345a198517ebf8e3d26613ba37324a",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/special_01.motion3.json": {
+      "sha256": "141320d2e8913097156bf61aa2c27cd51ffcf8ba5d288172da288d2afcc164db",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/special_02.motion3.json": {
+      "sha256": "68e6e12c14d2c06504891971dcdce7771637aedbda9ef5edc616fd4f6972d20c",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/motions/special_03.motion3.json": {
+      "sha256": "fe6b990b6d26a48955c0b33e27c3de8e020c98d2d06be41dcdfecdd053e6dd0f",
+      "mode": 420
+    },
+    "apps/web/public/live2d/mao/poster.png": {
+      "sha256": "80ef1589325a341fab7fd91a3370be8418f2491dace7e7849c27ccdbe6323da9",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/expressions/f01.exp.json": {
+      "sha256": "2ad7b7c52d8cd1775e0252dde662b7a23903b93be6cab5c652a893ae65b01a89",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/expressions/f02.exp.json": {
+      "sha256": "15402fd2ec5058f408dee8e7707b92530c2448fd1221a63e906b376e7e69e42d",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/expressions/f03.exp.json": {
+      "sha256": "d060d1d61fd031b511157e63f51defb384909c54a71d6c9f12335a5a19cb9eaa",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/expressions/f04.exp.json": {
+      "sha256": "d51cfe70251a5a74bc09a9389b184b5b93911d49938a038146fe365cc791ad35",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle_00.mtn": {
+      "sha256": "18f93d1c4516217f64ed49d0f47cd57bccc8e8e0003de0ccd55afc477812c139",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle_01.mtn": {
+      "sha256": "86a42dc5e0b8e6405ab9705f167335373a5cd8ccf518029ef1619f5787e6df64",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle_02.mtn": {
+      "sha256": "d957990d9a0339fa9916cb4cd5f20489d66a8415a9f666029d6f6daf28660d65",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle/idle_00.mtn": {
+      "sha256": "18f93d1c4516217f64ed49d0f47cd57bccc8e8e0003de0ccd55afc477812c139",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle/idle_01.mtn": {
+      "sha256": "86a42dc5e0b8e6405ab9705f167335373a5cd8ccf518029ef1619f5787e6df64",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle/idle_02.mtn": {
+      "sha256": "d957990d9a0339fa9916cb4cd5f20489d66a8415a9f666029d6f6daf28660d65",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/idle/idle_03.mtn": {
+      "sha256": "b03769c810512f4ed119bdb5130ab3a590169009434bf937757eb19ab1f7f42d",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/tapBody_00.mtn": {
+      "sha256": "d22ef1d7bf6846a73a1189ca390ccf3fc0ca5e7ae0406928b93dce06f50e3d2c",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/tapBody_01.mtn": {
+      "sha256": "d2a245397b7e439d740ea207e95f7e82a35964dbcb1c129c93f47df63df65316",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/motions/tapBody_02.mtn": {
+      "sha256": "bcc843c49d0bfd65c5e06fc367c7f01f83096e3e5e748b55df6aa669674be42a",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_00.png": {
+      "sha256": "cb52df3b6446e4a97050cbf0e9e37806465ea19c6088e61313710cb8d9b0e30b",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_01.png": {
+      "sha256": "77520e0ab5142684d26056f5e1db3c2818a6029fdae3ba80ef3edf2a26f01feb",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_02.png": {
+      "sha256": "bcb74693673aff40bb2cfd291b9af3354c8c527532f16e75c7610b101eec07ff",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_03.png": {
+      "sha256": "cf5fec0e0313de969adbaa90aa34a727f554629c54ec35ca19a9cb7bc6db7c4d",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_04.png": {
+      "sha256": "1de262a22378c0e7b6ae40b72908cff47921b323d54cf33695ace219a28412d8",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.1024/texture_05.png": {
+      "sha256": "5ff56ae4328935b8d27136d827ee6a4f7fd4ca80761ab845a1e5c61c5a3ffa39",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.moc": {
+      "sha256": "56addfb6698bff6e2bc10eb0b2a54f72f6c955858a07574deaf6d4d3a6de8782",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.model.json": {
+      "sha256": "488c8350e4daee4dc7aefef03bafede682b4384a4a42a4f706bc3c3655f64b4a",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.physics.json": {
+      "sha256": "ad2ff633945d54adc32e9e563319fed0a77ae689f09a5ee187c3241920aee63a",
+      "mode": 420
+    },
+    "apps/web/public/live2d/shizuku/shizuku.pose.json": {
+      "sha256": "07b05afa0f990797553e7970f6d0b73653a04e7f5b7e274c27beb0ef906c2275",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/Barbarian.glb": {
+      "sha256": "cefc311a0e10c7858b6141f5ada7e33268727564fb8ac1347aab97d000669cc6",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/Knight.glb": {
+      "sha256": "60428e3abc09ba83e595d256e3af8c5c976b46cdae599f0802fc82b4a3445168",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/Mage.glb": {
+      "sha256": "cf898585da33fab50c724d31605fb931eb2912e6d2280092141e98ca81ad507d",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/mug_full.bin": {
+      "sha256": "b79442e95a5f2d02aec88fca5ea16574e5a5210daf1bc6e294a39a4c7d1aeecb",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/mug_full.gltf": {
+      "sha256": "354aa166f25c2e2f88b309129fb5638f98f852358f638293865c7b8767516fda",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/Rogue_Hooded.glb": {
+      "sha256": "93e6e25213009952276d9cf34f5d96a243767334c66f280db0433ddfabb91545",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/Rogue.glb": {
+      "sha256": "e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/shield_badge.bin": {
+      "sha256": "3c0f04767c839868df1f852cb335848c3ba7d94da3078e4c7f8a422f2369560c",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/shield_badge.gltf": {
+      "sha256": "51b687316b2f9bfe89e586a6ef5f91cface8a326c9d604c8acea7699d6f3523d",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/spellbook_open.bin": {
+      "sha256": "888e45aff64aba1bea6ef3abfad27024b2697f7adbab319c089bc70c077c4a5b",
+      "mode": 420
+    },
+    "apps/web/public/models/kaykit/spellbook_open.gltf": {
+      "sha256": "5a7891f8fe12a0c84dfbb64454b0b6b51328894011021e5c664bc8701aaf40ad",
+      "mode": 420
+    },
+    "apps/web/src/components/AIFeedback.tsx": {
+      "sha256": "7d91a6899e812b0c02175d7ef9a20329005c3824ff7b0f4e4b96e39c911f7731",
+      "mode": 420
+    },
+    "apps/web/src/components/AudioSettings.tsx": {
+      "sha256": "3dccc3ba0d0fb1ce377479880dd1d87f1568b49494af3f84f7068b886bd1b15f",
+      "mode": 420
+    },
+    "apps/web/src/components/Avatar3D.tsx": {
+      "sha256": "8f21118320959db5b40c99cf05e7facb69ef9517805df01f069697e15c37a28a",
+      "mode": 420
+    },
+    "apps/web/src/components/BackendGate.tsx": {
+      "sha256": "0afaf41d49b9dfe49803d90b5f6ecf51511575a16db5041db4ebc87cf46371f2",
+      "mode": 420
+    },
+    "apps/web/src/components/BusinessAvatar3D.tsx": {
+      "sha256": "6bf778c0f5091335b4d8709f9e5b9d9eb6df3f820b79319d46253b043f683c2d",
+      "mode": 420
+    },
+    "apps/web/src/components/CeremonyStage.tsx": {
+      "sha256": "b3e2bc1287367b23e1bb785a99b20f53bb042fb7e3bd5f0c455f923323c8f0bd",
+      "mode": 420
+    },
+    "apps/web/src/components/CineDirector.tsx": {
+      "sha256": "b72d38e0781af780afcb48796c9d3efa3029c98a9f63b927c2650feb5363f083",
+      "mode": 420
+    },
+    "apps/web/src/components/cinematic.tsx": {
+      "sha256": "e9e9f5875654f6f700bdf39b3d3908b31105188580b10a612f7bb8e52d4f6fc2",
+      "mode": 420
+    },
+    "apps/web/src/components/CommandCard.tsx": {
+      "sha256": "8de3a785a0c74806538056daabc829b4594902c0967a0d9e63b101df9a6e85a8",
+      "mode": 420
+    },
+    "apps/web/src/components/CreditsPanel.tsx": {
+      "sha256": "55c4c914f2d790775b38dd64bf4e5409386448af80e13891170d09acca4b2f70",
+      "mode": 420
+    },
+    "apps/web/src/components/GazeSystem.tsx": {
+      "sha256": "6a62489c452e77594e1990df6cd530307416ef0390429eb1f607c4e14abfa424",
+      "mode": 420
+    },
+    "apps/web/src/components/HoverBubble.tsx": {
+      "sha256": "b033f53c2855118d742c351a1eff5fc638e58093df43a003615f19736384f366",
+      "mode": 420
+    },
+    "apps/web/src/components/RejectDialog.tsx": {
+      "sha256": "649adf5ce106359f0ae6a8bacf8a6b711d62c34565ba8778a8d494551cc008cb",
+      "mode": 420
+    },
+    "apps/web/src/components/UrlQrCode.test.ts": {
+      "sha256": "a4448aa6b38472707678d21d9993c934bb1ddc52a16e4f20e3af91e791cd5dd3",
+      "mode": 420
+    },
+    "apps/web/src/components/UrlQrCode.tsx": {
+      "sha256": "596d259c54a3faad0833833fbc67d6eee9aa450d0c531d3c8859cf693f043ca9",
+      "mode": 420
+    },
+    "apps/web/src/components/welcomeScripts.test.ts": {
+      "sha256": "f4fdd6640a63f9a06d3934de0f057688e06c398d48355f90a2e7e83493b9105b",
+      "mode": 420
+    },
+    "apps/web/src/main.tsx": {
+      "sha256": "9ec9eea9ce0a5ae01330512e7ca202b07ee3d725fbb1ffeaed00f3a094e289ec",
+      "mode": 420
+    },
+    "apps/web/src/styles/subtitle.css": {
+      "sha256": "20729481d6a885c54e6c381810cd00f0b30871fc6b3ad4a5e49fac8e7cef4bf1",
+      "mode": 420
+    },
+    "apps/web/src/styles/tokens.css": {
+      "sha256": "cc8a4da15772a62b9d122ea6afbe49262ec6d12f301c0450ed019ca9a407302e",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/grok-ball.js": {
+      "sha256": "d03f37f261da2e22e55e9b0fa40dcdab62f0a6c6dd419632a088a7c4c9bb79fa",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/grok-ball.ts": {
+      "sha256": "13f773427f7bd0617ee2bfabeed4e343ade94853820465c098f9311dc66fec98",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/index.ts": {
+      "sha256": "fa3f03f0c65c81fcd9b2b9aca3eaaf80c16f789f5c1d7d8a96a44f17bab9727c",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/LICENSE": {
+      "sha256": "b8822ea9da7704044227a433c4d3be2cadfef48307c690b1699abb77604d3532",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/NOTICE.md": {
+      "sha256": "b9a98234edb5167b29bb722c86529c5826a127873915f9c58a1c40764a32bd3c",
+      "mode": 420
+    },
+    "apps/web/src/vendor/loomball/PINNED": {
+      "sha256": "d6c0d3a9957bae9c8611e14d5cbdb738fbf494e922f84578e41ee91a0fad292b",
+      "mode": 420
+    },
+    "apps/web/tsconfig.json": {
+      "sha256": "b10d871fcdc0061dde770a1f473a06213c6c7cd1df966c31b680ef90c1deab1a",
+      "mode": 420
+    },
+    "apps/webb/index.html": {
+      "sha256": "0d3c2c67bfcb358e676e43267383b78566650bb940f9870573d358afa3c53892",
+      "mode": 420
+    },
+    "apps/webb/package.json": {
+      "sha256": "0b93e3e80c3fc77b3ee5efab9db6d559b90362a1060a206611caf86afda555af",
+      "mode": 420
+    },
+    "apps/webb/public/manifest.webmanifest": {
+      "sha256": "46d2034c6ede86837a575d4ca254764436a43c72336eba18f6bf2913a9180dc3",
+      "mode": 420
+    },
+    "apps/webb/public/sw.js": {
+      "sha256": "ece3ca69197a5fce814f2c7d08f2fc48381a0428388cf780182aec441876052e",
+      "mode": 420
+    },
+    "apps/webb/src/main.tsx": {
+      "sha256": "22ed529ea1ef495d0cc3bd05fb0d121c287e2bccc38372ea02f0ade503645681",
+      "mode": 420
+    },
+    "apps/webb/src/routes.test.ts": {
+      "sha256": "aff06c88f1619194caf06a4611321745c5e0a8f6789c603dd8bc96699c4987f9",
+      "mode": 420
+    },
+    "apps/webb/src/routes.ts": {
+      "sha256": "9349f3016492c7820df60c94ed8209bbf2e1685e93d4456eb769c38363961681",
+      "mode": 420
+    },
+    "apps/webb/src/styles.css": {
+      "sha256": "d5e23867c4c70717680dd24065c7590850b36dfdf09f2715c5354b75e1945491",
+      "mode": 420
+    },
+    "apps/webb/tsconfig.json": {
+      "sha256": "245c97b3d4237b939a6c6169ac9817bcaf9db1ea51169bf0eca2d9fa76c55485",
+      "mode": 420
+    },
+    "apps/webc/index.html": {
+      "sha256": "0d98e1379abdff88bab678d2b5274fa210cd33a4108820dd831c686756a3fe82",
+      "mode": 420
+    },
+    "apps/webc/package.json": {
+      "sha256": "cc10ed6637745098f9caf0ad72d8db4be83c6832f5bded3bf363571dfffb78ea",
+      "mode": 420
+    },
+    "apps/webc/public/service-front.config.json": {
+      "sha256": "dd7f056364d5d7463a25b73d14ff27eb6c4fb3ca75b7bb29fe0ca2df87e2e6d2",
+      "mode": 420
+    },
+    "apps/webc/README.md": {
+      "sha256": "ab8b52225e708e96da653b0a1856481a189cf805e119d210b8dc6fa7034d88fb",
+      "mode": 420
+    },
+    "apps/webc/src/App.tsx": {
+      "sha256": "e29baaad7d3c52987405bb58fe2106e05bc022907f1365aac74ebec51b897c20",
+      "mode": 420
+    },
+    "apps/webc/src/components/cards.tsx": {
+      "sha256": "19a071ad7c02dbf44aa57085593db9c33f9dc5134a1902e46646a6bc5587eabb",
+      "mode": 420
+    },
+    "apps/webc/src/components/common.tsx": {
+      "sha256": "d9e5085eda9e91362addae6573a6353991eadd4b9886e1e2c8cd00dc0bca5827",
+      "mode": 420
+    },
+    "apps/webc/src/main.tsx": {
+      "sha256": "b6bc6821680889668aad3cb842170c856fde7a3c705ae925a14b59a02b5cceec",
+      "mode": 420
+    },
+    "apps/webc/src/styles/tokens.css": {
+      "sha256": "de2640c74725db4323c735131b7dd9a733e69adcc676c3ceb205dbbde2e53e03",
+      "mode": 420
+    },
+    "apps/webc/tsconfig.json": {
+      "sha256": "b10d871fcdc0061dde770a1f473a06213c6c7cd1df966c31b680ef90c1deab1a",
+      "mode": 420
+    }
+  },
+  "retiredManagedForks": {
+    "apps/web/src/audio/ambience.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/audio/AudioEngine.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/audio/sfx.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/components/AgentAvatar.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/components/Floor3D.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/components/SimBanner.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/components/ValueCounters.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/components/welcomeScripts.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/naming.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/naming.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/product.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/theaterDiff.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/theaterDiff.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/trpc.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/trpc.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/ui-state.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/ui-state.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/useAskRail.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/lib/useNightTime.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/observability/Observability.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/onboarding/CustomizeWizard.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/onboarding/Onboarding.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/onboarding/systemText.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/onboarding/systemText.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p22/P22.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p23/P23.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p23/systemText.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p23/systemText.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p24/P24.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p27/P27.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p28/P28.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p29/P29.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p30/P30.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p31/P31.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p4/P4.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p7/P7.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/pages/p9/P9.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/Bridge.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/IndustryRoutes.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/NavigationAccess.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/NavMenu.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/NavMenu.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/PlanSwitcher.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/src/shell/SideNav.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/web/vite.config.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/App.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/Auth.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/lib/product.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/lib/trpc.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/lib/useResource.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/src/lib/useResource.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webb/vite.config.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/api.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/api.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/business-display.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/business-display.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/config.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/config.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/demo.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/hooks.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/navigation.test.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/navigation.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/prefetch.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/product.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/lib/types.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/pages/ChatPage.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/pages/MePage.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/pages/MessagesPage.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/pages/ServicePage.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/src/pages/TicketsPage.tsx": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    },
+    "apps/webc/vite.config.ts": {
+      "retiredInVersion": "0.1.19",
+      "reason": "repo-owned-extension-path"
+    }
+  }
+}

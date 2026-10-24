@@ -1,0 +1,36 @@
+# GEO 获客增长 · 模型路由策略（bundle 第⑦装配槽，v3.0 通用模型路由系统）
+# 档位：L1 轻量 0.2× / L2 中坚 1× / L3 旗舰 3×；谷时 22:00–08:00 非实时任务再 ×0.2
+# 行业特点：GEO（生成式引擎优化）+ 流量转化成交——内容批量生产走谷时，投放决策走旗舰
+version: "v3.0"
+scenes:
+  # —— 高频轻量 ——
+  intent-classify:   { tier: L1, fallback: rule-template }
+  cs-answer:         { tier: L1, escalateOn: [low-confidence, thumbs-down] }  # 询盘应答（转化窗口秒级）
+  comment-classify:  { tier: L1, window: off-peak-only }                      # 社媒评论/线索初筛批量
+  nl-translate:      { tier: L1, fallback: rule-template }
+  # —— 中频中等（GEO 内容主力） ——
+  ask-synthesize:    { tier: L2, escalateOn: [thumbs-down] }
+  quest-plan:        { tier: L2 }
+  geo-content:       { tier: L2, window: off-peak-only, escalateOn: [redteam-fail, thumbs-down] }  # GEO 内容批量（AI 搜索引用优化）
+  content-generate:  { tier: L2, escalateOn: [redteam-fail, thumbs-down] }
+  keyword-research:  { tier: L2, window: off-peak-only }                      # 关键词/问法库扩展
+  lead-qualify:      { tier: L2 }                                             # 线索分级与跟进建议（转化环节）
+  funnel-analyze:    { tier: L2, window: off-peak-only }                      # 漏斗归因分析（谷时批量）
+  briefing:          { tier: L2 }
+  ceo-decision:      { tier: L2 }
+  # —— 低频重度（旗舰档，质量红线） ——
+  campaign-strategy: { tier: L3, noDowngrade: true }                          # 投放战役策略（涉预算）
+  ceo-deep-analysis: { tier: L3, noDowngrade: true }
+  hr-replacement:    { tier: L3, noDowngrade: true }
+  fast-scan-report:  { tier: L3, noDowngrade: true, billTo: platform }        # 获客体检报告：售前获客，平台成本
+plans:
+  lite:     { defaultShift: -1 }
+  standard: { defaultShift: 0 }
+  smart:
+    defaultShift: 1
+    tierOverrides:
+      intent-classify: L1
+      nl-translate: L1
+      comment-classify: L1
+      lead-qualify: L3
+      ceo-decision: L3

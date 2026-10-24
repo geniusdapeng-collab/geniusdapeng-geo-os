@@ -212,7 +212,7 @@ function localAsrAvailable(): boolean {
 function transcribeLocal(wav: string, outJson: string, model: string, language: string): { sentences: TalkSentence[]; precision: "word"; engine: string } {
   const script = join(REPO_ROOT, "scripts", "tools", "talkcraft-asr-words.py");
   if (!existsSync(script)) throw new Error(`缺少词级转写脚本：${script}`);
-  run(PYTHON, [script, wav, outJson, "--model", model, "--language", language]);
+  run(PYTHON, [script, wav, outJson, "--model", model, "--language", language, "--backend", "mlx"]);
   const parsed = JSON.parse(readFileSync(outJson, "utf8")) as {
     words?: Array<{ text?: string; start?: number; end?: number }>;
     precision?: string;
@@ -244,6 +244,7 @@ async function transcribeEngine(wav: string, engineUrl: string, model: string, l
   form.append("model", model);
   form.append("response_format", "verbose_json");
   form.append("language", language);
+  form.append("word_timestamps", "true");
   const response = await fetch(`${engineUrl.replace(/\/$/u, "")}/v1/audio/transcriptions`, { method: "POST", body: form });
   if (!response.ok) throw new Error(`ASR 引擎返回 ${response.status}`);
   const parsed = await response.json() as unknown;

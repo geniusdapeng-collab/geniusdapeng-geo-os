@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workloom://bundles/video-edit/schemas/edit-timeline",
+  "title": "edit_timeline（剪辑时间轴 v2）",
+  "description": "机器可执行剪辑契约。源轨（source）与主轨（master）分离：源轨给帧级 in/out，主轨由片段顺序自然推导且必须连续无空隙。纪律：① 同一源素材的多个选段在源轨上不得重叠，间隔 ≥1s（理想 ≥2s）；② 每个片段必须引用已入库素材 sha256；③ 转场/速度/音量参数必须落在执行器支持的枚举与区间内。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "timelineId", "target", "sources", "segments", "audioDesign", "validation"],
+  "properties": {
+    "schemaVersion": { "const": "workloom.video-edit/edit-timeline/v2" },
+    "timelineId": { "type": "string", "minLength": 3 },
+    "filmId": { "type": ["string", "null"] },
+    "revision": { "type": "integer", "minimum": 1 },
+    "prevRevision": { "type": ["integer", "null"], "minimum": 1 },
+    "createdAt": { "type": "string" },
+    "sourceGapPolicy": {
+      "description": "同源片段间隔策略：standard = 通用剪辑（同源多段间隔 ≥1s）；single-take-talking-head = 口播精剪（允许同一条长镜头内密集跳切，改由源轨单调性与跳切遮盖覆盖率管理）。缺省 standard。",
+      "enum": ["standard", "single-take-talking-head", null]
+    },
+    "pacing": {
+      "type": ["object", "null"],
+      "description": "节奏档案：按体裁给默认值（documentary/vlog/fast_cut/information），偏离只出咨询项；enforce=true 时升级为硬项。",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {
+        "profile": { "enum": ["documentary", "vlog", "fast_cut", "information", "talk"] },
+        "enforce": { "type": "boolean" },
+        "overrides": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "rhythmDirection": { "$ref": "workloom://bundles/video-edit/schemas/rhythm-contract#/$defs/direction" },
+    "rhythmPlan": { "anyOf": [{ "$ref": "workloom://bundles/video-edit/schemas/rhythm-contract#/$defs/plan" }, { "type": "null" }] },
+    "overallStyle": { "type": ["string", "null"], "description": "整片风格（沿用剪辑脚本初稿 overall_style）" },
+    "musicSelection": { "type": ["string", "null"], "description": "整片音乐选择（music_selection）" },
+    "colorGrading": { "type": ["string", "null"], "description": "整片调色口径（color_grading）" },
+    "storyOverview": { "type": ["string", "null"], "description": "故事概述（story_overview）" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationSeconds", "aspectRatio", "fps", "platform"],
+      "properties": {
+        "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "durationBand": { "$ref": "workloom://bundles/video-edit/schemas/rhythm-contract#/$defs/durationBand" },
+        "aspectRatio": { "type": "string", "pattern": "^[0-9]+:[0-9]+$" },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "platform": { "type": "string" },
+        "safeAreas": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "topPercent": { "type": ["number", "null"] },
+            "bottomPercent": { "type": ["number", "null"] },
+            "leftPercent": { "type": ["number", "null"] },
+            "rightPercent": { "type": ["number", "null"] }
+          }
+        },
+        "loudnessTargetLufs": { "type": ["number", "null"] }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceId", "sha256", "path", "fps"],
+        "properties": {
+          "sourceId": { "type": "string", "minLength": 3 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "path": { "type": "string", "minLength": 1 },
+          "fps": { "type": "number", "exclusiveMinimum": 0 },
+          "durationSeconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+          "hasAudio": { "type": ["boolean", "null"] }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["groupId", "name"],
+        "properties": {
+          "groupId": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "storyline": { "type": ["string", "null"] },
+          "emotion": { "type": ["string", "null"] },
+          "emotionalArc": { "type": ["string", "null"], "description": "本组情绪弧（emotional_arc）" },
+          "editingSuggestions": { "type": ["string", "null"], "description": "本组剪辑建议（editing_suggestions）" },
+          "intensity": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seq", "segmentId", "sourceId", "sourceIn", "sourceOut", "durationSeconds"],
+        "properties": {
+          "seq": { "type": "integer", "minimum": 0 },
+          "segmentId": { "type": "string", "minLength": 3 },
+          "groupId": { "type": ["string", "null"] },
+          "sourceId": { "type": "string", "minLength": 3 },
+          "sourceIn": { "type": "number", "minimum": 0 },
+          "sourceOut": { "type": "number", "exclusiveMinimum": 0 },
+          "sourceInTimecode": { "type": ["string", "null"], "pattern": "^[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}$" },
+          "sourceOutTimecode": { "type": ["string", "null"], "pattern": "^[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}$" },
+          "sourceInFrame": { "type": ["integer", "null"], "minimum": 0 },
+          "sourceOutFrame": { "type": ["integer", "null"], "minimum": 0 },
+          "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
+          "masterIn": { "type": ["number", "null"], "minimum": 0 },
+          "masterOut": { "type": ["number", "null"], "minimum": 0 },
+          "speed": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 8 },
+          "motive": { "type": ["string", "null"] },
+          "highlightRef": { "type": ["string", "null"] },
+          "keyframeRef": { "type": ["string", "null"] },
+          "transitionIn": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["type"],
+            "properties": {
+              "type": { "enum": ["cut", "dissolve", "fade_from_black", "fade_to_black", "wipe", "match_cut", "jump_cut", "whip_pan", "zoom_blur"] },
+              "durationSeconds": { "type": ["number", "null"], "minimum": 0, "maximum": 2 },
+              "params": { "type": ["object", "null"], "additionalProperties": true }
+            }
+          },
+          "audio": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "mode": { "enum": ["original", "mute", "ambience_only", "bgm_only", "duck_original", "j_cut", "l_cut"] },
+              "gainDb": { "type": ["number", "null"] },
+              "fadeInSeconds": { "type": ["number", "null"], "minimum": 0 },
+              "fadeOutSeconds": { "type": ["number", "null"], "minimum": 0 },
+              "jCutOffsetSeconds": { "type": ["number", "null"] },
+              "note": { "type": ["string", "null"] }
+            }
+          },
+          "punchIn": {
+            "description": "跳切遮盖用的推近（punch-in）：口播同机位跳切必须给观众「换镜头」的视觉理由。scale 1.0–1.5（1.12 = 放大 12%），x/y 为裁切中心比例（0–1，缺省居中）。",
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "scale": { "type": ["number", "null"], "minimum": 1, "maximum": 1.5 },
+              "x": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "y": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "note": { "type": ["string", "null"] }
+            }
+          },
+          "reframe": {
+            "description": "二次构图（取景轨道，T-2026-1011-0008）：把「中景切近景 / 局部放大 / 横转竖不留黑边」变成可执行契约。渲染口径＝源原生裁切（crop-first）→ 填充（pad/cover/blur/brand）→ 画布；超无损预算默认降级并写回执，显式 maxZoomPolicy=allow-upscale 才允许上采样。`punchIn` 是本字段的 legacy 子集（静态推近），两者同时存在以本字段为准。",
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "mode": { "enum": ["static", "push", "pull", "follow", "locked-cut"] },
+              "intent": { "enum": ["shot-size", "emphasis", "aspect-fill", "breathing"] },
+              "shotSize": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "from": { "enum": ["ELS", "LS", "FS", "MS", "MCU", "CU", "ECU", "INSERT"] },
+                  "to": { "enum": ["ELS", "LS", "FS", "MS", "MCU", "CU", "ECU", "INSERT"] }
+                }
+              },
+              "scale": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "from": { "type": ["number", "null"], "minimum": 1, "maximum": 3 },
+                  "to": { "type": ["number", "null"], "minimum": 1, "maximum": 3 }
+                }
+              },
+              "center": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": ["object", "null"], "additionalProperties": false,
+                    "properties": { "x": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "y": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } }
+                  },
+                  "to": {
+                    "type": ["object", "null"], "additionalProperties": false,
+                    "properties": { "x": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "y": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } }
+                  }
+                }
+              },
+              "anchor": { "enum": ["manual", "center", "subject", "face", "saliency", "keyframe"] },
+              "easing": { "enum": ["linear", "smooth", "ease-in-out"] },
+              "fill": { "enum": ["pad", "cover", "blur", "brand"] },
+              "maxZoomPolicy": { "enum": ["lossless", "allow-upscale"] },
+              "safeArea": { "enum": ["respect", "ignore"] },
+              "note": { "type": ["string", "null"] }
+            }
+          },
+          "subtitle": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "lines": { "type": "array", "items": { "type": "string" } },
+              "placement": { "enum": ["bottom", "center", "top", "none"] },
+              "emphasis": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "audioDesign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["originalAudioPolicy"],
+      "properties": {
+        "originalAudioPolicy": { "enum": ["keep", "duck_under_bgm", "replace", "mute"] },
+        "bgm": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "needed": { "type": "boolean" },
+            "style": { "type": ["string", "null"] },
+            "energyCurve": { "type": ["string", "null"] },
+            "beatGridRef": { "type": ["string", "null"] },
+            "duckDb": { "type": ["number", "null"] },
+            "libraryTrackId": { "type": ["string", "null"] }
+          }
+        },
+        "soundEffects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["at", "kind"],
+            "properties": {
+              "at": { "type": "number", "minimum": 0 },
+              "kind": { "type": "string" },
+              "note": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "silenceNotes": { "type": ["string", "null"] }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["continuous", "noSourceOverlap", "totalDurationSeconds"],
+      "properties": {
+        "continuous": { "type": "boolean" },
+        "noSourceOverlap": { "type": "boolean" },
+        "minSameSourceGapSeconds": { "type": ["number", "null"] },
+        "totalDurationSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "sourceGapPolicy": { "enum": ["standard", "single-take-talking-head", null] },
+        "generatedBy": { "type": ["string", "null"] },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "pass"],
+            "properties": {
+              "id": { "type": "string" },
+              "pass": { "type": "boolean" },
+              "hard": { "type": ["boolean", "string"] },
+              "detail": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

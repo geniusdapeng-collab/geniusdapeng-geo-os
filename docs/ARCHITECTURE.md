@@ -6,7 +6,7 @@
 
 The Chinese display name is `李大鹏｜用AI搞经营的产品经理`; the English display name is `Dapeng Li · PengManager`. The canonical bilingual profile also supplies account bios, content ownership defaults and public-preview identity fields. Historical aliases remain available for GEO entity recognition.
 
-The WorkLoom desktop/server shell, PostgreSQL runtime and unrelated industry bundles are not included. Only the production code required by GEO collection and media delivery is integrated. A private repository still does not serve as the public GEO evidence layer.
+The complete pinned Edit source is contained under `engines/video-edit`, including the native server, web workbench, PostgreSQL schema, model routing, production SDK, digital employees, skills, tools, research and media libraries. PengManager supervises its own separate video database and native services; it does not delegate production to a separately running Edit installation. A private repository still does not serve as the public GEO evidence layer.
 
 ## Runtime
 
@@ -23,9 +23,23 @@ HTTP API -> domain policy -> append-only event ledger -> local JSON state
       +-> VideoMediaEngine (in-process FFmpeg/post/subtitle/color/BGM/cover/package)
       +-> GitHub official REST API
       +-> fail-closed manual adapters for other platforms
+      |
+      +-> owned video supervisor
+            +-> private PostgreSQL + native migrations/assembly
+            +-> embedded native video backend + real local owner session
+            +-> owned loopback-root workbench + authenticated native API proxy
+            +-> local tool stations and explicitly configured providers
 ```
 
 The control-plane records use local JSON with a hash event chain. Rich GEO runs use the vendored SQLite engine. Media jobs store a separate local delivery directory and receipt with output hashes for each job. The documented runtime uses Node.js 24, SQLite built-ins, FFmpeg/FFprobe and the pinned `tsx` toolchain.
+
+The JSON ledger and GEO SQLite remain authoritative for existing personal operations. Native video transactions, budget reservations, approvals and archive recovery remain in the independent video PostgreSQL database. No flattening or destructive data conversion joins these stores. A single root start command starts the dashboard, then launches its own video supervisor; video failure is isolated from the existing control plane. Stop cancels pending video setup/start, waits for owned-service cleanup and active HTTP completion, then closes GEO.
+
+Video credentials and database data live in an owner-only directory outside the repository. PostgreSQL tool installation copies an explicit tool prefix; it never copies another application's database. The runtime checks embedded module realpaths, lock/pin, owned process/port and database identity before use. Only controlled local services are proxied; no arbitrary upstream URL is accepted.
+
+The complete workbench uses an owned loopback root origin rather than a subpath iframe. This preserves its original routing and authentication and keeps the root dashboard CSP and framing restrictions intact. A process-only bootstrap key obtains a genuine native owner session from the scoped local backend. Root `/api/video-runtime/*` routes expose only safe read-only projections; they neither return sessions nor derive native identity from body `actor`/`approvedBy`. Native protected procedures retain active-member, workspace and tenant checks.
+
+`pengmanager-capabilities.json` is generated from the embedded declarations. The root directory includes every role, skill, tool, capability and installer with search and pagination. Declared code, dependency diagnosis and validated production are separate fields. Actual station installed/ready/running results are displayed separately from that source inventory. Neither a catalog row nor a health response proves paid generation, media quality or external publication.
 
 ## Trust chain
 
@@ -51,7 +65,7 @@ The event chain is tamper-evident. It is not a trusted timestamp, platform signa
 
 - `DeepSeekAdapter` uses the local Responses-compatible gateway and system keychain. It performs real provider search, Chat/Responses completion, evidence hashing and model-driven JSON content generation.
 - `PersonalGeoEngine` runs the adapted GeoEvidence SQLite store, providers, analysis, incidents, article generation and publication receipts in-process. Its default case keeps the stable ID `pengstack-personal-geo` for database compatibility while its current display identity is PengManager. Stable `ps-*` query IDs continue to link historical samples to their queries.
-- `VideoMediaEngine` builds a validated timeline, invokes the vendored post-production, subtitle, color, BGM, transition, cover and packaging code, and requires the FFmpeg quality gate to pass.
+- `VideoMediaEngine` retains the existing local quick-post workflow: it clips inputs to at most four seconds each, creates synthetic ambient audio and runs FFmpeg post-production, cover and packaging. Its UI states these limits. The complete native workbench owns AI generation, editing and presenter workflows.
 - `VideoEditAdapter` exposes cover knowledge hints and feedback triage from the same vendored engine.
 - `GitHubAdapter` creates a real owner/repo Issue through the official REST API and records the issue URL and content hash.
 
@@ -75,4 +89,4 @@ Only recognized legacy defaults are replaced in queries and unapproved claims; c
 - `Observation`: one AI answer sample with citations and derived metrics
 - `Event`: append-only mutation evidence
 
-See [API.md](API.md) for endpoints, [adr/ADR-001-control-plane.md](adr/ADR-001-control-plane.md) for historical context and [adr/ADR-002-integrated-monorepo.md](adr/ADR-002-integrated-monorepo.md) for the current architecture.
+See [API.md](API.md) for endpoints, [adr/ADR-001-control-plane.md](adr/ADR-001-control-plane.md) and [adr/ADR-002-integrated-monorepo.md](adr/ADR-002-integrated-monorepo.md) for historical context, and [adr/ADR-003-complete-video-runtime.md](adr/ADR-003-complete-video-runtime.md) for the complete independent video architecture.

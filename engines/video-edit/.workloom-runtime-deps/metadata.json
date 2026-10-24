@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "workloom.runtime-deps/v1",
+  "product": {
+    "productId": "workloom-ai-video-edit",
+    "role": "industry",
+    "repository": "workloom-ai/WorkLoom-video-edit",
+    "includePlatformOps": false
+  },
+  "npmVersion": "11.17.0",
+  "targets": [
+    {
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    {
+      "platform": "darwin",
+      "arch": "x64"
+    },
+    {
+      "platform": "win32",
+      "arch": "x64"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "apps/server/package.json",
+      "sha256": "e394b4853e18c6b52f3f54090d291b64bc4ea94067915aeab2ca65bcca51750b"
+    },
+    {
+      "path": "apps/web/package.json",
+      "sha256": "17273b001dea29afe53c13a4f3cdd17685cea4081bde2521ab5157ec45a1081b"
+    },
+    {
+      "path": "package.json",
+      "sha256": "fcad048cf9c20f9a3fa27bfe58be5c4a97f2e827bf1fcf7d34dd6128c3c0a183"
+    },
+    {
+      "path": "packages/audit-engine/package.json",
+      "sha256": "5edf2b3480a733ffb9bcc1d9026589016f1499e0e2d1043bc2e4d98f9b57318d"
+    },
+    {
+      "path": "packages/base/package.json",
+      "sha256": "d6b309b67a0a23b7465b758210e3647194c44489ad2b9a3e19d68af8ebfe6e2a"
+    },
+    {
+      "path": "packages/db/package.json",
+      "sha256": "fea6bfee0ea381b1341fdfff6b31cb4b4a3f2b48329db2af610dfaa185e7d9c2"
+    },
+    {
+      "path": "packages/industry-contract/package.json",
+      "sha256": "bd21ee1c58e618051105a46fe08c772eb736f28658d184f26f105564a4862d2c"
+    },
+    {
+      "path": "packages/runtime/package.json",
+      "sha256": "9ec1a6bbfded34938f35b57ea94d9cfdd98ed6b29c93836a86e3df92b123ec81"
+    },
+    {
+      "path": "packages/shared/package.json",
+      "sha256": "26ed5c3a560c35730fe8f84343a83f5e7c3d7d2c488468584acfc524699b4cb2"
+    },
+    {
+      "path": "packages/video-studio/package.json",
+      "sha256": "04d675f0518aabf2b8983c17c9ea79e6e9a8ac545239261f94ab92bfd4200826"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "834833a61b50ff153fd0ed456a306d5fe0a3d2bffb51b8665fc0cf8b85d684e8"
+    },
+    {
+      "path": "product.manifest.json",
+      "sha256": "c59dbbecf7b45598681fb38f8b7da8b5e5de976930434c3ac967b0acc6768521"
+    },
+    {
+      "path": "scripts/pack-nm-merge.mjs",
+      "sha256": "8e7aa9c1e7fe10e13165802f27c6162bbda9d45ae95c97841e9484e2560856ce"
+    },
+    {
+      "path": "scripts/payload-policy.mjs",
+      "sha256": "be1035d6c7f1e12f739bbc8e94e97c3aa8a45c2fc38a605537f2eb18916a6118"
+    },
+    {
+      "path": "scripts/product-runtime.mjs",
+      "sha256": "bf8a446d4a600424b8d38189fa4cbe61a36126dc051124c71012a1ec46c439e3"
+    },
+    {
+      "path": "scripts/runtime-deps-lock.mjs",
+      "sha256": "38d5eba21ae509aec4de97000bda055ca632f0216473e1d1000eeba6b5e0a475"
+    }
+  ],
+  "manifestSha256": "e0340ff5a9ac4cb175dfe90c7af0507a3ff10bd9e77e0bd5e7ebc72443180502",
+  "packageLockSha256": "ba034a66e36c89d4358b4a75cfa14468fb432d8620583d91a76dd60cecef9442"
+}

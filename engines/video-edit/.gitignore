@@ -1,0 +1,80 @@
+# 依赖与产物
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# 环境与密钥（铁律：令牌与密钥永不入库）
+.env
+.env.local
+.env.*.local
+
+# 本地数据（证据快照 / 本地存储）
+data/
+
+# 系统与日志
+.DS_Store
+*.log
+
+# E6 dsh 门禁运行时产物（lockfile 依铁律入库：pin 版本 + lock）
+.dsh-home/
+packages/runtime/dsh-gate/out/
+packages/runtime/dsh-gate/node_modules/
+
+# W2 打包产物
+dist/
+
+# preview:all 运行时产物
+docs/demo/.manifest.json
+
+# Python（computer-use toolkit 运行缓存）
+__pycache__/
+*.pyc
+release/
+
+# 手绘白板引擎（vendor/srt-whiteboard）：venv 随机器重建；渲染任务产物不入库
+vendor/srt-whiteboard/.venv/
+var/whiteboard-jobs/
+
+# 制片档案运行目录：HR_WORK_DIR 指向哪个目录，那个目录就整体不入库
+# （真机踩到：本机把 HR_WORK_DIR 设成 .vm-work-wb 后，档案被 `git add -A` 扫进提交）
+.vm-work*/
+
+# C 层评测运行产物（本地/评审侧生成）
+outputs/c-layer/
+
+# 桌面自包含载荷与验收产物（本地构建/跑验收生成，不入库）
+dist-payload/
+dist-payload.tar.gz
+
+# ============================================================================
+# talkcraft 引擎与口播解说片产物（T-2026-0926-0008）
+#   引擎是上游资产（PolyForm Noncommercial），**永不入库**：安装期拉取到 vendor/talkcraft/。
+#   CI 闸 scripts/ci/verify-talkcraft-license.mjs 会反向检查"上游源码没被提交"。
+# ============================================================================
+vendor/talkcraft/
+var/talkcraft-src/
+var/talkcraft-jobs/
+var/talkcraft-assets/
+var/tcvenv/
+var/ppt/
+var/explainer-poc/
+outputs/acceptance/
+acceptance/outcomes/
+
+# 视频生成接缝运行产物（T-2026-0921-0001：成片媒体库 / 供应商产物 / UI 探针截图，均不入库）
+var/
+artifacts/
+apps/server/output/
+# 制片档案运行产物（T-2026-0926-0001：archive/<ws>/<project> 档案夹 + checkpoints/characters/logs）
+.vm-work/
+# vendor 运行时写回（真机跑批产生：类型配置缓存 / 提示词守卫日志 / 定妆照交付物 / 技能使用统计）
+# 这些是运行产物不是源码；vendor 本体只读不改，但它的运行期落盘目录必须留在工作树外。
+vendor/supermickey/cache/
+vendor/supermickey/output/
+vendor/supermickey/deliverables/
+vendor/supermickey/hyperreality-system/skills/*/usage-stats.jsonl
+# 工位本地工具链（ffmpeg/ffprobe 等受控下载的二进制，绝不进仓；见 kit/ffmpeg-pin.json）
+.workloom-tools/
+# 主档对账的本地备份（T-2026-0930-0015：`video:assets reconcile --apply` 写前备份；证据文件进仓、备份不进）
+**/real-person-assets/**/profile.json.bak

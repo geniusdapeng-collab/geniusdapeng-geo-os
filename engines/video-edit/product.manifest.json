@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "workloom.product/v1",
+  "productId": "workloom-ai-video-edit",
+  "role": "industry",
+  "displayName": "WorkLoom 视频AI剪辑系统（实验车道）",
+  "packageName": "workloom-ai-video-edit",
+  "repository": "workloom-ai/WorkLoom-video-edit",
+  "defaultBundle": "geo-growth",
+  "demoWorkspaceSlug": "geo-growth",
+  "demoMemberNo": "MEM-G01",
+  "release": {
+    "appId": "com.geniusdapeng.workloomvideoedit",
+    "channel": "stable",
+    "artifactPrefix": "WorkLoom 视频AI剪辑系统",
+    "website": "apps/site"
+  },
+  "desktop": {
+    "portOffset": 430
+  },
+  "clients": {
+    "bPc": {
+      "enabled": true,
+      "entry": "apps/web"
+    },
+    "bMobile": {
+      "enabled": true,
+      "entry": "apps/webb"
+    },
+    "cMobile": {
+      "enabled": true,
+      "entry": "apps/webc"
+    }
+  }
+}

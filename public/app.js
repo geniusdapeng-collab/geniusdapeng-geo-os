@@ -1,3 +1,4 @@
+import { initializeVideoWorkbench } from "./video-workbench.js";
 import { mountOperations } from "/operations.js";
 
 const state = {
@@ -532,6 +533,11 @@ async function loadAuthStatus() {
   document.querySelector("#logout").hidden = !(status.enabled && status.authenticated);
 }
 
+function requestedView() {
+  const value = window.location.hash.replace(/^#/, "") || "overview";
+  return [...document.querySelectorAll(".nav-item")].some(button => button.dataset.view === value) ? value : "overview";
+}
+
 async function loadData() {
   clearError();
   setLoading(true);
@@ -542,9 +548,10 @@ async function loadData() {
     state.data = await api("/api/bootstrap");
     await operationsUi.load();
     renderAll();
+    setLoading(false);
+    switchView(requestedView());
     const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus()]);
     for (const result of secondary) if (result.status === "rejected") showError(result.reason);
-    switchView(window.location.hash.replace("#", "") || "overview");
   } catch (error) {
     showError(error);
   } finally {
@@ -558,8 +565,9 @@ for (const button of document.querySelectorAll(".nav-item")) {
   button.addEventListener("click", () => switchView(button.dataset.view));
 }
 
+window.addEventListener("hashchange", () => switchView(requestedView()));
+
 document.querySelector("#refresh").addEventListener("click", loadData);
-window.addEventListener("hashchange", () => switchView(window.location.hash.slice(1) || "overview"));
 document.querySelector("#logout").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
@@ -676,4 +684,5 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
 
 const operationsUi = mountOperations({ api, getData: () => state.data, reload: loadData, showError, profile: primaryProfile });
 
+initializeVideoWorkbench();
 loadData();
