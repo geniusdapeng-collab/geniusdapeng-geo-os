@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>锐科激光 · 全网存在感经营前台</title>
+<style>
+  :root {
+    --bg: #fff5f7; --bg2: #ffffff; --card: #ffffff; --card2: #fff0f4;
+    --line: rgba(120, 140, 200, 0.14); --gold: #ff2442; --gold2: #ff7a9e;
+    --teal: #22c88a; --green: #22c88a; --red: #ff4d6d; --blue: #4d96ff;
+    --ink: #33262b; --ink2: #8a757d; --ink3: #b9a9b0;
+    --radius: 18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #ffeef3; color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  /* 桌面端：手机框；移动端：全屏 */
+  .phone {
+    width: 100%; max-width: 420px; min-height: 100vh; background: var(--bg);
+    position: relative; overflow: hidden;
+  }
+  @media (min-width: 768px) {
+    body { padding: 32px 0; align-items: flex-start; }
+    .phone { border-radius: 40px; border: 1px solid #ffe4ec; min-height: 840px; max-height: 880px; box-shadow: 0 40px 120px rgba(51,38,43,.25), 0 0 0 8px #fff5f7; }
+  }
+  .scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: 96px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  /* ===== 顶栏 ===== */
+  .statusbar { display: flex; justify-content: space-between; padding: 14px 20px 4px; font-size: 12px; color: var(--ink3); }
+  .apphead { padding: 6px 20px 14px; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #ff2442, #b97e2e); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #ffffff; }
+  .apphead .t1 { font-size: 16px; font-weight: 700; }
+  .apphead .t2 { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .live-dot { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--teal); }
+  .live-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+
+  .screen { display: none; padding: 0 16px; }
+  .screen.on { display: block; animation: fadeUp .28s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } }
+
+  /* ===== 通用卡 ===== */
+  .card { background: linear-gradient(160deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .sec-title { font-size: 13px; font-weight: 700; color: var(--ink2); letter-spacing: 1px; margin: 18px 4px 10px; display: flex; align-items: center; gap: 8px; }
+  .sec-title::before { content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--gold); }
+  .gold { color: var(--gold); } .teal { color: var(--teal); } .green { color: var(--green); } .red { color: var(--red); } .blue { color: var(--blue); }
+  .muted { color: var(--ink3); } .small { font-size: 11px; } .cap { font-size: 12px; }
+
+  /* ===== 首页：北极星 ===== */
+  .northstar { background: linear-gradient(150deg, #fff0f4, #ffffff 70%); border: 1px solid rgba(232,180,90,.25); border-radius: 22px; padding: 20px; position: relative; overflow: hidden; }
+  .northstar::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(232,180,90,.18), transparent 70%); }
+  .ns-label { font-size: 12px; color: var(--ink2); }
+  .ns-num { font-size: 52px; font-weight: 800; line-height: 1.1; background: linear-gradient(90deg, var(--gold2), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ns-sub { display: flex; gap: 14px; margin-top: 10px; font-size: 12px; }
+  .ns-pill { background: rgba(79,209,197,.1); border: 1px solid rgba(79,209,197,.3); color: var(--teal); border-radius: 999px; padding: 4px 10px; }
+  .ns-pill.social { background: rgba(110,168,254,.1); border-color: rgba(110,168,254,.3); color: var(--blue); }
+  .trend { display: flex; align-items: flex-end; gap: 6px; height: 44px; margin-top: 14px; }
+  .trend .bar { flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, rgba(232,180,90,.85), rgba(232,180,90,.25)); }
+  .trend .bar.ai { background: linear-gradient(180deg, rgba(79,209,197,.9), rgba(79,209,197,.25)); }
+
+  .tri { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .tri .m { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; text-align: center; }
+  .tri .v { font-size: 22px; font-weight: 800; }
+  .tri .k { font-size: 10px; color: var(--ink3); margin-top: 3px; }
+  .tri .d { font-size: 10px; margin-top: 3px; }
+
+  .brief { border-left: 3px solid var(--gold); background: rgba(232,180,90,.06); border-radius: 0 14px 14px 0; padding: 12px 14px; font-size: 12.5px; line-height: 1.7; color: var(--ink2); }
+  .brief b { color: var(--ink); }
+
+  .evidence { display: flex; gap: 12px; }
+  .evi-shot { width: 86px; height: 110px; border-radius: 12px; background: linear-gradient(160deg, #ffe4ec, #ffffff); border: 1px solid var(--line); flex-shrink: 0; padding: 8px; font-size: 9px; color: var(--ink3); line-height: 1.5; position: relative; cursor: pointer; }
+  .evi-shot::after { content: "存证 · 可核验"; position: absolute; bottom: 6px; left: 8px; color: var(--teal); font-size: 8px; }
+  .evi-body { flex: 1; font-size: 12px; line-height: 1.7; color: var(--ink2); }
+
+  /* ===== 审批卡 ===== */
+  .apr { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; background: linear-gradient(160deg, var(--card), var(--bg2)); }
+  .apr.l4 { border-color: rgba(248,113,113,.35); }
+  .apr .gate { display: inline-block; font-size: 10px; padding: 3px 8px; border-radius: 6px; background: rgba(255,36,66,.08); color: var(--gold); border: 1px solid rgba(232,180,90,.3); margin-bottom: 8px; }
+  .apr.l4 .gate { background: rgba(248,113,113,.12); color: var(--red); border-color: rgba(248,113,113,.3); }
+  .apr .title { font-size: 14px; font-weight: 700; line-height: 1.5; }
+  .apr .why { font-size: 12px; color: var(--ink2); line-height: 1.7; margin-top: 8px; }
+  .apr .acts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .btn { border: 1px solid var(--line); background: var(--bg2); color: var(--ink2); border-radius: 12px; padding: 11px 0; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: .15s; }
+  .btn.ok { border-color: rgba(52,211,153,.5); color: var(--green); }
+  .btn.mid { border-color: rgba(110,168,254,.5); color: var(--blue); }
+  .btn.no { border-color: rgba(248,113,113,.5); color: var(--red); }
+  .btn:active { transform: scale(.96); filter: brightness(1.4); }
+  .apr.done .acts { display: none; }
+  .apr .stamp { display: none; margin-top: 12px; text-align: center; font-size: 13px; font-weight: 700; }
+  .apr.done .stamp { display: block; }
+
+  /* ===== 询盘 ===== */
+  .chips { display: flex; gap: 8px; margin-bottom: 12px; }
+  .chip { font-size: 12px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink3); background: var(--bg2); cursor: pointer; }
+  .chip.on { color: var(--gold); border-color: rgba(232,180,90,.4); background: rgba(255,36,66,.06); }
+  .inq { display: flex; gap: 12px; }
+  .inq .ava { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #fff5f7; }
+  .inq .who { font-size: 13.5px; font-weight: 700; }
+  .inq .path { font-size: 11px; color: var(--ink3); line-height: 1.6; margin-top: 4px; }
+  .inq .note { font-size: 11.5px; color: var(--ink2); line-height: 1.6; margin-top: 6px; background: var(--bg2); border-radius: 10px; padding: 8px 10px; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 6px; margin-left: 6px; }
+  .tag.ai { background: rgba(79,209,197,.12); color: var(--teal); }
+  .tag.so { background: rgba(110,168,254,.12); color: var(--blue); }
+  .tag.qa { background: rgba(232,180,90,.15); color: var(--gold); }
+  .tag.qb { background: rgba(170,180,212,.12); color: var(--ink2); }
+
+  /* ===== 能见度 ===== */
+  .plat { margin-bottom: 12px; }
+  .plat .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+  .bar-track { height: 8px; border-radius: 4px; background: var(--bg2); overflow: hidden; display: flex; }
+  .bar-me { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 4px; }
+  .bar-cmp { height: 100%; background: rgba(170,180,212,.25); }
+  .qrow { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
+  .qrow:last-child { border-bottom: none; }
+  .qtype { font-size: 10px; padding: 2px 7px; border-radius: 5px; background: var(--bg2); color: var(--ink3); flex-shrink: 0; }
+  .qstat { margin-left: auto; font-size: 11px; flex-shrink: 0; }
+
+  /* ===== 我的 ===== */
+  .plan { background: linear-gradient(140deg, #f3ecff, #fff0f4); border: 1px solid rgba(232,180,90,.3); border-radius: 20px; padding: 18px; }
+  .plan .nm { font-size: 15px; font-weight: 800; color: var(--gold2); }
+  .plan .pr { font-size: 26px; font-weight: 800; margin-top: 6px; }
+  .plan .pr span { font-size: 12px; color: var(--ink3); font-weight: 400; }
+  .ledger { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ledger .l { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .ledger .v { font-size: 20px; font-weight: 800; }
+  .ledger .k { font-size: 11px; color: var(--ink3); margin-top: 3px; line-height: 1.5; }
+  .check { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; color: var(--ink2); line-height: 1.6; }
+  .check:last-child { border-bottom: none; }
+  .check::before { content: "✓"; color: var(--green); font-weight: 800; }
+
+  /* ===== 底部 Tab ===== */
+  .tabbar { position: absolute; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(13,17,32,.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding: 8px 4px 14px; z-index: 10; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: var(--ink3); cursor: pointer; padding: 4px 0; position: relative; }
+  .tab .ic { font-size: 19px; }
+  .tab.on { color: var(--gold); }
+  .tab .badge { position: absolute; top: -2px; right: 18px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--red); color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+  .toast { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%) translateY(20px); background: rgba(20,26,48,.96); border: 1px solid rgba(52,211,153,.4); color: var(--green); padding: 10px 18px; border-radius: 12px; font-size: 13px; opacity: 0; transition: .25s; pointer-events: none; z-index: 20; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="scroll">
+    <div class="statusbar"><span>08:30</span><span>锐科激光 · 经营前台</span><span>5G ▮▮▮▮</span></div>
+    <div class="apphead">
+      <div class="logo">锐</div>
+      <div>
+        <div class="t1">佛山锐科机械 · 全网存在感</div>
+        <div class="t2">WorkLoom AI 获客系统 · 双域经营 · 试用期第 4 天（边界降一档）</div>
+      </div>
+      <div class="live-dot">值守中</div>
+    </div>
+
+    <!-- ============ 首页·日报 ============ -->
+    <div class="screen on" id="s-home">
+      <div class="northstar">
+        <div class="ns-label">本月双入口有效询盘（北极星指标）</div>
+        <div class="ns-num">37</div>
+        <div class="ns-sub">
+          <span class="ns-pill social">社媒入口 24</span>
+          <span class="ns-pill">AI 搜索入口 13 · 首月破零</span>
+        </div>
+        <div class="trend">
+          <div class="bar" style="height:24%"></div><div class="bar" style="height:38%"></div>
+          <div class="bar" style="height:56%"></div><div class="bar ai" style="height:75%"></div>
+          <div class="bar ai" style="height:100%"></div>
+        </div>
+        <div class="small muted" style="margin-top:6px">近 5 月：9 → 14 → 21 → 28 → 37（GEO 上线后 +32%）</div>
+      </div>
+
+      <div class="sec-title">AI 能见度 · 本周</div>
+      <div class="tri">
+        <div class="m"><div class="v gold">11%</div><div class="k">提及率</div><div class="d green">▲3pt</div></div>
+        <div class="m"><div class="v gold">2%</div><div class="k">首推率</div><div class="d green">破零</div></div>
+        <div class="m"><div class="v gold">6%</div><div class="k">SOV 声量份额</div><div class="d green">▲1pt</div></div>
+      </div>
+      <div class="small muted" style="margin-top:8px">竞对 A：提及 34% / 首推 19% / SOV 28% —— 差距即是你的增长空间</div>
+
+      <div class="sec-title">今晨日报 · 公司CEO 08:30 送达</div>
+      <div class="brief">
+        董事长，早报已备：昨日<b>能见度品牌词提及 4/6（▲2）</b>，社媒播放 <b>1.9w（▲22%）</b>；<b>双入口询盘 3 条</b>（社媒 2 / AI 搜索 1，德国 Hans 已进入报价谈判）；1 件谨慎上浮请您定——<b>百科词条功率口径修复外发</b>。试用期第 4 天，边界降一档执行中。
+      </div>
+
+      <div class="sec-title">AI 答案存证 · 原始截图可核验</div>
+      <div class="card evidence">
+        <div class="evi-shot" onclick="toast('存证快照已存证于事件链 · 哈希可验')">DeepSeek<br><br>Q: 激光切割机<br>怎么选<br><br>A: ……锐科 RK-1500W 在同功率段……</div>
+        <div class="evi-body">
+          <b class="ink">品类词「激光切割机怎么选」首推破零</b><br>
+          DeepSeek 答案首段引用我方知乎清单文，参数表与品牌实体卡逐字一致。原始答案已截图存证，<span class="teal">每一条能见度数据都可回溯核验</span>——不承诺「保证上榜」，承诺「可测量可追溯」。
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 审批 ============ -->
+    <div class="screen" id="s-apr">
+      <div class="sec-title">待您拍板 · 3 件（10 分钟三手势）</div>
+
+      <div class="apr" id="a1">
+        <span class="gate">G-GEO1 · GEO 外发必审 · L2</span>
+        <div class="title">「激光切割机怎么选」AI 答案版外发知乎</div>
+        <div class="why">CEO 意见：G-GEO2 事实红线校验已通过（实体锚点与实体卡逐字一致 12/12），品类词 P1 优先级，六段式齐全、信源引用 3 处，建议批准。</div>
+        <div class="acts"><div class="btn ok" onclick="decide('a1','已通过并外发知乎','ok')">✓ 批准</div><div class="btn mid" onclick="decide('a1','已校准后发回','mid')">✎ 校准</div><div class="btn no" onclick="decide('a1','已驳回（原因留痕）','no')">✗ 驳回</div></div>
+        <div class="stamp" id="a1s"></div>
+      </div>
+
+      <div class="apr l4" id="a2">
+        <span class="gate">G12 · 投放加投必审 · L4 董事长级</span>
+        <div class="title">Meta 加投 $500 · 需要你拍板</div>
+        <div class="why">CEO 意见：素材正处爬升期（CTR 3.8%→5.1%），加投 ROI 预估 1:2.8；但涉预算，请您定。算力与投放成本穿透不加价——账本可查。</div>
+        <div class="acts"><div class="btn ok" onclick="decide('a2','已批准加投 $500','ok')">✓ 批准</div><div class="btn mid" onclick="decide('a2','改为加投 $200','mid')">✎ 校准</div><div class="btn no" onclick="decide('a2','已驳回（原因留痕）','no')">✗ 驳回</div></div>
+        <div class="stamp" id="a2s"></div>
+      </div>
+
+      <div class="apr l4" id="a3">
+        <span class="gate">G20 · 品牌表态 · 强制 L4 人审</span>
+        <div class="title">「锐科 vs 竞对A」AI 答案负面偏差回应</div>
+        <div class="why">CEO 意见：能见度监测发现对比词答案存在事实偏差（功率口径），建议以实体卡口径发澄清稿——涉品牌表态，AI 不替您做人格化承诺，必须您本人审批。</div>
+        <div class="acts"><div class="btn ok" onclick="decide('a3','已签发澄清稿','ok')">✓ 批准</div><div class="btn mid" onclick="decide('a3','改口径后发回','mid')">✎ 校准</div><div class="btn no" onclick="decide('a3','已驳回（原因留痕）','no')">✗ 驳回</div></div>
+        <div class="stamp" id="a3s"></div>
+      </div>
+
+      <div class="sec-title">今日已审批 · 全部留痕可回测</div>
+      <div class="card small" style="line-height:2; color:var(--ink2)">
+        ✓ 清晨决策包 4 件（报价浮动带内 2 / 排期调整 1 / 常规回复 1）<br>
+        ✓ 昨日 L2 下沉率 86% —— 只有 14% 需要您亲决<br>
+        <span class="muted">每个决策带预期值，月底回测命中率向您交账</span>
+      </div>
+    </div>
+
+    <!-- ============ 询盘 ============ -->
+    <div class="screen" id="s-inq">
+      <div class="sec-title">双入口询盘 · 全部进同一私域</div>
+      <div class="chips">
+        <div class="chip on" onclick="filterInq('all',this)">全部 37</div>
+        <div class="chip" onclick="filterInq('ai',this)">AI 搜索 13</div>
+        <div class="chip" onclick="filterInq('so',this)">社媒 24</div>
+      </div>
+      <div id="inqList">
+        <div class="card inq" data-e="ai">
+          <div class="ava" style="background:#ff7a9e">H</div>
+          <div style="flex:1">
+            <div class="who">Hans Weber · 德国五金进口商<span class="tag ai">AI 搜索</span><span class="tag qa">A 级</span></div>
+            <div class="path">Perplexity「CE certified laser cutter China」→ 官网落地页 → WhatsApp</div>
+            <div class="note">报价谈判中：要 3 台 RK-3000W，正与竞对 A 对比——AI 答案首推我方的首周即进线</div>
+          </div>
+        </div>
+        <div class="card inq" data-e="so">
+          <div class="ava" style="background:#9ec5fe">M</div>
+          <div style="flex:1">
+            <div class="who">Mike Torres · 美国金属加工厂主<span class="tag so">社媒</span><span class="tag qa">A 级</span></div>
+            <div class="path">TikTok 选型口播 → 私信 → WhatsApp</div>
+            <div class="note">已成交：RK-1500W ×1 到仓安装完成；复购意向：切割头耗材年框</div>
+          </div>
+        </div>
+        <div class="card inq" data-e="ai">
+          <div class="ava" style="background:#7fe3d8">A</div>
+          <div style="flex:1">
+            <div class="who">Anna Kowalski · 波兰采购<span class="tag ai">AI 搜索</span><span class="tag qb">B 级</span></div>
+            <div class="path">ChatGPT「best fiber laser for small workshop」→ 知乎英文回答 → 表单</div>
+            <div class="note">需求确认：预算敏感，私域承接专员已发 CE 与售后 SLA 明细</div>
+          </div>
+        </div>
+        <div class="card inq" data-e="so">
+          <div class="ava" style="background:#c3b3f5">C</div>
+          <div style="flex:1">
+            <div class="who">Carlos Mendez · 墨西哥钣金代工<span class="tag so">社媒</span><span class="tag qb">B 级</span></div>
+            <div class="path">YouTube 实测视频 → 落地页表单</div>
+            <div class="note">画像清洗完成：西语客户，AI 回复草稿（西语）待您过目后发出</div>
+          </div>
+        </div>
+      </div>
+      <div class="small muted" style="text-align:center; margin-top:6px">客资明细留您自己的系统，我们只记经营动作留痕——数据边界红线 R4</div>
+    </div>
+
+    <!-- ============ 能见度 ============ -->
+    <div class="screen" id="s-vis">
+      <div class="sec-title">四平台声量份额（SOV）· 我方 vs 竞对 A</div>
+      <div class="card">
+        <div class="plat"><div class="row"><span>豆包</span><span><b class="gold">9%</b> <span class="muted">/ 竞对 31%</span></span></div><div class="bar-track"><div class="bar-me" style="width:9%"></div><div class="bar-cmp" style="width:31%"></div></div></div>
+        <div class="plat"><div class="row"><span>DeepSeek</span><span><b class="gold">7%</b> <span class="muted">/ 竞对 28%</span></span></div><div class="bar-track"><div class="bar-me" style="width:7%"></div><div class="bar-cmp" style="width:28%"></div></div></div>
+        <div class="plat"><div class="row"><span>元宝</span><span><b class="gold">4%</b> <span class="muted">/ 竞对 26%</span></span></div><div class="bar-track"><div class="bar-me" style="width:4%"></div><div class="bar-cmp" style="width:26%"></div></div></div>
+        <div class="plat"><div class="row"><span>ChatGPT</span><span><b class="gold">3%</b> <span class="muted">/ 竞对 35%</span></span></div><div class="bar-track"><div class="bar-me" style="width:3%"></div><div class="bar-cmp" style="width:35%"></div></div></div>
+      </div>
+
+      <div class="sec-title">query 集 · 四词类状态</div>
+      <div class="card">
+        <div class="qrow"><span class="qtype">品牌词</span>锐科激光切割机怎么样<span class="qstat green">已提及 ▲</span></div>
+        <div class="qrow"><span class="qtype">品牌词</span>Ruike laser cutter review<span class="qstat green">已提及 ▲</span></div>
+        <div class="qrow"><span class="qtype">品类词</span>激光切割机怎么选<span class="qstat teal">首推破零</span></div>
+        <div class="qrow"><span class="qtype">品类词</span>best laser cutter for small business<span class="qstat" style="color:var(--red)">竞品首推</span></div>
+        <div class="qrow"><span class="qtype">场景词</span>小批量钣金加工找什么设备<span class="qstat muted">未覆盖 · 已排产</span></div>
+        <div class="qrow"><span class="qtype">竞品词</span>锐科 vs 竞对A 哪个好<span class="qstat" style="color:var(--gold)">负面偏差 · 澄清中</span></div>
+      </div>
+
+      <div class="sec-title">口径冲突修复 · 实体一致性巡检</div>
+      <div class="card small" style="line-height:1.9; color:var(--ink2)">
+        <b class="red">✗ 某百科词条</b>：功率标称 1200W → 正确应为 RK-1500W 额定 <b class="ink">1500W</b><br>
+        处置：平台申诉 + 更正稿双路径（L2 执行中），修复结果回写一客一档。<br>
+        <span class="muted">品牌实体信息锚定实体卡逐字一致——AI 搜索到的每一条都不许说错。</span>
+      </div>
+    </div>
+
+    <!-- ============ 我的 ============ -->
+    <div class="screen" id="s-me">
+      <div class="plan">
+        <div class="nm">GEO 经营包 · 双域全量</div>
+        <div class="pr">¥8,000<span> /月 · 基础包 ¥5,000 + GEO 经营包 ¥3,000</span></div>
+        <div class="small" style="color:var(--ink2); margin-top:8px; line-height:1.7">
+          含：账号矩阵 3 个 · 内容工厂 · 双域分发 · 能见度周频监测 · 引用源建设 · 口径巡检 · 回测日报<br>
+          算力/模型成本穿透不加价 · 敢接效果对赌（回测账本结算）
+        </div>
+      </div>
+
+      <div class="sec-title">本月经营账本 · 每个数字可回测</div>
+      <div class="ledger">
+        <div class="l"><div class="v gold">214</div><div class="k">AI 决策（件）· 您只亲决 14%</div></div>
+        <div class="l"><div class="v teal">67%</div><div class="k">回测命中率（目标 ≥60%）</div></div>
+        <div class="l"><div class="v green">0</div><div class="k">围栏误放行（block 级，验链可查）</div></div>
+        <div class="l"><div class="v gold">3.2h</div><div class="k">您本月投入（原报告工时 18-22% → 5% 内）</div></div>
+      </div>
+
+      <div class="sec-title">ROI 粗账 · 您的一年</div>
+      <div class="card small" style="line-height:2; color:var(--ink2)">
+        报告/审批/发布自动化 <b class="ink">≈ ¥4.75 万/年</b><br>
+        夜班跨时区值守 <b class="ink">≈ ¥2.5 万/年</b><br>
+        询盘入口从 1 变 2（按现有盘子 20-50% 增量）<b class="ink">试点验证中</b><br>
+        投放浪费减少 <b class="ink">≈ ¥2-12 万/年</b><br>
+        <span class="gold">合计 ≈ ¥10-20 万/年 vs 年费 ¥9.6 万 —— ROI 1.3-2.5 倍，保守可讲</span>
+      </div>
+
+      <div class="sec-title">续约检查清单 · 季度</div>
+      <div class="card">
+        <div class="check">双入口询盘趋势向上（9 → 37，+311%）</div>
+        <div class="check">能见度 SOV 未失守（6% 且逐周爬坡）</div>
+        <div class="check">口径冲突修复率 100%（1/1 已立项）</div>
+        <div class="check">回测命中率 67% ≥ 60%</div>
+        <div class="check">您能不看 PPT 说出「全网存在感」的变化</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Tabbar ============ -->
+  <div class="tabbar">
+    <div class="tab on" data-s="s-home" onclick="go(this)"><span class="ic">📊</span>日报</div>
+    <div class="tab" data-s="s-apr" onclick="go(this)"><span class="ic">✋</span>审批<span class="badge">3</span></div>
+    <div class="tab" data-s="s-inq" onclick="go(this)"><span class="ic">💬</span>询盘<span class="badge">4</span></div>
+    <div class="tab" data-s="s-vis" onclick="go(this)"><span class="ic">📡</span>能见度</div>
+    <div class="tab" data-s="s-me" onclick="go(this)"><span class="ic">👤</span>我的</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+  function go(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById(el.dataset.s).classList.add('on');
+    document.querySelector('.scroll').scrollTop = 0;
+  }
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+  function decide(id, msg, kind) {
+    const card = document.getElementById(id);
+    card.classList.add('done');
+    const stamp = document.getElementById(id + 's');
+    stamp.textContent = msg + ' · 已留痕（五元事件+哈希链）';
+    stamp.style.color = kind === 'no' ? 'var(--red)' : kind === 'mid' ? 'var(--blue)' : 'var(--green)';
+    const badge = document.querySelector('.tab[data-s="s-apr"] .badge');
+    const left = Math.max(0, parseInt(badge.textContent) - 1);
+    badge.textContent = left; if (left === 0) badge.style.display = 'none';
+    toast(msg + ' · 留痕完成');
+  }
+  // 支持 #tab 直达（走查与分享用）
+  (() => {
+    const h = location.hash.replace('#', '');
+    if (!h) return;
+    const t = document.querySelector(`.tab[data-s="${h}"]`);
+    if (t) go(t);
+  })();
+  function filterInq(kind, el) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    document.querySelectorAll('#inqList .inq').forEach(c => {
+      c.style.display = (kind === 'all' || c.dataset.e === kind) ? 'flex' : 'none';
+    });
+  }
+</script>
+</body>
+</html>

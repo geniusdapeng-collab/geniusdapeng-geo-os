@@ -1,0 +1,25 @@
+# 客户级 Patch：低星单体酒店（围栏松紧=中，有人兜底）
+# 叠加于 hotel-baseline/v3 之上，只可收紧不可放宽（F2.3 单调守卫）
+version: hotel-patch-low-star-single/v1
+applies_to: low_star_single
+base: hotel-baseline/v4
+patches:
+  - rule_id: R1
+    tighten:
+      when: "abs(after.price - before.price) / before.price <= 0.08"
+    note: 维持基线 8%（有人值守，收益弹性优先）
+
+  - rule_id: R4
+    tighten:
+      when: "params.amount >= 300"
+    note: 退款必审阈值 500→300 收紧（单体店现金流敏感）
+
+  - rule_id: R11
+    tighten:
+      when: "params.amount >= 800"
+    note: 采购必审阈值 1000→800 收紧
+
+  - rule_id: R16
+    tighten:
+      when: "context.night_shift == true"
+    note: 维持基线（夜班有人+AI 辅助，高危仍禁）

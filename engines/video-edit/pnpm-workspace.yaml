@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+overrides:
+  "@workloom/ui@0.1.1": "https://cnb.cool/workloom-ai/workloom-im/-/releases/download/ui-v0.1.1/workloom-ui-0.1.1.tgz"
+onlyBuiltDependencies:
+  - electron-winstaller
+  - esbuild
+  - node-pty
+allowBuilds:
+  electron-winstaller: set this to true or false
+  esbuild: set this to true or false

@@ -39,11 +39,6 @@ const FFMPEG = process.env.WL_FFMPEG ?? "ffmpeg";
 const FFPROBE = process.env.WL_FFPROBE ?? "ffprobe";
 const KB_DIR = join(REPO_ROOT, "bundles/ai-video/library/cover-kb");
 const FONT_DIR = join(REPO_ROOT, "bundles/ai-video/library/fonts");
-const SYSTEM_FALLBACK_FONT = process.platform === "darwin"
-  ? "/System/Library/Fonts/PingFang.ttc"
-  : process.platform === "win32"
-    ? "C:/Windows/Fonts/msyh.ttc"
-    : "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc";
 const ACCOUNT_DIR = join(REPO_ROOT, "bundles/ai-video/library/account-profiles");
 const BRIDGE_TOKEN_FILE = join(homedir(), "Library/Application Support/WorkLoomVisualBridge/token");
 const BRIDGE_TENANT = process.env.WORKLOOM_VISUAL_BRIDGE_TENANT ?? "ws-geo";
@@ -615,8 +610,7 @@ async function main(): Promise<void> {
     let baseImage = frame;
     if (renderer === "ffmpeg-fallback") {
       // 降级路径：本机 ffmpeg 渲染（如实标注 renderer，不冒充工位产物）
-      const packagedFont = join(FONT_DIR, COVER_FONTS[style.fontId].file);
-      const fontFile = existsSync(packagedFont) ? packagedFont : SYSTEM_FALLBACK_FONT;
+      const fontFile = join(FONT_DIR, COVER_FONTS[style.fontId].file);
       baseImage = join(workRoot, `${variantId}-base.png`);
       /** 双帧分段版式：先把左右两帧横拼成一帧，再走同一套压暗/排版。 */
       let fallbackSource = frame;

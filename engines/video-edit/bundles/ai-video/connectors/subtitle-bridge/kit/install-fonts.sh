@@ -92,7 +92,7 @@ for name in bundled_mismatch:
     print(f"  ✗ 摘要不符（随包字体被改动过，必须回退）：{name}")
 for name in bundled_missing:
     print(f"  ✗ 随包字体缺失：{name}")
-if mode in ("check", "install") and (bundled_mismatch or bundled_missing):
+if bundled_mismatch or bundled_missing:
     sys.exit(2)
 
 if os.path.isdir(external_dir):
@@ -171,11 +171,7 @@ if mode == "download":
     installed = 0
     for item in pin["fonts"]:
         raw = os.path.join(work, os.path.basename(item["file"]) + ".download")
-        curl = [
-            "curl", "-fsSL", "--retry", "3", "--retry-delay", "2",
-            "--retry-all-errors", "--max-time", "600", "-o", raw,
-            item["upstream"]["url"],
-        ]
+        curl = ["curl", "-fsSL", "--max-time", "600", "-o", raw, item["upstream"]["url"]]
         if proxy:
             curl[1:1] = ["-x", proxy]
         subprocess.run(curl, check=True)

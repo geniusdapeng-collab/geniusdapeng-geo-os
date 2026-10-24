@@ -1,0 +1,172 @@
+{
+  "$id": "workloom://bundles/hotel/schemas/archive",
+  "title": "一店一档字段组（酒店行业版 v2 · §2.2 槽①）",
+  "description": "五类档案 21 字段组：基础类/业务类/运营类/治理类/记忆类。分两期策略——一期保激活（required 仅 property+forbidden，对齐起飞前检查单 F2.10），二期随种子客户 know-how 入库渐进完备。Agent 生成内容前必读『档案+阶段+目标』三要素（L3.7），缺一拒绝执行。",
+  "type": "object",
+  "required": [
+    "property",
+    "forbidden"
+  ],
+  "properties": {
+    "property": {
+      "type": "object",
+      "description": "【基础类】物业基础信息",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "rooms": {
+          "type": "integer"
+        },
+        "star": {
+          "type": "string"
+        },
+        "segment": {
+          "type": "string",
+          "description": "客群类型：low_star_single（低星单体）/ homestay（民宿）/ unmanned（无人酒店）——决定客户级 Patch 模板"
+        },
+        "pms_vendor": {
+          "type": "string",
+          "description": "PMS 厂商（系统对接 L1/L2 选型依据）"
+        }
+      }
+    },
+    "brand_guideline": {
+      "type": "object",
+      "description": "【基础类】品牌规范（文案口径 tone/禁用词 banned_words/图片规范 image_rules/直播话术规范 live_rules）"
+    },
+    "business": {
+      "type": "object",
+      "description": "【业务类】经营基线：保底价 floor_price（与 R2 熔断同源）/各房型价带 price_bands/渠道佣金规则 commission_rules/退款与担保政策 refund_policy",
+      "properties": {
+        "floor_price": {
+          "type": "number",
+          "description": "保底价（R2 同源，L1.6 硬约束）"
+        },
+        "price_bands": {
+          "type": "object"
+        },
+        "commission_rules": {
+          "type": "object"
+        },
+        "refund_policy": {
+          "type": "object"
+        }
+      }
+    },
+    "competitors": {
+      "type": "array",
+      "description": "【业务类】竞对清单（名称/渠道/参考价带）——pricing-agent 对标与 competitor-agent 采集对象",
+      "items": {
+        "type": "object"
+      }
+    },
+    "channels": {
+      "type": "array",
+      "description": "【业务类】渠道清单（OTA/直连/内容/直播平台；channel_new 标记驱动 R3 新渠道必审、R15 直播首发必审）",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "ota / direct / content / live"
+          },
+          "channel_new": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "price_calendar": {
+      "type": "object",
+      "description": "【业务类】90 天价格日历基线（房型×渠道×日期远期货价；pricing-matrix 技能输入；节假日策略锚点）"
+    },
+    "operations": {
+      "type": "object",
+      "description": "【运营类】运营节奏：班次表 shifts/夜班窗口 night_window（与工作区 night_config 同源）/巡检频次 inspection_cron/清洁标准 cleaning_sop/查房检项 room_check_items"
+    },
+    "staffing": {
+      "type": "object",
+      "description": "【运营类】编制与排班约束（各岗位人数/法定加班上限，R12 判定输入）"
+    },
+    "suppliers": {
+      "type": "array",
+      "description": "【运营类】供应商名录（布草洗涤/耗材/维修；inventory-procurement 比价对象，含备选供应商）",
+      "items": {
+        "type": "object"
+      }
+    },
+    "sop": {
+      "type": "array",
+      "description": "【运营类】门店 SOP 清单（七大业务域 67 环节的门店化实例）",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden": {
+      "type": "array",
+      "description": "【治理类】禁用承诺清单（L1.6 硬约束，优先级高于任何 Skill 与模型推理；起飞前检查单要求 ≥1 条）",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string",
+            "description": "如：美团大床房不低于 ¥380"
+          },
+          "scope": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "approval_matrix": {
+      "type": "object",
+      "description": "【治理类】审批权限矩阵（金额×风险分级 → auto/review/block 归口；R4/R11/R13/R14 阈值同源）"
+    },
+    "compensation_policy": {
+      "type": "object",
+      "description": "【治理类】补偿口径（客诉补偿上限/免房审批权/差评补偿话术边界；review-agent 与 R14 判定输入）"
+    },
+    "audience": {
+      "type": "object",
+      "description": "【记忆类】客群画像（商旅客/亲子/情侣占比等）"
+    },
+    "history_curve": {
+      "type": "object",
+      "description": "【记忆类】历史经营曲线（OCC/ADR/RevPAR 月度）"
+    },
+    "memory": {
+      "type": "object",
+      "description": "【记忆类】案例索引与组织记忆锚点（处置案例引用/复盘链接；第五类 case 记忆落地前的配置层索引）"
+    },
+    "inspection": {
+      "type": "object",
+      "description": "巡检只读快照（M9/F9.1 探针输入：channels/roomStates/reviews/violations 采样；缺项探针报 nodata 不编造）"
+    },
+    "linen": {
+      "type": "object",
+      "description": "【运营类】布草档案：四态流转（在房 in_room/在洗 in_laundry/在库 in_stock/报损 retired）初始套数 initial_sets/洗涤商 laundry_vendor/交付差异容差 delivery_tolerance/报损基线 baseline_loss_rate（R20 同源）/RFID 启用标记 rfid_enabled"
+    },
+    "incident_profile": {
+      "type": "object",
+      "description": "【运营类】断点档案（无人酒店向）：设备清单 devices（自助入住机/门锁/网络/送物机器人 型号+保固期）/应急联系人三级树 emergency_contacts/报警联动 alarm_integration/备用电源与机械钥匙位置 backup_access/八大断点当前处置级别 current_fallback_levels"
+    },
+    "faq_kb": {
+      "type": "object",
+      "description": "【运营类】FAQ 知识库（phone-concierge 同源）：高频问题 top20（question/answer/source_call_ids 来源通话归因/confirmed 店长确认标记）/萃取状态 last_mined_at/本周新增候选 pending_candidates"
+    },
+    "goals": {
+      "type": "object",
+      "description": "【业务类】经营目标：年度/月度目标（occ/adr/revpar/营收/差评率/复购率）+ 分解到渠道与房型 + 追踪口径（goal.tracking 事件按周回写达成率与预测偏差）"
+    }
+  }
+}

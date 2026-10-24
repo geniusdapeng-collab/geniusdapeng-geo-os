@@ -1,0 +1,53 @@
+# 酒店获客主链路管线 · 获客五环端到端（v3.3 获客域）
+# 意图雷达 → 内容排期 → 双域触达 → 四路承接 → 线索分级 → 券成交 → 核销归因 → 复盘反哺
+# 每步 = Quest 任务卡；断点续跑继承 dsh replay；每步产物写 biz_events 五元事件
+quest: hotel-acquisition-loop
+name: 酒店获客五环主链路
+version: v1
+description: 从意图矿源到归因成交的完整获客闭环——channel-watcher 意图雷达供弹，content-agent 双域生产，ai-receptionist 四路承接，coupon-operator 券转化，成交归因回写反哺选题
+schedule: daily
+steps:
+  - step_key: intent-radar
+    name: 意图雷达四矿源扫描
+    owner: channel-watcher
+    cron: "0 7 * * *"                 # 每日 07:00（周报周一出全量）
+    outputs: [intent_signal]          # 竞对评论区/OTA差评/query词/本店私信意图
+  - step_key: content-schedule
+    name: 房态联动内容排期
+    owner: content-agent
+    cron: "30 7 * * *"
+    outputs: [campaign]               # 满房停推/淡季猛推；短视频+GEO 图文+直播切片排期
+  - step_key: dual-publish
+    name: 双域发布挂载
+    owner: content-agent
+    outputs: [campaign, poi_store]    # 内容挂 POI+券链接+行动锚点（G 系/R25 口径校验门）
+    gates: [R25, R3]                  # 口径校验必审 + 新渠道首发必审
+  - step_key: reception
+    name: 四路承接应答留资
+    owner: ai-receptionist
+    cron: "*/30 * * * *"              # 30 分钟轮询（评论/私信/落地页/AI搜索锚点）
+    outputs: [lead]                   # 30s 首响；留资携来源链；报价承诺人审（R21）
+    gates: [R21, R24]
+  - step_key: lead-grading
+    name: 线索分级与派发
+    owner: ai-receptionist
+    outputs: [lead]                   # A 级 1h 推店长接管；B 级培育池；C 级私域沉淀
+  - step_key: coupon-convert
+    name: 券转化与直连预订
+    owner: coupon-operator
+    outputs: [coupon_sku, booking_order]  # 先囤后约；库存熔断（R22）/定价红线（R26）
+    gates: [R22, R26]
+  - step_key: attribution
+    name: 核销归因回写
+    owner: coupon-operator
+    cron: "0 23 * * *"                # 每日 23:00 核销对账后归因
+    outputs: [conversion]             # 成交金额+来源链+OTA 佣金节省对照
+  - step_key: guest-retention
+    name: 住客资产运营
+    owner: guest-success
+    outputs: [member]                 # 入住前确认/住中关怀/好评引导/复购唤醒/转介绍
+  - step_key: funnel-review
+    name: 六级漏斗复盘反哺
+    owner: company-ceo
+    cron: "30 8 * * 1"                # 周一晨会并入经营节拍
+    outputs: [alert]                  # 曝光→互动→询盘→留资→成交→复购；漏环告警+选题反哺

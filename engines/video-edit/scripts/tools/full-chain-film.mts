@@ -12,8 +12,9 @@
  *   tsx scripts/tools/full-chain-film.mts \
  *     --shots <shotlist.json> --project VID-PJL01 \
  *     --library <角色档案库根> --work-dir <.vm-work 根> --out <交付目录> \
- *     [--stages spec,plates,videos,compose,color,subtitle,danmaku,bgm,cover,mux] \
- *     [--subtitle-mode sidecar|burn|both]   # 缺省 sidecar：字幕只做旁挂文件 + 软字幕轨，母版不烧字 \
+ *     [--stages spec,plates,videos,compose,color,subtitle,danmaku,bgm,cover,mux,master] \
+ *     [--subtitle-mode sidecar|burn|both]   # 缺省 burn：字幕直接烧进单交付母版 \
+ *     [--danmaku <items.json> | --auto-danmaku | --no-danmaku] \
  *     [--aspect 9:16|16:9|1:1|4:5] [--resolution 720p|1080p|2160p] [--quality hd|uhd] \
  *     [--enhance-kind live-action|animation] [--enhance-engine-dir <本地引擎目录>] \
  *     [--fps 30] [--max-attempts 2] \
@@ -48,6 +49,7 @@ import { filmReviewContracts, loadOrCreateFilmAuthorContext, reviewFilmStage, is
 import { acceptRenderedShot, findRenderedShotAcceptance, RENDERED_SHOT_ACCEPTANCE_POLICY, type RenderedShotAcceptance } from "../../packages/video-studio/src/rendered-shot-acceptance.js";
 import { buildProducerReviewContract, type ProducerGateOptions } from "../../packages/video-studio/src/producer-gate.js";
 import { assessPortraitDecision, selectPortraitDecisionRecord } from "../../packages/video-studio/src/portrait-decision.js";
+import { hasExplicitPortraitAuthorization, verifyPortraitOwnerAuthorization } from "../../packages/video-studio/src/portrait-owner-authorization.js";
 import { executeRevision } from "../../packages/video-studio/src/revision-executor.js";
 import { assessVoiceArtifact, fingerprintFile, fingerprintText, promoteDubCandidate, type VoiceArtifactRecord } from "./film-voice-artifact.js";
 import {
@@ -98,6 +100,11 @@ import { reviewPlausibility, applyPromptPatches, PLAUSIBILITY_POLICY_VERSION } f
 import { createGenerationQuality } from "./generation-quality.mjs";
 import { publishUhdDelivery, sha256UhdAsset } from "../../packages/video-studio/src/uhd-delivery.js";
 import { FullChainFilmWorker } from "../../packages/video-studio/src/film-worker-runtime.js";
+import {
+  AI_PRODUCTION_DEFAULT_STAGES,
+  AI_PRODUCTION_DEFAULT_SUBTITLE_MODE,
+  resolveAiProductionDanmakuEnabled,
+} from "./lib/ai-production-defaults.js";
 
 const REPO_ROOT = resolve(import.meta.dirname ?? process.cwd(), "../..");
 const WORKER_RUNTIME = process.argv.includes("--worker") || process.env.FILM_WORKER_MODE === "worker"
@@ -460,9 +467,10 @@ const COLOR_MODE = arg("--color-mode", "preserve");
 if (!["preserve", "grade", "best"].includes(COLOR_MODE)) throw new Error("COLOR_MODE_INVALID: preserve|grade|best");
 if (COLOR_MODE === "preserve" && ["--color-profile", "--color-intensity", "--color-recipe"].some(key => process.argv.includes(key)))
   throw new Error("COLOR_OPTIONS_CONFLICT: explicit creative controls require --color-mode grade or best");
+const REQUESTED_VARIANT_IDS = arg("--variants", "").split(",").map(id => id.trim()).filter(Boolean);
 const AI_VARIANTS = resolveDeliveryVariants({ ...sourceDocument,
   shots: sourceDocument.shots?.filter(shot => !ONLY.length || ONLY.includes(String(shot.shotId))) },
-  arg("--variants", "").split(",").map(id => id.trim()).filter(Boolean));
+  REQUESTED_VARIANT_IDS);
 const RESUME = !flag("--no-resume");
 const DRY_RUN = flag("--dry-run");
 const ALLOW_FALLBACK_APPROVE = flag("--allow-fallback-approve");
@@ -478,22 +486,30 @@ const STAGES = new Set(
    *   · 新增 `voice`：逐镜人声核查 + 缺播报的镜头补 TTS 旁白（"中间只有字幕没台词播报"的修复）。
    */
   /**
-   * 2026-09-26 产品口径补充：`deliver`（多风格交付包）**默认开启**——
-   * 真机复盘发现"一次产出几个版本"的约束一直没执行，根因就是它不在默认阶段表里，
-   * 只有显式 `--stages ...,deliver` 才会跑，于是日常跑全链根本不产变体。
+   * 2026-10-18 产品口径：普通 AI 视频默认恢复单母版链路。
+   * `deliver`（多风格交付包）保留为显式能力，只有调用方把 `deliver` 放进 `--stages`
+   * 时才启用。
    */
-  arg("--stages", "cine-kb,continuity,micromotion,spec,plates,material-gen,videos,voice,compose,color,subtitle,danmaku,bgm,cover,mux,master,deliver").split(",").map((s) => s.trim()).filter(Boolean)
+  arg("--stages", AI_PRODUCTION_DEFAULT_STAGES.join(",")).split(",").map((s) => s.trim()).filter(Boolean)
 );
+if (REQUESTED_VARIANT_IDS.length && !STAGES.has("deliver")) {
+  throw new Error("DELIVER_STAGE_REQUIRED_FOR_VARIANTS: 显式请求变体时必须在 --stages 中包含 deliver");
+}
+const DANMAKU_ENABLED = resolveAiProductionDanmakuEnabled({
+  danmakuFile: DANMAKU_FILE,
+  autoDanmaku: flag("--auto-danmaku") || (process.argv.includes("--stages") && STAGES.has("danmaku")),
+  noDanmaku: flag("--no-danmaku"),
+});
+if (DANMAKU_ENABLED) STAGES.add("danmaku");
 /**
- * 字幕落地方式（2026-09-24 产品所有者口径）：
- *   sidecar（缺省）= 母版**不烧字**，出旁挂字幕文件（srt/ass/vtt + 清单）并另出一支软字幕轨版；
- *   burn           = 旧行为：把字幕烧进画面（母版变成带字版）；
+ * 字幕落地方式：
+ *   burn（缺省）   = 普通 AI 单母版把字幕直接烧进画面；
+ *   sidecar        = 母版不烧字，出旁挂字幕文件（srt/ass/vtt + 清单）并另出一支软字幕轨版；
  *   both           = 旁挂 + 烧字副本都出（发布方想两条路都留）。
- * 为什么默认改成 sidecar：**有些片子要带字幕、有些不要**，而"要不要"是后期/发布时的选择；
- * 烧一次就回不去了（画面像素被改），旁挂文件则可以随时软轨内嵌或再烧。
+ * 普通 AI 旧链要求“烧台词”，因此缺省恢复 burn；需要干净母版时显式传 sidecar。
  */
 const SUBTITLE_MODE = (() => {
-  const value = arg("--subtitle-mode", "sidecar");
+  const value = arg("--subtitle-mode", AI_PRODUCTION_DEFAULT_SUBTITLE_MODE);
   if (!["sidecar", "burn", "both"].includes(value)) {
     throw new Error(`--subtitle-mode 只支持 sidecar | burn | both，收到：${value}`);
   }
@@ -2147,7 +2163,7 @@ if (needsNewRender && !DRY_RUN) {
     try {
       const events = readFileSync(ledger, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as {
         stepKey?: string; projectId?: string; at?: string; approved?: boolean; score?: number | null; reason?: string;
-        via?: string | null; sourceStage?: string | null; evidence?: { basis?: string | null; ownerAcceptance?: string } | null;
+        via?: string | null; sourceStage?: string | null; evidence?: { basis?: string | null; ownerAcceptance?: string; [key: string]: unknown } | null;
       });
       return selectPortraitDecisionRecord(events, `portrait:${lead.id}:v${lead.version}`);
     } catch (error) { throw new Error(`角色门账本不可读取：${error instanceof Error ? error.message : String(error)}`); }
@@ -2178,16 +2194,27 @@ if (needsNewRender && !DRY_RUN) {
       : null),
   );
   let acceptanceBytesVerified = false;
+  let acceptanceDetail = "当前定妆照未与人类验收指纹绑定或已变化，须重新记录所有者决定";
   if (lead && portraitDecision.decisive && !portraitDecision.blocking) {
-    const receiptFile = gateRecord?.evidence?.ownerAcceptance;
-    if (receiptFile) {
-      try {
-        const localReceipt = join(lead.dir, "reviews", basename(receiptFile));
-        const receipt = JSON.parse(readFileSync(localReceipt, "utf8")) as { characterId?: string; version?: number; artifacts?: Array<{ angle?: string; file: string; sha256: string }> };
-        acceptanceBytesVerified = receipt.characterId === lead.id && receipt.version === lead.version
-          && published.every(({ angle, path }) => !isAssetRefLocal(path) && existsSync(path)
-            && receipt.artifacts?.some((item) => (item.angle === angle || resolve(item.file) === resolve(path)) && item.sha256 === sha256FileSync(path)));
-      } catch (error) { log(`人类验收文件核验失败：${error instanceof Error ? error.message : String(error)}`); }
+    if (gateRecord && hasExplicitPortraitAuthorization(gateRecord)) {
+      const verified = verifyPortraitOwnerAuthorization(gateRecord, { dir: lead.dir, characterId: lead.id, version: lead.version, files: lead.files });
+      acceptanceBytesVerified = verified.ok;
+      acceptanceDetail = verified.ok ? `所有者既有用途授权、回执完整SHA256、当前全部${verified.authorization!.artifacts.length}角度及新AI front身份锚一致`
+        : `既有用途授权核验失败：${verified.issues.join("；")}`;
+    } else {
+      const receiptFile = gateRecord?.evidence?.ownerAcceptance;
+      if (receiptFile) {
+        try {
+          const localReceipt = join(lead.dir, "reviews", basename(receiptFile));
+          const receipt = JSON.parse(readFileSync(localReceipt, "utf8")) as { kind?: string; approved?: boolean; basis?: string; authorization?: unknown; characterId?: string; version?: number; artifacts?: Array<{ angle?: string; file: string; sha256: string }> };
+          acceptanceBytesVerified = receipt.kind === "owner-acceptance" && receipt.approved === true
+            && (!receipt.basis || receipt.basis === "human-review") && !Object.hasOwn(receipt, "authorization")
+            && receipt.characterId === lead.id && receipt.version === lead.version
+            && published.every(({ angle, path }) => !isAssetRefLocal(path) && existsSync(path)
+              && receipt.artifacts?.some((item) => (item.angle === angle || resolve(item.file) === resolve(path)) && item.sha256 === sha256FileSync(path)));
+        } catch (error) { log(`人类验收文件核验失败：${error instanceof Error ? error.message : String(error)}`); }
+      }
+      if (acceptanceBytesVerified) acceptanceDetail = "当前角色版本的四角度字节与人类视觉验收指纹一致";
     }
   }
   const checks: GateCheck[] = lead
@@ -2228,7 +2255,7 @@ if (needsNewRender && !DRY_RUN) {
             }]),
         ...(portraitDecision.decisive && !portraitDecision.blocking ? [{
           id: "human-acceptance-bytes", pass: acceptanceBytesVerified, hard: true,
-          detail: acceptanceBytesVerified ? "当前角色版本的四角度字节与人类验收指纹一致" : "当前定妆照未与人类验收指纹绑定或已变化，须重新验收"
+          detail: acceptanceDetail
         }] : [])
       ]
     : [{ id: "applicable", pass: true, detail: "镜头卡未涉及人物（空镜片）→ 定妆照门不适用", hard: false }];
@@ -2245,7 +2272,7 @@ if (needsNewRender && !DRY_RUN) {
      * 此时"external-asset-ref"判据就是这道门的实质判据，不再因"没有本地监制记录"降级；
      * 授权有效期与归属仍如实标注为未由本工具核验（external-asset-id-not-provider-verified）。
      */
-    degraded: Boolean(lead) && portraitDecision.kind === "none" && externalRefs.length === 0,
+    degraded: Boolean(lead) && !portraitDecision.decisive && !(published.length > 0 && externalRefs.length === published.length),
     evidence: {
       character: lead ? { id: lead.id, name: lead.name, angles: Object.keys(lead.files) } : null,
       reviewFile,
@@ -2253,8 +2280,10 @@ if (needsNewRender && !DRY_RUN) {
       gateApproved: gateRecord?.approved ?? null,
       reviewApproved: review?.verdict?.approved ?? null,
       portraitDecision: { kind: portraitDecision.kind, decisive: portraitDecision.decisive, blocking: portraitDecision.blocking, detail: portraitDecision.detail },
+      acceptanceBytesVerified, acceptanceDetail,
       note: portraitDecision.kind === "human"
-        ? "含人类验收记录（gates.jsonl，via=owner-acceptance）：放行/否决由人类决定"
+        ? "含所有者决定记录（gates.jsonl，via=owner-acceptance）：视觉验收与既有用途授权分别标注，代录不冒充看图"
+        : portraitDecision.kind === "invalid" ? "所有者决定证据无效，阻断且不回退旧放行"
         : portraitDecision.kind === "machine"
           ? "含机器评审留证（不参与放行）：机器判据不触发重做，决策交人类"
           : "无人类验收记录：本次仅做资产硬闸（角度/尺寸/字节）"
@@ -4715,10 +4744,8 @@ if (STAGES.has("subtitle") && existsSync(colored)) {
  * 硬塞一层评点会显得违和。关闭时后续环节直接接字幕版（`master-subtitled.mp4`），
  * 并在阶段日志里留一条"显式跳过"，终审的血缘/层级检查也据此少一层（不冒充已执行）。
  */
-const DANMAKU_ENABLED = !flag("--no-danmaku")
-  && (Boolean(String(DANMAKU_FILE ?? "").trim()) || FILM_SPEECH_LANGUAGE === "zh");
-if (!DANMAKU_ENABLED && !flag("--no-danmaku") && FILM_SPEECH_LANGUAGE !== "zh") {
-  log(`弹幕层：默认关闭（影片人声语言=${FILM_SPEECH_LANGUAGE}）；如需弹幕请显式传 --danmaku <items.json>`);
+if (!DANMAKU_ENABLED && !flag("--no-danmaku")) {
+  log("弹幕层：默认关闭；如需弹幕请显式传 --danmaku <items.json> 或 --auto-danmaku");
 }
 
 let danmakuOut = DANMAKU_ENABLED
@@ -5476,7 +5503,7 @@ if (STAGES.has("cover") && existsSync(colored)) {
    * （轻微推近，避免"完全静止"）再接正片，输出 `<项目>-with-cover.mp4`。
    * 用 `--no-open-with-cover` 可关掉（平台若要求纯正片版本）。
    */
-  if (coverApproved && flag("--open-with-cover") && !flag("--no-open-with-cover") && existsSync(coverPng) && existsSync(scored)) {
+  if (coverApproved && !flag("--no-open-with-cover") && existsSync(coverPng) && existsSync(scored)) {
     rememberInputs("cover-intro", [scored, coverPng]);
     try {
       const card = join(coverDir, "cover-card.mp4");
@@ -5502,6 +5529,8 @@ if (STAGES.has("cover") && existsSync(colored)) {
       if (Number(withCoverInfo.width) !== OUTPUT_SIZE.width || Number(withCoverInfo.height) !== OUTPUT_SIZE.height) {
         throw new Error(`片头合成尺寸 ${withCoverInfo.width}x${withCoverInfo.height}，要求 ${OUTPUT_SIZE.width}x${OUTPUT_SIZE.height}`);
       }
+      scored = withCover;
+      expectedMasterSeconds = Number(withCoverInfo.duration ?? expectedMasterSeconds + 1.2);
       log(`  ⇢ 封面已合成进片头：${withCover}（封面卡 1.2s + 正片，总时长 ${Number(probe(withCover).duration ?? 0).toFixed(2)}s）`);
       record({
         stage: "cover-intro", shotId: null, invoked: true, ok: true, cached: false, degraded: false, attempt: 1, ms: 0,
@@ -5668,7 +5697,8 @@ if (STAGES.has("master") && !STAGES.has("deliver") && !DRY_RUN) {
   const media = generationArtifacts("master", deliverablePath, [], sidecars).map(row => resolve(OUT_DIR, row.path));
   const content = [...new Set([...media.filter(file => file.startsWith(OUT_DIR + sep)), ...sidecars, ...accepted.files])];
   const manifestFile = join(OUT_DIR, `${PROJECT}-delivery-manifest.json`);
-  const manifest = { schemaVersion: "workloom.generation-delivery/v1", projectId: PROJECT, scope: "master", variants: [],
+  const manifest = { schemaVersion: "workloom.generation-delivery/v1", projectId: PROJECT, scope: "master",
+    masterOnly: true, deliveryPolicy: "single-master", variants: [],
     deliverable: { path: publicDeliveryPath(deliverablePath), sha256: await sha256UhdAsset(deliverablePath) },
     assets: await Promise.all(content.map(async file => ({ path: publicDeliveryPath(file), sha256: await sha256UhdAsset(file) }))),
     generationQuality: accepted.manifest, qualityReport: { path: relative(OUT_DIR, accepted.qualityFile.path), sha256: accepted.qualityFile.sha256 } };

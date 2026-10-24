@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云栖酒店 · 店长驾驶舱（演示原型）</title>
+<style>
+  :root {
+    --bg: #fff5f7; --card: #ffffff; --card2: #fff0f4;
+    --gold: #ff2442; --gold2: #ff7a9e;
+    --ink: #33262b; --ink2: #8a757d; --ink3: #b9a9b0;
+    --teal: #22c88a; --red: #ff4d6d; --blue: #6aa9e8; --line: #ffe0ea;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: #ffeef3; color: var(--ink); font-family: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif; display: flex; justify-content: center; }
+  .phone { width: 100%; max-width: 420px; min-height: 100vh; background: var(--bg); }
+  .statusbar { display: flex; justify-content: space-between; padding: 14px 20px 4px; font-size: 12px; color: var(--ink3); }
+  .apphead { display: flex; align-items: center; gap: 10px; padding: 8px 20px 14px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--gold2)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #ffffff; }
+  .t1 { font-size: 16px; font-weight: 700; } .t2 { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .live-dot { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--teal); }
+  .live-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+  .screen { display: none; padding: 0 16px 90px; }
+  .screen.on { display: block; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .gold { color: var(--gold); } .teal { color: var(--teal); } .red { color: var(--red); } .blue { color: var(--blue); }
+  .dim { color: var(--ink2); } .dim3 { color: var(--ink3); }
+  .small { font-size: 12px; } .tiny { font-size: 11px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .between { display: flex; justify-content: space-between; align-items: center; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; border: 1px solid var(--line); color: var(--ink2); }
+  .tag.red { color: var(--red); border-color: var(--red); }
+  .tag.gold { color: var(--gold); border-color: var(--gold2); }
+  .tag.teal { color: var(--teal); border-color: var(--teal); }
+  .btn { display: block; width: 100%; text-align: center; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #ffffff; font-weight: 700; font-size: 14px; border: none; cursor: pointer; }
+  .kpis { display: flex; gap: 8px; margin-bottom: 12px; }
+  .kpi { flex: 1; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .kpi b { font-size: 17px; display: block; }
+  .kpi span { font-size: 10px; color: var(--ink3); }
+  .kpi .up { color: var(--teal); font-size: 10px; } .kpi .dn { color: var(--red); font-size: 10px; }
+  .funnel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+  .funnel-row .lb { width: 40px; color: var(--ink2); text-align: right; }
+  .funnel-row .bar { height: 18px; border-radius: 4px; background: linear-gradient(90deg, var(--gold2), var(--gold)); display: flex; align-items: center; padding-left: 6px; font-size: 10px; color: #ffffff; font-weight: 700; min-width: 34px; }
+  .funnel-row .pct { color: var(--ink3); font-size: 10px; margin-left: auto; }
+  .lead { border-left: 3px solid var(--gold2); }
+  .lead.a { border-left-color: var(--red); }
+  .lead.b { border-left-color: var(--gold); }
+  .lead.c { border-left-color: var(--ink3); }
+  .apr { border: 1px solid var(--gold2); background: rgba(255,36,66,.04); }
+  .apr .acts { display: flex; gap: 8px; margin-top: 10px; }
+  .apr .acts button { flex: 1; padding: 9px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; }
+  .ok-b { background: var(--teal); color: #ffffff; }
+  .no-b { background: var(--card2); color: var(--red); border: 1px solid var(--red) !important; }
+  .agent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .agent { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .agent .av { font-size: 20px; }
+  .agent .nm { font-size: 10px; margin-top: 4px; color: var(--ink2); }
+  .agent .st { font-size: 9px; color: var(--teal); }
+  .agent.busy .st { color: var(--gold); }
+  .group-t { font-size: 12px; color: var(--ink3); margin: 12px 0 8px; }
+  .tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; display: flex; background: rgba(255,255,255,.96); border-top: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .tab { flex: 1; text-align: center; padding: 9px 0 14px; font-size: 10px; color: var(--ink3); cursor: pointer; }
+  .tab .ic { font-size: 19px; display: block; margin-bottom: 2px; }
+  .tab.on { color: var(--gold); }
+  .badge { display: inline-block; min-width: 16px; height: 16px; line-height: 16px; border-radius: 999px; background: var(--red); color: #fff; font-size: 10px; text-align: center; }
+  .scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: 96px; scrollbar-width: none; }
+  .toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); background: var(--card2); border: 1px solid var(--gold2); color: var(--gold); padding: 9px 16px; border-radius: 999px; font-size: 12px; display: none; z-index: 9; }
+  .timeline { border-left: 2px solid var(--line); margin-left: 6px; padding-left: 12px; }
+  .timeline .ti { position: relative; margin-bottom: 10px; font-size: 12px; }
+  .timeline .ti::before { content: ""; position: absolute; left: -17px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold2); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>08:31</span><span>店长驾驶舱</span><span>📶 🔋</span></div>
+  <div class="apphead">
+    <div class="logo">云</div>
+    <div><div class="t1">云栖酒店 · 王店长</div><div class="t2">低星单体型 · 86 间房 · 16 名数码员工在岗</div></div>
+    <div class="live-dot">夜班包已生成</div>
+  </div>
+
+  <div class="scroll">
+  <!-- ========== 日报 ========== -->
+  <div class="screen on" id="s-dash">
+    <div class="kpis">
+      <div class="kpi"><b>83%</b><span>OCC 昨日</span><div class="up">▲5pt</div></div>
+      <div class="kpi"><b>¥512</b><span>ADR</span><div class="up">▲¥16</div></div>
+      <div class="kpi"><b>¥425</b><span>RevPAR</span><div class="up">▲9.2%</div></div>
+    </div>
+    <div class="card" style="border-color:var(--gold2);background:linear-gradient(135deg,rgba(255,36,66,.08),transparent);">
+      <div class="between"><b class="small">💰 本月获客归因成交</b><span class="tag gold">北极星</span></div>
+      <div style="font-size:24px;font-weight:800;margin:6px 0">¥128,600 <span class="tiny teal">152 单 · 直连+券</span></div>
+      <div class="tiny dim">同单走 OTA 应付佣金 <span class="red">¥14,900</span> —— 这就是省下的纯利 · 直连+券贡献 OCC +6.8pt</div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">📊 获客六级漏斗（本周）</b><span class="tiny dim3">曝光→复购</span></div>
+      <div style="margin-top:12px">
+        <div class="funnel-row"><span class="lb">曝光</span><div class="bar" style="width:97%">620w</div><span class="pct">—</span></div>
+        <div class="funnel-row"><span class="lb">互动</span><div class="bar" style="width:48%">31.2w</div><span class="pct">5.0%</span></div>
+        <div class="funnel-row"><span class="lb">询盘</span><div class="bar" style="width:16%">1,842</div><span class="pct red">0.59% ⚠</span></div>
+        <div class="funnel-row"><span class="lb">留资</span><div class="bar" style="width:12%">486</div><span class="pct">26.4%</span></div>
+        <div class="funnel-row"><span class="lb">成交</span><div class="bar" style="width:9%">152</div><span class="pct">31.3%</span></div>
+        <div class="funnel-row"><span class="lb">复购</span><div class="bar" style="width:7%">47</div><span class="pct">30.9%</span></div>
+      </div>
+      <div class="tiny dim" style="margin-top:8px">⚠ 公司CEO 提示：<b>互动→询盘 0.59% 最漏</b>（视频 CTA 弱）——下周全部视频前 3s 加「评论区扣 1 领券」口播，GEO 行动锚点前置到第 2 段。本月 ROI：成本 ¥9,400 → 成交 ¥128,600（13.7×）</div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🌐 市场动态扫描（渠道哨兵）</b><span class="tag teal">每日 07:00</span></div>
+      <div class="tiny dim" style="margin-top:8px">
+        📍 区域热度：西湖区 92（开学季+中秋前置，亲子需求 ▲38%）<br>
+        ⚔️ 竞对动向：西湖云舍首播卖券（威胁中）· 云栖轻奢提价 12%（威胁低）<br>
+        💡 竞对差评矿源：隔音(17)/早餐排队(11)/停车难(8)——全是我方卖点<br>
+        📅 国庆预测：10.1-10.3 满房，10.4-10.6 有 35% 空窗可抢
+      </div>
+    </div>
+    <div class="card" style="border-color:var(--gold2);">
+      <div class="between"><b class="small">🎯 W35 获客策略（公司CEO 定调）</b><span class="tag gold">执行中</span></div>
+      <div class="tiny dim" style="margin-top:8px">
+        主题：<b>开学季亲子收口 + 国庆错峰抢订</b><br>
+        内容：短视频 ×6 + 直播 ×2 + GEO 图文 ×4 · 券：亲子券补库 400 + 国庆预售 ¥899<br>
+        投放：¥3,000 小额测试（CTR>4% 再加投）· 本周 KPI：线索≥90 / 券核销≥60 / GEO 提及率≥32%
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">👪 目标人群圈选（三细分）</b><span class="tiny dim3">进内容排期与投放定向</span></div>
+      <div class="tiny dim" style="margin-top:8px">
+        🧸 <b>亲子家庭 42%</b> · 钩子「带娃的一天 vlog」· 主渠道 抖音/小红书<br>
+        💼 <b>商旅人士 35%</b> · 钩子「延迟退房六段式」· 主渠道 AI搜索/知乎<br>
+        💑 <b>情侣周末 23%</b> · 钩子「日落窗景实拍」· 主渠道 小红书/视频号
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🧭 意图雷达 TOP3（渠道哨兵）</b><span class="tag teal">每周一 07:00</span></div>
+      <div class="timeline" style="margin-top:10px">
+        <div class="ti">「杭州亲子酒店 带泳池」热度 1842 ▲ — 建议拍亲子实拍</div>
+        <div class="ti">「西湖边 隔音好」热度 1207 ▲ — 竞对隔音差评=我方卖点</div>
+        <div class="ti">「商旅 延迟退房」热度 886 — GEO 六段式已排产</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🌙 昨夜夜班包</b><span class="tag teal">14 项已完成</span></div>
+      <div class="tiny dim" style="margin-top:8px">差评响应 ×2（SLA 内）· 价格巡检 ×3 · 对账三轮一致 · FAQ 萃取新问答 ×2 待您确认</div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🎬 本周内容实绩</b><span class="tag gold">AI 视频 × 社媒 × GEO</span></div>
+      <div class="tiny dim" style="margin-top:8px">
+        🎥 爆款《带娃住云栖的一天》抖音 <b>86.2w 播放</b> · 评论 486（73 条获客意图已分流）<br>
+        📕 《临街酒店能有多安静》小红书 5.3w · 收藏率 5.9%（竞对差评矿源选题）<br>
+        🎙️ 直播卖券 2 场 GMV <b>¥18,400</b> · 售券 52 张 · 切片 6 条二次分发<br>
+        🤖 GEO 图文《杭州商旅酒店怎么选》知乎收录 · 36h 被豆包/DeepSeek 引用<br>
+        📈 酒店词能见度 <b>34%（4 周连涨）</b> · 首推率 12% · SOV 28% 区域第一
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 线索 ========== -->
+  <div class="screen" id="s-lead">
+    <div class="kpis">
+      <div class="kpi"><b class="red">38</b><span>A 级待跟</span></div>
+      <div class="kpi"><b class="gold">121</b><span>B 级培育</span></div>
+      <div class="kpi"><b>327</b><span>C 级沉淀</span></div>
+    </div>
+    <div class="card lead a">
+      <div class="between"><b class="small">🔴 国庆亲子询价 · 两大一小</b><span class="tag red">A 级 · 剩 55 分钟</span></div>
+      <div class="tiny dim" style="margin-top:6px">来源：抖音《带娃住云栖的一天》→ 评论→私信 · 26s 首响<br>意向：10.4-10.6 亲子双床房 2 晚 · 已人审报价 728/晚</div>
+      <div class="row" style="margin-top:8px;gap:8px">
+        <button class="btn" style="padding:8px;font-size:12px" onclick="toast('已接管，正在呼出企微会话…')">立即接管</button>
+        <button class="btn" style="padding:8px;font-size:12px;background:var(--card2);color:var(--gold);border:1px solid var(--gold2)" onclick="toast('已推送国庆预售券链接')">发券链接</button>
+      </div>
+    </div>
+    <div class="card lead a">
+      <div class="between"><b class="small">🔴 会议团 20 间房询价</b><span class="tag red">A 级 · 剩 32 分钟</span></div>
+      <div class="tiny dim" style="margin-top:6px">来源：AI 搜索「杭州 团建 酒店 会议室」→ 口令「云栖」进线<br>9 月中旬 2 天 · 需 20 间+会议室 · 报价须人审（R21）</div>
+    </div>
+    <div class="card lead b">
+      <div class="between"><b class="small">🟡 商旅长住询价</b><span class="tag gold">B 级 · 培育中</span></div>
+      <div class="tiny dim" style="margin-top:6px">来源：知乎 GEO 回答 → 落地页表单<br>每周三-四固定出差 · 已进培育池，本周推送长住协议价（待您拍板）</div>
+    </div>
+    <div class="card lead c">
+      <div class="between"><b class="small">⚪ 小红书种草收藏用户 ×47</b><span class="tag">C 级 · 私域喂养</span></div>
+      <div class="tiny dim" style="margin-top:6px">已同步企微朋友圈内容计划，长期喂养</div>
+    </div>
+  </div>
+
+  <!-- ========== 审批 ========== -->
+  <div class="screen" id="s-apr">
+    <div class="card apr">
+      <div class="between"><b class="small">◆ R21 · AI 接待报价审批</b><span class="tag red">待审批</span></div>
+      <div class="small" style="margin-top:8px">会议团 20 间房 · AI 建议报价：协议价 ¥438/间夜（门市 9.6 折）</div>
+      <div class="tiny dim" style="margin-top:6px">依据：9 月中旬周中 OCC 预测 61% · 保底价 ¥380 上方 15.3% · 竞对云栖轻奢同档 ¥465<br>CEO 意见：建议批准并要 30% 定金担保（R5 担保订单联动）</div>
+      <div class="acts"><button class="ok-b" onclick="toast('已批准（五元留痕）')">✓ 批准</button><button class="no-b" onclick="toast('已驳回并附理由')">✗ 驳回</button></div>
+    </div>
+    <div class="card apr">
+      <div class="between"><b class="small">◆ R25 · GEO 图文口径校验</b><span class="tag red">待审批</span></div>
+      <div class="small" style="margin-top:8px">《杭州商旅酒店怎么选》六段式 · 1 处口径不一致</div>
+      <div class="tiny dim" style="margin-top:6px">文中「免费升级房型」——一店一档 forbidden：upgrade_promise = forbidden<br>建议改为「延迟退房 14:00 视房态确认」</div>
+      <div class="acts"><button class="ok-b" onclick="toast('已按建议修改并放行')">✓ 修改后放行</button><button class="no-b" onclick="toast('已退回内容组')">✗ 退回</button></div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small dim">✓ 已通过（今日 ×4）</b><span class="tag teal">留痕可查</span></div>
+      <div class="tiny dim" style="margin-top:6px">R21 亲子国庆报价 728/晚 · R4 退款 ¥520 · R6 差评回复 ×2</div>
+    </div>
+  </div>
+
+  <!-- ========== 员工 ========== -->
+  <div class="screen" id="s-team">
+    <div class="group-t">获客组（v3.3 新增）</div>
+    <div class="agent-grid">
+      <div class="agent busy"><div class="av">🎧</div><div class="nm">AI接待员</div><div class="st">接待中 ×2</div></div>
+      <div class="agent"><div class="av">🎟️</div><div class="nm">团购运营</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">💝</div><div class="nm">住客运营</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">📡</div><div class="nm">渠道哨兵</div><div class="st">雷达扫描</div></div>
+    </div>
+    <div class="group-t">经营组</div>
+    <div class="agent-grid">
+      <div class="agent"><div class="av">💹</div><div class="nm">调价</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">💬</div><div class="nm">差评</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">🧾</div><div class="nm">对账</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">🛎️</div><div class="nm">前台</div><div class="st">在岗</div></div>
+      <div class="agent"><div class="av">🧹</div><div class="nm">客房</div><div class="st">派单 ×6</div></div>
+      <div class="agent"><div class="av">📞</div><div class="nm">语音前台</div><div class="st">通话中</div></div>
+      <div class="agent"><div class="av">✍️</div><div class="nm">内容</div><div class="st">剪辑中</div></div>
+      <div class="agent"><div class="av">🖥️</div><div class="nm">桌面</div><div class="st">在岗</div></div>
+    </div>
+    <div class="group-t">指挥与哨戒</div>
+    <div class="agent-grid">
+      <div class="agent"><div class="av">👔</div><div class="nm">公司CEO</div><div class="st">晨报已发</div></div>
+      <div class="agent"><div class="av">🔭</div><div class="nm">竞对</div><div class="st">只读</div></div>
+      <div class="agent"><div class="av">🔍</div><div class="nm">巡检</div><div class="st">只读</div></div>
+      <div class="agent"><div class="av">🏰</div><div class="nm">业主驾驶舱</div><div class="st">只读</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="tiny dim3">昨夜 22:00-08:00 夜班：14 项任务自动完成 · 0 次打扰店长 · 2 件事项清晨请示（已在审批页）</div>
+    </div>
+  </div>
+
+  <!-- ========== 我的 ========== -->
+  <div class="screen" id="s-me">
+    <div class="card">
+      <div class="row" style="gap:12px">
+        <div class="logo" style="width:52px;height:52px;font-size:24px">王</div>
+        <div><b>王店长</b><div class="tiny dim">云栖酒店 · 低星单体型 · 授权模式 trial（第 2 天）</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <b class="small">🏨 门店配置</b>
+      <div class="tiny dim" style="margin-top:6px">86 间房 · 四钻 · 杭州西湖区 · PMS：示例PMS（mock 对接中）<br>客群分型：低星单体（卖 ROI · 一年省 17 万）</div>
+    </div>
+    <div class="card">
+      <b class="small">🛡️ 本月围栏拦截</b>
+      <div class="tiny dim" style="margin-top:6px">R2 保底价熔断 ×1 · R22 券库存熔断 ×1 · R24 客资红线 ×0<br>R21 报价人审 ×7（全部 SLA 内处理）</div>
+    </div>
+    <div class="card">
+      <b class="small">📈 年度目标进度</b>
+      <div class="tiny dim" style="margin-top:6px">营收 ¥120 万 · 已完成 58.3% · OCC 目标 80%（当前 78%）<br>复购率目标 28%（当前 27%，差 1pt——住客运营已排唤醒计划）</div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab on" data-s="s-dash"><span class="ic">📊</span>日报</div>
+    <div class="tab" data-s="s-lead"><span class="ic">🎯</span>线索 <span class="badge">3</span></div>
+    <div class="tab" data-s="s-apr"><span class="ic">⚖️</span>审批 <span class="badge">2</span></div>
+    <div class="tab" data-s="s-team"><span class="ic">👥</span>员工</div>
+    <div class="tab" data-s="s-me"><span class="ic">👤</span>我的</div>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  function go(el) {
+    tabs.forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById(el.dataset.s).classList.add('on');
+  }
+  tabs.forEach(t => t.onclick = () => go(t));
+  (() => { const h = location.hash.replace('#',''); if (!h) return;
+    const t = document.querySelector(`.tab[data-s="${h}"]`); if (t) go(t); })();
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2200);
+  }
+</script>
+</body>
+</html>

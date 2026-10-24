@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { ApiError } from "../domain/errors.mjs";
 import { SYSTEM_IDENTITY } from "../domain/identity.mjs";
+import { readVideoRuntime } from "./video-runtime.mjs";
 
 const MIME_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -182,6 +183,7 @@ export function createGeoOsServer({
   service,
   livePipeline,
   geoEngine,
+  videoRuntime,
   publicDir,
   allowedHosts = ["127.0.0.1", "localhost", "::1"],
 }) {
@@ -190,6 +192,18 @@ export function createGeoOsServer({
       validateRequestSource(request, allowedHosts);
       const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
       const path = url.pathname;
+
+      if (path === "/api/video-runtime" || path.startsWith("/api/video-runtime/")) {
+        if (!["/api/video-runtime/status", "/api/video-runtime/capabilities"].includes(path)) {
+          throw new ApiError(404, "VIDEO_RUNTIME_ENDPOINT_NOT_FOUND", "视频运行环境接口不存在。");
+        }
+        if (request.method !== "GET") { methodNotAllowed(response, ["GET"]); return; }
+        if ([...url.searchParams].length) {
+          throw new ApiError(400, "VIDEO_RUNTIME_REQUEST_INVALID", "视频状态与能力目录不接受查询参数。");
+        }
+        writeJson(response, 200, await readVideoRuntime(videoRuntime, path.endsWith("/status") ? "status" : "capabilities"));
+        return;
+      }
 
       if (path === "/api/health") {
         if (request.method !== "GET") {
@@ -254,6 +268,28 @@ export function createGeoOsServer({
         }
         writeJson(response, 200, await livePipeline.mediaEngine.listJobs());
         return;
+      }
+
+      if (path.startsWith("/api/video-edit/")) {
+        if (!livePipeline?.videoEdit) throw new ApiError(503, "VIDEO_LIBRARY_UNAVAILABLE", "内置视频资产适配器未启用。");
+        if (path === "/api/video-edit/library") {
+          if (request.method !== "GET") { methodNotAllowed(response, ["GET"]); return; }
+          if ([...url.searchParams.keys()].some(key => key !== "kind") || url.searchParams.getAll("kind").length > 1) throw new ApiError(400, "VIDEO_LIBRARY_REQUEST_INVALID", "库查询只接受一个kind参数。");
+          writeJson(response, 200, await livePipeline.videoEdit.libraryCatalog({ kind: url.searchParams.get("kind") ?? "all" }));
+          return;
+        }
+        if (path === "/api/video-edit/characters/resolve") {
+          if (request.method !== "POST") { methodNotAllowed(response, ["POST"]); return; }
+          writeJson(response, 200, await livePipeline.videoEdit.resolveCharacters(await readJsonBody(request)));
+          return;
+        }
+        if (path === "/api/video-edit/products/resolve") {
+          if (request.method !== "GET") { methodNotAllowed(response, ["GET"]); return; }
+          if ([...url.searchParams.keys()].some(key => key !== "selector") || url.searchParams.getAll("selector").length !== 1) throw new ApiError(400, "VIDEO_PRODUCT_REQUEST_INVALID", "商品查询只接受一个selector参数。");
+          writeJson(response, 200, await livePipeline.videoEdit.selectProduct({ selector: url.searchParams.get("selector") }));
+          return;
+        }
+        throw new ApiError(404, "VIDEO_LIBRARY_ENDPOINT_NOT_FOUND", "视频资产接口不存在。");
       }
 
       if (path.startsWith("/api/geo/engine/")) {

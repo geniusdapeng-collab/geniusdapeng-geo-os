@@ -1,0 +1,35 @@
+# 客户级 Patch：无人酒店（围栏松紧=紧，无人需严控；夜班为核心王牌场景）
+# 叠加于 hotel-baseline/v3 之上，只可收紧不可放宽（F2.3 单调守卫）
+version: hotel-patch-unmanned/v1
+applies_to: unmanned
+base: hotel-baseline/v4
+patches:
+  - rule_id: R1
+    tighten:
+      when: "abs(after.price - before.price) / before.price <= 0.05"
+    note: 无人值守涨幅自动上限 8%→5% 收紧（远程店长管理 3-5 家，审批带宽有限）
+
+  - rule_id: R4
+    tighten:
+      when: "params.amount >= 200"
+    note: 退款必审阈值 500→200 收紧（无现场人员核实，涉钱必远程确认）
+
+  - rule_id: R7
+    tighten:
+      when: "context.night_shift == true && abs(after.price - before.price) / before.price <= 0.02"
+    note: 夜班微调自动上限 3%→2% 收紧（全 AI 夜班，收窄自治半径）
+
+  - rule_id: R10
+    tighten:
+      when: "params.safety_event == true || params.device_offline_minutes >= 10"
+    note: 安全禁区扩展到「关键设备离线 ≥10 分钟」（自助机/门锁/机器人断连即服务中断，block+远程店长告警）
+
+  - rule_id: R13
+    tighten:
+      when: "params.involves_fee == true || params.involves_commitment == true"
+    note: 无人工现场兜底，任何对外承诺（含非费用类）均必审
+
+  - rule_id: R16
+    tighten:
+      when: "context.night_shift == true || params.on_site_staff == false"
+    note: 夜班禁区扩展为「无现场人员时」全天生效：GUI 操控/退款/换房一律远程店长审批

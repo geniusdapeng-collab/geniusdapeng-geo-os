@@ -1,0 +1,119 @@
+{
+  "id": "geo-war-room",
+  "name": "WorkLoom GEO · 双域作战室",
+  "theme": {
+    "floorA": "#c8e6ff",
+    "floorB": "#e0f1ff",
+    "wall": "#a8d4f5",
+    "accent": "#4d96ff",
+    "night": false
+  },
+  "grid": {
+    "w": 8,
+    "h": 8
+  },
+  "stations": [
+    {
+      "id": "st-1",
+      "x": 1.2,
+      "y": 1.6,
+      "kind": "desk"
+    },
+    {
+      "id": "st-2",
+      "x": 2.6,
+      "y": 1.4,
+      "kind": "desk"
+    },
+    {
+      "id": "st-3",
+      "x": 4.2,
+      "y": 1.6,
+      "kind": "desk"
+    },
+    {
+      "id": "st-4",
+      "x": 5.8,
+      "y": 1.4,
+      "kind": "desk"
+    },
+    {
+      "id": "st-5",
+      "x": 1.4,
+      "y": 3.4,
+      "kind": "desk"
+    },
+    {
+      "id": "st-6",
+      "x": 3.0,
+      "y": 3.6,
+      "kind": "monitor"
+    },
+    {
+      "id": "st-7",
+      "x": 4.8,
+      "y": 3.4,
+      "kind": "monitor"
+    },
+    {
+      "id": "st-8",
+      "x": 6.4,
+      "y": 3.6,
+      "kind": "desk"
+    },
+    {
+      "id": "st-9",
+      "x": 2.0,
+      "y": 5.4,
+      "kind": "desk"
+    },
+    {
+      "id": "st-10",
+      "x": 4.0,
+      "y": 5.6,
+      "kind": "desk"
+    },
+    {
+      "id": "st-11",
+      "x": 6.0,
+      "y": 5.4,
+      "kind": "bench"
+    }
+  ],
+  "props": [
+    {
+      "kind": "radar",
+      "x": 1.0,
+      "y": 0.8,
+      "label": "情报站"
+    },
+    {
+      "kind": "monitor",
+      "x": 6.8,
+      "y": 0.9,
+      "label": "能见度大屏"
+    },
+    {
+      "kind": "light",
+      "x": 3.2,
+      "y": 1.0
+    },
+    {
+      "kind": "light",
+      "x": 5.4,
+      "y": 1.2
+    }
+  ],
+  "ceoDesk": {
+    "x": 4.0,
+    "y": 0.4
+  },
+  "lounge": {
+    "x": 7.0,
+    "y": 6.6
+  },
+  "entrance": {
+    "x": 7.4,
+    "y": 7.2
+  }
+}

@@ -250,7 +250,7 @@ export function analyzeCaption(input: {
     return analyses.find((doc) => doc?.asset?.sha256 === source.sha256 || (doc?.asset?.localPath && doc.asset.localPath === source.path)) ?? null;
   };
 
-  // —— VMG 分组：连续 <2s 的片段（按主轨顺序）——
+  // —— VMG 分组：连续 <2s 的片段（按主轨顺序）—— 
   const vmgRuns: Array<{ segmentIds: string[]; totalSeconds: number }> = [];
   let run: { segmentIds: string[]; totalSeconds: number } | null = null;
   for (const segment of timeline.segments ?? []) {
@@ -271,7 +271,7 @@ export function analyzeCaption(input: {
     });
   }
 
-  // —— 字幕条目：定位、归属、字数带 ——
+  // —— 字幕条目：定位、归属、字数带 —— 
   const seen = new Set<string>();
   interface Screen { text: string; start: number; end: number; range: CaptionRange | null; timingPrecision?: CaptionTextInput["timingPrecision"] }
   const textOf = new Map<string, { text: string; role: string; screens: Screen[]; timed: boolean }>();
@@ -561,7 +561,7 @@ export function analyzeCaption(input: {
     density.push(row);
   }
 
-  // —— 时间轴完整性：重叠 / 间隔 / 单条过长 ——
+  // —— 时间轴完整性：重叠 / 间隔 / 单条过长 —— 
   const ordered = [...cues].sort((a, b) => a.start - b.start);
   let minGap: number | null = null;
   for (let i = 0; i < ordered.length; i += 1) {
@@ -584,7 +584,7 @@ export function analyzeCaption(input: {
     }
   }
 
-  // —— 标题 / video_id / 总时长 ——
+  // —— 标题 / video_id / 总时长 —— 
   const title = String(caption.video_title ?? "");
   if ([...title].length > 12) issues.push({ id: "caption.title", severity: "hard", detail: `标题超过 12 字：${title}` });
   if (INLINE_FORBIDDEN.test(title)) issues.push({ id: "caption.titlePunct", severity: "hard", detail: `标题含标点/空格：${title}` });

@@ -69,6 +69,72 @@ receipt.
 
 ## Backup and restore
 
+The complete video engine is installed and supervised from this repository:
+
+```bash
+node scripts/video-setup.mjs --install --build --postgres-root /path/to/postgresql-17
+node scripts/video-doctor.mjs
+node src/server.mjs
+```
+
+The explicit PostgreSQL prefix must contain a complete PostgreSQL 17 tool
+package with pgvector. The installer copies `bin/lib/share` into private
+PengManager storage and creates its own authenticated cluster. It does not copy
+an existing database or reuse an unrelated service occupying a managed port.
+`--install` uses the embedded lockfile; `--build` builds the embedded contract and
+web workbench. Use `--help` for the current supported CLI options. Ordinary root
+startup uses the prepared environment and never silently installs dependencies.
+
+CLI/MCP operation is the default; the complete web source is retained for later
+use. `node scripts/agent.mjs list` shows the reviewed callable catalog,
+`node scripts/agent.mjs capabilities` shows all embedded roles, skills and tools,
+and `node scripts/agent-mcp.mjs` runs the stdio server. Native operations obtain
+the managed owner session and keep the existing server-side guards. One agent
+process owns one video supervisor; an existing process-only `WORKLOOM_ACCESS_TOKEN`
+can attach to the same configured loopback backend without starting another one.
+Use `--with-workbench` on `video-start.mjs` to enable the optional built web UI.
+
+The root command starts JSON/GEO first and starts video in the background. Open
+“视频工作台” to see not-installed/stopped/setting-up/starting/ready/stopping/error
+and all missing dependencies. Setup or provider failure does not remove the
+existing dashboard. SIGINT/SIGTERM stops the owned video backend, web server,
+tool stations and PostgreSQL and then closes the original control plane. Do not
+kill another application's process to free a port. Run one supervisor per private
+video data directory.
+
+The root `test:vendor` and `test:ci` scripts serialize the media-heavy files and
+use a single Vitest worker. Assertions and per-test time limits stay unchanged;
+run these checks separately from model imports, source builds or other FFmpeg
+batches to avoid measuring workstation resource contention as a product error.
+
+The existing CI test job also installs the complete embedded engine with its
+own pinned package manager and frozen lockfile, builds the industry contract
+and native web workbench, typechecks the native server, and runs the identity,
+onboarding, role-preservation and declared-skill regressions. Its tool tests use
+explicit local protocol fixtures. Linux CI does not download model weights,
+call paid providers or certify macOS-only Compositor binaries or media quality.
+The UI installer downloads the pinned original package from the producer's
+[official public release](https://github.com/geniusdapeng-collab/workloom-im/releases/tag/ui-v0.1.19)
+without a release credential. It checks the immutable release ID, source commit,
+asset ID, size, SHA-256 and SRI before warming the package store. The existing
+canonical dependency URL, package version and frozen lock identity stay the
+same; package-manager children receive no credential. Only the private runner
+temporary directory holds the original archive used by the boundary tests; the
+archive is neither checked in nor uploaded. An unavailable release, changed
+identity or mismatched bytes fails the installation check visibly. The explicit
+legacy CNB interface remains available for compatibility regression tests.
+
+On macOS, video data defaults to
+`~/Library/Application Support/PengManager/video-runtime`; Windows uses
+`%LOCALAPPDATA%/PengManager/video-runtime`; Linux uses
+`$XDG_DATA_HOME/PengManager/video-runtime` or `~/.local/share/PengManager/video-runtime`.
+Set `PENGMANAGER_VIDEO_DATA_DIR` to another owner-only directory outside this
+repository when needed. `private-state.json` binds the owned database identity
+and contains protected local credentials. Preserve it together with
+`postgres-data`, `work`, `media`, `post` and setup/workspace receipts. Never
+delete or regenerate credential state to bypass a database or assembly error.
+Do not publish this directory or copy it into a source checkout.
+
 By default, runtime data spans the JSON control-plane store, GEO SQLite database
 and media job directories:
 
@@ -76,14 +142,17 @@ and media job directories:
 var/state.json
 var/geo-engine/
 var/media/jobs/
+<private-video-data-directory>/
 ```
 
 If `DATA_FILE` or `GEO_ENGINE_DB` points outside these default locations, include
 the configured state file or database directory in the stopped backup and
 restore it to the same configured location.
 
-Stop the service before copying the complete directory so the JSON state, SQLite
-files and media receipts represent the same stopped runtime. Use a protected
+Stop the root service and confirm all owned video processes have stopped before
+copying both the complete `var/` directory and the private video data directory.
+This keeps JSON, GEO SQLite, video PostgreSQL, task archives and media receipts
+at a consistent stopped boundary. Use a protected
 backup destination outside the repository; this example assumes that directory
 already exists:
 
@@ -101,8 +170,15 @@ cp -R /path/to/encrypted-backup/pengmanager-var-2026-10-24 var
 node src/server.mjs
 ```
 
-If there is no current `var/`, omit the `mv` step. After restart, inspect the event
-chain and GEO/media history before recording new operations. Runtime data may
+The example above restores the original control-plane data only. Restore the
+private video directory to its original configured location as a separate
+protected step, preserving its credential state and PostgreSQL cluster
+together. Keep the current directory as a recovery copy before replacing it.
+Do not merge files from two database clusters or copy a live PG data directory.
+
+If there is no current `var/`, omit the `mv` step. After restart, run the video
+doctor and inspect the native active bundle, original event chain, GEO history
+and video task/archive history before recording new operations. Runtime data may
 contain private operations and local source paths; keep it outside Git and
 unencrypted cloud storage.
 

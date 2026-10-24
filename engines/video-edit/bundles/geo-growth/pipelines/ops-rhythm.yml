@@ -1,0 +1,65 @@
+# 双域经营节拍管线 · 融合方案 §4.3 日常经营 SOP + §5.4 协同四 + §5.5 协同五
+# 日/周/月三节拍 + 询盘双入口进同一私域 + 夜班跨时区值守
+quest: ops-rhythm
+name: 双域经营节拍管线
+version: v1
+description: 日节拍（情报→决策包→采集分流→夜班值守）→周节拍（周一经营会五件套）→月节拍（回测+续约材料）；询盘双入口打标进同一私域，月度双入口漏斗对比
+schedule: 7x24
+steps:
+  # ---- 日节拍 ----
+  - step_key: metrics-2h
+    name: 社媒指标每 2h 采集落账
+    owner: data-board-officer
+    cron: "0 */2 * * *"
+    outputs: [account_metric]
+  - step_key: comment-30m
+    name: 评论私信每 30min 四档分流
+    owner: private-domain-operator
+    cron: "*/30 * * * *"
+    gate: G10
+    outputs: [comment_reply]          # 夸赞 auto/咨询 review/负面 review+告警/敏感 block
+  - step_key: inquiry-tag
+    name: 询盘双入口打标
+    owner: private-domain-operator
+    outputs: [inquiry]                # 社媒入口 vs AI 搜索入口，进同一私域链路
+  - step_key: morning-pack
+    name: 08:30 清晨决策包
+    owner: company-ceo
+    cron: "30 8 * * *"
+    outputs: [decision_memo]          # 昨日数据+夜间完成+待决 0-N 件，10 分钟三手势裁决
+  - step_key: night-shift
+    name: 夜班跨时区值守
+    owner: data-board-officer
+    cron: "0 22 * * *"                # 22:00-08:00 美东/欧区高峰承接+GEO 海外平台监测
+    outputs: [account_metric, visibility_snapshot]
+  # ---- 周节拍（周一经营会） ----
+  - step_key: weekly-battle-report
+    name: 全网存在感战报（三栏）
+    owner: review-analyst
+    cron: "0 9 * * 1"
+    outputs: [battle_report]          # 社媒侧/GEO侧/交叉侧三栏；人签发后外发客户
+  - step_key: weekly-meeting-pack
+    name: 周经营会五件套全稿
+    owner: company-ceo
+    cron: "30 9 * * 1"
+    outputs: [battle_report]          # 社媒复盘+GEO 周报+询盘漏斗+下周选题+下周 GEO 动作
+  # ---- 月节拍（月度经营会） ----
+  - step_key: monthly-backtest
+    name: 决策日记回测
+    owner: review-analyst
+    cron: "0 10 1 * *"                # 每月 1 日 10:00
+    outputs: [backtest_record]        # expected vs 实际命中率，<60% 校准 prompt 与决策规则后重测
+  - step_key: monthly-unit-econ
+    name: 单位经济与收入结构
+    owner: review-analyst
+    outputs: [battle_report]          # 社媒询盘/AI 搜索询盘/广告产出分列；单条内容成本/单询盘成本
+  - step_key: renewal-kit
+    name: 结案与续约材料备齐
+    owner: customer-success
+    outputs: [commercial_doc]         # 自动备齐，G15 必审后外发
+  # ---- 交付级（集团CEO，周频） ----
+  - step_key: fleet-scoreboard
+    name: 渠道交付人效看板
+    owner: group-ceo
+    cron: "0 18 * * 5"                # 每周五 18:00
+    outputs: [battle_report]          # 单运营服务客户数/交付及时率/回测命中率/双域发布成功率

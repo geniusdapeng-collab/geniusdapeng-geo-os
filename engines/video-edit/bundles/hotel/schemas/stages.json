@@ -1,0 +1,22 @@
+{
+  "$id": "workloom://bundles/hotel/schemas/stages",
+  "description": "酒店行业版经营阶段枚举 v2（§2.2 槽②：阶段枚举由行业包定义，阶段判定走确定性代码框架）。三层阶段模型——门店级决定整体经营策略（旺季重收益、淡季重保底），客户级决定客户运营动作（预订前触达、离店后唤醒），运营级决定日常节奏（日运营靠夜班班组、月运营靠对账复盘）。stage 字段在 Context 中，行业可扩展。",
+  "stages": [
+    { "id": "ramp", "label": "爬坡期", "layer": "store", "hint": "开业/上线初期，以曝光与首单转化为重" },
+    { "id": "stable", "label": "稳定期", "layer": "store", "hint": "OCC/ADR 平稳，以收益管理优化为重" },
+    { "id": "peak", "label": "旺季", "layer": "store", "hint": "需求高位，关注价格弹性与满房节奏" },
+    { "id": "off_season", "label": "淡季", "layer": "store", "hint": "需求低位，关注保底与活动拉动" },
+    { "id": "turnaround", "label": "调整期", "layer": "store", "hint": "改造/换牌/整改中，关注口碑修复" },
+    { "id": "guest_browse", "label": "浏览", "layer": "guest", "hint": "客人浏览比价中，内容种草与价格竞争力是关键" },
+    { "id": "guest_first_book", "label": "首订", "layer": "guest", "hint": "首次下单，到店前关怀与特殊需求收集" },
+    { "id": "guest_staying", "label": "入住", "layer": "guest", "hint": "在住中，7×24 应答与需求预测主动服务" },
+    { "id": "guest_checkout", "label": "离店", "layer": "guest", "hint": "退房离店，评价邀请与画像沉淀" },
+    { "id": "guest_repeat", "label": "复购", "layer": "guest", "hint": "30 天内复购窗口，个性化触达唤醒" },
+    { "id": "guest_dormant", "label": "沉睡", "layer": "guest", "hint": "60-90 天未入住，唤醒话术+优惠（频率受 R9 约束）" },
+    { "id": "guest_churned", "label": "流失", "layer": "guest", "hint": "90 天以上未复购，流失归因分析（价格/服务/竞对）" },
+    { "id": "ops_daily", "label": "日运营", "layer": "ops", "hint": "夜班班组自治+08:30 清晨决策包+晨会分派" },
+    { "id": "ops_weekly", "label": "周复盘", "layer": "ops", "hint": "收益周报/排班调整/差评整改周检" },
+    { "id": "ops_monthly", "label": "月对账", "layer": "ops", "hint": "月度对账报告/经营复盘/流失客户分析" },
+    { "id": "ops_quarterly", "label": "季调整", "layer": "ops", "hint": "季度策略制定，沉淀为围栏/Skill 调整" }
+  ]
+}

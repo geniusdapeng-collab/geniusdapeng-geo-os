@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云栖酒店 · 住客小程序（演示原型）</title>
+<style>
+  :root {
+    --bg: #fff5f7; --card: #ffffff; --card2: #fff0f4;
+    --gold: #ff2442; --gold2: #ff7a9e; --cream: #33262b;
+    --ink: #33262b; --ink2: #8a757d; --ink3: #b9a9b0;
+    --teal: #22c88a; --red: #ff4d6d; --line: #ffe0ea;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: #ffeef3; color: var(--ink); font-family: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif; display: flex; justify-content: center; }
+  .phone { width: 100%; max-width: 420px; min-height: 100vh; background: var(--bg); position: relative; }
+  .statusbar { display: flex; justify-content: space-between; padding: 14px 20px 4px; font-size: 12px; color: var(--ink3); }
+  .apphead { display: flex; align-items: center; gap: 10px; padding: 8px 20px 14px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--gold2)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #ffffff; }
+  .apphead .t1 { font-size: 16px; font-weight: 700; }
+  .apphead .t2 { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .live-dot { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 11px, color: var(--teal); font-size: 11px; color: var(--teal); }
+  .live-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+  .screen { display: none; padding: 0 16px 90px; }
+  .screen.on { display: block; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .gold { color: var(--gold); } .teal { color: var(--teal); } .red { color: var(--red); }
+  .dim { color: var(--ink2); } .dim3 { color: var(--ink3); }
+  .small { font-size: 12px; } .tiny { font-size: 11px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .between { display: flex; justify-content: space-between; align-items: center; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; border: 1px solid var(--line); color: var(--ink2); }
+  .tag.hot { color: var(--red); border-color: var(--red); }
+  .tag.gold { color: var(--gold); border-color: var(--gold2); }
+  .tag.teal { color: var(--teal); border-color: var(--teal); }
+  .btn { display: block; width: 100%; text-align: center; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #ffffff; font-weight: 700; font-size: 14px; border: none; cursor: pointer; }
+  .btn.ghost { background: var(--card2); color: var(--gold); border: 1px solid var(--gold2); }
+  /* 首页视频卡 */
+  .video-card { position: relative; height: 300px; border-radius: 16px; overflow: hidden; margin-bottom: 12px; background: linear-gradient(160deg, #ffd9c2, #ffeef4); border: 1px solid var(--line); }
+  .video-card .scene { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 64px; }
+  .video-card .play { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,.5); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
+  .video-card .meta { position: absolute; left: 12px; right: 12px; bottom: 12px; }
+  .video-card .title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .coupon-anchor { position: absolute; right: 12px; bottom: 64px; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #ffffff; border-radius: 12px; padding: 8px 10px; font-size: 11px; font-weight: 700; text-align: center; box-shadow: 0 4px 14px rgba(255,36,66,.28); animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-5px); } }
+  .poi-line { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink2); margin-top: 6px; }
+  /* 券卡 */
+  .coupon { display: flex; border-radius: 14px; overflow: hidden; margin-bottom: 12px; border: 1px solid var(--gold2); }
+  .coupon .val { background: linear-gradient(160deg, var(--gold), var(--gold2)); color: #ffffff; width: 108px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 6px; }
+  .coupon .val b { font-size: 26px; }
+  .coupon .body { flex: 1; background: var(--card); padding: 12px; }
+  .coupon .name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  /* 对话 */
+  .msg { max-width: 82%; padding: 10px 12px; border-radius: 14px; margin-bottom: 10px; font-size: 13px; line-height: 1.55; }
+  .msg.me { margin-left: auto; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #ffffff; border-bottom-right-radius: 4px; }
+  .msg.ai { background: var(--card2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg .who { font-size: 10px; color: var(--ink3); margin-bottom: 4px; }
+  .review-note { display: flex; gap: 6px; align-items: flex-start; background: rgba(255,36,66,.06); border: 1px dashed var(--gold2); border-radius: 10px; padding: 8px 10px; font-size: 11px; color: var(--gold); margin-bottom: 10px; }
+  .inputbar { display: flex; gap: 8px; margin-top: 6px; }
+  .inputbar input { flex: 1; background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; color: var(--ink); font-size: 13px; outline: none; }
+  .inputbar button { background: linear-gradient(135deg, var(--gold), var(--gold2)); border: none; color: #ffffff; font-weight: 700; border-radius: 999px; padding: 0 18px; cursor: pointer; }
+  /* 订单 */
+  .qr { width: 96px; height: 96px; border-radius: 10px; background: repeating-conic-gradient(var(--ink) 0% 25%, var(--card) 0% 50%) 50% / 12px 12px; border: 6px solid var(--card); }
+  /* 漏斗 */
+  .funnel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 12px; }
+  .funnel-row .lb { width: 52px; color: var(--ink2); text-align: right; }
+  .funnel-row .bar { height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--gold2), var(--gold)); }
+  .funnel-row .n { width: 64px; font-weight: 700; }
+  .funnel-row .pct { color: var(--ink3); font-size: 11px; }
+  /* 线索 */
+  .lead { border-left: 3px solid var(--gold2); }
+  .lead.a { border-left-color: var(--red); }
+  .lead.b { border-left-color: var(--gold); }
+  .lead.c { border-left-color: var(--ink3); }
+  /* 审批 */
+  .apr { border: 1px solid var(--gold2); background: rgba(255,36,66,.04); }
+  .apr .acts { display: flex; gap: 8px; margin-top: 10px; }
+  .apr .acts button { flex: 1; padding: 9px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; }
+  .ok-b { background: var(--teal); color: #ffffff; }
+  .no-b { background: var(--card2); color: var(--red); border: 1px solid var(--red) !important; }
+  /* 员工 */
+  .agent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .agent { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .agent .av { font-size: 20px; }
+  .agent .nm { font-size: 10px; margin-top: 4px; color: var(--ink2); }
+  .agent .st { font-size: 9px; color: var(--teal); }
+  .group-t { font-size: 12px; color: var(--ink3); margin: 12px 0 8px; }
+  /* 底部导航 */
+  .tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; display: flex; background: rgba(255,255,255,.96); border-top: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .tab { flex: 1; text-align: center; padding: 9px 0 14px; font-size: 10px; color: var(--ink3); cursor: pointer; }
+  .tab .ic { font-size: 19px; display: block; margin-bottom: 2px; }
+  .tab.on { color: var(--gold); }
+  .scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: 96px; scrollbar-width: none; }
+  .toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); background: var(--card2); border: 1px solid var(--gold2); color: var(--gold); padding: 9px 16px; border-radius: 999px; font-size: 12px; display: none; z-index: 9; }
+  .kpi { flex: 1; background: var(--card2); border-radius: 12px; padding: 10px; text-align: center; }
+  .kpi b { font-size: 17px; display: block; }
+  .kpi span { font-size: 10px; color: var(--ink3); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>20:36</span><span>云栖酒店</span><span>📶 🔋</span></div>
+  <div class="apphead">
+    <div class="logo">云</div>
+    <div><div class="t1">云栖酒店</div><div class="t2">杭州 · 西湖区云栖路 88 号 · 四钻</div></div>
+    <div class="live-dot">AI 前台在线</div>
+  </div>
+
+  <div class="scroll">
+  <!-- ========== 首页 · 种草流 ========== -->
+  <div class="screen on" id="s-home">
+    <div class="video-card">
+      <div class="scene">🛏️🧸</div>
+      <div class="play">▶ 短视频 · 8.6w 播放</div>
+      <div class="coupon-anchor">🎟️ 亲子通兑券<br>¥339 抢</div>
+      <div class="meta">
+        <div class="title">带娃住云栖的一天｜儿童乐园+亲子双床房实拍</div>
+        <div class="row tiny dim">❤️ 1.2w &nbsp;💬 486 &nbsp;⭐ 3120</div>
+        <div class="poi-line">📍 云栖酒店（POI 已挂载）· 距你 6.2km</div>
+      </div>
+    </div>
+    <div class="video-card">
+      <div class="scene">🤫🪟</div>
+      <div class="play">▶ 短视频 · 5.3w 播放</div>
+      <div class="coupon-anchor" style="background:linear-gradient(135deg,#22c88a,#1aa583);">🎟️ 商旅券<br>¥259 抢</div>
+      <div class="meta">
+        <div class="title">临街酒店能有多安静？分贝仪实测给你看</div>
+        <div class="row tiny dim">❤️ 8600 &nbsp;💬 342</div>
+        <div class="poi-line">📍 云栖酒店 · 灵感来自竞对差评「隔音差」</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🤖 AI 搜索结果也推荐了我们</b><span class="tag teal">GEO</span></div>
+      <div class="tiny dim" style="margin-top:6px">在豆包/DeepSeek 问「杭州亲子酒店推荐」，云栖出现在答案第 2 位（上周还是第 5）。</div>
+      <div class="tiny gold" style="margin-top:6px">报口令「云栖」可领 AI 专属礼遇 →</div>
+    </div>
+  </div>
+
+  <!-- ========== 抢券 ========== -->
+  <div class="screen" id="s-coupon">
+    <div class="card" style="background:linear-gradient(135deg,rgba(255,36,66,.10),transparent);">
+      <b class="gold">🎟️ 先囤后约 · 不约可退</b>
+      <div class="tiny dim" style="margin-top:4px">看到优惠先下手，有效期 120 天，法定节假日部分不可用</div>
+    </div>
+    <div class="coupon">
+      <div class="val"><b>¥339</b><span class="tiny">门市 ¥528</span></div>
+      <div class="body">
+        <div class="name">亲子双床房通兑券 · 1 晚</div>
+        <div class="tiny dim">含双早+儿童乐园畅玩+延迟退房 14:00</div>
+        <div class="between" style="margin-top:8px">
+          <span class="tiny dim3">已售 163/200 · 剩 37</span>
+          <button class="btn" style="width:auto;padding:7px 16px;font-size:12px" onclick="toast('已锁定 1 张，10 分钟内支付有效')">立即抢</button>
+        </div>
+      </div>
+    </div>
+    <div class="coupon">
+      <div class="val"><b>¥259</b><span class="tiny">门市 ¥398</span></div>
+      <div class="body">
+        <div class="name">商旅大床房通兑券 · 1 晚</div>
+        <div class="tiny dim">含单早+免费停车+发票极速开</div>
+        <div class="between" style="margin-top:8px">
+          <span class="tiny red">已售罄 · 相关内容已自动停投</span>
+          <button class="btn ghost" style="width:auto;padding:7px 16px;font-size:12px" onclick="toast('已登记到货提醒')">到货提醒</button>
+        </div>
+      </div>
+    </div>
+    <div class="coupon">
+      <div class="val"><b>¥899</b><span class="tiny">门市 ¥1356</span></div>
+      <div class="body">
+        <div class="name">国庆预售 · 3 天 2 晚亲子套票</div>
+        <div class="tiny dim">亲子双床房 2 晚+双早+西湖游船票 ×3</div>
+        <div class="between" style="margin-top:8px">
+          <span class="tiny dim3">已售 41 · 10.4 后可约</span>
+          <button class="btn" style="width:auto;padding:7px 16px;font-size:12px" onclick="toast('预售券已加入卡包')">囤一张</button>
+        </div>
+      </div>
+    </div>
+    <div class="tiny dim3" style="text-align:center;margin-top:4px">券价均通过「保底价红线」校验 · 售罄自动熔断推广（R22/R26）</div>
+  </div>
+
+  <!-- ========== AI 前台 ========== -->
+  <div class="screen" id="s-ai">
+    <div class="msg ai"><div class="who">AI 前台 · 26 秒前响应</div>您好呀，我是云栖的 AI 前台 ☺️ 看到您从亲子视频过来的，想问房价、房型还是周边遛娃攻略？</div>
+    <div class="msg me">国庆带老人孩子来，3 天 2 晚，两大一小，有亲子房吗？</div>
+    <div class="msg ai"><div class="who">AI 前台</div>有的！亲子双床房 1.35m 双床+儿童帐篷，国庆 10.4 之后可约。<br>• 含双早（儿童 1.2m 以下免）<br>• 儿童乐园 9:00-21:00 畅玩<br>• 免费地下停车<br>要不先给您发段房间实拍视频？</div>
+    <div class="msg me">多少钱一晚？能优惠吗</div>
+    <div class="review-note">🛡️ 涉及价格/优惠承诺——AI 不私自报价，已转店长人审（R21）· 店长 5 分钟内回复</div>
+    <div class="msg ai"><div class="who">店长 王店长（人审后发送）</div>您好，我是店长。国庆亲子房 788/晚，连住 2 晚给您申请到 728/晚，再送一份儿童早餐。这个口径我以门店名义承诺。方便留个微信吗？我给您锁房 + 发定位。</div>
+    <div class="msg me">好，微信同手机号 138****7766</div>
+    <div class="msg ai"><div class="who">AI 前台</div>收到 ✅ 已为您建档（A 级线索·国庆亲子），店长会在 1 小时内加您微信。客资已脱敏存储，仅店内服务使用。</div>
+    <div class="inputbar"><input id="ai-in" placeholder="继续问我，比如「早餐几点」「有停车场吗」"><button onclick="sendAi()">发送</button></div>
+  </div>
+
+  <!-- ========== 订单 ========== -->
+  <div class="screen" id="s-order">
+    <div class="card">
+      <div class="between"><b class="small">🧾 亲子通兑券 ×1</b><span class="tag teal">待预约</span></div>
+      <div class="row" style="margin-top:10px;gap:14px">
+        <div class="qr"></div>
+        <div class="tiny dim">券号 CP-FAM-299-0163<br>有效期至 2026-12-22<br>法定节假日 10.1-10.3 不可用<br><span class="gold">出示核销码或一键预约 →</span></div>
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="toast('已打开房态日历，可选日期高亮中')">一键预约入住日期</button>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">🏨 国庆预售 3 天 2 晚</b><span class="tag gold">已约 10.4 入住</span></div>
+      <div class="tiny dim" style="margin-top:8px">亲子双床房 · 2 晚 · 两大一小<br>入住前 24h AI 前台会再跟您确认行程 ☺️</div>
+    </div>
+    <div class="card">
+      <div class="between"><b class="small">✅ 已核销 · 8.16 入住</b><span class="tag">已完成</span></div>
+      <div class="tiny dim" style="margin-top:8px">商旅大床房 1 晚 · 满意度回访：⭐⭐⭐⭐⭐<br><span class="teal">好评已引导发布（合规，无利诱）</span></div>
+    </div>
+  </div>
+
+  <!-- ========== 我的 ========== -->
+  <div class="screen" id="s-me">
+    <div class="card" style="background:linear-gradient(135deg,rgba(255,36,66,.12),transparent);">
+      <div class="row" style="gap:12px">
+        <div class="logo" style="width:52px;height:52px;font-size:24px">周</div>
+        <div><b>周先生</b><div class="tiny dim">金卡会员 · 累计入住 4 晚 · 积分 2,860</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <b class="small">🎁 老带新双向礼遇</b>
+      <div class="tiny dim" style="margin:6px 0">您的好友通过您的分享码下单：TA 减 ¥40，您得 ¥40 房费券</div>
+      <button class="btn ghost" onclick="toast('分享海报已生成（带您的专属渠道码）')">生成我的分享海报</button>
+    </div>
+    <div class="card">
+      <b class="small">我的偏好（AI 记得）</b>
+      <div class="tiny dim" style="margin-top:6px">高楼层 · 远离电梯 · 荞麦枕 · 发票抬头已存<br><span class="dim3">下次预订自动匹配，不用再说一遍</span></div>
+    </div>
+    <div class="card">
+      <b class="small">联系门店</b>
+      <div class="tiny dim" style="margin-top:6px">☎️ 24h AI 语音前台 / 💬 在线 AI 前台 / 📍 云栖路 88 号</div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab on" data-s="s-home"><span class="ic">🏨</span>首页</div>
+    <div class="tab" data-s="s-coupon"><span class="ic">🎟️</span>抢券</div>
+    <div class="tab" data-s="s-ai"><span class="ic">🤖</span>AI 前台</div>
+    <div class="tab" data-s="s-order"><span class="ic">🧾</span>订单</div>
+    <div class="tab" data-s="s-me"><span class="ic">👤</span>我的</div>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  function go(el) {
+    tabs.forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById(el.dataset.s).classList.add('on');
+  }
+  tabs.forEach(t => t.onclick = () => go(t));
+  (() => { const h = location.hash.replace('#',''); if (!h) return;
+    const t = document.querySelector(`.tab[data-s="${h}"]`); if (t) go(t); })();
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2200);
+  }
+  function sendAi() {
+    const v = document.getElementById('ai-in').value.trim();
+    if (!v) return;
+    toast('AI 前台已收到，正在按一店一档口径应答…');
+    document.getElementById('ai-in').value = '';
+  }
+</script>
+</body>
+</html>

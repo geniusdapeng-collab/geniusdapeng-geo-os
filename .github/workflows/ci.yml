@@ -23,11 +23,59 @@ jobs:
       - name: Syntax check
         run: |
           node --check src/server.mjs
+          node --check src/application.mjs
+          node --check src/http/video-runtime.mjs
           node --check public/app.js
+          node --check public/video-workbench.js
       - name: Unit and integration tests
         run: node --test tests/*.test.mjs
       - name: Engine regression tests
         run: node --test engines/geo-evidence/test/*.test.mjs tests/integrated-engines.test.mjs
+      - name: Install pinned complete video engine package manager
+        working-directory: engines/video-edit
+        run: |
+          engine_manager=$(node -p "require('./package.json').packageManager")
+          node --input-type=module -e "import fs from 'node:fs'; const manager = JSON.parse(fs.readFileSync('package.json', 'utf8')).packageManager; if (!/^pnpm@[0-9]+\.[0-9]+\.[0-9]+$/.test(manager)) throw new Error('Embedded package manager must be pinned exactly.');"
+          npm install --global "$engine_manager"
+          test "$(pnpm --version)" = "${engine_manager#pnpm@}"
+      - name: Install complete video engine from pinned official UI release
+        working-directory: engines/video-edit
+        run: >-
+          node scripts/ci/install-private-ui.mjs
+          --repo .
+          --store-dir "$RUNNER_TEMP/pengmanager-video-store"
+          --staging-root "$RUNNER_TEMP"
+          --archive "$RUNNER_TEMP/pengmanager-ui-original.tgz"
+          --report "$RUNNER_TEMP/pengmanager-ui-bootstrap.json"
+      - name: Verify official UI download and canonical installation boundary
+        working-directory: engines/video-edit
+        env:
+          WORKLOOM_UI_TEST_ARCHIVE_PATH: ${{ runner.temp }}/pengmanager-ui-original.tgz
+        run: node --test --test-concurrency=1 scripts/ci/ui-public-release.test.mjs scripts/ci/ui-auth-bootstrap.test.mjs scripts/ci/install-private-ui.test.mjs
+      - name: Build complete native video workbench
+        working-directory: engines/video-edit
+        run: |
+          pnpm --dir packages/industry-contract build
+          pnpm --dir apps/web build
+      - name: Typecheck complete native video server
+        working-directory: engines/video-edit
+        run: pnpm exec tsc --noEmit -p apps/server/tsconfig.json
+      - name: Native video identity, onboarding and declared skill regression
+        working-directory: engines/video-edit
+        run: |
+          pnpm exec vitest run --maxWorkers=1 \
+            apps/server/src/service/desktop-auth.test.ts \
+            apps/server/src/service/llm-environment.test.ts \
+            apps/server/src/service/embedded-paths.test.ts \
+            apps/server/src/service/onboarding-readiness.test.ts \
+            apps/server/src/service/onboarding-truth.test.ts \
+            apps/server/src/voice/station.test.ts \
+            packages/runtime/src/declared-skill-context.test.ts \
+            packages/runtime/src/loop.test.ts \
+            packages/base/bundles/pengmanager-role-preservation.test.ts \
+            packages/base/bundles/acquisition-loop.test.ts \
+            packages/base/skills/official.test.ts
+          node --test scripts/pengmanager-tools.test.mjs
       - name: Embedded video engine tests
         run: npm run test:ci
       - name: Smoke test

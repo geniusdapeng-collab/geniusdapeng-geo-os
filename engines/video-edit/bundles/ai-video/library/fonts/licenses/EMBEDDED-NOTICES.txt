@@ -1,0 +1,54 @@
+Copyright and license notices extracted verbatim from the unchanged distributed font name tables.
+
+cn/LXGWWenKai-Regular.ttf
+Copyright 2021-2026 LXGW (https://github.com/lxgw/LxgwWenKai)
+Copyright 2020 The Klee Project Authors (https://github.com/fontworks-fonts/Klee)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org
+
+https://openfontlicense.org
+
+-----
+
+cn/NotoSansSC-Variable.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL
+
+http://scripts.sil.org/OFL
+
+-----
+
+cn/NotoSerifSC-Variable.ttf
+(c) 2017-2024 Adobe (http://www.adobe.com/).
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org
+
+https://openfontlicense.org
+
+-----
+
+cn/SmileySans-Oblique.ttf
+Copyright © 2022–2024 atelierAnchor. All rights reserved.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+
+https://scripts.sil.org/OFL
+
+-----
+
+cn/SourceHanSansCN-Heavy.otf
+© 2014-2025 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+
+http://scripts.sil.org/OFL
+
+-----
+
+cn/ZCOOLXiaoWei-Regular.ttf
+Copyright 2018 The ZCOOL XiaoWei Project Authors (https://www.github.com/googlefonts/xiaowei)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL
+
+http://scripts.sil.org/OFL

@@ -1,0 +1,1104 @@
+{
+ "schema": "workloom.capabilities/v2",
+ "repo": "workloom-ai-video-edit",
+ "productId": "workloom-ai-video-edit",
+ "repository": "workloom-ai/WorkLoom-video-edit",
+ "displayName": "WorkLoom 视频AI剪辑系统（实验车道）",
+ "description": "企业获客与内容运营工作系统：工作台、行业包声明、内容生产工位与共享治理组件。",
+ "generatedAt": "2026-10-24T01:23:20.766Z",
+ "evidenceNotice": "本导览检查 manifest、脚本和文件入口。目录可发现、实际可调用、结果已验证分别记录；缺少同提交独立运行证据时后两项为未验证。岗位、技能与管线数是声明资产数，不是生产实测通过数。",
+ "bundleDeclarations": [
+  {
+   "bundle": "ai-video",
+   "version": "1.0.0",
+   "status": "candidate",
+   "presets": 43,
+   "skills": 36,
+   "pipelines": 6,
+   "presetKeys": [
+    "ads-optimizer",
+    "audio-designer",
+    "bgm-composer",
+    "cinematographer",
+    "colorist",
+    "comment-operator",
+    "compliance-officer",
+    "continuity-reviewer",
+    "cover-designer",
+    "creative-planner",
+    "creator-partner",
+    "deal-manager",
+    "director",
+    "distribution-operator",
+    "field-inspector",
+    "hook-designer",
+    "insight-analyst",
+    "intel-binder",
+    "intel-collector",
+    "intel-competitor",
+    "intel-reviewer",
+    "intel-verifier",
+    "ip-curator",
+    "metrics-watcher",
+    "micromotion-stylist",
+    "opening-designer",
+    "portrait-artist",
+    "post-editor",
+    "prd-specialist",
+    "producer",
+    "prompt-fuser",
+    "publish-operator",
+    "render-operator",
+    "review-analyst",
+    "scene-designer",
+    "scriptwriter",
+    "settlement-clerk",
+    "subtitle-stylist",
+    "trend-researcher",
+    "visual-director",
+    "voice-artist",
+    "explainer-director",
+    "post-quality-inspector"
+   ],
+   "sourcePath": "bundles/ai-video/bundle.json"
+  },
+  {
+   "bundle": "geo-growth",
+   "version": "1.0.0",
+   "status": "candidate",
+   "presets": 27,
+   "skills": 29,
+   "pipelines": 4,
+   "presetKeys": [
+    "geo-researcher",
+    "citation-analyst",
+    "geo-scriptwriter",
+    "production-planner",
+    "visual-designer",
+    "geo-content-planner",
+    "entity-inspector",
+    "publish-operator",
+    "source-distributor",
+    "ads-optimizer",
+    "data-board-officer",
+    "visibility-watcher",
+    "review-analyst",
+    "customer-success",
+    "private-domain-operator",
+    "company-ceo",
+    "group-ceo",
+    "material-scout",
+    "growth-lead",
+    "growth-strategist",
+    "growth-experimenter",
+    "lead-conversion-officer",
+    "media-portfolio-manager",
+    "cro-designer",
+    "live-producer",
+    "lifecycle-growth-officer",
+    "growth-partnership-officer"
+   ],
+   "sourcePath": "bundles/geo-growth/bundle.json"
+  },
+  {
+   "bundle": "hotel",
+   "version": "3.4.0",
+   "status": "candidate",
+   "presets": 16,
+   "skills": 30,
+   "pipelines": 1,
+   "presetKeys": [
+    "pricing-agent",
+    "review-agent",
+    "reconcile-agent",
+    "inspection-agent",
+    "content-agent",
+    "competitor-agent",
+    "desktop-agent",
+    "frontdesk-agent",
+    "housekeeper-agent",
+    "phone-agent",
+    "owner-cockpit",
+    "ai-receptionist",
+    "coupon-operator",
+    "guest-success",
+    "channel-watcher",
+    "company-ceo"
+   ],
+   "sourcePath": "bundles/hotel/bundle.json"
+  },
+  {
+   "bundle": "video-edit",
+   "version": "0.3.0",
+   "status": "candidate",
+   "presets": 15,
+   "skills": 13,
+   "pipelines": 2,
+   "presetKeys": [
+    "footage-librarian",
+    "signal-analyst",
+    "shot-understander",
+    "highlight-scout",
+    "creative-weaver",
+    "story-architect",
+    "edit-director",
+    "caption-writer",
+    "cut-inspector",
+    "edit-compositor",
+    "edit-producer",
+    "talk-transcriber",
+    "talk-editor",
+    "talk-emotion-director",
+    "talk-annotator"
+   ],
+   "sourcePath": "bundles/video-edit/bundle.json"
+  }
+ ],
+ "declarationTotals": {
+  "presets": 101,
+  "skills": 108,
+  "pipelines": 13,
+  "uniquePresetKeys": 97
+ },
+ "demoPages": [
+  "geo-customer-app.html",
+  "geo-demo-c.html",
+  "geo-demo-mobile.html",
+  "geo-demo-pc.html",
+  "hotel-guest-app.html",
+  "hotel-owner-app.html",
+  "hyperreality-demo-c.html",
+  "hyperreality-demo-mobile.html",
+  "hyperreality-demo-pc.html",
+  "service-front-b-mobile.html",
+  "service-front-b-pc.html",
+  "service-front-c.html"
+ ],
+ "shots": [
+  "mobile-b-3001.png",
+  "mobile-c-3002.png",
+  "pc-3000.png",
+  "shell-guest.png"
+ ],
+ "groups": [
+  {
+   "icon": "🖥",
+   "title": "三端应用入口",
+   "items": [
+    {
+     "name": "PC 工作台",
+     "how": "隔离演示启动后：http://localhost:3000",
+     "desc": "任务、岗位、报告、行业入口；可见内容受权限和活动行业包影响",
+     "sourcePaths": [
+      "product.manifest.json",
+      "apps/web/src/App.tsx",
+      "apps/webb/src/App.tsx",
+      "apps/webc/src/App.tsx"
+     ],
+     "id": "cap:1a6a187fd0667882",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "员工移动工作台",
+     "how": "隔离演示启动后：http://localhost:3001",
+     "desc": "React 员工移动应用；与 docs/demo 的历史静态原型分开看",
+     "sourcePaths": [
+      "product.manifest.json",
+      "apps/web/src/App.tsx",
+      "apps/webb/src/App.tsx",
+      "apps/webc/src/App.tsx"
+     ],
+     "id": "cap:00492d8645bf4788",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "客户 H5 服务前台",
+     "how": "隔离演示启动后：http://localhost:3002",
+     "desc": "对话/服务/工单/消息/我的；preview 脚本使用酒店服务夹具",
+     "sourcePaths": [
+      "product.manifest.json",
+      "apps/web/src/App.tsx",
+      "apps/webb/src/App.tsx",
+      "apps/webc/src/App.tsx"
+     ],
+     "id": "cap:fe81592d4501619b",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "product.manifest.json",
+    "apps/web/src/App.tsx",
+    "apps/webb/src/App.tsx",
+    "apps/webc/src/App.tsx"
+   ]
+  },
+  {
+   "icon": "📦",
+   "title": "行业包声明资产",
+   "items": [
+    {
+     "name": "bundles/ai-video/",
+     "how": "[manifest](../bundles/ai-video/bundle.json)",
+     "desc": "43 条岗位定义 / 36 项技能路径 / 6 条管线；版本 1.0.0，状态 candidate；不等于已接通功能数",
+     "sourcePaths": [
+      "bundles/ai-video/bundle.json",
+      "bundles/geo-growth/bundle.json",
+      "bundles/hotel/bundle.json",
+      "bundles/video-edit/bundle.json"
+     ],
+     "id": "cap:ff70108c12d005c7",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "bundles/geo-growth/",
+     "how": "[manifest](../bundles/geo-growth/bundle.json)",
+     "desc": "27 条岗位定义 / 29 项技能路径 / 4 条管线；版本 1.0.0，状态 candidate；不等于已接通功能数",
+     "sourcePaths": [
+      "bundles/ai-video/bundle.json",
+      "bundles/geo-growth/bundle.json",
+      "bundles/hotel/bundle.json",
+      "bundles/video-edit/bundle.json"
+     ],
+     "id": "cap:842ce95f7dc7f2ac",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "bundles/hotel/",
+     "how": "[manifest](../bundles/hotel/bundle.json)",
+     "desc": "16 条岗位定义 / 30 项技能路径 / 1 条管线；版本 3.4.0，状态 candidate；不等于已接通功能数",
+     "sourcePaths": [
+      "bundles/ai-video/bundle.json",
+      "bundles/geo-growth/bundle.json",
+      "bundles/hotel/bundle.json",
+      "bundles/video-edit/bundle.json"
+     ],
+     "id": "cap:df5179c73c964310",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "bundles/video-edit/",
+     "how": "[manifest](../bundles/video-edit/bundle.json)",
+     "desc": "15 条岗位定义 / 13 项技能路径 / 2 条管线；版本 0.3.0，状态 candidate；不等于已接通功能数",
+     "sourcePaths": [
+      "bundles/ai-video/bundle.json",
+      "bundles/geo-growth/bundle.json",
+      "bundles/hotel/bundle.json",
+      "bundles/video-edit/bundle.json"
+     ],
+     "id": "cap:92434473c63f463f",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "bundles/ai-video/bundle.json",
+    "bundles/geo-growth/bundle.json",
+    "bundles/hotel/bundle.json",
+    "bundles/video-edit/bundle.json"
+   ]
+  },
+  {
+   "icon": "🧑‍💼",
+   "title": "岗位与交互入口",
+   "items": [
+    {
+     "name": "数字员工中心（`/agents`）",
+     "how": "按 README 准备隔离环境后：`LLM_PROVIDER=mock pnpm preview:all` → http://localhost:3000/agents",
+     "desc": "岗位档案 / 技能与围栏绑定 / 任务派遣；默认包声明 27 个岗位，不是在线员工数",
+     "sourcePaths": [
+      "apps/web/src/pages/p8/P8.tsx",
+      "apps/web/src/components/loommate/LoomMate.tsx",
+      "apps/web/src/voice/VoiceEngine.ts"
+     ],
+     "id": "cap:e9af7013f479c9b7",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "织伴数字人组件",
+     "how": "查看组件与语音配置",
+     "desc": "形象、语音与动作交互组件；需要对应资源与配置，不承诺每个部署均启用",
+     "sourcePaths": [
+      "apps/web/src/pages/p8/P8.tsx",
+      "apps/web/src/components/loommate/LoomMate.tsx",
+      "apps/web/src/voice/VoiceEngine.ts"
+     ],
+     "id": "cap:72db5915e58e141f",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "语音与口型引擎",
+     "how": "docs/voice-and-avatar-delivery-contract.md",
+     "desc": "语音播放、音色与口型相关实现；真实 TTS 需要服务或本地引擎",
+     "sourcePaths": [
+      "apps/web/src/pages/p8/P8.tsx",
+      "apps/web/src/components/loommate/LoomMate.tsx",
+      "apps/web/src/voice/VoiceEngine.ts"
+     ],
+     "id": "cap:48de4ed62b5a5fc7",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "apps/web/src/pages/p8/P8.tsx",
+    "apps/web/src/components/loommate/LoomMate.tsx",
+    "apps/web/src/voice/VoiceEngine.ts"
+   ]
+  },
+  {
+   "icon": "🖐",
+   "title": "电脑操作接口",
+   "items": [
+    {
+     "name": "浏览器与桌面驱动接口",
+     "how": "按工位指南准备后：`pnpm computer:preflight` / `pnpm computer:smoke`",
+     "desc": "DOM、语义树与截图接口；真实登录、文件上传和平台动作需逐项联调",
+     "sourcePaths": [
+      "packages/base/computer-use/driver.ts",
+      "docs/computer-use-production.md"
+     ],
+     "id": "cap:ee7087fe2559eeca",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "HTTP / MCP 工位入口",
+     "how": "`pnpm computer:serve` / `pnpm computer:mcp`",
+     "desc": "远程工位服务入口；需要驱动、设备权限、认证与网络配置",
+     "sourcePaths": [
+      "packages/base/computer-use/driver.ts",
+      "docs/computer-use-production.md"
+     ],
+     "id": "cap:a3775225ec15112a",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "packages/base/computer-use/driver.ts",
+    "docs/computer-use-production.md"
+   ]
+  },
+  {
+   "icon": "⚙",
+   "title": "共享基础模块（目录存在性）",
+   "items": [
+    {
+     "name": "围栏判定",
+     "how": "[源码](../packages/base/fence-engine/)",
+     "desc": "auto/review/block 判定组件；仍需核对业务调用点",
+     "sourcePaths": [
+      "packages/base/fence-engine"
+     ],
+     "id": "cap:39e70b23ef5b6783",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "技能分发组件",
+     "how": "[源码](../packages/base/skill-ops/)",
+     "desc": "技能预检、分发与回滚基础模块",
+     "sourcePaths": [
+      "packages/base/skill-ops"
+     ],
+     "id": "cap:f7b62e32f6a15e8b",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "任务编排基础组件",
+     "how": "[源码](../packages/base/captain/)",
+     "desc": "任务与协作基础模块；Ask/Quest 实际执行见 packages/runtime",
+     "sourcePaths": [
+      "packages/base/captain"
+     ],
+     "id": "cap:5841d346c6efff49",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "夜班状态与调度",
+     "how": "[源码](../packages/base/night-shift/)",
+     "desc": "确认、暂停、恢复与触发器；暂停记录不等于中断全部外部动作",
+     "sourcePaths": [
+      "packages/base/night-shift"
+     ],
+     "id": "cap:06c0ed08fd149623",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "模型路由与用量记录",
+     "how": "[源码](../packages/base/model-router/)",
+     "desc": "模拟与真实提供器入口；真实端点、成本和预算链需验收",
+     "sourcePaths": [
+      "packages/base/model-router"
+     ],
+     "id": "cap:54725207a03cd303",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "发布适配层（默认演练）",
+     "how": "[源码](../packages/base/publish-rpa/)",
+     "desc": "浏览器发布参考适配器；真实登录、上传和发布回执待逐平台接通",
+     "sourcePaths": [
+      "packages/base/publish-rpa"
+     ],
+     "id": "cap:9126c815aa08954c",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "业务事件与权限网关",
+     "how": "[源码](../packages/base/workdata/)",
+     "desc": "追加事件、哈希链与权限组件；不承诺外部动作重放零丢失",
+     "sourcePaths": [
+      "packages/base/workdata"
+     ],
+     "id": "cap:9234dfb996faf94e",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "消息渠道适配层",
+     "how": "[源码](../packages/base/im-channels/)",
+     "desc": "消息接口模块；实际送达取决于已配置渠道与回执",
+     "sourcePaths": [
+      "packages/base/im-channels"
+     ],
+     "id": "cap:d779332ff4a1dff3",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "服务对话基础模块",
+     "how": "[源码](../packages/base/service-dialog/)",
+     "desc": "对话组件；客户 H5 实际接口见 apps/server/src/service",
+     "sourcePaths": [
+      "packages/base/service-dialog"
+     ],
+     "id": "cap:b26b877bcbc66fe5",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "巡检基础模块",
+     "how": "[源码](../packages/base/inspection/)",
+     "desc": "巡检规则与任务组件；具体数据源和处置链需接入",
+     "sourcePaths": [
+      "packages/base/inspection"
+     ],
+     "id": "cap:b725eae93b66fc29",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "审批后端",
+     "how": "[源码](../packages/base/review-console/)",
+     "desc": "决定与审计 API 保留；PC 通用审批页已移除，业务关卡就地处理",
+     "sourcePaths": [
+      "packages/base/review-console"
+     ],
+     "id": "cap:dd2ac1dd22b32715",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "资产管理基础模块",
+     "how": "[源码](../packages/base/asset-cms/)",
+     "desc": "资产元数据组件；视频媒资实现见 apps/server/src/video/media",
+     "sourcePaths": [
+      "packages/base/asset-cms"
+     ],
+     "id": "cap:acf69f0de98ff14e",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "成本台账组件",
+     "how": "[源码](../packages/base/cost-ledger/)",
+     "desc": "成本记录与投影；目录存在不代表全部调用已有预算强制",
+     "sourcePaths": [
+      "packages/base/cost-ledger"
+     ],
+     "id": "cap:3ba598f133e85462",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "交易流程组件",
+     "how": "[源码](../packages/base/deal-flow/)",
+     "desc": "商机与交易状态模块；不代表真实支付和收入归因已完成",
+     "sourcePaths": [
+      "packages/base/deal-flow"
+     ],
+     "id": "cap:4c2d3b10f48a8883",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "社媒监听组件",
+     "how": "[源码](../packages/base/social-listening/)",
+     "desc": "监听相关基础模块；实际采集来源需逐项接入",
+     "sourcePaths": [
+      "packages/base/social-listening"
+     ],
+     "id": "cap:71c164edd0eba8d5",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "packages/base",
+    "packages/runtime/src"
+   ]
+  },
+  {
+   "icon": "🎬",
+   "title": "内容生产专用入口",
+   "items": [
+    {
+     "name": "视频工位",
+     "how": "PC /ai-video/assets?tab=studio",
+     "desc": "预生产、渲染与后期分阶段启动；真实模型、供应商和媒体依赖需配置",
+     "sourcePaths": [
+      "apps/server/src/video/router.ts",
+      "apps/server/src/video/studio-worker.ts"
+     ],
+     "id": "cap:607ddf2449d4b654",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "媒资与交付",
+     "how": "媒资：/ai-video/media；交付：/ai-video/assets?tab=delivery",
+     "desc": "媒资检索、商品档案、合集、成片和交付记录；需要数据库与媒体文件",
+     "sourcePaths": [
+      "apps/server/src/video/media/index.ts",
+      "apps/web/src/extensions/ai-video/pages/AssetsOrStudio.tsx",
+      "apps/web/src/extensions/ai-video/routes.tsx"
+     ],
+     "id": "cap:d57bb672b7d8ed16",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "白板与口播解释片",
+     "how": "CLI / 服务端接口",
+     "desc": "白板和口播制作链已提供代码入口；当前没有独立 React 编辑页，需要对应引擎与后期工具",
+     "sourcePaths": [
+      "apps/server/src/video/whiteboard/router.ts",
+      "apps/server/src/video/explainer/router.ts"
+     ],
+     "id": "cap:be40a8ce9c681c13",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "apps/server/src/video"
+   ]
+  },
+  {
+   "icon": "✅",
+   "title": "验证与维护命令",
+   "items": [
+    {
+     "name": "环境安装脚本",
+     "how": "`pnpm setup`；先读 README 的当前限制",
+     "desc": "安装依赖并尝试数据库、迁移与种子；当前会枚举缺失 ai-pm 包的种子，推荐按 README 手动初始化",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:ce38c8829ec4e6db",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "主测试套件",
+     "how": "`pnpm suite`",
+     "desc": "运行已定义场景；需要测试数据库和种子，不能由脚本存在推断测试已通过",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:43e8f39f5b4d6635",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "GEO 域套件",
+     "how": "`pnpm suite:geo`",
+     "desc": "GEO 双域专项",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:c53c85024c716a45",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "酒店域套件",
+     "how": "`pnpm suite:hotel`",
+     "desc": "酒店域专项",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:cec581064e742596",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "发布门禁",
+     "how": "`pnpm release:gate`",
+     "desc": "未全过禁止发布（硬性）",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:95f4f8babc9d94cb",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "五元事件验链",
+     "how": "`pnpm db:verify-chain`",
+     "desc": "事件链完整性校验",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:d377a3e526f0131a",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "能力巡游脚本",
+     "how": "`pnpm agent:tour`",
+     "desc": "按脚本范围巡游；完整模式可能启动服务、灌种子和运行测试",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:8a8dacb15d88e994",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "环境自检",
+     "how": "`pnpm doctor`",
+     "desc": "一屏排查环境问题",
+     "sourcePaths": [
+      "package.json",
+      "scripts/bootstrap.sh",
+      ".cnb.yml"
+     ],
+     "id": "cap:3c9db8c767a66aae",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "package.json",
+    "scripts/bootstrap.sh",
+    ".cnb.yml"
+   ]
+  },
+  {
+   "icon": "📚",
+   "title": "演示与说明资产",
+   "items": [
+    {
+     "name": "静态演示原型 ×12",
+     "how": "docs/demo/index.html",
+     "desc": "按 HTML 文件枚举；历史原型不作为当前 React 页面证明",
+     "sourcePaths": [
+      "docs/demo",
+      "skills/official",
+      "mock/README.md"
+     ],
+     "id": "cap:940603fa70ac1717",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "官网静态页面",
+     "how": "apps/site/index.html",
+     "desc": "网站素材；文字和截图需按当前代码复核",
+     "sourcePaths": [
+      "docs/demo",
+      "skills/official",
+      "mock/README.md"
+     ],
+     "id": "cap:d99cafa437741eb1",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "official 技能目录 ×9",
+     "how": "skills/official/",
+     "desc": "按目录枚举；与 Bundle 技能声明计数不同，也不等于真实执行器数量",
+     "sourcePaths": [
+      "docs/demo",
+      "skills/official",
+      "mock/README.md"
+     ],
+     "id": "cap:52b56afc7640184f",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "历史能力导览 PPT",
+     "how": "docs/capability-tour.pptx",
+     "desc": "历史参考资产；其中旧文案和截图需要独立更新，不作为当前实现证明",
+     "sourcePaths": [
+      "docs/demo",
+      "skills/official",
+      "mock/README.md"
+     ],
+     "id": "cap:4578f06063c6da92",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    },
+    {
+     "name": "模拟数据说明",
+     "how": "mock/README.md",
+     "desc": "种子、模拟提供器与演示身份；真实数据和生产模式单独配置",
+     "sourcePaths": [
+      "docs/demo",
+      "skills/official",
+      "mock/README.md"
+     ],
+     "id": "cap:98a716eef7b8932c",
+     "availability": {
+      "discoverable": true,
+      "callable": "unverified",
+      "verified": "unverified",
+      "environment": null,
+      "lastSuccess": null,
+      "evidence": null,
+      "reason": "仅目录与入口元数据；没有对应运行证据"
+     }
+    }
+   ],
+   "sourcePaths": [
+    "docs/demo",
+    "skills/official",
+    "mock/README.md"
+   ]
+  }
+ ]
+}

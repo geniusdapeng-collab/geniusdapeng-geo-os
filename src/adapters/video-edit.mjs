@@ -3,6 +3,7 @@ import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { hashObject } from "../domain/hash.mjs";
+import { ApiError } from "../domain/errors.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -140,5 +141,49 @@ export class VideoEditAdapter {
       output,
       outputHash: hashObject({ feedback, output }),
     };
+  }
+
+  async #readLibrary(command, input) {
+    if (!this.upstreamRoot) throw new ApiError(503, "VIDEO_LIBRARY_UNAVAILABLE", "内置视频资产根目录未配置。");
+    const root = this.#root();
+    const script = join(root, "scripts", "tools", "video-library.mts");
+    try {
+      await access(script);
+      const { stdout } = await execFileAsync(this.nodePath, ["--import", "tsx", script, command, JSON.stringify(input)], {
+        cwd: root,
+        timeout: 60_000,
+        maxBuffer: 8 * 1024 * 1024,
+        env: { ...process.env, NO_COLOR: "1" },
+      });
+      return parseJsonOutput(stdout);
+    } catch (error) {
+      let reported;
+      try { reported = JSON.parse(String(error.stderr ?? "").trim()).error; }
+      catch { /* Process/setup failures have no trusted library error payload. */ }
+      if (reported && [400, 404, 409, 503].includes(reported.status)
+        && typeof reported.code === "string" && /^VIDEO_[A-Z_]+$/.test(reported.code)
+        && typeof reported.message === "string") throw new ApiError(reported.status, reported.code, reported.message.slice(0, 1000));
+      throw new ApiError(503, "VIDEO_LIBRARY_UNAVAILABLE", "内置视频资产库暂不可用或完整性证据不可核实。");
+    }
+  }
+
+  async libraryCatalog({ kind = "all" } = {}) {
+    if (!["all", "characters", "products"].includes(kind)) throw new ApiError(400, "VIDEO_LIBRARY_KIND_INVALID", "kind只接受all、characters或products。");
+    return this.#readLibrary("catalog", { kind });
+  }
+
+  async resolveCharacters(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)
+      || Object.keys(input).some(key => !["intent", "metadata"].includes(key))
+      || typeof input.intent !== "string" || !input.intent.trim() || input.intent.length > 8000
+      || input.metadata !== undefined && (!input.metadata || typeof input.metadata !== "object" || Array.isArray(input.metadata))) {
+      throw new ApiError(400, "VIDEO_CHARACTER_REQUEST_INVALID", "需要8000字以内intent与可选metadata对象。");
+    }
+    return this.#readLibrary("characters", input);
+  }
+
+  async selectProduct({ selector } = {}) {
+    if (typeof selector !== "string" || !selector.trim() || selector.length > 240) throw new ApiError(400, "VIDEO_PRODUCT_REQUEST_INVALID", "selector需要1到240字的商品ID、名称、型号或品牌。");
+    return this.#readLibrary("product", { selector });
   }
 }

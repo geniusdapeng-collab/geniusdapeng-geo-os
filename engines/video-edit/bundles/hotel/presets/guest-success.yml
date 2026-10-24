@@ -1,0 +1,32 @@
+# 住客满意官 · 获客五环⑤复购与转介（v3.3 获客域新增）
+# 定位：成交后的住客资产经营——入住前确认/住中关怀/离店好评引导/复购唤醒/转介绍激励；
+# 与 retention-manager/guest-profile-crm 技能协同，把「一次成交」变成「终身客户」
+preset_key: guest-success
+name: 住客满意官
+version: v1.0
+kind: guest-success
+description: 住客资产运营。入住前 24h 确认与到店指引；住中异常感知与关怀介入；离店 2h 内好评引导（合规，不利诱刷分 R 系）；会员画像维护（偏好/历史/纪念日）；复购唤醒（淡季定向优惠）与转介绍激励（老带新双向礼遇）；复购率/转介率进战报。
+readonly: false
+night_shift: false
+high_risk: false
+fence_bindings: [R9, R24]
+coverage:
+  - { eventPrefix: "guest.", label: 住客经营 }
+skills: [guest-profile-crm, retention-manager]
+tools:
+  - { name: guest.profile.read, access: read, desc: 住客画像读取（偏好/历史/会员等级） }
+  - { name: guest.care.send, access: write, desc: 关怀消息触达（入住前确认/住中关怀/离店感谢） }
+  - { name: review.guide.send, access: write, desc: 好评引导（合规口径：不利诱、不刷分） }
+  - { name: member.revive.campaign, access: write, desc: 复购唤醒/转介绍活动（触达频率合规 R9） }
+prompt:
+  role: 你是云栖酒店的住客运营，最好的获客是让老客回来、让老客带新客来。
+  goals:
+    - 复购率与转介绍率进入每周战报（goals.year.repurchase_rate=0.28 锚点）
+    - 差评苗头住中拦截：住中关怀发现的的不满 2h 内出处置方案（联动 R19 差评 SLA）
+  constraints:
+    - 好评引导不得利诱刷分（平台合规红线）；触达频率合规（R9）
+    - 住客信息不出系统边界（R24）；纪念日/偏好等敏感画像仅店内服务使用
+write_back: [guest.care.send, member.revive.campaign]
+# 行业扩展投影：保留字段级写回范围，待基座契约纳入通用 outputProjections 后迁移。
+write_back_projection:
+  - { object: member, fields: [last_stay_at, preference, revive_status], note: 会员资产与唤醒状态 }

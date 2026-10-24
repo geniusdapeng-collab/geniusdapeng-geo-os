@@ -1,3 +1,5 @@
+import { initializeVideoWorkbench } from "./video-workbench.js";
+
 const state = {
   data: null,
   engineSummary: null,
@@ -514,19 +516,21 @@ function switchView(view) {
   window.location.hash = view;
 }
 
+function requestedView() {
+  const value = window.location.hash.replace(/^#/, "") || "overview";
+  return [...document.querySelectorAll(".nav-item")].some(button => button.dataset.view === value) ? value : "overview";
+}
+
 async function loadData() {
   clearError();
   setLoading(true);
   try {
     state.data = await api("/api/bootstrap");
     renderAll();
-    await loadIntegratedEngineData();
-    await loadAdapterHealth();
     setLoading(false);
-    const initialView = window.location.hash.replace("#", "") || "overview";
-    if (document.querySelector(`[data-view="${initialView}"]`)) {
-      switchView(initialView);
-    }
+    switchView(requestedView());
+    loadIntegratedEngineData().catch(showError);
+    loadAdapterHealth().catch(showError);
   } catch (error) {
     showError(error);
     setLoading(false);
@@ -536,6 +540,8 @@ async function loadData() {
 for (const button of document.querySelectorAll(".nav-item")) {
   button.addEventListener("click", () => switchView(button.dataset.view));
 }
+
+window.addEventListener("hashchange", () => switchView(requestedView()));
 
 document.querySelector("#refresh").addEventListener("click", loadData);
 
@@ -633,4 +639,5 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
   }
 });
 
+initializeVideoWorkbench();
 loadData();

@@ -1,0 +1,35 @@
+# 选题情报双向流动管线 · 融合方案 §5.1 协同一（双域共用情报站）
+# 每步 = Quest 任务卡；断点续跑继承 dsh replay；每步产物写 biz_events 五元事件
+quest: intel-fusion
+name: 选题情报双向流动管线
+version: v1
+description: 情报站每日产出统一情报卡（来源域标注）→ 双用选题识别 → 清晨决策包裁决 → 双域排产；一条 AI 高频问题同时产出短视频与 GEO 图文
+schedule: daily
+steps:
+  - step_key: intel-refresh
+    name: 情报站四路刷新
+    owner: geo-researcher
+    cron: "0 7 * * *"                 # 每日 07:00
+    outputs: [intel_card]             # 热榜/竞品/评论语义/AI query 热度
+  - step_key: query-collect
+    name: AI 问答 query 采集
+    owner: geo-researcher
+    outputs: [intel_card]             # 豆包/DeepSeek/元宝/ChatGPT 高频问题，置信度三级
+  - step_key: citation-scan
+    name: 引用源与竞品布局扫描
+    owner: citation-analyst
+    cron: "30 7 * * *"
+    outputs: [citation_source]        # 高权重信源特征+竞品 GEO 布局差距
+  - step_key: dual-topic-mark
+    name: 双用选题识别
+    owner: geo-researcher
+    outputs: [topic_card]             # 建议形式=双用 的选题打标优先排产
+  - step_key: morning-decision
+    name: 清晨决策包选题裁决
+    owner: company-ceo
+    cron: "30 8 * * *"                # 08:30，人 10 分钟三手势裁决
+    outputs: [topic_card]             # 裁决结果驱动双域排产
+  - step_key: schedule
+    name: 双域排产入内容日历
+    owner: production-planner
+    outputs: [content_calendar]       # 短视频+GEO 图文同选题联动排期

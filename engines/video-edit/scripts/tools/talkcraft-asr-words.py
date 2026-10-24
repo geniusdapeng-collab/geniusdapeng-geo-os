@@ -7,8 +7,8 @@
 两条后端：
   ① mlx-whisper（缺省，Apple Silicon 原生）：`mlx_whisper.transcribe(..., word_timestamps=True)`
      —— 中文 TTS 音频上词级误差约 20–140ms（与 vendor 文档的 faster-whisper 档位同量级）；
-  ② engine-http（兜底）：向本机 mlx-audio 引擎 `/v1/audio/transcriptions` 要 verbose_json，
-     只有句级时间戳——**精度降档会写进输出的 precision 字段**，由上层决定是否接受。
+  ② engine-http（兜底，隔离工位可显式选为主通道）：向本机 mlx-audio 引擎请求词级 verbose_json，
+     按实际返回声明 word / segment；只有句级时精度降档写进 precision，由上层决定是否接受。
 
 输出（stdout 与 --out 文件同内容）：
   {"backend":"mlx-whisper","model":"...","duration":12.34,"precision":"word","words":[{"text","start","end"}...],
@@ -18,6 +18,7 @@
 """
 import argparse
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -70,7 +71,7 @@ def transcribe_mlx(audio: str, model: str, language: str) -> dict:
 
 
 def transcribe_engine_http(audio: str, engine_url: str, model: str, language: str) -> dict:
-    """OpenAI 兼容 `/v1/audio/transcriptions`（mlx-audio server）。只有句级时间戳 → precision=segment。"""
+    """请求真实词级时间；旧引擎只返句级时按实际精度标注。"""
     boundary = "----talkcraftasrboundary"
     with open(audio, "rb") as fh:
         payload = fh.read()
@@ -85,6 +86,7 @@ def transcribe_engine_http(audio: str, engine_url: str, model: str, language: st
     )
     field("model", model)
     field("response_format", "verbose_json")
+    field("word_timestamps", "true")
     if language:
         field("language", language)
     parts.append(f"--{boundary}--\r\n".encode())
@@ -106,7 +108,19 @@ def transcribe_engine_http(audio: str, engine_url: str, model: str, language: st
         })
     if not segments:
         raise RuntimeError("引擎返回里没有 segments（无法降档到句级对齐）")
-    # 句级 → "词"即整句（对齐器仍会按字展开，但时间精度退化为句内均匀分布）
+    raw_words = parsed.get("words") or [word for segment in parsed.get("segments", []) or [] for word in segment.get("words", []) or []]
+    if raw_words:
+        words = []
+        for raw in raw_words:
+            text = str(raw.get("word", raw.get("text", ""))).strip()
+            start, end = float(raw.get("start", float("nan"))), float(raw.get("end", float("nan")))
+            if not text or not math.isfinite(start) or not math.isfinite(end) or start < 0 or end < start:
+                raise RuntimeError("引擎返回了无效词级时间戳")
+            words.append({"text": text, "start": round(start, 3), "end": round(end, 3)})
+        if not parsed.get("words") and any(str(segment.get("text", "")).strip() and not segment.get("words") for segment in parsed.get("segments", []) or []):
+            raise RuntimeError("引擎只为部分句子返回词级时间戳")
+        return {"backend": "engine-http", "model": model, "precision": "word", "words": words, "segments": segments}
+    # 旧服务只有句级时，整句按实际 segment 精度交给上层，不冒充词级。
     words = [{"text": s["text"], "start": s["start"], "end": s["end"]} for s in segments if s["text"]]
     return {"backend": "engine-http", "model": model, "precision": "segment", "words": words, "segments": segments}
 
@@ -119,8 +133,10 @@ def main() -> int:
     parser.add_argument("--language", default="zh")
     parser.add_argument("--hf-home", default=os.environ.get("HF_HOME", ""))
     parser.add_argument("--engine-url", default=os.environ.get("TALKCRAFT_ASR_ENGINE_URL", "http://127.0.0.1:8099"))
-    parser.add_argument("--backend", choices=["auto", "mlx", "engine-http"], default="auto")
+    parser.add_argument("--backend", choices=["auto", "mlx", "engine-http"], default=os.environ.get("TALKCRAFT_ASR_WORDS_BACKEND", "auto"))
     args = parser.parse_args()
+    if args.backend not in ("auto", "mlx", "engine-http"):
+        parser.error("TALKCRAFT_ASR_WORDS_BACKEND 必须是 auto / mlx / engine-http")
 
     if not os.path.exists(args.audio):
         print(f"音频不存在：{args.audio}", file=sys.stderr)

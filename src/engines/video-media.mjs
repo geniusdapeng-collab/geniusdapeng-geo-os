@@ -44,6 +44,7 @@ export function buildPostArguments({
   outputWidth,
   outputHeight,
   musicDir,
+  styleOverridesPath,
 }) {
   const args = [
     "--timeline",
@@ -73,7 +74,29 @@ export function buildPostArguments({
   if (outputWidth && outputHeight) {
     args.push("--width", String(outputWidth), "--height", String(outputHeight));
   }
+  if (styleOverridesPath) args.push("--style-overrides", styleOverridesPath);
   return args;
+}
+
+export function validateStyleOverrides(value, variants) {
+  const object = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
+  if (!object(value)) throw new Error("styleOverrides 必须是按变体ID登记的对象。");
+  for (const [id, style] of Object.entries(value)) {
+    if (!variants.includes(id) || !object(style) || Object.keys(style).some(key => !["subtitleStyle", "cover"].includes(key))) {
+      throw new Error("styleOverrides 只能设置本次变体的 subtitleStyle 和 cover。");
+    }
+    for (const [field, keys] of [["subtitleStyle", ["fontId"]], ["cover", ["fontId", "title", "hook", "at", "alignment", "marginRatio"]]]) {
+      const change = style[field];
+      if (change === undefined) continue;
+      if (!object(change) || Object.keys(change).some(key => !keys.includes(key))) throw new Error(`${field} 含未知字段。`);
+      if (change.fontId !== undefined && (typeof change.fontId !== "string" || !/^[a-z0-9][a-z0-9-]{0,100}$/.test(change.fontId))) throw new Error("fontId 必须是受控字体ID。");
+      for (const key of ["title", "hook"]) if (change[key] !== undefined && (typeof change[key] !== "string" || change[key].length > 120)) throw new Error(`${key} 必须是120字以内的文本。`);
+      if (change.at !== undefined && (!Number.isFinite(change.at) || change.at < 0 || change.at > 1)) throw new Error("cover.at 必须是0到1的比例。");
+      if (change.alignment !== undefined && (!Number.isInteger(change.alignment) || change.alignment < 1 || change.alignment > 9)) throw new Error("cover.alignment 必须是1到9的整数。");
+      if (change.marginRatio !== undefined && (!Number.isFinite(change.marginRatio) || change.marginRatio < 0 || change.marginRatio > 0.5)) throw new Error("cover.marginRatio 必须是0到0.5的比例。");
+    }
+  }
+  return structuredClone(value);
 }
 
 export class VideoMediaEngine {
@@ -193,6 +216,7 @@ export class VideoMediaEngine {
     platform = "微信公众号",
     subtitleText,
     variants = ["clean-tech", "natural-clean"],
+    styleOverrides = {},
   }) {
     if (!Array.isArray(sources) || sources.length === 0) {
       throw new Error("媒体渲染至少需要一个本地视频源。");
@@ -207,6 +231,7 @@ export class VideoMediaEngine {
     if (unsupported.length > 0) {
       throw new Error(`未知媒体变体：${unsupported.join(", ")}`);
     }
+    const requestedStyles = validateStyleOverrides(styleOverrides, variants);
     const sourceFiles = sources.map((file) => resolve(String(file)));
     const jobId = `media-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const jobDir = join(this.jobsRoot, jobId);
@@ -356,7 +381,9 @@ export class VideoMediaEngine {
       outputWidth,
       outputHeight,
       musicDir,
+      ...(Object.keys(requestedStyles).length ? { styleOverridesPath: join(jobDir, "style-overrides.json") } : {}),
     });
+    if (Object.keys(requestedStyles).length) await writeFile(join(jobDir, "style-overrides.json"), `${JSON.stringify(requestedStyles, null, 2)}\n`, "utf8");
     const post = await this.#run("edit-post.mts", postArgs, env);
     const packageRun = await this.#run(
       "edit-package.mts",

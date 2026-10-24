@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "pengmanager.compositor-kit/v1",
+  "upstream": {
+    "repository": "https://github.com/robbietilton/Compositor",
+    "tag": "v1.0.4",
+    "license": "MIT",
+    "licenseUrl": "https://raw.githubusercontent.com/robbietilton/Compositor/v1.0.4/LICENSE"
+  },
+  "headless": {
+    "version": "0.1.0",
+    "platform": "darwin-arm64",
+    "minimumOS": "macOS15",
+    "file": "bin/darwin-arm64/compositor-cli",
+    "sha256": "cdff8a11c32426623d02912ed4f4adc3feb5c081b1f96880465b2421cb319dd0",
+    "bytes": 1364112,
+    "provenance": "Existing authorized local headless release artifact; version command reports Compositor v1.0.4. Source kit build files were absent; no reproducible source-build claim."
+  },
+  "bridge": {
+    "file": "bridge.py",
+    "originalSha256": "333e37347b211df08339453f9e17384d3074c3e31c8c2dee2e470453a2666226",
+    "provenance": "Authorized local WorkLoom visual bridge source snapshot; copied without config, token, outputs, tenant assets or any credential"
+  },
+  "runtime": "Target starts its own loopback instance and owns its data/token/ports; no service or binary dependency on the old workstation location",
+  "sourceBuildAvailability": "Original headless adapter source unavailable in current tracked tree; retained pinned executable provides runtime; full upstream source/license and binary hash are explicit. Official GUI source requires a newer macOS/Xcode than the current host."
+}
