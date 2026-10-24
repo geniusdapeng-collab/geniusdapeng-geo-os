@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
@@ -7,6 +7,27 @@ import {
   PERSONAL_GEO_CASE,
   buildPersonalQueries,
 } from "../personal-case.mjs";
+
+const PERSONAL_QUERY_V1 = JSON.parse(readFileSync(
+  new URL("../personal-case-v1-queries.json", import.meta.url), "utf8",
+));
+
+const QUERY_FIELDS = [
+  "text", "category", "category_label", "priority", "risk", "product", "status", "source",
+];
+
+function queryFields(query) {
+  return {
+    text: query.text,
+    category: query.category,
+    category_label: query.categoryLabel,
+    priority: query.priority,
+    risk: query.risk ? 1 : 0,
+    product: query.product ?? null,
+    status: query.status,
+    source: query.source,
+  };
+}
 
 function now() {
   return new Date().toISOString();
@@ -35,11 +56,13 @@ export class GeoStore {
     {
       caseConfig = PERSONAL_GEO_CASE,
       queries = buildPersonalQueries(caseConfig),
+      queryBaseline = PERSONAL_QUERY_V1,
     } = {},
   ) {
     this.path = resolve(databasePath);
     this.caseConfig = caseConfig;
     this.querySeed = queries;
+    this.queryBaseline = queryBaseline;
     mkdirSync(dirname(this.path), { recursive: true });
     this.db = new DatabaseSync(this.path);
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
@@ -162,6 +185,10 @@ export class GeoStore {
   }
 
   seedCase(caseConfig = this.caseConfig) {
+    if (caseConfig.id === PERSONAL_GEO_CASE.id) {
+      this.seedPersonalQueries(caseConfig);
+      return;
+    }
     const insert = this.db.prepare(`
       INSERT INTO queries (
         id, case_id, case_version, text, category, category_label, priority,
@@ -202,6 +229,59 @@ export class GeoStore {
     }
   }
 
+  seedPersonalQueries(caseConfig = this.caseConfig) {
+    const baselineKey = `query_seed_baseline:${caseConfig.id}`;
+    const previousSeeds = parseJson(this.getMeta(baselineKey), null);
+    const previousById = new Map(
+      (Array.isArray(previousSeeds) ? previousSeeds : this.queryBaseline)
+        .map((query) => [query.id, queryFields(query)]),
+    );
+    const select = this.db.prepare("SELECT * FROM queries WHERE id=?");
+    const insert = this.db.prepare(`
+      INSERT INTO queries (
+        id, case_id, case_version, text, category, category_label, priority,
+        risk, product, status, source, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const update = this.db.prepare(`
+      UPDATE queries SET
+        case_version=?, text=?, category=?, category_label=?, priority=?,
+        risk=?, product=?, status=?, source=?
+      WHERE id=? AND case_id=?
+    `);
+    this.db.exec("BEGIN");
+    try {
+      for (const query of this.querySeed) {
+        const incoming = queryFields(query);
+        const existing = select.get(query.id);
+        if (!existing) {
+          insert.run(
+            query.id, caseConfig.id, caseConfig.version,
+            ...QUERY_FIELDS.map((field) => incoming[field]), now(),
+          );
+          continue;
+        }
+        // Startup may refresh shipped defaults, but must preserve user edits.
+        // An unknown ID or a row owned by another case is never a migration target.
+        const previous = previousById.get(query.id);
+        if (!previous || existing.case_id !== caseConfig.id) continue;
+        const merged = Object.fromEntries(QUERY_FIELDS.map((field) => [
+          field,
+          existing[field] === previous[field] ? incoming[field] : existing[field],
+        ]));
+        update.run(
+          caseConfig.version, ...QUERY_FIELDS.map((field) => merged[field]),
+          query.id, caseConfig.id,
+        );
+      }
+      this.setMeta(baselineKey, asJson(this.querySeed));
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
   upsertQueries(queries, caseConfig = this.caseConfig) {
     const insert = this.db.prepare(`
       INSERT INTO queries (
@@ -209,6 +289,7 @@ export class GeoStore {
         risk, product, status, source, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        case_version=excluded.case_version,
         text=excluded.text,
         category=excluded.category,
         category_label=excluded.category_label,
@@ -431,7 +512,8 @@ export class GeoStore {
     }
     params.push(limit);
     return this.db.prepare(`
-      SELECT s.*, q.text AS query_text, q.category, q.priority
+      SELECT s.*, COALESCE(json_extract(s.analysis_json, '$.query'), q.text) AS query_text,
+        q.category, q.priority
       FROM samples s JOIN queries q ON q.id=s.query_id
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY s.captured_at DESC LIMIT ?
@@ -448,7 +530,8 @@ export class GeoStore {
 
   listIncidents({ status = "open", limit = 200 } = {}) {
     return this.db.prepare(`
-      SELECT i.*, q.text AS query_text, s.platform, s.answer
+      SELECT i.*, COALESCE(json_extract(s.analysis_json, '$.query'), q.text) AS query_text,
+        s.platform, s.answer
       FROM incidents i
       JOIN queries q ON q.id=i.query_id
       JOIN samples s ON s.id=i.sample_id

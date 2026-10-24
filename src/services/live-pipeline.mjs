@@ -66,7 +66,7 @@ export class LivePipelineService {
       contentType,
       claimIds,
       platforms: [platform],
-      owner: "PengStack + DeepSeek",
+      owner: "PengManager + DeepSeek",
       opinion: false,
     });
 
@@ -269,13 +269,13 @@ export class LivePipelineService {
 
       const issue = await this.github.createIssue({
         title: content.title,
-        body: `${content.body}\n\n---\n\n由鹏栈 GEO 控制面通过 GitHub 官方 REST API 发布。模型：${content.generation?.model ?? "未记录"}；内容版本：v${content.version}。`,
+        body: `${content.body}\n\n---\n\n由鹏经理系统（PengManager System）通过 GitHub 官方 REST API 发布。模型：${content.generation?.model ?? "未记录"}；内容版本：v${content.version}。`,
         label,
       });
       const publication = await this.service.recordPublication({
         contentId,
         accountId,
-        actor: "PengStack live publisher",
+        actor: "PengManager live publisher",
         receipt: {
           url: issue.url,
           publishedAt: issue.createdAt || this.clock().toISOString(),

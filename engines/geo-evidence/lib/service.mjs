@@ -417,8 +417,13 @@ export class GeoEvidenceService {
     let brandNegativeSamples = 0;
     for (const sample of samples) {
       if (sample.status !== "success") continue;
-      const query = queries.get(sample.query_id);
-      if (!query) continue;
+      const currentQuery = queries.get(sample.query_id);
+      if (!currentQuery) continue;
+      const query = {
+        ...currentQuery,
+        text: sample.query_text || currentQuery.text,
+        category: sample.analysis?.category ?? currentQuery.category,
+      };
       let analysis = analyzeAnswer(query, sample.answer, this.caseConfig);
       analysis = mergeProviderCitations(
         analysis,

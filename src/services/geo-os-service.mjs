@@ -11,6 +11,7 @@ import {
 } from "../domain/policy.mjs";
 import { transitionContent } from "../domain/state-machine.mjs";
 import { verifyEventChain } from "../storage/json-store.mjs";
+import { MAIN_PROFILE, SYSTEM_IDENTITY } from "../domain/identity.mjs";
 
 const CONTENT_TYPES = new Set([
   "article",
@@ -75,6 +76,7 @@ export class GeoOsService {
     return {
       schemaVersion: state.schemaVersion,
       revision: state.revision,
+      system: state.system ?? { ...SYSTEM_IDENTITY },
       entity: state.entity,
       accounts: state.accounts,
       claims: state.claims,
@@ -197,7 +199,7 @@ export class GeoOsService {
       throw new PolicyError("DRAFT_CONTAINS_SENSITIVE_CONTENT", "草稿包含敏感信息。", sensitive);
     }
 
-    const actor = input.owner?.trim() || "PengStack";
+    const actor = input.owner?.trim() || MAIN_PROFILE.englishName;
     const { result } = await this.store.mutate(
       {
         type: "content.created",
@@ -377,7 +379,7 @@ export class GeoOsService {
 
   async createQuery(input) {
     const text = requireText(input.text, "text", 500);
-    const actor = input.actor?.trim() || "PengStack";
+    const actor = input.actor?.trim() || MAIN_PROFILE.englishName;
     const { result } = await this.store.mutate(
       {
         type: "geo.query_created",
@@ -510,12 +512,23 @@ export class GeoOsService {
       .map(publicClaim);
     return {
       generatedAt: this.clock().toISOString(),
+      system: state.system ?? { ...SYSTEM_IDENTITY },
       entity: {
         publicName: state.entity.publicName,
         brandName: state.entity.brandName,
         englishName: state.entity.englishName,
         englishBrandName: state.entity.englishBrandName,
         headline: state.entity.headline,
+        nameZh: state.entity.nameZh,
+        nameEn: state.entity.nameEn,
+        displayName: state.entity.displayName,
+        englishDisplayName: state.entity.englishDisplayName,
+        displayNameZh: state.entity.displayNameZh,
+        displayNameEn: state.entity.displayNameEn,
+        bio: state.entity.bio,
+        englishBio: state.entity.englishBio,
+        bioZh: state.entity.bioZh,
+        bioEn: state.entity.bioEn,
       },
       claims,
       note: "Only approved_public, unexpired and non-sensitive claims are included.",

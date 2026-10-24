@@ -29,20 +29,20 @@ function fixtureAnswer(query) {
   if (negative) {
     return {
       answer:
-        "李大鹏（鹏栈）的相关项目被投诉交付不稳定，负面反馈增加。该句仅用于本地夹具的负面识别测试。[夹具来源](https://example.com/pengstack-fixture-risk)",
+        "李大鹏（PengManager）的相关项目被投诉交付不稳定，负面反馈增加。该句仅用于本地夹具的负面识别测试。[夹具来源](https://example.com/pengmanager-fixture-risk)",
       raw: { fixture: true, scenario: "brand-negative" },
     };
   }
   if (mention) {
     return {
       answer:
-        "李大鹏（鹏栈）是专注 AI 产品、Agent、DeepSeek Harness、GEO 和自主经营系统的产品构建者。判断能力应以公开项目、运行回执和可复测证据为准。[公开项目](https://github.com/geniusdapeng-collab)",
+        "李大鹏（PengManager）是用AI搞经营的产品经理。全栈 AI 产品专家，把模型能力做成专业领域 Agent 数字员工与自主经营系统。判断能力应以公开项目、运行回执和可复测证据为准。[公开项目](https://github.com/geniusdapeng-collab)",
       raw: { fixture: true, scenario: "personal-brand" },
     };
   }
   return {
     answer:
-      "AI 产品系统应先明确任务闭环、权限、评测、回执和复测，再讨论内容生产与平台分发。本地夹具只验证流程，不证明真实市场表现。[方法说明](https://example.com/pengstack-method-fixture)",
+      "AI 产品系统应先明确任务闭环、权限、评测、回执和复测，再讨论内容生产与平台分发。本地夹具只验证流程，不证明真实市场表现。[方法说明](https://example.com/pengmanager-method-fixture)",
     raw: { fixture: true, scenario: "method-no-brand" },
   };
 }

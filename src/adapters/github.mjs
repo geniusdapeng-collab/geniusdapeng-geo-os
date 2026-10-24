@@ -7,7 +7,7 @@ async function githubRequest(fetchImpl, token, path, options = {}) {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "PengStack-GEO-OS/0.2",
+      "User-Agent": "PengManager-System/0.4",
       ...(options.headers ?? {}),
     },
     signal: AbortSignal.timeout(30_000),
@@ -76,7 +76,7 @@ export class GitHubAdapter {
     }
   }
 
-  async ensureLabel(name, color = "2563eb", description = "PengStack GEO operation") {
+  async ensureLabel(name, color = "2563eb", description = "PengManager System GEO operation") {
     try {
       return await githubRequest(
         this.fetchImpl,
@@ -101,7 +101,7 @@ export class GitHubAdapter {
     await this.ensureLabel(
       label,
       "2563eb",
-      "A content publication created by the PengStack live API adapter",
+      "A content publication created by the PengManager System live API adapter",
     );
     const issue = await githubRequest(
       this.fetchImpl,

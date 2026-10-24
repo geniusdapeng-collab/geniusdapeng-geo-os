@@ -315,14 +315,14 @@ export class VideoMediaEngine {
           tracks: [
             {
               id: "pengstack-local-ambient",
-              title: "PengStack Local Ambient",
+              title: "PengManager Local Ambient",
               style: "corporate-clean",
               mood: "干净、克制",
               file: "pengstack-local-ambient.m4a",
               durationSec: Math.max(12, cursor + 2),
               license: "workloom-self-generated",
               source: "offline-synthetic-fixture",
-              artist: "PengStack",
+              artist: "PengManager",
             },
           ],
         },

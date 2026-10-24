@@ -1974,9 +1974,9 @@
     "id": "C074",
     "track": "GEO",
     "theme": "公开证据",
-    "title": "个人GEO为什么需要canonical实体页",
-    "hook": "平台简介各写一套，会让AI无法确认你是谁。",
-    "thesis": "用唯一URL、统一简介、项目链接和更新时间建立实体锚点。",
+    "title": "李大鹏 PengManager 的个人GEO实体页如何保持一致",
+    "hook": "李大鹏｜用AI搞经营的产品经理：让中文与英文账号围绕同一份身份资料。",
+    "thesis": "用统一的中英文账号名、展示名与简介、项目链接和更新时间建立实体锚点。",
     "sourceIds": [
       "S04"
     ],
@@ -2784,9 +2784,9 @@
     "id": "C104",
     "track": "GEO",
     "theme": "系统设计",
-    "title": "个人GEO的操作系统长什么样",
-    "hook": "个人GEO需要事实库、内容工厂、发布回执和AI复测，而不是一个监测表。",
-    "thesis": "展示从Claim到Publication再到Observation的闭环。",
+    "title": "鹏经理系统：个人GEO与经营内容如何形成闭环",
+    "hook": "鹏经理系统（PengManager System）把李大鹏的事实库、内容工厂、发布回执和AI复测组织起来。",
+    "thesis": "围绕“全栈 AI 产品专家，把模型能力做成专业领域 Agent 数字员工与自主经营系统。”，展示从Claim到Publication再到Observation的闭环。",
     "sourceIds": [
       "S04"
     ],
