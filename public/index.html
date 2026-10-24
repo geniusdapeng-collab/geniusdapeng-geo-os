@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>天才大鹏 · PengStack GEO OS</title>
+    <meta name="description" content="鹏经理系统（PengManager System）：李大鹏的个人经营控制台，将模型能力做成专业领域 Agent 数字员工与自主经营系统，连接账号资料、内容、媒体与 GEO 证据。" />
+    <meta name="application-name" content="鹏经理系统" />
+    <title>鹏经理系统 · PengManager System</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -14,8 +16,8 @@
         <a class="brand" href="#overview" aria-label="返回概览">
           <span class="brand-mark">鹏</span>
           <span>
-            <strong>鹏栈</strong>
-            <small>GEO OS</small>
+            <strong id="brand-name">鹏经理系统</strong>
+            <small id="brand-name-en" lang="en">PengManager System</small>
           </span>
         </a>
 
@@ -38,8 +40,9 @@
       <main>
         <header class="topbar">
           <div>
-            <p class="eyebrow">Dapeng Li · PengStack</p>
-            <h1>天才大鹏</h1>
+            <p id="system-name-en" class="eyebrow" lang="en">PengManager System</p>
+            <h1 id="system-name">鹏经理系统</h1>
+            <p id="account-byline" class="topbar-byline">李大鹏｜用AI搞经营的产品经理</p>
           </div>
           <button id="refresh" class="ghost-button" type="button">刷新数据</button>
         </header>
@@ -61,6 +64,35 @@
             </div>
 
             <div id="stat-grid" class="stat-grid"></div>
+
+            <article class="panel identity-panel" aria-labelledby="identity-title">
+              <div class="panel-heading">
+                <h3 id="identity-title">主账号资料</h3>
+                <span lang="en">PengManager · Master profile</span>
+              </div>
+              <div class="identity-grid">
+                <section class="identity-card" lang="zh-CN" aria-labelledby="identity-name-zh">
+                  <p class="identity-language">中文资料</p>
+                  <h4 id="identity-name-zh">李大鹏</h4>
+                  <dl class="identity-fields">
+                    <div><dt>展示名</dt><dd id="identity-display-zh">李大鹏｜用AI搞经营的产品经理</dd></div>
+                    <div><dt>简介</dt><dd id="identity-bio-zh" class="profile-bio">李大鹏｜用AI搞经营的产品经理
+
+全栈 AI 产品专家，把模型能力做成专业领域 Agent 数字员工与自主经营系统。</dd></div>
+                  </dl>
+                </section>
+                <section class="identity-card" lang="en" aria-labelledby="identity-name-en">
+                  <p class="identity-language">English profile</p>
+                  <h4 id="identity-name-en">PengManager</h4>
+                  <dl class="identity-fields">
+                    <div><dt>Display name</dt><dd id="identity-display-en">Dapeng Li · PengManager</dd></div>
+                    <div><dt>Bio</dt><dd id="identity-bio-en" class="profile-bio">Dapeng Li · PengManager
+
+Turning model capabilities into domain-specific AI employees and autonomous business systems.</dd></div>
+                  </dl>
+                </section>
+              </div>
+            </article>
 
             <div class="two-column">
               <article class="panel">
@@ -299,6 +331,11 @@
         </div>
         <h3></h3>
         <p class="handle"></p>
+        <div class="account-profile">
+          <p class="account-name"></p>
+          <p class="account-display-name"></p>
+          <p class="account-bio profile-bio"></p>
+        </div>
         <p class="focus"></p>
         <dl>
           <div><dt>受众</dt><dd class="audience"></dd></div>

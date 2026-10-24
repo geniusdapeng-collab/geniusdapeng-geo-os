@@ -104,7 +104,7 @@ export class GeoEvidenceAdapter {
           scope: {
             tenantId: "personal-pengstack",
             workspaceId: "geo-evidence",
-            requestedBy: "geniusdapeng-geo-os",
+            requestedBy: "pengmanager-system",
           },
         }),
       },

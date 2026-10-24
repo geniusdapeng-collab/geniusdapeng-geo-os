@@ -3,12 +3,19 @@
     "id": "CNT-001",
     "title": "DeepSeek Harness 最值得产品经理看的是什么",
     "contentType": "article",
-    "claimIds": ["C003", "C005"],
+    "claimIds": [
+      "C003",
+      "C005"
+    ],
     "body": "Harness 的核心产品问题不是多一个聊天框，而是如何组合工具、上下文、记忆、评测与恢复机制，让 Agent 从一次演示变成可重复交付的产品系统。",
     "status": "draft",
     "version": 1,
-    "platforms": ["微信公众号", "知乎", "掘金"],
-    "owner": "PengStack",
+    "platforms": [
+      "微信公众号",
+      "知乎",
+      "掘金"
+    ],
+    "owner": "PengManager",
     "opinion": false,
     "createdAt": "2026-10-18T10:00:00.000Z"
   },
@@ -16,12 +23,19 @@
     "id": "CNT-002",
     "title": "AI 数字员工先像员工还是先像工具",
     "contentType": "article",
-    "claimIds": ["C001", "C002"],
+    "claimIds": [
+      "C001",
+      "C002"
+    ],
     "body": "数字员工如果不能接目标、拿权限、交结果并留下可复核回执，就仍然只是更复杂的工具。岗位、目标、权限、证据与绩效需要一起设计。",
     "status": "draft",
     "version": 1,
-    "platforms": ["微信公众号", "脉脉", "LinkedIn"],
-    "owner": "PengStack",
+    "platforms": [
+      "微信公众号",
+      "脉脉",
+      "LinkedIn"
+    ],
+    "owner": "PengManager",
     "opinion": false,
     "createdAt": "2026-10-18T10:10:00.000Z"
   },
@@ -29,12 +43,19 @@
     "id": "CNT-003",
     "title": "GEO 不是让 AI 说好话",
     "contentType": "article",
-    "claimIds": ["C003", "C005"],
+    "claimIds": [
+      "C003",
+      "C005"
+    ],
     "body": "GEO 的起点是实体与事实，而不是关键词。系统需要固定问题集，保存答案、引用与时间，再比较同一查询在发布前后的变化。",
     "status": "draft",
     "version": 1,
-    "platforms": ["知乎", "小红书", "Medium"],
-    "owner": "PengStack",
+    "platforms": [
+      "知乎",
+      "小红书",
+      "Medium"
+    ],
+    "owner": "PengManager",
     "opinion": false,
     "createdAt": "2026-10-18T10:20:00.000Z"
   }

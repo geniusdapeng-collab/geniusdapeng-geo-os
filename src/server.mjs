@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
 import { JsonStore } from "./storage/json-store.mjs";
-import { loadSeedState } from "./services/bootstrap.mjs";
+import { loadSeedState, migratePengManagerIdentity } from "./services/bootstrap.mjs";
 import { GeoOsService } from "./services/geo-os-service.mjs";
 import { LivePipelineService } from "./services/live-pipeline.mjs";
 import { createGeoOsServer } from "./http/server.mjs";
@@ -30,6 +30,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 
 const store = new JsonStore({ filePath: dataFile });
 await store.open(() => loadSeedState(dataDir));
+await migratePengManagerIdentity(store, dataDir);
 
 const service = new GeoOsService({ store });
 const geoEngine = new PersonalGeoEngine({
@@ -59,7 +60,7 @@ const server = createGeoOsServer({
 });
 
 server.listen(port, host, () => {
-  console.log(`天才大鹏 control center: http://${host}:${port}`);
+  console.log(`鹏经理系统 · PengManager System: http://${host}:${port}`);
   console.log(`Local state: ${dataFile}`);
 });
 

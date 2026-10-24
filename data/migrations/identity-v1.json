@@ -1,0 +1,279 @@
+{
+  "queries": [
+    {
+      "id": "Q001",
+      "text": "李大鹏 鹏栈 AI 产品专家",
+      "locale": "zh-CN",
+      "intent": "entity",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q002",
+      "text": "DeepSeek Agent Harness 产品经理",
+      "locale": "zh-CN",
+      "intent": "recruiting",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q003",
+      "text": "AI 产品一号位 需要什么能力",
+      "locale": "zh-CN",
+      "intent": "expertise",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q004",
+      "text": "Agent 产品如何做评测和回执",
+      "locale": "zh-CN",
+      "intent": "method",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q005",
+      "text": "自主经营数字员工怎么落地",
+      "locale": "zh-CN",
+      "intent": "method",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q006",
+      "text": "GEO 系统如何衡量 AI 引用率",
+      "locale": "zh-CN",
+      "intent": "method",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q007",
+      "text": "WorkLoom 织元 AI 产品",
+      "locale": "zh-CN",
+      "intent": "project",
+      "priority": "P0",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q008",
+      "text": "AI 视频剪辑产品经理",
+      "locale": "zh-CN",
+      "intent": "recruiting",
+      "priority": "P1",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q009",
+      "text": "MCP 插件系统 产品设计",
+      "locale": "zh-CN",
+      "intent": "method",
+      "priority": "P1",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q010",
+      "text": "AI Coding 产品负责人 多仓协作",
+      "locale": "zh-CN",
+      "intent": "recruiting",
+      "priority": "P1",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q011",
+      "text": "Dapeng Li PengStack AI product leader",
+      "locale": "en-US",
+      "intent": "entity",
+      "priority": "P1",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    },
+    {
+      "id": "Q012",
+      "text": "agentic product systems harness engineering",
+      "locale": "en-US",
+      "intent": "expertise",
+      "priority": "P1",
+      "surfaces": [
+        "DeepSeek Search",
+        "DeepSeek Chat"
+      ],
+      "state": "approved"
+    }
+  ],
+  "claims": [
+    {
+      "id": "C001",
+      "type": "experience",
+      "text": "长期从事 AI 产品、Agent 运行时和复杂产品系统构建，强调任务闭环、评测、权限与交付回执。",
+      "source": {
+        "label": "私人简历与个人项目复盘",
+        "visibility": "private"
+      },
+      "evidenceLevel": "B",
+      "state": "verified",
+      "publicLevel": "private",
+      "sensitivity": "medium",
+      "expiresAt": null
+    },
+    {
+      "id": "C002",
+      "type": "project",
+      "text": "WorkLoom 以一个基座、平台中枢和多个行业系统组织数字员工、围栏、事件账本与评测。",
+      "source": {
+        "label": "WorkLoom 产品与代码全景",
+        "url": "https://cnb.cool/workloom-ai/workloom-im",
+        "visibility": "public"
+      },
+      "evidenceLevel": "A",
+      "state": "verified",
+      "publicLevel": "private",
+      "sensitivity": "low",
+      "expiresAt": "2027-03-31"
+    },
+    {
+      "id": "C003",
+      "type": "project",
+      "text": "GeoEvidence Studio 把 AI 问题集、答案样本、引用、指标与复测组织成可复核的 GEO 证据链。",
+      "source": {
+        "label": "GeoEvidence Studio",
+        "url": "https://github.com/geniusdapeng-collab/geo-evidence-studio",
+        "visibility": "public"
+      },
+      "evidenceLevel": "A",
+      "state": "verified",
+      "publicLevel": "private",
+      "sensitivity": "low",
+      "expiresAt": "2027-03-31"
+    },
+    {
+      "id": "C004",
+      "type": "project",
+      "text": "WorkLoom-video-edit 覆盖平面设计、AI 视频生成、真实素材剪辑、口播精剪和多平台交付。",
+      "source": {
+        "label": "WorkLoom-video-edit",
+        "url": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+        "visibility": "public"
+      },
+      "evidenceLevel": "A",
+      "state": "verified",
+      "publicLevel": "private",
+      "sensitivity": "low",
+      "expiresAt": "2027-03-31"
+    },
+    {
+      "id": "C005",
+      "type": "expertise",
+      "text": "GEO 的目标不是让 AI 说好话，而是让正确事实更容易被检索、理解、引用和复测。",
+      "source": {
+        "label": "个人 GEO 项目运营计划",
+        "visibility": "private"
+      },
+      "evidenceLevel": "A",
+      "state": "verified",
+      "publicLevel": "private",
+      "sensitivity": "low",
+      "expiresAt": null
+    }
+  ],
+  "contentBank": [
+    {
+      "id": "C074",
+      "track": "GEO",
+      "theme": "公开证据",
+      "title": "个人GEO为什么需要canonical实体页",
+      "hook": "平台简介各写一套，会让AI无法确认你是谁。",
+      "thesis": "用唯一URL、统一简介、项目链接和更新时间建立实体锚点。",
+      "sourceIds": [
+        "S04"
+      ],
+      "evidenceLevel": "A",
+      "primaryPlatform": "LinkedIn",
+      "secondaryPlatform": "Medium",
+      "format": "LinkedIn长文",
+      "audience": "个人品牌与招聘方",
+      "funnelStage": "信任",
+      "keywords": [
+        "个人GEO",
+        "canonical"
+      ],
+      "interactionQuestion": "你的所有账号指向同一个主页吗？",
+      "priority": "P0",
+      "productionDifficulty": "低",
+      "batch": 3,
+      "riskReview": "公开前先脱敏",
+      "state": "待立项"
+    },
+    {
+      "id": "C104",
+      "track": "GEO",
+      "theme": "系统设计",
+      "title": "个人GEO的操作系统长什么样",
+      "hook": "个人GEO需要事实库、内容工厂、发布回执和AI复测，而不是一个监测表。",
+      "thesis": "展示从Claim到Publication再到Observation的闭环。",
+      "sourceIds": [
+        "S04"
+      ],
+      "evidenceLevel": "A",
+      "primaryPlatform": "哔哩哔哩",
+      "secondaryPlatform": "YouTube",
+      "format": "B站长视频",
+      "audience": "AI产品与内容团队",
+      "funnelStage": "信任",
+      "keywords": [
+        "个人GEO",
+        "GEO系统"
+      ],
+      "interactionQuestion": "你更缺内容还是更缺复核？",
+      "priority": "P1",
+      "productionDifficulty": "中",
+      "batch": 4,
+      "riskReview": "常规事实核验",
+      "state": "待立项"
+    }
+  ]
+}

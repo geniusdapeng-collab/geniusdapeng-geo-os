@@ -126,7 +126,51 @@ function renderStatusList(selector, counts, labels) {
     .join("");
 }
 
+function primaryProfile() {
+  const entity = state.data.entity ?? {};
+  const nameZh = entity.nameZh || entity.publicName || "李大鹏";
+  const nameEn = entity.nameEn || entity.englishName || "PengManager";
+  const displayNameZh = entity.displayNameZh || entity.displayName || `${nameZh}｜用AI搞经营的产品经理`;
+  const displayNameEn = entity.displayNameEn || entity.englishDisplayName || `Dapeng Li · ${nameEn}`;
+  return {
+    nameZh,
+    nameEn,
+    displayNameZh,
+    displayNameEn,
+    bioZh: entity.bioZh || entity.bio || `${displayNameZh}\n\n全栈 AI 产品专家，把模型能力做成专业领域 Agent 数字员工与自主经营系统。`,
+    bioEn: entity.bioEn || entity.englishBio || `${displayNameEn}\n\nTurning model capabilities into domain-specific AI employees and autonomous business systems.`,
+  };
+}
+
+function renderIdentity() {
+  const system = state.data.system ?? {};
+  const nameZh = system.nameZh || "鹏经理系统";
+  const nameEn = system.nameEn || "PengManager System";
+  const profile = primaryProfile();
+  for (const selector of ["#brand-name", "#system-name"]) {
+    document.querySelector(selector).textContent = nameZh;
+  }
+  for (const selector of ["#brand-name-en", "#system-name-en"]) {
+    document.querySelector(selector).textContent = nameEn;
+  }
+  document.title = `${nameZh} · ${nameEn}`;
+  document.querySelector('meta[name="application-name"]').content = nameZh;
+  document.querySelector("#account-byline").textContent = profile.displayNameZh;
+  const fields = {
+    "#identity-name-zh": profile.nameZh,
+    "#identity-name-en": profile.nameEn,
+    "#identity-display-zh": profile.displayNameZh,
+    "#identity-display-en": profile.displayNameEn,
+    "#identity-bio-zh": profile.bioZh,
+    "#identity-bio-en": profile.bioEn,
+  };
+  for (const [selector, value] of Object.entries(fields)) {
+    document.querySelector(selector).textContent = value;
+  }
+}
+
 function renderOverview() {
+  renderIdentity();
   renderStats();
   document.querySelector("#revision-label").textContent =
     `账本版本 r${state.data.revision} · 事件头 ${state.data.eventHead?.slice(0, 10) ?? "GENESIS"}`;
@@ -176,13 +220,36 @@ function renderAccounts() {
   const template = document.querySelector("#account-card-template");
   const grid = document.querySelector("#account-grid");
   grid.replaceChildren();
+  if (state.data.accounts.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-panel";
+    empty.textContent = "还没有平台账号。主账号资料可在概览查看。";
+    grid.append(empty);
+    return;
+  }
 
+  const profile = primaryProfile();
   for (const account of state.data.accounts) {
     const card = template.content.firstElementChild.cloneNode(true);
+    const english = String(account.language ?? "").toLowerCase().startsWith("en");
+    const name = english
+      ? account.nameEn || account.englishName || profile.nameEn
+      : account.nameZh || account.publicName || profile.nameZh;
+    const displayName = account.displayName || (english
+      ? account.displayNameEn || account.englishDisplayName || profile.displayNameEn
+      : account.displayNameZh || profile.displayNameZh);
+    const bio = account.bio || (english
+      ? account.bioEn || account.englishBio || profile.bioEn
+      : account.bioZh || profile.bioZh);
     card.querySelector(".wave").textContent = `${account.wave} 波`;
     card.querySelector(".policy").textContent = "规则待确认";
     card.querySelector("h3").textContent = account.platform;
     card.querySelector(".handle").textContent = account.handle;
+    const accountProfile = card.querySelector(".account-profile");
+    accountProfile.lang = english ? "en" : "zh-CN";
+    card.querySelector(".account-name").textContent = name;
+    card.querySelector(".account-display-name").textContent = displayName;
+    card.querySelector(".account-bio").textContent = bio;
     card.querySelector(".focus").textContent = account.contentFocus;
     card.querySelector(".audience").textContent = account.audience;
     card.querySelector(".cadence").textContent = account.cadence;
@@ -497,7 +564,7 @@ document.querySelector("#content-form").addEventListener("submit", async (event)
         contentType,
         claimIds: claimId ? [claimId] : [],
         platforms: [form.get("platform")],
-        owner: "PengStack",
+        owner: primaryProfile().nameEn,
         opinion: contentType === "opinion",
       }),
     });

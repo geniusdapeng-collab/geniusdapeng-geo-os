@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>PengManager System</title>
   <rect width="64" height="64" rx="15" fill="#24364b"/>
-  <path d="M17 18h30v9H36v7h9v9H36v7H22V32h9v-5h-9v-9Z" fill="#f7f9fc"/>
-  <circle cx="47" cy="46" r="5" fill="#2563eb"/>
+  <path d="M15 17h14c8 0 12 5 12 12s-4 12-12 12h-5v9h-9V17Zm9 8v8h5c3 0 4-1 4-4s-1-4-4-4h-5Z" fill="#f7f9fc"/>
+  <path d="m39 50 3-16h7l3 16h-6l-1-8-1 8h-5Z" fill="#71a4ff"/>
 </svg>

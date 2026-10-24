@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { ApiError } from "../domain/errors.mjs";
+import { SYSTEM_IDENTITY } from "../domain/identity.mjs";
 
 const MIME_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -197,7 +198,8 @@ export function createGeoOsServer({
         }
         writeJson(response, 200, {
           ok: true,
-          service: "geniusdapeng-geo-os",
+          service: SYSTEM_IDENTITY.id,
+          system: { ...SYSTEM_IDENTITY },
           summary: service.summary(),
         });
         return;

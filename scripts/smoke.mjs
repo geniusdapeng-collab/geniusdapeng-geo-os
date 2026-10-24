@@ -60,7 +60,7 @@ try {
   if (!healthResponse.ok || health.summary.accounts !== 16) {
     throw new Error("Health smoke check failed.");
   }
-  if (!pageResponse.ok || !page.includes("天才大鹏")) {
+  if (!pageResponse.ok || !page.includes("鹏经理系统") || !page.includes("PengManager System")) {
     throw new Error("Dashboard smoke check failed.");
   }
   if (!geoResponse.ok || geo.case?.id !== "pengstack-personal-geo") {

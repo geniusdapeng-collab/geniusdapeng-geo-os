@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-24 — PengManager identity update
+
+### Changed
+
+- Rename the product to 鹏经理系统 / PengManager System while retaining the
+  existing `geniusdapeng-collab/geniusdapeng-geo-os` repository URL.
+- Standardize the main account as 李大鹏 / PengManager, with the Chinese display
+  name 李大鹏｜用AI搞经营的产品经理 and English display name Dapeng Li · PengManager.
+- Apply the supplied Chinese and English bios to the canonical identity,
+  platform profiles, dashboard and relevant content-production defaults.
+- Refresh personal GEO query and article defaults for the current identity,
+  while retaining recognition aliases and stable case/query IDs.
+- Migrate recognized legacy runtime defaults once and append an identity event;
+  retain customized queries, approved facts, publication receipts and previous
+  event hashes.
+- Rewrite the README and current architecture, API, operations and seed guidance
+  to describe the product, migration and local/private operating boundaries.
+
+Historical live verification receipts below remain records of their original
+dates; this identity update does not imply a new all-platform publication.
+
 ## 0.4.1 - 2026-10-19
 
 ### Fixed

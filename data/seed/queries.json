@@ -1,11 +1,14 @@
 [
   {
     "id": "Q001",
-    "text": "李大鹏 鹏栈 AI 产品专家",
+    "text": "李大鹏 PengManager 用AI搞经营的产品经理",
     "locale": "zh-CN",
     "intent": "entity",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -14,7 +17,10 @@
     "locale": "zh-CN",
     "intent": "recruiting",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -23,7 +29,10 @@
     "locale": "zh-CN",
     "intent": "expertise",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -32,7 +41,10 @@
     "locale": "zh-CN",
     "intent": "method",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -41,7 +53,10 @@
     "locale": "zh-CN",
     "intent": "method",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -50,7 +65,10 @@
     "locale": "zh-CN",
     "intent": "method",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -59,7 +77,10 @@
     "locale": "zh-CN",
     "intent": "project",
     "priority": "P0",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -68,7 +89,10 @@
     "locale": "zh-CN",
     "intent": "recruiting",
     "priority": "P1",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -77,7 +101,10 @@
     "locale": "zh-CN",
     "intent": "method",
     "priority": "P1",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -86,16 +113,22 @@
     "locale": "zh-CN",
     "intent": "recruiting",
     "priority": "P1",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
     "id": "Q011",
-    "text": "Dapeng Li PengStack AI product leader",
+    "text": "Dapeng Li PengManager domain-specific AI employees autonomous business systems",
     "locale": "en-US",
     "intent": "entity",
     "priority": "P1",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   },
   {
@@ -104,7 +137,10 @@
     "locale": "en-US",
     "intent": "expertise",
     "priority": "P1",
-    "surfaces": ["DeepSeek Search", "DeepSeek Chat"],
+    "surfaces": [
+      "DeepSeek Search",
+      "DeepSeek Chat"
+    ],
     "state": "approved"
   }
 ]

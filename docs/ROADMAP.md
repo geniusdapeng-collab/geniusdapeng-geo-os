@@ -1,4 +1,18 @@
-# Roadmap
+# 鹏经理系统 · PengManager System — Roadmap
+
+The system serves 李大鹏 / PengManager. Its current identity and account copy
+are documented in the [README](../README.md); the repository slug and historical
+evidence URLs remain unchanged.
+
+## 2026-10-24: PengManager identity update
+
+- Unify product naming as 鹏经理系统 / PengManager System.
+- Unify Chinese and English account names, display names and bios.
+- Refresh dashboard, content-production defaults and personal GEO templates.
+- Migrate recognized legacy local defaults while preserving customized records,
+  approval decisions, publication receipts and event history.
+- Keep platform profile updates and real external publications subject to their
+  existing interface, authorization and receipt requirements.
 
 ## v0.1: verified local control plane
 

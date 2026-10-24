@@ -1,4 +1,5 @@
 import { join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { GeoStore } from "../../engines/geo-evidence/lib/store.mjs";
 import { GeoEvidenceService } from "../../engines/geo-evidence/lib/service.mjs";
 import {
@@ -7,6 +8,13 @@ import {
 } from "../../engines/geo-evidence/personal-case.mjs";
 import { resolveDeepSeekApiKey } from "../adapters/auth.mjs";
 import { hashObject } from "../domain/hash.mjs";
+
+const LEGACY_CONTROL_QUERIES = JSON.parse(readFileSync(
+  new URL("../../data/migrations/identity-v1.json", import.meta.url), "utf8",
+)).queries;
+const LEGACY_PERSONAL_QUERIES = JSON.parse(readFileSync(
+  new URL("../../engines/geo-evidence/personal-case-v1-queries.json", import.meta.url), "utf8",
+));
 
 function mapControlQuery(query) {
   const category =
@@ -52,14 +60,11 @@ export class PersonalGeoEngine {
         ...buildPersonalQueries(PERSONAL_GEO_CASE),
         ...controlQueries.map(mapControlQuery),
       ],
-    });
-    this.store.upsertQueries(
-      [
-        ...buildPersonalQueries(PERSONAL_GEO_CASE),
-        ...controlQueries.map(mapControlQuery),
+      queryBaseline: [
+        ...LEGACY_PERSONAL_QUERIES,
+        ...LEGACY_CONTROL_QUERIES.map(mapControlQuery),
       ],
-      PERSONAL_GEO_CASE,
-    );
+    });
     this.service = new GeoEvidenceService(this.store, {
       rootDir: join(this.rootDir, "var", "geo-engine"),
       env,

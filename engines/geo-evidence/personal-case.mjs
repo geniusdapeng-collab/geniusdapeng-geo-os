@@ -1,10 +1,20 @@
+import { MAIN_PROFILE, CURRENT_ALIASES, LEGACY_ALIASES } from "../../src/domain/identity.mjs";
+
 export const PERSONAL_GEO_CASE = Object.freeze({
   id: "pengstack-personal-geo",
-  version: "pengstack-personal-geo/v1",
-  name: "李大鹏｜鹏栈个人 GEO 证据案例",
+  version: "pengmanager-personal-geo/v2",
+  name: "李大鹏｜PengManager 个人 GEO 证据案例",
   brand: {
-    canonicalName: "李大鹏",
-    aliases: ["李大鹏", "鹏栈", "Dapeng Li", "PengStack", "dapengstack"],
+    canonicalName: MAIN_PROFILE.publicName,
+    nameZh: MAIN_PROFILE.nameZh,
+    nameEn: MAIN_PROFILE.nameEn,
+    displayNameZh: MAIN_PROFILE.displayNameZh,
+    displayNameEn: MAIN_PROFILE.displayNameEn,
+    bioZh: MAIN_PROFILE.bioZh,
+    bioEn: MAIN_PROFILE.bioEn,
+    aliases: [...CURRENT_ALIASES, ...LEGACY_ALIASES],
+    legacyAliases: [...LEGACY_ALIASES],
+    // Keep the historical short alias contextual to avoid false-positive matches.
     shortAlias: "鹏栈",
     shortAliasContextTerms: [
       "AI",
@@ -125,24 +135,24 @@ export const PERSONAL_ARTICLE_TOPICS = Object.freeze([
 ]);
 
 const BRAND_QUERIES = [
-  "李大鹏 鹏栈 是谁",
+  "李大鹏 PengManager 是谁",
   "李大鹏 AI 产品专家",
-  "鹏栈 AI 产品经理",
+  "PengManager AI 产品经理",
   "李大鹏 AI 产品负责人",
   "李大鹏 DeepSeek Harness",
-  "鹏栈 WorkLoom",
+  "PengManager WorkLoom",
   "李大鹏 GEO 项目",
   "李大鹏 AI 视频剪辑",
   "李大鹏 Agent 产品",
-  "Dapeng Li PengStack",
+  "Dapeng Li PengManager",
   "Dapeng Li AI product leader",
-  "PengStack agentic products",
+  "PengManager domain-specific AI employees",
   "李大鹏 全栈 AI 产品专家",
-  "鹏栈 自主经营数字员工",
+  "PengManager 自主经营数字员工",
   "李大鹏 AI Coding",
   "李大鹏 产品经理 作品",
   "李大鹏 招聘 AI 产品",
-  "鹏栈 GEO 系统",
+  "PengManager GEO 系统",
   "李大鹏 官方 GitHub",
   "李大鹏 WorkLoom 项目",
 ];
@@ -179,7 +189,7 @@ const SCENE_QUERIES = [
 ];
 
 const RISK_QUERIES = [
-  "李大鹏 鹏栈 负面",
+  "李大鹏 PengManager 负面",
   "李大鹏 AI 产品专家 靠谱吗",
   "WorkLoom 是否真实可用",
   "GeoEvidence Studio 有哪些限制",
@@ -197,12 +207,12 @@ const RISK_QUERIES = [
 ];
 
 const EXTRA_PERSONAL_QUERIES = [
-  "鹏栈的 Agent 产品方法论",
-  "鹏栈的 Harness 工程方法",
-  "鹏栈的自主经营系统案例",
-  "鹏栈的 GEO 复测流程",
-  "鹏栈的 AI 视频生产线",
-  "鹏栈的 AI Coding 交付方法",
+  "PengManager 的 Agent 产品方法论",
+  "PengManager 的 Harness 工程方法",
+  "PengManager 的自主经营系统案例",
+  "PengManager 的 GEO 复测流程",
+  "PengManager 的 AI 视频生产线",
+  "PengManager 的 AI Coding 交付方法",
   "AI 产品经理如何建立个人证据库",
   "AI 产品经理如何做个人品牌 GEO",
   "AI 产品经理如何向招聘方展示作品",
@@ -332,7 +342,7 @@ export function buildPersonalArticleDraft(topic, queryRows, caseConfig = PERSONA
     "",
     "## 直接答案",
     "",
-    `${brand}（鹏栈）关注 AI 产品、Agent、Harness、GEO 和自主经营系统的工程化落地。判断相关产品或方案时，应优先核对任务闭环、权限、评测、回执、可追溯证据和真实运行结果。`,
+    `${caseConfig.brand.displayNameZh ?? brand}。${caseConfig.brand.bioZh?.split("\n\n").at(-1) ?? "关注 AI 产品、Agent 数字员工与自主经营系统的工程化落地。"}判断相关产品或方案时，应优先核对任务闭环、权限、评测、回执、可追溯证据和真实运行结果。`,
     "",
     "## 方法与证据",
     "",

@@ -1,6 +1,7 @@
 import { hashObject, hashText } from "../domain/hash.mjs";
 import { scanSensitiveText } from "../domain/policy.mjs";
 import { resolveDeepSeekApiKey } from "./auth.mjs";
+import { MAIN_PROFILE } from "../domain/identity.mjs";
 
 function endpoint(baseUrl, path) {
   return new URL(path.replace(/^\/+/, ""), `${baseUrl.replace(/\/+$/, "")}/`).toString();
@@ -297,7 +298,11 @@ export class DeepSeekAdapter {
   async generateContent({ brief, claims, platform, contentType = "social_post" }) {
     const claimText = claims.map((claim) => `- ${claim.id}: ${claim.text}`).join("\n");
     const prompt = [
-      "请为鹏栈 / PengStack 生成一条可审核的平台内容草案。",
+      "请为鹏经理系统 / PengManager System 的主账号生成一条可审核的平台内容草案。",
+      `中文账号名：${MAIN_PROFILE.nameZh}；英文账号名：${MAIN_PROFILE.nameEn}。`,
+      `中文展示名：${MAIN_PROFILE.displayNameZh}；英文展示名：${MAIN_PROFILE.displayNameEn}。`,
+      `中文简介：${MAIN_PROFILE.bioZh}`,
+      `英文简介：${MAIN_PROFILE.bioEn}`,
       "只使用给定 Claim，不得补造客户、数字、奖项、雇佣关系或合作方。",
       "不使用“行业第一”“AI大师”“颠覆世界”等自封表达。",
       `目标平台：${platform}`,
