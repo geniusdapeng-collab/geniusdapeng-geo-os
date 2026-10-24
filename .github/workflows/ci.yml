@@ -35,6 +35,16 @@ jobs:
           for script in deploy/aliyun/*.sh; do bash -n "$script"; done
       - name: Deployment safety and recovery tests
         run: python3 -m unittest discover -s deploy/aliyun -p 'test_*.py'
+      - name: Verify complete pinned video snapshot from clean checkout
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { verifyPinnedSnapshot } from './src/video-runtime/snapshot.mjs';
+          const rootDir = process.cwd();
+          const pin = JSON.parse(fs.readFileSync('upstreams/workloom-video-edit.pin.json', 'utf8'));
+          console.log(JSON.stringify(verifyPinnedSnapshot({ rootDir, engineRoot: path.join(rootDir, pin.engineRoot), commit: pin.commit, fileCount: pin.sourceFileCount, expectedSha256: pin.snapshotSha256 })));
+          NODE
       - name: Unit and integration tests
         run: node --test tests/*.test.mjs
       - name: Engine regression tests
