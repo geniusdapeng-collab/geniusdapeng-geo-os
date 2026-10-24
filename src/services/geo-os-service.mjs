@@ -12,6 +12,7 @@ import {
 import { transitionContent } from "../domain/state-machine.mjs";
 import { verifyEventChain } from "../storage/json-store.mjs";
 import { MAIN_PROFILE, SYSTEM_IDENTITY } from "../domain/identity.mjs";
+import { requirePublicUrl } from "../domain/public-url.mjs";
 
 const CONTENT_TYPES = new Set([
   "article",
@@ -51,11 +52,19 @@ function nextId(prefix, rows, { width = 3, compact = false } = {}) {
 }
 
 function publicClaim(claim) {
+  // Public approval never exports private source notes or credentials.
+  if (claim.source?.visibility !== "public" || (claim.sensitivity && claim.sensitivity !== "low")) return null;
+  let sourceUrl;
+  try {
+    sourceUrl = requirePublicUrl(claim.source.url, "claim.source.url", { allowHttp: true });
+  } catch { return null; }
+  const label = String(claim.source.label ?? "公开来源").trim().slice(0, 240);
+  if (scanSensitiveText(`${label}\n${sourceUrl}`).length) return null;
   return {
     id: claim.id,
     type: claim.type,
     text: claim.text,
-    source: claim.source,
+    source: { label, url: sourceUrl, visibility: "public" },
     evidenceLevel: claim.evidenceLevel,
     expiresAt: claim.expiresAt,
   };
@@ -284,6 +293,14 @@ export class GeoOsService {
     const accountId = requireText(input.accountId, "accountId", 80);
     const actor = requireText(input.actor, "actor", 120);
     const receipt = input.receipt ?? {};
+    if (typeof receipt !== "object" || Array.isArray(receipt)) {
+      throw new ApiError(400, "INVALID_INPUT", "receipt 必须是对象。");
+    }
+    for (const field of ["url", "publishedAt", "capturedBy", "dataMode"]) {
+      if (receipt[field] !== undefined && typeof receipt[field] !== "string") {
+        throw new ApiError(400, "INVALID_INPUT", `receipt.${field} 必须是文本。`);
+      }
+    }
 
     const { result } = await this.store.mutate(
       {
@@ -307,6 +324,15 @@ export class GeoOsService {
           now: this.clock(),
         });
 
+        const safeReceipt = {
+          ...receipt,
+          url: requirePublicUrl(receipt.url, "receipt.url", { allowHttp: true }),
+        };
+        const sensitive = scanSensitiveText(`${actor}\n${safeReceipt.url}\n${receipt.capturedBy}`);
+        if (sensitive.length) {
+          throw new PolicyError("PUBLICATION_CONTAINS_SENSITIVE_CONTENT", "发布回执包含敏感信息或凭据，请先移除。", sensitive);
+        }
+
         const at = this.clock().toISOString();
         const contentHash = hashText(`${content.title}\n${content.body}`);
         const publication = {
@@ -314,12 +340,12 @@ export class GeoOsService {
           contentId,
           accountId,
           platform: account.platform,
-          url: receipt.url,
+          url: safeReceipt.url,
           publishedAt: receipt.publishedAt,
           capturedBy: receipt.capturedBy.trim(),
           dataMode: receipt.dataMode,
           contentHash,
-          receiptHash: hashObject(receipt),
+          receiptHash: hashObject(safeReceipt),
           recordedAt: at,
           recordedBy: actor,
         };
@@ -509,7 +535,8 @@ export class GeoOsService {
     const state = this.store.snapshot();
     const claims = state.claims
       .filter((claim) => isClaimPubliclyExportable(claim, { now: this.clock() }))
-      .map(publicClaim);
+      .map(publicClaim)
+      .filter(Boolean);
     return {
       generatedAt: this.clock().toISOString(),
       system: state.system ?? { ...SYSTEM_IDENTITY },
