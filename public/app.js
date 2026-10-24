@@ -1,5 +1,6 @@
 import { initializeVideoWorkbench } from "./video-workbench.js";
 import { mountOperations } from "/operations.js";
+import { mountFinalBackup } from "./final-backup-browser.js";
 
 const state = {
   data: null,
@@ -548,6 +549,7 @@ async function loadData() {
     state.data = await api("/api/bootstrap");
     await operationsUi.load();
     renderAll();
+    void finalBackup.sync();
     setLoading(false);
     switchView(requestedView());
     const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus()]);
@@ -683,6 +685,7 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
 });
 
 const operationsUi = mountOperations({ api, getData: () => state.data, reload: loadData, showError, profile: primaryProfile });
+const finalBackup = mountFinalBackup({ api });
 
 initializeVideoWorkbench();
 loadData();

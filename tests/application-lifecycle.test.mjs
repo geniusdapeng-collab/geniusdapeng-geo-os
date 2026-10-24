@@ -22,6 +22,7 @@ async function applicationFixture(t, options = {}) {
     videoRuntime: options.runtimeFactory ? undefined : runtime, runtimeFactory: options.runtimeFactory,
     geoEngine: { close() { calls.geoClose += 1; }, summary() { return { preserved: true }; } },
     mediaEngine: {}, livePipeline: options.livePipeline ?? {}, logger: { log() {}, error(message) { calls.errors.push(message); } },
+    finalContentBackup: null,
   });
   t.after(async () => { try { await app.stop(); } finally { await rm(directory, { recursive: true, force: true }); } });
   return { app, calls };
@@ -62,6 +63,19 @@ test("shutdown during pending runtime start cancels through the supervisor and w
   await Promise.resolve();
   await Promise.all([app.stop(), app.stop()]);
   assert.deepEqual(sequence, ["start", "stop", "start-settled"]);
+  assert.equal(app.server.listening, false);
+});
+
+test("cloud media-disable flag keeps HTTP available without automatically starting the native video stack", async t => {
+  const { app, calls } = await applicationFixture(t, { env: { ENABLE_MEDIA_RENDER: "false" } });
+  const address = await app.listen({ port: 0 });
+  assert.equal(await app.videoStart, false);
+  assert.equal((await fetch(`http://127.0.0.1:${address.port}/api/bootstrap`)).status, 200);
+  assert.equal(calls.start, 0);
+  assert.deepEqual(calls.errors, []);
+  await app.stop();
+  assert.equal(calls.stop, 1);
+  assert.equal(calls.geoClose, 1);
   assert.equal(app.server.listening, false);
 });
 

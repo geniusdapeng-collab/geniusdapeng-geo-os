@@ -6,6 +6,8 @@
 
 仓库地址继续使用 [`geniusdapeng-collab/geniusdapeng-geo-os`](https://github.com/geniusdapeng-collab/geniusdapeng-geo-os)。项目展示名称与主账号资料已统一为 PengManager；GitHub 仓库路径与既有证据地址保持兼容。
 
+**AI Agent 接手必读：** 克隆、拉取更新或开始任务后，先完整阅读根目录 [AGENTS.md](AGENTS.md) 和[AI Agent 接入与操作指南](docs/AI-AGENT-GUIDE.md)，再执行操作。指南包含其他平台接入、管理员与受限令牌的权限、GEO 内容生产与最终审批、单账号发布／回复、真实回执与幂等恢复、本机视频 CLI/MCP 和 Mac 定稿备份的使用条件。仓库访问权不等于网站管理权；拉到新代码也不表示云端已经部署同一版本。
+
 ## 主账号资料
 
 | 资料 | 中文 | English |
@@ -142,6 +144,7 @@ GitHub 适配器从当前进程的 `GITHUB_TOKEN` 读取令牌；模型适配器
 
 ## 文档与历史验证
 
+- [AI Agent 接入与操作指南（接手任务前完整阅读）](docs/AI-AGENT-GUIDE.md)
 - [架构与边界](docs/ARCHITECTURE.md)
 - [HTTP API 与确认参数](docs/API.md)
 - [账号运营、登录、迁移、备份与恢复](docs/OPERATIONS.md)

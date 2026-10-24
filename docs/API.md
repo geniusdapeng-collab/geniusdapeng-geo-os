@@ -2,6 +2,13 @@
 
 The service listens on `http://127.0.0.1:4318` by default.
 
+AI agents must first read the complete [AI Agent usage guide](AI-AGENT-GUIDE.md)
+and root [AGENTS.md](../AGENTS.md). The guide includes production-origin curl
+examples, credential handling, administrator versus scoped Agent permissions,
+content approval, real browser execution, receipt recovery, GEO and local
+video/backup boundaries. A checkout's routes are not proof that the target
+running service has deployed the same version.
+
 The product name is `鹏经理系统` / `PengManager System`. The underlying GitHub
 repository URL remains `geniusdapeng-collab/geniusdapeng-geo-os`; changing the
 display brand does not redirect or rename external account URLs.
