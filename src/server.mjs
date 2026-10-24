@@ -1,86 +1,24 @@
-import { join, resolve } from "node:path";
-import { JsonStore } from "./storage/json-store.mjs";
-import { loadSeedState, migratePengManagerIdentity } from "./services/bootstrap.mjs";
-import { GeoOsService } from "./services/geo-os-service.mjs";
-import { LivePipelineService } from "./services/live-pipeline.mjs";
-import { createGeoOsServer } from "./http/server.mjs";
-import { DeepSeekAdapter } from "./adapters/deepseek.mjs";
-import { GitHubAdapter } from "./adapters/github.mjs";
-import { VideoEditAdapter } from "./adapters/video-edit.mjs";
-import { PersonalGeoEngine } from "./engines/geo-evidence.mjs";
-import { VideoMediaEngine } from "./engines/video-media.mjs";
-import { createAdminAuth } from "./security/admin-auth.mjs";
-import { AccountOperationsService } from "./services/account-operations.mjs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createPengManagerApplication } from "./application.mjs";
 
-const rootDir = resolve(import.meta.dirname, "..");
-const host = process.env.HOST || "127.0.0.1";
-const port = Number(process.env.PORT || 4318);
-const dataFile = resolve(rootDir, process.env.DATA_FILE || "var/state.json");
-const dataDir = join(rootDir, "data", "seed");
-const publicDir = join(rootDir, "public");
-const configuredHosts = process.env.ALLOWED_HOSTS
-  ?.split(",")
-  .map((value) => value.trim().toLowerCase())
-  .filter(Boolean);
-const allowedHosts = configuredHosts?.length
-  ? configuredHosts
-  : ["127.0.0.1", "localhost", "::1", "[::1]"];
-const auth = createAdminAuth({ env: process.env, host, allowedHosts });
+export { createPengManagerApplication };
 
-if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-  throw new Error("PORT must be an integer between 1 and 65535.");
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  let application;
+  try {
+    application = await createPengManagerApplication();
+    await application.listen();
+  } catch {
+    console.error("鹏经理系统启动失败；请检查本地配置与受保护的运行数据。");
+    if (application) await application.stop().catch(() => { process.exitCode = 1; });
+    process.exitCode = 1;
+  }
+  if (application?.server.listening) {
+    const shutdown = () => { void application.stop().catch(() => {
+      console.error("鹏经理系统未能完整停止；请运行本地诊断检查受管服务。"); process.exitCode = 1;
+    }); };
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  }
 }
-
-const store = new JsonStore({ filePath: dataFile });
-await store.open(() => loadSeedState(dataDir));
-await migratePengManagerIdentity(store, dataDir);
-
-const service = new GeoOsService({ store });
-const accountOperations = new AccountOperationsService({ service });
-const geoEngine = new PersonalGeoEngine({
-  rootDir,
-  ...(process.env.GEO_ENGINE_DB
-    ? { databasePath: resolve(rootDir, process.env.GEO_ENGINE_DB) }
-    : {}),
-  controlQueries: store.snapshot().queries,
-});
-const mediaEngine = new VideoMediaEngine({ rootDir });
-const livePipeline = new LivePipelineService({
-  service,
-  deepSeek: new DeepSeekAdapter(),
-  github: new GitHubAdapter(),
-  geoEngine,
-  videoEdit: new VideoEditAdapter({
-    upstreamRoot: join(rootDir, "engines", "video-edit"),
-  }),
-  mediaEngine,
-});
-const server = createGeoOsServer({
-  service,
-  livePipeline,
-  geoEngine,
-  publicDir,
-  allowedHosts,
-  auth,
-  accountOperations,
-  publicWebsite: process.env.PUBLIC_WEBSITE === "1",
-  mediaRenderEnabled: process.env.ENABLE_MEDIA_RENDER !== "false",
-});
-
-server.listen(port, host, () => {
-  console.log(`鹏经理系统 · PengManager System: http://${host}:${port}`);
-  console.log(`Local state: ${dataFile}`);
-});
-
-function shutdown(signal) {
-  console.log(`received ${signal}; shutting down`);
-  server.close((error) => {
-    geoEngine.close();
-    process.exitCode = error ? 1 : 0;
-  });
-}
-
-process.once("SIGINT", () => shutdown("SIGINT"));
-process.once("SIGTERM", () => shutdown("SIGTERM"));
-
-export { server, service, store, geoEngine, mediaEngine, auth, accountOperations };

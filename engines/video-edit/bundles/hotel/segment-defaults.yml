@@ -1,0 +1,196 @@
+# 客群默认安装清单（v2.1 新增；§2.2 槽⑤班组装配的客群化默认配置；v3.3 获客域并入；v3.4 质检模式先行）
+# 用途：新工作区按客群一键初始化——预装技能（ordered：首屏展示顺序=销售叙事顺序）、启用 preset、默认触发器、围栏 patch。
+# 纪律：清单只决定「默认装什么、什么前置」，运行时仍全量过围栏瀑布（L8.3）；客户后续可自助加装技能市场任意技能。
+# v3.3：获客组（ai-receptionist/coupon-operator/guest-success/channel-watcher + 4 获客技能）并入三客群——
+#       民宿获客技能紧随 content-marketing 前置（种草是命脉），其余客群接在 ai-live-assistant 之后。
+# 客户旅程：audit_only（只读体检 1-2 周）→ 影子模式（3 天）→ 正式托管（low_star_single / homestay / unmanned）。
+version: hotel-segment-defaults/v2
+segments:
+
+  # ========== 质检模式（Audit-Only · 只读体检期）· 零风险先行 ==========
+  audit_only:
+    label: 质检模式（只读体检期）
+    pitch: 先体检，再托管——PMS/OTA+社媒+GEO 只读扫描，系统不动一根手指，15-30 分钟出《获客全链路快速体检报告》
+    fence_patch: fences/patches/audit-only-patch.yml
+    presets:  # 全部只读/分析岗（readonly: true），无写通道
+    - inspection-agent
+    - channel-watcher
+    - competitor-agent
+    - owner-cockpit
+    skills_ordered:  # 首屏顺序 = 双线体检叙事：快扫当场见效→持续巡检→对账复核→口碑与意图
+    - fast-scan  # 旗舰：快照快扫，15-30 分钟当场出《获客全链路快速体检报告》（售前验货与接入基线）
+    - inspection-suite  # 持续：全域巡检套件（渠道/安全/IoT/布草）
+    - overbooking-parity-guard  # 酒店运营线：倒挂/超售漏售巡检供数（R17/R18 同源）
+    - channel-reconciler  # 对账复核：渠道账单与订单勾稽，发现渗漏
+    - ota-operations  # OTA 只读盘点：房态/价格/活动状态
+    - review-asset-mining  # 口碑存量：差评关键词聚类（对手的差评就是自己的选题）
+    - intent-radar  # 获客转化线：意图矿源萃取（竞对评论区/OTA差评/query词/本店私信）
+    - hotel-geo-content  # GEO 可见度缺口分析（提及率/首推率/SOV）
+    - guest-profile-crm  # 线索流失点盘点（脱敏聚合，R24 同源）
+    - finance-reporting  # 经营账：OCC/ADR/RevPAR 基线建档
+    - morning-briefing  # 每日体检晨报（只读版决策包：发现/建议/风险三栏）
+    - night-audit-suite  # 夜间只读值守：差评 SLA 扫描/价格巡检（发现进清晨决策包）
+    - handover-manager
+    - incident-postmortem
+    triggers_enabled:
+    - tg-inspection-0700
+    - tg-parity-15min
+    - tg-review-sla-30min
+
+  low_star_single:
+    label: 低星单体酒店
+    pitch: 一年省 17 万，一个月回本
+    fence_patch: fences/patches/low-star-single-patch.yml
+    presets:
+    - pricing-agent
+    - review-agent
+    - reconcile-agent
+    - inspection-agent
+    - frontdesk-agent
+    - content-agent
+    - competitor-agent
+    - desktop-agent
+    - phone-agent
+    - ai-receptionist
+    - coupon-operator
+    - guest-success
+    - channel-watcher
+    skills_ordered:
+    - night-audit-suite
+    - revenue-manager
+    - pricing-matrix
+    - channel-reconciler
+    - overbooking-parity-guard
+    - review-crisis
+    - review-asset-mining
+    - ota-operations
+    - checkin-checkout
+    - customer-service
+    - morning-briefing
+    - handover-manager
+    - inspection-suite
+    - room-service-dispatch
+    - staff-scheduler
+    - inventory-procurement
+    - finance-reporting
+    - retention-manager
+    - guest-profile-crm
+    - maintenance-dispatch
+    - safety-compliance
+    - phone-concierge
+    - content-marketing
+    - ai-live-assistant
+    - lead-concierge
+    - coupon-ops
+    - hotel-geo-content
+    - intent-radar
+    - incident-postmortem
+    triggers_enabled:
+    - tg-inspection-0700
+    - tg-night-2200
+    - tg-review-sla-30min
+    - tg-parity-15min
+  homestay:
+    label: 民宿
+    pitch: 把夜晚还给业主
+    fence_patch: fences/patches/homestay-patch.yml
+    presets:
+    - phone-agent
+    - content-agent
+    - frontdesk-agent
+    - review-agent
+    - pricing-agent
+    - reconcile-agent
+    - competitor-agent
+    - owner-cockpit
+    - ai-receptionist
+    - coupon-operator
+    - guest-success
+    - channel-watcher
+    skills_ordered:
+    - phone-concierge
+    - night-audit-suite
+    - content-marketing
+    - intent-radar
+    - hotel-geo-content
+    - lead-concierge
+    - coupon-ops
+    - ai-live-assistant
+    - review-crisis
+    - review-asset-mining
+    - guest-profile-crm
+    - retention-manager
+    - customer-service
+    - checkin-checkout
+    - revenue-manager
+    - pricing-matrix
+    - channel-reconciler
+    - ota-operations
+    - overbooking-parity-guard
+    - morning-briefing
+    - handover-manager
+    - inventory-procurement
+    - finance-reporting
+    - inspection-suite
+    - room-service-dispatch
+    - staff-scheduler
+    - maintenance-dispatch
+    - safety-compliance
+    - incident-postmortem
+    triggers_enabled:
+    - tg-night-2200
+    - tg-faq-mine-sun
+    - tg-review-sla-30min
+  unmanned:
+    label: 无人酒店
+    pitch: 断点不是事故，是资产——你的第 5 家店比第 1 家店更好管
+    fence_patch: fences/patches/unmanned-patch.yml
+    presets:
+    - desktop-agent
+    - phone-agent
+    - owner-cockpit
+    - inspection-agent
+    - competitor-agent
+    - pricing-agent
+    - reconcile-agent
+    - review-agent
+    - ai-receptionist
+    - coupon-operator
+    - guest-success
+    - channel-watcher
+    skills_ordered:
+    - incident-postmortem
+    - night-audit-suite
+    - safety-compliance
+    - phone-concierge
+    - overbooking-parity-guard
+    - checkin-checkout
+    - maintenance-dispatch
+    - inspection-suite
+    - room-service-dispatch
+    - customer-service
+    - review-crisis
+    - revenue-manager
+    - pricing-matrix
+    - channel-reconciler
+    - ota-operations
+    - finance-reporting
+    - morning-briefing
+    - handover-manager
+    - inventory-procurement
+    - guest-profile-crm
+    - retention-manager
+    - staff-scheduler
+    - content-marketing
+    - ai-live-assistant
+    - lead-concierge
+    - coupon-ops
+    - hotel-geo-content
+    - intent-radar
+    - review-asset-mining
+    triggers_enabled:
+    - tg-night-2200
+    - tg-incident-weekly
+    - tg-parity-15min
+    - tg-review-sla-30min
+    - tg-faq-mine-sun

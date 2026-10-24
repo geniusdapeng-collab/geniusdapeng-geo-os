@@ -1,16 +1,32 @@
 {
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
-  "commit": "2412a5b4e49f2d19601752758ce5274d2e88772c",
-  "verifiedAt": "2026-10-18",
-  "license": "Apache-2.0",
-  "integration": "vendored-in-process-media-engine",
+  "commit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "verifiedAt": "2026-10-24T13:07:14.178567+00:00",
+  "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
+  "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
+  "engineRoot": "engines/video-edit",
+  "sourceFileCount": 3438,
+  "sourceBytes": 289671284,
+  "snapshot": "upstreams/workloom-video-edit.snapshot.json",
+  "snapshotSha256": "ef54c2fa91e85f088b8f368db8354daf82fdaade87271fa5df7aaad2bd27b306",
+  "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
-    "graphic-design",
-    "platform-covers",
-    "generative-video",
-    "source-footage-editing",
-    "talking-head-editing",
-    "delivery-manifests"
+    "ai-video-generation",
+    "ai-video-editing",
+    "ai-talking-head-explainer",
+    "all-bundled-roles-skills-tools",
+    "graphics-compositor",
+    "whiteboard",
+    "model-routing-authorization-budget-recovery",
+    "post-production-delivery"
+  ],
+  "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
+  "targetOwnedFileCount": 46,
+  "sourceOverlayCount": 26,
+  "pendingAfterV1": [
+    "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
+    "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
   ]
 }

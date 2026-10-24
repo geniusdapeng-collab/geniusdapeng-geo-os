@@ -124,7 +124,7 @@ async function main(): Promise<void> {
   if (existsSync(outDir) && readdirSync(outDir).length && !flag("--clean")) throw new Error("RHYTHM_OUTPUT_NOT_EMPTY: 使用新的输出目录，失败目录仅可显式 --clean 后重试");
   const inputFiles = [timelineFile, ...timeline.sources.map(source => source.path),
     ...(direction?.music ? [direction.music.path, direction.music.source.path] : [])];
-  for (let i = 0; i < process.argv.length; i++) if (["--analysis", "--subtitle", "--rhythm-plan", "--danmaku", "--color-map"].includes(process.argv[i]!) && process.argv[i + 1]) inputFiles.push(abs(process.argv[i + 1]!));
+  for (let i = 0; i < process.argv.length; i++) if (["--analysis", "--subtitle", "--rhythm-plan", "--danmaku", "--color-map", "--style-overrides"].includes(process.argv[i]!) && process.argv[i + 1]) inputFiles.push(abs(process.argv[i + 1]!));
   const realOutput = resolveRhythmPhysicalPath(outDir);
   for (const input of inputFiles) {
     const realInput = resolveRhythmPhysicalPath(input);
@@ -151,7 +151,7 @@ async function main(): Promise<void> {
     const protectedFiles = [timelineFile, ...(timeline.sources ?? []).map((source) => String(source.path ?? "")),
       ...(direction?.music ? [direction.music.path, direction.music.source.path] : []),
       ...(arg("--subtitle") ? [abs(arg("--subtitle")) + ".rhythm.json"] : [])];
-    const inputOptions = new Set(["--analysis", "--subtitle", "--rhythm-plan", "--danmaku", "--color-map"]);
+    const inputOptions = new Set(["--analysis", "--subtitle", "--rhythm-plan", "--danmaku", "--color-map", "--style-overrides"]);
     for (let index = 0; index < process.argv.length; index += 1) {
       if (inputOptions.has(process.argv[index]!) && process.argv[index + 1]) protectedFiles.push(abs(process.argv[index + 1]!));
     }
@@ -852,6 +852,40 @@ async function main(): Promise<void> {
   }
 
   installRhythmPostOverrides({ timeline, repoRoot: REPO_ROOT, outDir });
+  let requestedStyleOverrides: Record<string, unknown> = {};
+  const styleOverridesFile = arg("--style-overrides");
+  if (styleOverridesFile) {
+    const raw: unknown = JSON.parse(readFileSync(abs(styleOverridesFile), "utf8"));
+    const object = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
+    if (!object(raw) || Object.keys(raw).some(id => !variants.includes(id))) throw new Error("STYLE_OVERRIDES_INVALID: 只能指定本次请求的变体");
+    requestedStyleOverrides = raw;
+    const baseVariantDir = process.env.WORKLOOM_POST_VARIANT_DIR ?? join(REPO_ROOT, "bundles/ai-video/library/style-variants");
+    const overrideDir = join(outDir, "work", "variant-overrides");
+    mkdirSync(overrideDir, { recursive: true });
+    const index = JSON.parse(readFileSync(join(baseVariantDir, "index.json"), "utf8")) as { variants: Array<{ id: string; file: string }> };
+    for (const entry of index.variants) {
+      if (!entry.file || isAbsolute(entry.file) || entry.file.split(/[\\/]/).some(part => part === "..")) throw new Error("STYLE_OVERRIDES_INVALID: 配方索引路径无效");
+      const pack = JSON.parse(readFileSync(join(baseVariantDir, entry.file), "utf8")) as Record<string, unknown>;
+      const patch = raw[entry.id];
+      if (patch !== undefined) {
+        if (!object(patch) || Object.keys(patch).some(key => !["subtitleStyle", "cover"].includes(key))) throw new Error("STYLE_OVERRIDES_INVALID: 只接受subtitleStyle和cover");
+        for (const [field, keys] of [["subtitleStyle", ["fontId"]], ["cover", ["fontId", "title", "hook", "at", "alignment", "marginRatio"]]] as const) {
+          const change = patch[field];
+          if (change === undefined) continue;
+          if (!object(change) || Object.keys(change).some(key => !(keys as readonly string[]).includes(key))) throw new Error(`STYLE_OVERRIDES_INVALID: ${field}含未知字段`);
+          if (change.fontId !== undefined && (typeof change.fontId !== "string" || !/^[a-z0-9][a-z0-9-]{0,100}$/.test(change.fontId))) throw new Error("STYLE_OVERRIDES_INVALID: fontId无效");
+          for (const key of ["title", "hook"]) if (change[key] !== undefined && (typeof change[key] !== "string" || String(change[key]).length > 120)) throw new Error(`STYLE_OVERRIDES_INVALID: ${key}必须为120字以内文本`);
+          if (change.at !== undefined && (typeof change.at !== "number" || !Number.isFinite(change.at) || change.at < 0 || change.at > 1)) throw new Error("STYLE_OVERRIDES_INVALID: cover.at必须为0到1的比例");
+          if (change.alignment !== undefined && (typeof change.alignment !== "number" || !Number.isInteger(change.alignment) || change.alignment < 1 || change.alignment > 9)) throw new Error("STYLE_OVERRIDES_INVALID: cover.alignment必须为1到9的整数");
+          if (change.marginRatio !== undefined && (typeof change.marginRatio !== "number" || !Number.isFinite(change.marginRatio) || change.marginRatio < 0 || change.marginRatio > 0.5)) throw new Error("STYLE_OVERRIDES_INVALID: cover.marginRatio必须为0到0.5的比例");
+          pack[field] = { ...(object(pack[field]) ? pack[field] : {}), ...change };
+        }
+      }
+      writeFileSync(join(overrideDir, entry.file), `${JSON.stringify(pack, null, 2)}\n`, "utf8");
+    }
+    writeFileSync(join(overrideDir, "index.json"), `${JSON.stringify(index, null, 2)}\n`, "utf8");
+    process.env.WORKLOOM_POST_VARIANT_DIR = overrideDir;
+  }
   if (direction) {
     const currentInputs = await inspectEditedRhythm({ timeline, profile: rhythmProfile, declared: declaredRhythm, clips: shots, ffprobe: FFPROBE });
     writeFileSync(join(outDir, "rhythm-render-inputs.json"), JSON.stringify({ schemaVersion: "workloom.video-edit/rhythm-render-inputs/v1", timelineSha256: timelineRhythmDigest(timeline), currentInputs,
@@ -859,7 +893,7 @@ async function main(): Promise<void> {
   }
   const core = await import("../../bundles/ai-video/connectors/post-bridge/core.mjs") as unknown as {
     buildDeliveryPackage: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
-    buildCover: (options: Record<string, unknown>) => Promise<{ output: string; sha256: string; at: number; requestedAt: number; background: unknown; text: unknown; checks: unknown[] }>;
+    buildCover: (options: Record<string, unknown>) => Promise<{ output: string; sha256: string; at: number; requestedAt: number; background: unknown; text: unknown; checks: unknown[]; font?: unknown }>;
     findVariantPack: (id: string, options?: Record<string, unknown>) => Record<string, unknown>;
     VARIANT_DIR: string;
   };
@@ -968,6 +1002,10 @@ const autoCoverPlan = explicitCoverAt
       keyframeId: undefined as string | undefined, segmentId: undefined as string | undefined,
     }))
     : planCoverMoments({ timeline, analyses, count: variants.length, fallbackRatio: autoCover.ratio });
+  for (const [index, variantId] of variants.entries()) {
+    const pinned = (requestedStyleOverrides[variantId] as { cover?: { at?: number } } | undefined)?.cover?.at;
+    if (pinned !== undefined) coverMoments[index] = { ...coverMoments[index]!, ratio: pinned, basis: "explicit", note: "本变体styleOverrides.cover.at" };
+  }
   if (coverMoments.some((moment) => !Number.isFinite(moment.ratio) || moment.ratio < 0 || moment.ratio > 1)) {
     throw new Error("--cover-at 必须是 0–1 的比例");
   }
@@ -993,7 +1031,7 @@ const autoCoverPlan = explicitCoverAt
       const entry = current.variants.find((variant) => variant.id === variantId);
       if (!entry) throw new Error(`清单缺变体 ${variantId}`);
       entry.cover = { path: relative(outDir, cover.output), sha256: cover.sha256, at: cover.at, requestedAt: cover.requestedAt,
-        background: cover.background, text: cover.text, checks: cover.checks };
+        background: cover.background, text: cover.text, checks: cover.checks, ...(cover.font ? { font: cover.font } : {}) };
       writeFileSync(file, `${JSON.stringify(current, null, 2)}\n`, "utf8");
     }
   }

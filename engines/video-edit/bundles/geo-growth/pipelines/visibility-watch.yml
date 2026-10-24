@@ -1,0 +1,39 @@
+# AI 能见度监测管线 · 融合方案 §2.3 数据组 + §4.4 异常处理（GEO 域核心基建）
+# 承诺「可测量可追溯」，不承诺「保证上榜」；原始答案截图存证供双方核验
+quest: visibility-watch
+name: AI 能见度监测管线
+version: v1
+description: query 集多平台定期采集→答案结构化→提及率/首推率/SOV 落账→情感异常告警→口径冲突联动→回测账本记录
+schedule: 7x24
+steps:
+  - step_key: brand-daily
+    name: 品牌词日频采集
+    owner: visibility-watcher
+    cron: "0 21 * * *"                # 品牌词每日一轮（目标市场时区对齐）
+    outputs: [visibility_snapshot]
+  - step_key: full-weekly
+    name: 全量 query 集周频采集
+    owner: visibility-watcher
+    cron: "0 9 * * 1"                 # 每周一 09:00 全量（品类/场景/竞品对比词）
+    outputs: [visibility_snapshot]    # 豆包/DeepSeek/元宝/ChatGPT 四平台先行，L3 剧本模拟人工节奏
+  - step_key: answer-structure
+    name: 答案结构化与存证
+    owner: visibility-watcher
+    outputs: [visibility_snapshot]    # 提及/首推/SOV/引用源/情感五维+原始答案截图存证
+  - step_key: sentiment-check
+    name: 情感异常检测
+    owner: visibility-watcher
+    outputs: [decision_memo]          # AI 答案负面描述即时告警+口径冲突定位
+  - step_key: conflict-locate
+    name: 口径冲突联动定位
+    owner: entity-inspector
+    outputs: [conflict_item]          # 定位到具体信源，起草修复计划（L2 执行）
+  - step_key: sov-ledger
+    name: 能见度账本更新
+    owner: data-board-officer
+    outputs: [visibility_snapshot]    # 提及率/首推率/SOV 变化落账，晨报 GEO 栏事实源
+  - step_key: entity-patrol
+    name: 实体一致性夜班巡检
+    owner: entity-inspector
+    cron: "0 2 * * *"                 # 夜班窗口巡检官网/百科/新闻稿/社媒简介
+    outputs: [conflict_item]

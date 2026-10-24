@@ -1,0 +1,177 @@
+{
+  "schemaVersion": "pengmanager.video-toolchain/v1",
+  "sourceMain": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "python": "3.12",
+  "pythonPackages": {
+    "mlxAudio": "mlx-audio[server]==0.5.5",
+    "mlxWhisper": "mlx-whisper==0.4.3",
+    "soundfile": "soundfile==0.13.1"
+  },
+  "models": [
+    {
+      "id": "mlx-community/OmniVoice-bf16",
+      "revision": "8fb0b754cad788aaefec690cd55c207e8a628f85",
+      "purpose": "TTS and explicitly authorized voice cloning",
+      "required": [
+        "config.json",
+        "model.safetensors"
+      ],
+      "source": "https://huggingface.co/api/models/mlx-community/OmniVoice-bf16/revision/8fb0b754cad788aaefec690cd55c207e8a628f85?blobs=true",
+      "files": {
+        ".gitattributes": {
+          "bytes": 1570,
+          "gitBlob": "52373fe24473b1aa44333d318f578ae6bf04b49b"
+        },
+        "audio_tokenizer/config.json": {
+          "bytes": 2531,
+          "gitBlob": "3f9e5ee43d2134dfdc1e38055fbcb24a18af1635"
+        },
+        "audio_tokenizer/model.safetensors": {
+          "bytes": 402864930,
+          "sha256": "8ef745bfbabeb3bd9ebbdc69e7b6a05e43e191d0208dabfcf7adc42ca89c6580"
+        },
+        "audio_tokenizer/preprocessor_config.json": {
+          "bytes": 206,
+          "gitBlob": "aa7431e986f9e13157c60e04be8f52501b718254"
+        },
+        "chat_template.jinja": {
+          "bytes": 4168,
+          "gitBlob": "01be9b307daa2d425f7c168c9fb145a286e0afb4"
+        },
+        "config.json": {
+          "bytes": 2238,
+          "gitBlob": "088a09832e73afa3e978dccf86f33aa64b7a3913"
+        },
+        "model.safetensors": {
+          "bytes": 1225192351,
+          "sha256": "5768f3f1d11ee8b3ec31fe906e5d6f5934fdc397e3e5b818de85b70b0e1a2e7e"
+        },
+        "tokenizer.json": {
+          "bytes": 11423986,
+          "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1"
+        },
+        "tokenizer_config.json": {
+          "bytes": 533,
+          "gitBlob": "a7fb6f8558cce2a23d4cbb186a4a740bd2d9d481"
+        }
+      }
+    },
+    {
+      "id": "mlx-community/whisper-large-v3-turbo-4bit",
+      "revision": "0f058d38170d183f9fdee07908f5b515d91793a8",
+      "purpose": "ASR and word alignment; official same-model 4-bit quantization for the 8GB local runtime",
+      "required": [
+        "config.json",
+        "model.safetensors"
+      ],
+      "source": "https://huggingface.co/api/models/mlx-community/whisper-large-v3-turbo-4bit/revision/0f058d38170d183f9fdee07908f5b515d91793a8?blobs=true",
+      "files": {
+        ".gitattributes": {
+          "bytes": 1519,
+          "gitBlob": "a6344aac8c09253b3b630fb776ae94478aa0275b"
+        },
+        "README.md": {
+          "bytes": 849,
+          "gitBlob": "eb54f606bffc3be2715794e504c4119259740d86"
+        },
+        "config.json": {
+          "bytes": 341,
+          "gitBlob": "b67282924af74d2515aa5b9776b2f2bbf251f06f"
+        },
+        "model.safetensors": {
+          "bytes": 463462982,
+          "sha256": "e2d6146b49644c13ed7467060d3c43c402bbdfca1f01f1c21f6fbeda23b6567e"
+        },
+        "multilingual.tiktoken": {
+          "bytes": 816730,
+          "gitBlob": "a4edf0b719c10d28cd83f8c294449f99ff5d5dc0"
+        }
+      },
+      "compatibilityAliases": {
+        "weights.safetensors": "model.safetensors"
+      },
+      "license": "Apache-2.0",
+      "baseModel": "openai/whisper-large-v3-turbo",
+      "quantization": {
+        "bits": 4,
+        "groupSize": 64
+      }
+    }
+  ],
+  "talkcraft": {
+    "repository": "https://github.com/Vincentwei1021/video-talkcraft",
+    "commit": "a7c29edfb2404612dde6a5a1c8aa94232e85625b",
+    "license": "PolyForm-Noncommercial-1.0.0",
+    "commercialGrantRequired": true,
+    "sourceRedistributed": false
+  },
+  "compositor": {
+    "pinFile": "vendor/compositor-kit/PINNED.json",
+    "platform": "darwin-arm64",
+    "sourceTag": "v1.0.4"
+  },
+  "whiteboard": {
+    "requirements": "vendor/srt-whiteboard/requirements.txt"
+  },
+  "ffmpeg": {
+    "pinFile": "bundles/ai-video/connectors/color-bridge/kit/ffmpeg-pin.json",
+    "installationOnly": true,
+    "binaryRedistributed": false
+  },
+  "notes": [
+    "mlx-audio remains at the native tested 0.5.5 because the pinned CPU LoomMate installer checks that exact shared environment version.",
+    "The current local public model cache may accelerate installation; all active files are copied or downloaded into the target-owned tools directory.",
+    "Model inference and provider success are verified separately from dependency installation. No private voice profile or consent is copied.",
+    "Whisper Turbo uses the immutable official MLX-community 4-bit snapshot after same-audio native and official HTTP word-timestamp probes on the 8GB Mac. Native mlx-whisper 0.4.3 receives an owned same-byte weights.safetensors alias; original official bytes and provenance remain unchanged. No precision or timeout success is inferred from installation."
+  ],
+  "asrProcessor": {
+    "id": "openai/whisper-large-v3-turbo",
+    "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+    "source": "https://huggingface.co/api/models/openai/whisper-large-v3-turbo",
+    "purpose": "Whisper processor/tokenizer assets only; no second weight download",
+    "files": {
+      "added_tokens.json": {
+        "bytes": 34648,
+        "gitBlob": "1b33526d33aaa60d79f78ae8651dae50b730185a"
+      },
+      "merges.txt": {
+        "bytes": 493869,
+        "gitBlob": "6038932a2a1f09a66991b1c2adae0d14066fa29e"
+      },
+      "normalizer.json": {
+        "bytes": 52666,
+        "gitBlob": "dd6ae819ad738ac1a546e9f9282ef325c33b9ea0"
+      },
+      "preprocessor_config.json": {
+        "bytes": 340,
+        "gitBlob": "931c77a740890c46365c7ae0c9d350ba3cca908f"
+      },
+      "special_tokens_map.json": {
+        "bytes": 2186,
+        "gitBlob": "312bc106291bb51bf2cc1648df070bef963a0639"
+      },
+      "tokenizer.json": {
+        "bytes": 2710337,
+        "gitBlob": "17456db595adc78a973f97d69d8cb50bc87c0b1c"
+      },
+      "tokenizer_config.json": {
+        "bytes": 282843,
+        "gitBlob": "06ffdc8308eae6bb7bd1fdd81e94b0a881a539ab"
+      },
+      "vocab.json": {
+        "bytes": 1036558,
+        "gitBlob": "0f3456460629e21d559c6daa23ab6ce3644e8271"
+      }
+    }
+  },
+  "npm": {
+    "version": "12.2.1",
+    "tarball": "https://registry.npmjs.org/npm/-/npm-12.2.1.tgz",
+    "integrity": "sha512-bKCmFRVT/BB+YPEYbZwQ1XUI3N5t4xKSpU1MxOjo7z3iWzKBJ0ZXRC1xFdEN+TC7N5TdywaBzf2dMXGJq/e2PQ==",
+    "engines": {
+      "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+    },
+    "license": "Artistic-2.0",
+    "source": "https://registry.npmjs.org/npm/12.2.1"
+  }
+}

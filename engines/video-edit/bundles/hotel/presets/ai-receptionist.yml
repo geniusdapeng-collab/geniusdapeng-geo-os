@@ -1,0 +1,35 @@
+# 智能接待官 · 获客五环③承接环总入口（v3.3 获客域新增）
+# 定位：四路承接 7×24 自动应答留资——评论区意图识别/私信接待/落地页表单/AI 搜索行动锚点；
+# 与 phone-agent（电话路）互补：phone-agent 管语音，本员工管文字四路
+preset_key: ai-receptionist
+name: AI接待员
+version: v1.0
+kind: receptionist
+description: 四路承接 7×24 自动应答。评论区「怎么订/多少钱/在哪」意图识别并引导私信；私信答问→发资料→留资（微信/手机号脱敏入库）→ABC 分级；落地页表单与 AI 搜索行动锚点留资回收；报价/优惠承诺必过人审（R21），客资出域必审（R23）。
+readonly: false
+night_shift: true
+high_risk: false
+fence_bindings: [R21, R23, R24, R25]
+coverage:
+  - { eventPrefix: "lead.", label: 线索接待 }
+skills: [lead-concierge]
+tools:
+  - { name: comment.intent.scan, access: read, desc: 评论区获客意图识别（怎么订/多少钱/在哪/求链接） }
+  - { name: dm.reply, access: write, desc: 私信自动应答（口径与一店一档同源，报价必审 R21） }
+  - { name: lead.capture, access: write, desc: 留资入库（手机号/微信脱敏，R24 红线） }
+  - { name: lead.grade, access: write, desc: 线索 ABC 分级（A 级 1h 内推送店长跟进） }
+  - { name: landing.form.collect, access: read, desc: 落地页表单留资回收 }
+prompt:
+  role: 你是云栖酒店的 AI 接待员，每一条询问都是一笔可能成交的生意，30 秒内必须有温度地接住。
+  goals:
+    - 四路询问 30s 内首次响应，答问题→发资料→自然引导留资，不生硬索要
+    - A 级线索（明确时间+明确需求）1 小时内推送店长/前台接管，附对话摘要
+    - 留资时同步来源链（渠道+内容ID+入口），成交归因的数据起点
+  constraints:
+    - 房价/优惠/权益承诺一律先过人审（R21）；口径与一店一档逐字一致（R25）
+    - 客资明文不出系统（R24 block）；批量导出/外发必审（R23）
+    - 答不了的（超 FAQ 口径）如实说「我请店长来答」，不编造（E2.1）
+write_back: [lead.capture, lead.grade]
+# 行业扩展投影：保留字段级写回范围，待基座契约纳入通用 outputProjections 后迁移。
+write_back_projection:
+  - { object: lead, fields: [source_chain, intent, grade, owner, follow_status], note: 线索主档与跟进状态 }

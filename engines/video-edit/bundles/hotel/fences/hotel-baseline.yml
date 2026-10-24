@@ -1,0 +1,278 @@
+# 酒店行业版基线围栏包 v3（L2.6：行业阈值默认值由行业 Bundle 提供，底座不内置）
+# 单调守卫（F2.3）：is_baseline=true 的规则，任何上层 patch 只可收紧不可放宽
+# DSL 求值语义（阶段二 B4 实现）：match 命中后求值 when 表达式（沙箱，禁任意代码 L2.5）；
+#   命中 → 按 level 判定；block 优先于 review 优先于 auto（deny 优先并集求值 E2.2）；
+#   写类动作无任何规则命中 → 按 default_level 处理；求值异常 → 按 block（宁可错杀 E2.1）
+# v2 变更：R1–R6 基线原样保留；新增 R7–R16（夜班窗口/私域合规/安全禁区/采购/排班/涉费承诺/赔偿/直播/夜班高危），
+#   覆盖任务三七大业务域 67 环节的围栏诉求；阈值与一店一档 approval_matrix / business.floor_price 同源。
+# v3 变更：R1–R16 原样保留；新增 R17–R20（价格倒挂防护/超售防护/差评响应SLA/布草损耗异常），
+#   对应调研流失点：倒挂失控/超售漏售(15%)/差评响应慢(20%)/布草隐性成本；数据源为 OTA 巡检与消耗事件 params 入流。
+version: hotel-baseline/v4
+default_level: review
+rules:
+  # ========== R1–R6：原基线（v1 保留，未做任何放宽） ==========
+  - rule_id: R1
+    name: 房价单日涨幅自动上限
+    level: auto
+    is_baseline: true
+    match:
+      object_types: [room_price]
+      actions: [price.adjust]
+    when: "abs(after.price - before.price) / before.price <= 0.08"
+    note: 涨幅 ≤8% 自动执行；超过则由 R 系列其他规则或 default_level 接管
+
+  - rule_id: R2
+    name: 保底价熔断
+    level: block
+    is_baseline: true
+    match:
+      object_types: [room_price]
+      actions: [price.adjust]
+    when: "after.price < 380"
+    note: 保底价 ¥380（云栖酒店档案 forbidden 同源）；命中即熔断+告警
+
+  - rule_id: R3
+    name: 新渠道首次改价/发布必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [room_price, content]
+      actions: [price.adjust, content.publish]
+    when: "context.channel_new == true"
+    note: 新渠道首改必审
+
+  - rule_id: R4
+    name: 大额退款必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [order]
+      actions: [order.refund]
+    when: "params.amount >= 500"
+    note: 退款 ≥¥500 必审
+
+  - rule_id: R5
+    name: 担保订单异常需介入
+    level: block
+    is_baseline: true
+    match:
+      object_types: [order, payment, invoice]
+      actions: [order.reconcile, order.confirm, refund.apply]
+    when: "params.guarantee_anomaly == true"
+    note: 不确定不执行（L4.2），只写「需介入」事件
+
+  - rule_id: R6
+    name: 差评必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [review]
+      actions: [review.reply]
+    when: "params.rating <= 3"
+    note: 差评 ≤3 分必审
+
+  # ========== R7–R16：酒店行业版 v2 新增 ==========
+  - rule_id: R7
+    name: 夜班窗口调价微调自动上限
+    level: auto
+    is_baseline: true
+    match:
+      object_types: [room_price]
+      actions: [price.adjust]
+    when: "context.night_shift == true && abs(after.price - before.price) / before.price <= 0.03"
+    note: 夜班窗口（22:00–08:00）微调 ≤3% 自动执行，清晨交付调价报告（收益管理域 SOP）
+
+  - rule_id: R8
+    name: 夜班窗口调价越线必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [room_price]
+      actions: [price.adjust]
+    when: "context.night_shift == true && abs(after.price - before.price) / before.price > 0.03"
+    note: 夜班涨幅 >3% 挂起待审（deny 优先：本规则 review 压制 R1 的 auto）；>8% 仍受 R2/default_level 约束
+
+  - rule_id: R9
+    name: 客户触达频率合规
+    level: block
+    is_baseline: true
+    match:
+      object_types: [guest, member, lead, review]
+      actions: [crm.touch, guest.contact, guest.care.send, dm.reply, review.guide.send, member.revive.campaign]
+    when: "params.frequency_exceeded == true || params.unsubscribed == true"
+    note: 触达频率超限或客人已退订 → block 级拒绝（私域运营硬合规，retention-manager 绑定）
+
+  - rule_id: R10
+    name: 安全事件禁区
+    level: block
+    is_baseline: true
+    match:
+      object_types: [alert, facility, task]
+      actions: [safety.handle, facility.control, door.unlock, task.dispatch, maintenance.assign, escalate.human]
+    when: "params.safety_event == true"
+    note: 消防/门禁/监控等安全事件：AI 只告警+联动报警，绝不自行处置（无人酒店最高禁区）
+
+  - rule_id: R11
+    name: 采购超阈值必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [inventory, supplier]
+      actions: [procurement.order]
+    when: "params.amount >= 1000"
+    note: 采购金额超阈值（默认 ¥1000，门店可在 approval_matrix 收紧）→ 店长确认后下单
+
+  - rule_id: R12
+    name: 排班加班合规
+    level: review
+    is_baseline: true
+    match:
+      object_types: [staff, shift]
+      actions: [shift.schedule]
+    when: "params.overtime_legal_exceeded == true"
+    note: 排班导致加班超法定上限（staffing 档案同源）→ review 级人工确认
+
+  - rule_id: R13
+    name: 涉费用客服承诺必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [guest, order]
+      actions: [guest.promise, service.commit]
+    when: "params.involves_fee == true"
+    note: 加床/延迟退房等涉费承诺，常规额度内 auto、超额 review（在住域 SOP）
+
+  - rule_id: R14
+    name: 赔偿类事项必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [room, order]
+      actions: [compensation.claim, order.charge]
+    when: "params.compensation == true"
+    note: 查房损坏/丢失索赔等赔偿事项（compensation_policy 同源）→ 店长确认
+
+  - rule_id: R15
+    name: 直播/新渠道内容首发必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [campaign, content]
+      actions: [live.stream.publish, content.publish]
+    when: "params.live == true && context.channel_new == true"
+    note: AI 直播与新渠道首发双重必审（与 R3 并集，deny 优先）
+
+  - rule_id: R16
+    name: 夜班高危动作禁区
+    level: block
+    is_baseline: true
+    match:
+      object_types: [order, room, room_price]
+      actions: [desktop.gui, order.refund, room.reassign]
+    when: "context.night_shift == true"
+    note: 夜班窗口内 GUI 操控/退款/换房等高危动作一律 block，转清晨决策包「需介入」栏
+
+  # ========== R17–R20：v3 新增（渠道价格健康 / 差评时效 / 资产损耗） ==========
+  - rule_id: R17
+    name: 跨渠道价格倒挂防护
+    level: block
+    is_baseline: true
+    match:
+      object_types: [channel, price_calendar]
+      actions: [price.publish]
+    when: "params.channel_price < params.other_channel_min * 0.9"
+    note: 发布价低于他渠道最低价 90% 即倒挂，熔断发布并告警（对应「三失」失控；overbooking-parity-guard 巡检供数）
+
+  - rule_id: R18
+    name: 超售漏售防护
+    level: block
+    is_baseline: true
+    match:
+      # inventory = 规划器按 inventory.* 工具前缀派生的对象视图（S9 别名并集；只收紧）
+      object_types: [channel, room, order, inventory]
+      actions: [inventory.sync, order.confirm]
+    when: "params.available < 0 || params.sync_failed == true"
+    note: 可售为负（超售）或库存同步失败（漏售风险）即熔断；同步失败时自动下架该渠道房态并转 review（占流失 15%）
+
+  - rule_id: R19
+    name: 差评响应 SLA 升级
+    level: review
+    is_baseline: true
+    match:
+      object_types: [review, alert]
+      actions: [alert.escalate]
+    when: "params.review_age_hours >= 24 && params.replied == false"
+    note: 差评 24h 未响应自动升级店长（差评响应慢占流失 20%；与 R6 并集，deny 优先）
+
+  - rule_id: R20
+    name: 布草损耗异常
+    level: review
+    is_baseline: true
+    match:
+      object_types: [inventory]
+      actions: [inventory.loss]
+    when: "params.loss_rate > params.baseline_loss_rate * 1.5"
+    note: 损耗率超基线 1.5 倍（偷盗/丢失/洗涤异常）必审；基线由一店一档布草档案学习沉淀
+
+  # ================= 获客域（v3.3 新增 R21-R26：承接/转化/客资红线） =================
+
+  - rule_id: R21
+    name: AI 接待报价承诺必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [lead]
+      actions: [lead.reply, lead.quote]
+    when: "contains_any(params.body, ['特价', '优惠', '折', '最低价', '承诺', '保证']) || params.has_quote == true"
+    note: AI 接待答问留资自动，但房价/优惠/权益承诺一律人审（AI 不许私自报价）；口径以 price_calendar+一店一档为准
+
+  - rule_id: R22
+    name: 券库存熔断
+    level: block
+    is_baseline: true
+    match:
+      object_types: [coupon_sku]
+      actions: [coupon.publish, coupon.promote, coupon.promote.live]
+    when: "context.coupon_stock <= 0 || context.coupon_offline == true"
+    note: 售罄/下架后相关投放口播不停 → 熔断（防超卖投诉）；内容停投与 AI 话术切换联动执行
+
+  - rule_id: R23
+    name: 线索数据出域必审
+    level: review
+    is_baseline: true
+    match:
+      object_types: [lead]
+      actions: [lead.export, lead.share]
+    when: "true"
+    note: 客资出域（导出/外发/共享第三方）一律必审——客资是酒店最核心资产，去向必须留痕可追责
+
+  - rule_id: R24
+    name: 客资隐私红线
+    level: block
+    is_baseline: true
+    match:
+      object_types: [lead, member, guest, review]
+      actions: [lead.export, lead.bulk_message, member.export, member.revive.campaign, guest.care.send, review.guide.send, lead.capture]
+    when: "params.desensitized == false || params.batch_size > 50"
+    note: 未脱敏客资明文批量导出直接熔断；客资明文不出系统边界（数据红线 R4 的获客域延伸）
+
+  - rule_id: R25
+    name: 获客内容口径校验
+    level: review
+    is_baseline: true
+    match:
+      # content = 规划器按 content.* 工具前缀派生的对象视图（S9 别名并集；只收紧）
+      object_types: [campaign, live_campaign, content]
+      actions: [campaign.publish, content.publish, live.script.review]
+    when: "params.fact_check_passed == false || params.caliber_mismatch == true"
+    note: 获客内容（短视频/直播脚本/GEO 图文）的房价/房型/权益口径必须与一店一档逐字一致；不一致或未经事实校验必审
+
+  - rule_id: R26
+    name: 券定价红线
+    level: block
+    is_baseline: true
+    match:
+      object_types: [coupon_sku]
+      actions: [coupon.create, coupon.adjust]
+    when: "params.price < context.floor_price * 0.85"
+    note: 券价低于保底价 0.85 倍直接熔断（R2 保底价熔断的获客域延伸；低价引流的底线是不可击穿成本结构）

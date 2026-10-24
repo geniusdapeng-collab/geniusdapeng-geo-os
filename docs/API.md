@@ -95,6 +95,10 @@ source notes are omitted. Credential-bearing source URLs are excluded.
 | GET | `/api/geo/engine/incidents` | Negative and risk incidents |
 | GET | `/api/geo/engine/articles` | Generated personal article drafts |
 | GET | `/api/media/jobs` | Completed media jobs and receipt summaries |
+| GET | `/api/video-runtime/status` | Safe owned-runtime state, actual readiness and validated loopback workbench entry |
+| GET | `/api/video-runtime/capabilities` | Complete embedded role/skill/tool/capability/installer inventory and actual station status |
+| GET | `/api/video-edit/library?kind=all` | Embedded character/product/media library catalog |
+| GET | `/api/video-edit/products/resolve?selector=...` | Resolve an exact local product selector |
 
 ## Identity payload
 
@@ -165,6 +169,7 @@ display name. Existing data is upgraded at server startup as described in
 | POST | `/api/live/media/render` | Build timeline, run post/cover/package, and write output receipts |
 | POST | `/api/live/github/publish` | Publish an approved scheduled item as a GitHub Issue |
 | POST | `/api/geo/engine/articles/generate` | Generate the personal article set |
+| POST | `/api/video-edit/characters/resolve` | Resolve embedded character selection and current local authorization state |
 
 Every `/api/live/*` request must include `"confirm": true`. This prevents a
 dashboard refresh or accidental form submission from spending model tokens or
@@ -185,6 +190,29 @@ The requested `coverTitle` and `hook` are verified in the generated copy
 artifacts, not merely echoed in the API response.
 
 ## Request boundary
+
+The video-runtime routes accept only GET and no query parameters. Unknown paths
+are rejected; there are no root API start/setup/session endpoints. Status returns
+HTTP 200 with `ready:false` for an absent/stopped/starting runtime, so 200 is not
+production success. Catalog absence or a runtime read failure returns a safe 503
+error. Raw thrown provider errors, bootstrap keys, native tokens, environment
+maps and unknown fields are not projected. A clickable workbench entry is only
+offered for `ready` and an HTTP loopback root URL with an explicit port and no
+credentials, query or fragment.
+
+The complete native workbench has its own owned loopback origin. Its local
+session exchange is protected by the browser session cookie, same-origin POST
+and a random process-bound CSRF header; the process bootstrap key remains on
+the server. Native authorization comes from the real scoped local owner member,
+not root JSON body bookkeeping. Paid generation, approvals, cancellation,
+recovery and full production APIs remain the embedded native contracts. Merely
+reading a catalog or status never submits a supplier request.
+
+Catalog rows keep `declared`, `codePresent`, `dependencyState` and `validated`
+separate. Station records separately report `installed`, `ready`, `running`,
+`missing`, and `productionVerified`; dependency/process readiness is not media
+quality evidence. All catalog arrays are retained, without a first-page-only
+server projection.
 
 The default listener accepts only allowlisted loopback Hosts. Public deployment
 uses the exact configured HTTPS origin and Host, independently of caller-supplied

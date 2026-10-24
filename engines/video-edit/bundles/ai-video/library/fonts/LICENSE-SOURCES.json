@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "pengmanager.font-license-sources/v1",
+  "checkedAt": "2026-10-24",
+  "license": "SIL Open Font License 1.1",
+  "fontBytes": "unchanged frozen upstream font binaries; per-file SHA256 in font catalog",
+  "sources": [
+    {
+      "id": "noto-sans-sc",
+      "path": "licenses/noto-sans-sc-OFL.txt",
+      "url": "https://github.com/google/fonts/blob/HEAD/ofl/notosanssc/OFL.txt",
+      "rawUrl": "https://raw.githubusercontent.com/google/fonts/HEAD/ofl/notosanssc/OFL.txt",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    },
+    {
+      "id": "noto-serif-sc",
+      "path": "licenses/noto-serif-sc-OFL.txt",
+      "url": "https://github.com/google/fonts/blob/HEAD/ofl/notoserifsc/OFL.txt",
+      "rawUrl": "https://raw.githubusercontent.com/google/fonts/HEAD/ofl/notoserifsc/OFL.txt",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    },
+    {
+      "id": "zcool-xiaowei",
+      "path": "licenses/zcool-xiaowei-OFL.txt",
+      "url": "https://github.com/google/fonts/blob/HEAD/ofl/zcoolxiaowei/OFL.txt",
+      "rawUrl": "https://raw.githubusercontent.com/google/fonts/HEAD/ofl/zcoolxiaowei/OFL.txt",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    },
+    {
+      "id": "source-han-sans",
+      "path": "licenses/source-han-sans-OFL.txt",
+      "url": "https://github.com/adobe-fonts/source-han-sans/blob/HEAD/LICENSE.txt",
+      "rawUrl": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/HEAD/LICENSE.txt",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    },
+    {
+      "id": "lxgw-wen-kai",
+      "path": "licenses/lxgw-wen-kai-OFL.txt",
+      "url": "https://github.com/lxgw/LxgwWenKai/blob/HEAD/OFL.txt",
+      "rawUrl": "https://raw.githubusercontent.com/lxgw/LxgwWenKai/HEAD/OFL.txt",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    },
+    {
+      "id": "smiley-sans",
+      "path": "licenses/smiley-sans-OFL.txt",
+      "url": "https://github.com/atelier-anchor/smiley-sans/blob/HEAD/LICENSE",
+      "rawUrl": "https://raw.githubusercontent.com/atelier-anchor/smiley-sans/HEAD/LICENSE",
+      "ref": "HEAD at retrieval; embedded notices retained independently"
+    }
+  ]
+}

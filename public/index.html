@@ -27,7 +27,8 @@
           <button class="nav-item" data-view="accounts">账号矩阵</button>
           <button class="nav-item" data-view="content">内容工厂</button>
           <button class="nav-item" data-view="operations">运营动作</button>
-          <button class="nav-item" data-view="media">媒体工厂</button>
+          <button class="nav-item" data-view="video">视频工作台</button>
+          <button class="nav-item" data-view="media">本地快捷后期</button>
           <button class="nav-item" data-view="geo">GEO 复测</button>
           <button class="nav-item" data-view="interactions">互动分流</button>
         </nav>
@@ -279,13 +280,44 @@ Turning model capabilities into domain-specific AI employees and autonomous busi
             </div>
           </section>
 
+          <section class="view" id="view-video" aria-labelledby="video-title" hidden>
+            <div class="section-heading">
+              <div><p class="eyebrow">Independent video production</p><h2 id="video-title">视频工作台</h2></div>
+              <button id="video-refresh" class="ghost-button" type="button">刷新视频状态</button>
+            </div>
+            <article class="video-hero panel" aria-live="polite">
+              <div><span id="video-runtime-badge" class="status-chip">读取状态</span><h3>从创作意图到可追溯交付</h3><p>AI 视频生成、剪辑、口播与视觉设计，使用本系统独立管理的完整生产引擎。预算、素材授权与人工审批仍在原生工作台执行。</p><p id="video-runtime-copy">正在读取本地运行环境。</p></div>
+              <a id="video-open-workbench" class="primary-button" target="_blank" rel="noopener noreferrer" hidden>打开完整工作台 ↗</a>
+            </article>
+            <div id="video-error" class="error-banner" role="alert" hidden></div>
+            <div id="video-category-grid" class="video-category-grid"></div>
+            <div id="video-inventory" class="stat-grid"></div>
+            <article class="panel">
+              <div class="panel-heading"><h3>工位与运行依赖</h3><span>本机安装、进程和依赖状态</span></div>
+              <div id="video-station-grid" class="video-station-grid"><div class="empty-panel">正在读取本机工位状态。</div></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><h3>全部能力与数字员工</h3><span id="video-catalog-evidence">目录不代表实际生成成功</span></div>
+              <p class="section-copy video-catalog-note">按真实清单浏览角色、技能、工具与能力。每项分别列出声明、代码、依赖和验证证据；安装后的依赖诊断与任务产出会产生各自回执。</p>
+              <form id="video-catalog-form" class="video-catalog-filters" role="search">
+                <label><span>类型</span><select id="video-catalog-kind"><option value="roles">数字员工</option><option value="skills">技能</option><option value="tools">工具</option><option value="capabilities">能力</option><option value="installers">安装与依赖</option></select></label>
+                <label><span>名称、说明或绑定</span><input id="video-catalog-search" type="search" placeholder="例如：Compositor、口播、字幕" maxlength="200" /></label>
+                <label><span>依赖</span><select id="video-catalog-dependency"><option value="all">全部状态</option><option value="unchecked">待诊断</option><option value="ready">依赖就绪</option><option value="missing">缺少依赖</option><option value="blocked">受限</option></select></label>
+              </form>
+              <p id="video-catalog-count" class="revision" aria-live="polite"></p>
+              <div id="video-catalog-list" class="video-catalog-list"><div class="empty-panel">正在读取完整能力目录。</div></div>
+              <div class="video-pagination"><button id="video-catalog-prev" class="ghost-button" type="button" disabled>上一页</button><span id="video-catalog-page">0 / 0</span><button id="video-catalog-next" class="ghost-button" type="button" disabled>下一页</button></div>
+            </article>
+            <article class="panel video-setup"><h3>安装、诊断与边界</h3><p>首次运行前，在本仓库执行 <code>node scripts/video-setup.mjs</code>；检查环境使用 <code>node scripts/video-doctor.mjs</code>。随后使用根目录的 <code>node src/server.mjs</code>，由系统管理本地视频数据库、后端与工作台。</p><p>配置真实供应商后，提交生成任务可能计费。查看目录和刷新状态不提交模型、生成或发布任务。</p></article>
+          </section>
+
           <section class="view" id="view-media" aria-labelledby="media-title" hidden>
             <div class="section-heading">
               <div>
-                <p class="eyebrow">Video edit production pipeline</p>
-                <h2 id="media-title">媒体工厂</h2>
+                <p class="eyebrow">Local quick post-production</p>
+                <h2 id="media-title">本地快捷后期</h2>
               </div>
-              <p class="section-copy">真实 FFmpeg 合成，多风格交付，保留产物哈希与技术质检。</p>
+              <p class="section-copy">对已有本地片段执行 FFmpeg 后期。默认每段最多 4 秒，使用合成环境音；完整 AI 生产请进入视频工作台。</p>
             </div>
 
             <form id="media-form" class="panel form-panel">
@@ -314,7 +346,7 @@ Turning model capabilities into domain-specific AI employees and autonomous busi
               </div>
               <div class="form-actions">
                 <span id="media-form-status" class="form-status"></span>
-                <button class="primary-button" type="submit">运行完整后期</button>
+                <button class="primary-button" type="submit">运行本地快捷后期</button>
               </div>
             </form>
 

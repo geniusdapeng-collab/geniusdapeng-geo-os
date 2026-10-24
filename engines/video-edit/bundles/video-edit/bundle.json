@@ -1,0 +1,225 @@
+{
+  "schemaVersion": "workloom.bundle/v1",
+  "name": "@workloom/video-edit",
+  "version": "0.3.0",
+  "workloom": {
+    "industry": "video-edit",
+    "displayName": "剪辑台 · 视频AI剪辑与二次创作系统",
+    "description": "真实拍摄与 AI 生成视频的 AI 剪辑候选包：素材入库→信号解析→镜头理解→高光/关键帧挖掘→媒资索引→创作意图→创意发散与评审→叙事结构→帧级剪辑脚本→字幕文案→剪辑质检→本地合成，再把成片交回 AI 视频既有后期链路（调色/字幕/配音/配乐/封面/多风格交付/返修）。另含 AI 口播精剪管线（edit-talk）：逐字稿（ASR 词级）与情绪/活人感双主轴 → 逐句留删决策（人味台账与下限）→ 跳切推近遮盖 → 逐字字幕 → 知识点弹幕/贴纸/章节 → 口播质检。",
+    "status": "candidate",
+    "owner": "WorkLoom 视频AI剪辑产品组",
+    "example": false,
+    "compatibility": {
+      "base": ">=0.1.0 <1.0.0",
+      "ui": ">=0.1.0 <1.0.0",
+      "contract": "2.0.0"
+    },
+    "provides": {
+      "presets": [
+        "presets/footage-librarian.yml",
+        "presets/signal-analyst.yml",
+        "presets/shot-understander.yml",
+        "presets/highlight-scout.yml",
+        "presets/creative-weaver.yml",
+        "presets/story-architect.yml",
+        "presets/edit-director.yml",
+        "presets/caption-writer.yml",
+        "presets/cut-inspector.yml",
+        "presets/edit-compositor.yml",
+        "presets/edit-producer.yml",
+        "presets/talk-transcriber.yml",
+        "presets/talk-editor.yml",
+        "presets/talk-emotion-director.yml",
+        "presets/talk-annotator.yml"
+      ],
+      "fences": [
+        "fences/video-edit-baseline.yml",
+        "fences/talk-edit-baseline.yml"
+      ],
+      "skills": [
+        "skills/footage-ingest/SKILL.md",
+        "skills/shot-understanding/SKILL.md",
+        "skills/highlight-mining/SKILL.md",
+        "skills/media-indexing/SKILL.md",
+        "skills/creative-ideation/SKILL.md",
+        "skills/narrative-structure/SKILL.md",
+        "skills/edit-scripting/SKILL.md",
+        "skills/caption-craft/SKILL.md",
+        "skills/cut-review/SKILL.md",
+        "skills/talk-transcription/SKILL.md",
+        "skills/talk-cutting/SKILL.md",
+        "skills/talk-emotion/SKILL.md",
+        "skills/talk-annotation/SKILL.md"
+      ],
+      "schemas": [
+        "schemas/objects.json",
+        "schemas/stages.json",
+        "schemas/footage-analysis.schema.json",
+        "schemas/highlight-pick.schema.json",
+        "schemas/keyframe-candidate.schema.json",
+        "schemas/edit-timeline.schema.json",
+        "schemas/rhythm-contract.schema.json",
+        "schemas/creative-set.schema.json",
+        "schemas/talk-transcript.schema.json",
+        "schemas/talk-emotion.schema.json",
+        "schemas/talk-cut-list.schema.json"
+      ],
+      "ui": [
+        "ui/cases.json"
+      ],
+      "pipelines": [
+        "pipelines/edit-film.yml",
+        "pipelines/edit-talk.yml"
+      ],
+      "modelPolicy": "model-policy.yml",
+      "evalQuestions": "eval/questions.json"
+    },
+    "ui": {
+      "schemaVersion": "workloom.bundle.ui/v1",
+      "terminology": {},
+      "navigation": {
+        "slots": [
+          {
+            "capabilityId": "video-edit.console",
+            "title": "剪辑台",
+            "route": "/video-edit/console",
+            "group": "operations",
+            "icon": "edit",
+            "clients": [
+              "pc"
+            ],
+            "permissions": [
+              "video-edit.console.read"
+            ]
+          },
+          {
+            "capabilityId": "video-edit.shots",
+            "title": "镜头与高光",
+            "route": "/video-edit/shots",
+            "group": "operations",
+            "icon": "play",
+            "clients": [
+              "pc"
+            ],
+            "permissions": [
+              "video-edit.console.read"
+            ]
+          },
+          {
+            "capabilityId": "video-edit.review",
+            "title": "剪辑评审",
+            "route": "/video-edit/review",
+            "group": "trust",
+            "icon": "approval",
+            "clients": [
+              "pc"
+            ],
+            "permissions": [
+              "video-edit.console.read"
+            ]
+          }
+        ]
+      },
+      "home": {
+        "widgets": []
+      },
+      "welcome": {
+        "system": [
+          "这是一套把真实拍摄素材与 AI 素材剪成片的经营系统：先看懂素材，再谈创作。"
+        ],
+        "keywords": [
+          "素材理解",
+          "高光挖掘",
+          "剪辑脚本",
+          "二次创作"
+        ]
+      },
+      "objects": [
+        "素材原件",
+        "镜头记录",
+        "高光条目",
+        "剪辑时间轴",
+        "剪辑质检报告"
+      ],
+      "workflows": [
+        "素材入库与理解",
+        "高光与关键帧挖掘",
+        "创意发散与评审",
+        "剪辑脚本与合成",
+        "复用后期与交付"
+      ],
+      "serviceFront": {
+        "enabled": false,
+        "identityPolicy": "disabled",
+        "tabs": [],
+        "services": []
+      },
+      "inspection": {
+        "enabled": false
+      },
+      "theme": {
+        "brand": {
+          "primary": "#6d28d9",
+          "onPrimary": "#ffffff",
+          "accent": "#f59e0b"
+        }
+      },
+      "permissions": [
+        "video-edit.console.read"
+      ],
+      "experiments": []
+    }
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "447228dadd3888d58093e9a88d01d2a7c552cb9488a4a351cf62e55c4161e089",
+    "assets": {
+      "eval/questions.json": "251b0db664e49bdca83800eaed91359b540ba1d58d363dd470c9ef3f8e8e8ebb",
+      "fences/talk-edit-baseline.yml": "cf474c8f18b2b0547f45beab680ba3d101f3fb63e2bff7d4b2f5f0787bf60d26",
+      "fences/video-edit-baseline.yml": "fa34c9750621b790522acebe9d2d3332b45803965b84ca0cbb47e65b4d74869e",
+      "model-policy.yml": "84773cb9df3f02dd63a17c82d72acb8f4f2f5d686f3e218cea8497249e522e1b",
+      "pipelines/edit-film.yml": "2f4537f07b598914dcc44453bd6577bae4960c6999a9acf4e3a47bc6221e3a88",
+      "pipelines/edit-talk.yml": "6a5d923a6f3c971ebc79ce0b2f1871b87f8dd015ae255f62c265352200e709b6",
+      "presets/caption-writer.yml": "083734d99c24623a0393120fb8834e145afae40e3dea7508066bd988d5d77ec6",
+      "presets/creative-weaver.yml": "bc45ff9ce9e31aae3e8a6978a1f2c7c10530914f7180c45219b8c3e17d3ee86f",
+      "presets/cut-inspector.yml": "238529a09acd36bb23b7f46b4c5233f684a57423d30ec6378a5dd498045b85a2",
+      "presets/edit-compositor.yml": "b2b5a1c6dc685419d0b0d1770467de161706d3d8ee7f34f392d71a4a7003cba2",
+      "presets/edit-director.yml": "42c33b35b46fcd60c29982c5a4c16cf4a1f243aed71ca8f61190988cf1a4e902",
+      "presets/edit-producer.yml": "82a7e89eac8683cc70eee6a0f3ed49e02c69df21aebd4568ac75e7259d1e6007",
+      "presets/footage-librarian.yml": "b0e9c64b564e257b8585fcd086154e73a4e0446a3ff721cb89c65be589f4cb44",
+      "presets/highlight-scout.yml": "12aae796a1e5ce448e24fd837941640e58feeb1b0f2452f2d36346476dcdb73a",
+      "presets/shot-understander.yml": "98fe8d736e4279d3f4450039ea558096c5a258715d00dbbc7e8e64f24ce324c5",
+      "presets/signal-analyst.yml": "ac854c3d02746bd7992f614ea87ffbd8eba7a12492039ba8958ea857a0a0d27f",
+      "presets/story-architect.yml": "336526c1301b13f5816d33162622d1e7d3988ab97e68130ca30841252dedfb9e",
+      "presets/talk-annotator.yml": "0ec53260f2de1098bce26a7d9891c5c0094489cdabc2abd845d9314bb7f349c7",
+      "presets/talk-editor.yml": "e3c2bbb2597d21a11e60a9fb14544880e04f9ee5e6741a9361c3f0144dfb93b1",
+      "presets/talk-emotion-director.yml": "75e8c97d92677a20c2cdf454e80a5e1d31b6a1ae2580c14611949c347a8ee186",
+      "presets/talk-transcriber.yml": "3367b99af616b10a0e23d8a28ed5c52ed4a3ed18601cd4090afdec8814a3b250",
+      "schemas/creative-set.schema.json": "76a375892ded1ec441d2370a8bcdef575fd6a604d015ce5f0d06d101f212ded4",
+      "schemas/edit-timeline.schema.json": "24b38a0861fa696f5944aef1f395a4dbf25ac37507ec9ce09bd975ddbc2f5af3",
+      "schemas/footage-analysis.schema.json": "dfc51cec6ce9db9305dba6148603bc548db71c4e3cf7e29bd66fd9ac0e2bec9b",
+      "schemas/highlight-pick.schema.json": "54a56a59456f53ca5f5543ec655447e660309ba3fa936622df7418ee4c887f7c",
+      "schemas/keyframe-candidate.schema.json": "15f213ef8269714765da7d2a2dfc934b7b9e3ccd17e81f619b659ae79c42e871",
+      "schemas/objects.json": "1fd65d89aa47cdda9cd81c9e591be860c417397606c44546c299d10885b66bcb",
+      "schemas/rhythm-contract.schema.json": "205aca61cc16602df8cf1b128ed145f9778d9ee5ed28ceea1beb5ac78a312448",
+      "schemas/stages.json": "3a16da0666f8491bb01b04beb1192157dbdcfc8a067571488d066289a53d1732",
+      "schemas/talk-cut-list.schema.json": "14328f5e7056ff0b0e74779ed9868576ced3a24f85f308ab3303be49be4f063e",
+      "schemas/talk-emotion.schema.json": "6f1c13abb84ca2eb24c89db0e67ecbce814307c58cac62f073f7c177bb9702c8",
+      "schemas/talk-transcript.schema.json": "72175c960337b4714676a1395d0c78b5e977e1d65eace400dd7ad675ee9d3622",
+      "skills/caption-craft/SKILL.md": "ea6d1eb060b2ea88f5b0db4e56ed60a84f06dff48ecaf2ed329083be457b126e",
+      "skills/creative-ideation/SKILL.md": "7741a4fe350cf6d96dfad89c5fb41e7c8400fd7b64fc28cbd5b6465460587a4b",
+      "skills/cut-review/SKILL.md": "b0569c51554435904e41a0f7fa84c4d4ab549a2801fd8fbe11f8edd3a055757d",
+      "skills/edit-scripting/SKILL.md": "9bc071124947f5d75c4c39649c420c79a7e62e68cd3b482dc39ace4a4e022198",
+      "skills/footage-ingest/SKILL.md": "bbd618627aa33a9b2d61096e639a36a6718e021b17d6de3a65bd2ae161f82097",
+      "skills/highlight-mining/SKILL.md": "ddb6ea7d2b41615db51752db2aceec27295865fc4387b9af5e5029d97ab7cc1d",
+      "skills/media-indexing/SKILL.md": "2552945bb701d26b196141c849d9c529598541ed4327a4ebb2c0624ec2f27e15",
+      "skills/narrative-structure/SKILL.md": "627660584fbffac23ad277691469e49bdb6a22dfc2cf107ad7e89743ef422a5a",
+      "skills/shot-understanding/SKILL.md": "203729e018f9cd4bb177c4c4184ac7af06d47e807729add100a2e1ba3d2e4a7f",
+      "skills/talk-annotation/SKILL.md": "a650fa8b4f09a15acb9a9495a10b21b57b3943d85ac7fda3855f2c7c17be052a",
+      "skills/talk-cutting/SKILL.md": "3ca64fd8cf630f30b93640f2b512b485fbf6714914b8dab39c02cb9dce2689c8",
+      "skills/talk-emotion/SKILL.md": "db0b9c45c3973f016206dc390ffcfb62696d6305067744b458bc4e96e293472f",
+      "skills/talk-transcription/SKILL.md": "200062523919dc057f8e344b6f05a1d1d38df724648a2aa55d4eccd9e717a776",
+      "ui/cases.json": "1538b11ca74db14adf78b49a4b28e0d43fdd383ff6a027f45a7599c7041f8eb6"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+# 内容一次生产两处变现管线 · 融合方案 §5.2 协同二 + §5.3 协同三
+# 脚本成套包固定字段「AI 答案适配版」：脚本人审通过 → GEO 改写自动触发 → 双审 → 双域分发
+quest: dual-content-factory
+name: 内容一次生产两处变现管线
+version: v1
+description: 脚本成套→生产编排（实拍/AI 分流）→人审→GEO 六段式改写→G-GEO1/G-GEO2 双审→社媒组+信源组统一编排分发→结果回写一客一档
+schedule: daily
+steps:
+  - step_key: script-package
+    name: 脚本成套输出
+    owner: geo-scriptwriter
+    outputs: [script_package]         # 脚本+标题+文案+标签+分镜，预留 AI 答案适配版接口位
+  - step_key: production-split
+    name: 实拍/AI 生成分流编排
+    owner: production-planner
+    outputs: [shoot_list]             # 拍摄清单（渠道拍摄日）+AI 素材任务（渲染队列）
+  - step_key: human-review
+    name: 脚本人审（G9 系列前置）
+    owner: company-ceo
+    gate: G9
+    outputs: [script_package]         # 人审通过才进 GEO 改写与发布队列
+  - step_key: geo-rewrite
+    name: GEO 六段式改写（AI 答案版）
+    owner: geo-content-planner
+    outputs: [geo_content]            # 问题前置→直接答案→参数表格→清单建议→实体锚点→信源引用
+  - step_key: fact-check
+    name: 事实红线校验
+    owner: entity-inspector
+    gate: G-GEO2
+    outputs: [geo_content]            # 与实体卡逐字一致；不符一票否决
+  - step_key: geo-review
+    name: GEO 外发必审
+    owner: company-ceo
+    gate: G-GEO1
+    outputs: [geo_content]            # 双审制：社媒审传播力，GEO 审事实与结构
+  - step_key: visual-package
+    name: 视觉素材成套（封面/图文/信源配图）
+    owner: visual-designer
+    gate: G-VIS1
+    outputs: [visual_asset]            # 平台规格封面+图文；标题/价格走预渲染文字层，事实与实体卡逐字一致
+  - step_key: social-publish
+    name: 社媒组分发
+    owner: publish-operator
+    gate: G9
+    outputs: [publish_task]           # 抖音/TikTok/小红书/YouTube/Meta 错峰发布
+  - step_key: source-publish
+    name: 信源组分发
+    owner: source-distributor
+    gate: G-GEO1
+    outputs: [source_task]            # 知乎/公众号/百家号/头条号/垂媒/百科/新闻稿
+  - step_key: write-back
+    name: 结果回写一客一档
+    owner: publish-operator
+    outputs: [client_archive]         # 发布/分发结果统一回写，失败重试 3 次挂起转人工

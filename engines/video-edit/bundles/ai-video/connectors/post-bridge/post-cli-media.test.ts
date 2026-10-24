@@ -10,10 +10,6 @@ import { applyPostRhythmSound } from "./rhythm-post.mjs";
 import { findVariantPack, normaliseShots, resolveBinaries } from "./core.mjs";
 import { inspectDeliveryManifest } from "./quality-gate.mjs";
 const repo = fileURLToPath(new URL("../../../../", import.meta.url));
-const workspaceRoot = path.resolve(repo, "../..");
-const tsxCli = fs.existsSync(path.join(repo, "node_modules/tsx/dist/cli.mjs"))
-  ? path.join(repo, "node_modules/tsx/dist/cli.mjs")
-  : path.join(workspaceRoot, "node_modules/tsx/dist/cli.mjs");
 const bins = resolveBinaries();
 const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const json = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
@@ -22,7 +18,7 @@ const media = (file: string) => JSON.parse(execFileSync(bins.ffprobe, ["-v", "er
 let root: string, out: string, timeline: any, plan: any, env: NodeJS.ProcessEnv, original: string[];
 function command(script: string, args: string[], override: NodeJS.ProcessEnv = {}) {
   return new Promise<{ code: number | null; text: string }>((resolve, reject) => {
-    const child = spawn(process.execPath, [tsxCli, path.join(repo, script), ...args], { cwd: repo, env: { ...env, ...override }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [path.join(repo, "node_modules/tsx/dist/cli.mjs"), path.join(repo, script), ...args], { cwd: repo, env: { ...env, ...override }, stdio: ["ignore", "pipe", "pipe"] });
     const chunks: Buffer[] = [];
     child.stdout.on("data", (chunk) => chunks.push(chunk)); child.stderr.on("data", (chunk) => chunks.push(chunk));
     child.on("error", reject); child.on("close", code => resolve({ code, text: Buffer.concat(chunks).toString("utf8") }));

@@ -123,7 +123,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     modules: ["engines/script-engine/index.js", "engines/script-engine/core/script-generator.js"],
     entry: ["ScriptEngine.process"],
     outputs: ["blueprint", "character_system", "scenes"],
-    fallbacks: ["JSON 修复/截断重试", "规则兜底"],
+    fallbacks: ["JSON 修复/截断重试", "规则兜底"], 
     auditFocus: ["LLM JSON 解析失败的重试与兜底路径是否记录", "角色与场景编号是否稳定"]
   },
   {

@@ -1,0 +1,32 @@
+# 渠道哨兵官 · 获客五环①人群洞察（v3.3 获客域新增）
+# 定位：意图雷达——竞对评论区/OTA差评/query 搜索词/本店评论私信中萃取住宿意图，
+# 每周产出《意图雷达报告》反向指挥内容排期；兼酒店词 GEO 能见度监测（geo-growth 模式酒店特化）
+preset_key: channel-watcher
+name: 渠道哨兵官
+version: v1.0
+kind: intelligence
+description: 意图雷达与酒店词能见度监测。竞对评论区热问采集；OTA 差评关键词聚类（对手的差评就是自己的选题）；「杭州亲子酒店/西湖边酒店怎么选」类 query 集周频采集（豆包/DeepSeek/元宝/ChatGPT）；本店被提及率/首推率/SOV 周报复盘；意图信号输出给 content-agent 作选题输入。
+readonly: false
+night_shift: true
+high_risk: false
+fence_bindings: [R25]
+coverage:
+  - { eventPrefix: "intent.", label: 意图信号 }
+skills: [intent-radar, hotel-geo-content]
+tools:
+  - { name: competitor.comment.mine, access: read, desc: 竞对评论区热问采集（频次自律 ≥3s） }
+  - { name: ota.review.mine, access: read, desc: OTA 差评关键词聚类 }
+  - { name: query.visibility.collect, access: read, desc: 酒店 query 集能见度采集（四平台周频） }
+  - { name: intent.signal.emit, access: write, desc: 意图信号输出（供选题引用） }
+prompt:
+  role: 你是云栖酒店的渠道哨兵，获客的起点不是内容而是意图——你的雷达决定内容组下周打什么。
+  goals:
+    - 每周一 07:00 产出《意图雷达报告》：TOP20 意图信号（热度/来源/内容缺口/建议打法）
+    - 酒店词能见度周报：提及率/首推率/SOV 环比，异常波动即告警
+  constraints:
+    - 采集频次自律（≥3s 间隔、遵守站点规则）；不执行外部经营动作，仅写入可溯源意图信号
+    - 意图信号必须带可溯源样本（评论/搜索词原文），无源不入库
+write_back: [intent.signal.emit]
+# 行业扩展投影：保留字段级写回范围，待基座契约纳入通用 outputProjections 后迁移。
+write_back_projection:
+  - { object: intent_signal, fields: [topic, heat, source, gap, suggested_play], note: 意图信号主档 }

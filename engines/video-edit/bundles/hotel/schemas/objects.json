@@ -1,0 +1,126 @@
+{
+  "$id": "workloom://bundles/hotel/schemas/objects",
+  "description": "酒店行业版事件 Object 类型枚举 v2（PRD V2.5 §2.2 槽② / 附录 E：对象枚举行业化）。五元事件 schema v1 冻结——仅允许枚举扩展，不得新增事件顶层字段。基线 8 类 + 任务三规划扩展 8 类 + v2 场景补全 4 类 = 20 类。",
+  "objects": [
+    {
+      "type": "room_type",
+      "label": "房型"
+    },
+    {
+      "type": "room_price",
+      "label": "房价"
+    },
+    {
+      "type": "channel",
+      "label": "渠道"
+    },
+    {
+      "type": "order",
+      "label": "订单"
+    },
+    {
+      "type": "guest",
+      "label": "客人"
+    },
+    {
+      "type": "review",
+      "label": "评价"
+    },
+    {
+      "type": "store",
+      "label": "门店"
+    },
+    {
+      "type": "staff",
+      "label": "员工"
+    },
+    {
+      "type": "facility",
+      "label": "设施设备"
+    },
+    {
+      "type": "inventory",
+      "label": "布草耗材"
+    },
+    {
+      "type": "supplier",
+      "label": "供应商"
+    },
+    {
+      "type": "task",
+      "label": "工单任务"
+    },
+    {
+      "type": "invoice",
+      "label": "发票账单"
+    },
+    {
+      "type": "campaign",
+      "label": "营销活动"
+    },
+    {
+      "type": "member",
+      "label": "会员"
+    },
+    {
+      "type": "alert",
+      "label": "告警事件"
+    },
+    {
+      "type": "room",
+      "label": "物理房态"
+    },
+    {
+      "type": "price_calendar",
+      "label": "价格日历"
+    },
+    {
+      "type": "shift",
+      "label": "班次交接"
+    },
+    {
+      "type": "phone_call",
+      "label": "电话呼入"
+    },
+    {
+      "type": "intent_signal",
+      "label": "意图信号",
+      "note": "获客五环①人群洞察：评论/私信/query/竞对评论区/OTA差评中萃取的住宿意图（什么人在问什么/热度/内容缺口），意图雷达报告的计量单元"
+    },
+    {
+      "type": "lead",
+      "label": "线索",
+      "note": "获客五环③④承接与转化：四路入口（评论/私信/落地页/AI搜索）留资线索——携来源链（渠道+内容ID+入口）/意图/ABC分级/归属人/跟进状态；客资脱敏存储（R24），出域必审（R23）"
+    },
+    {
+      "type": "coupon_sku",
+      "label": "团购券SKU",
+      "note": "通兑券/预售券「先囤后约」——酒店获客第一转化品；库存熔断（R22）与定价红线（R26）管辖"
+    },
+    {
+      "type": "booking_order",
+      "label": "直连预订单",
+      "note": "内容/AI搜索入口的直连预订与券核销订单（与 PMS order 区分：本对象计获客成交，PMS order 计全域履约）；成交归因（conversion）回写源"
+    },
+    {
+      "type": "poi_store",
+      "label": "POI门店",
+      "note": "抖音本地生活/美团 POI 门店绑定——短视频/直播内容挂载点与券核销落点"
+    },
+    {
+      "type": "conversion",
+      "label": "成交归因",
+      "note": "线索→成交归因记录：成交金额/来源链（社媒-内容ID/AI搜索-query词/私域-渠道码）/佣金对照（OTA同单佣金节省额）；北极星「归因成交额」计量单元"
+    },
+    {
+      "type": "live_campaign",
+      "label": "直播场次",
+      "note": "直播卖券场次（脚本/排期/切片/战报）——对标「30天200场直播3000万」实证形态，ai-live-assistant 技能驱动"
+    },
+    {
+      "type": "content",
+      "label": "发布内容",
+      "note": "短视频/图文/直播切片等内容作品主档（R3 新渠道首发必审/R15 直播首发必审/R25 口径校验的管辖对象）"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# 客户级 Patch：民宿（围栏松紧=中，业主兜底；内容营销权重高）
+# 叠加于 hotel-baseline/v3 之上，只可收紧不可放宽（F2.3 单调守卫）
+version: hotel-patch-homestay/v1
+applies_to: homestay
+base: hotel-baseline/v4
+patches:
+  - rule_id: R3
+    tighten:
+      when: "context.channel_new == true || params.platform in ['xiaohongshu', 'douyin']"
+    note: 小红书/抖音为民宿种草命脉，内容发布必审范围扩大到这两个平台的每次发布（非仅首发）
+
+  - rule_id: R9
+    tighten:
+      when: "params.frequency_exceeded == true || params.unsubscribed == true || params.touch_count_30d > 2"
+    note: 私域触达 30 天 >2 次即 block（民宿客群重体验，防打扰）
+
+  - rule_id: R13
+    tighten:
+      when: "params.involves_fee == true || params.involves_upgrade == true"
+    note: 涉费或涉升级承诺均必审（业主对房态灵活度高但需知情）
+
+  - rule_id: R16
+    tighten:
+      when: "context.night_shift == true"
+    note: 维持基线（业主夜间手机待命，高危动作仍转清晨需介入，「把夜晚还给业主」）

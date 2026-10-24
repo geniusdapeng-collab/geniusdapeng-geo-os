@@ -162,7 +162,7 @@ export function checkCreativeSet(input: {
     return { ok: false, issues, metrics: { candidateCount: 0, minDifferentDims: null, referencesChecked: 0, referencesMissing: 0, reviewCoverage: "0/0" } };
   }
 
-  // —— 候选数量与 slot ——
+  // —— 候选数量与 slot —— 
   if (candidates.length < 3) {
     issues.push({ id: "candidates.count", severity: "hard", detail: `候选只有 ${candidates.length} 个：至少 3 个才有"选择"的意义（默认 5–7 个）` });
   } else if (candidates.length > 7) {
@@ -177,7 +177,7 @@ export function checkCreativeSet(input: {
     issues.push({ id: "candidates.slotUnique", severity: "hard", detail: `候选 slot 重复：${slots.join("、")}` });
   }
 
-  // —— 禁止自评（生成与评分分离）——
+  // —— 禁止自评（生成与评分分离）—— 
   for (const candidate of candidates) {
     const selfScoreKeys = Object.keys(candidate).filter((key) => ["score", "total", "rating", "rank", "recommended"].includes(key));
     if (selfScoreKeys.length > 0) {
@@ -190,7 +190,7 @@ export function checkCreativeSet(input: {
     }
   }
 
-  // —— 差异化：两两至少 3 维明显不同 ——
+  // —— 差异化：两两至少 3 维明显不同 —— 
   let minDifferentDims: number | null = null;
   for (let i = 0; i < candidates.length; i += 1) {
     for (let j = i + 1; j < candidates.length; j += 1) {
@@ -211,7 +211,7 @@ export function checkCreativeSet(input: {
     }
   }
 
-  // —— 素材引用真实性 ——
+  // —— 素材引用真实性 —— 
   const checkRefs = (refs: string[] | null | undefined, kind: "shot" | "highlight" | "keyframe", slot: string, where: string): void => {
     for (const raw of refs ?? []) {
       const ref = String(raw);
@@ -261,7 +261,7 @@ export function checkCreativeSet(input: {
     });
   }
 
-  // —— 评审覆盖与四视角 ——
+  // —— 评审覆盖与四视角 —— 
   const reviewSlots = review.map((entry) => String(entry.slot ?? ""));
   const missingReviews = slots.filter((slot) => !reviewSlots.includes(slot));
   if (review.length === 0) {
@@ -306,7 +306,7 @@ export function checkCreativeSet(input: {
     }
   }
 
-  // —— 结构：beat 时长带与情绪曲线（咨询项）——
+  // —— 结构：beat 时长带与情绪曲线（咨询项）—— 
   const storyPlan = input.doc.storyPlan ?? null;
   if (!storyPlan) {
     issues.push({ id: "storyPlan.missing", severity: "advisory", detail: "缺 storyPlan：本轮只检查了创意方案集" });

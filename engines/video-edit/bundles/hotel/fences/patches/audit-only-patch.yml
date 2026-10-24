@@ -1,0 +1,159 @@
+# 客群级 Patch：质检模式（Audit-Only · 只读体检期）
+# 定位：新客户接入的「第 0 阶段」——系统只读扫描、只出报告与建议，不写回任何平台。
+# 叠加于 hotel-baseline/v4 之上，只可收紧不可放宽（F2.3 单调守卫）。
+# 复合系统纪律：本 patch 按 applies_to=audit_only 同时叠加于三域基线（hotel-baseline/v4、
+#   ai-video-baseline/v2、geo-growth-baseline/v1）——酒店运营侧（调价/退款/排房/回复差评）
+#   与营销获客侧（发布内容/回评论/私信/投放）一切对外写操作物理阻断。
+# 纪律：本 patch 生效期间，一切写类动作默认即拒（block）；客户确认整改项时由人类在平台侧执行，
+#   系统只跟踪闭环。体检期结束（通常 1–2 周）后，客户切换为影子模式 → 正式托管客群
+#   （low_star_single/homestay/unmanned）。
+version: hotel-patch-audit-only/v1
+applies_to: audit_only
+base: hotel-baseline/v4
+default_level: block          # 写类动作无任何规则命中 → 按 block（默认即拒，宁可错杀）
+patches:
+  # ========== 酒店运营线：调价/退款/排房/差评 一律阻断 ==========
+  - rule_id: R1
+    tighten: { level: block }
+    note: 调价一律阻断（质检期系统不直接改价，只产出《价格健康清单》含倒挂/破防证据）
+
+  - rule_id: R2
+    tighten: { level: block }
+    note: 保底价熔断维持 block（基线纪律，不得放宽）
+
+  - rule_id: R4
+    tighten: { level: block }
+    note: 退款/售后处置一律阻断（只统计 SLA 与口碑风险，不代客操作）
+
+  - rule_id: R5
+    tighten: { level: block }
+    note: 担保订单异常维持 block（基线纪律；体检期只归集《担保异常清单》）
+
+  - rule_id: R6
+    tighten: { level: block }
+    note: 差评回复一律阻断（只生成候选草稿进报告，客户人工决定是否发出）
+
+  - rule_id: R7
+    tighten: { level: block }
+    note: 夜班微调同样阻断（体检期无自治半径，夜间发现进清晨决策包）
+
+  - rule_id: R9
+    tighten: { level: block }
+    note: 客户触达一律阻断（私域触达频率合规维持 block；体检期不做任何主动触达）
+
+  - rule_id: R10
+    tighten: { level: block }
+    note: 安全禁区维持 block（基线纪律，不得放宽）
+
+  - rule_id: R11
+    tighten: { level: block }
+    note: 采购单一律阻断（只产出补货建议单）
+
+  - rule_id: R13
+    tighten: { level: block }
+    note: 涉费用客服承诺一律阻断（体检期客服线只读监控：响应时长/承诺风险/满意度信号）
+
+  - rule_id: R16
+    tighten: { level: block }
+    note: 排房/换房/GUI 操控一律阻断（夜班禁区维持 block 并扩展到全天）
+
+  - rule_id: R17
+    tighten: { level: block }
+    note: 价格发布一律阻断；倒挂只告警不处置（证据归档进《价格健康清单》）
+
+  - rule_id: R18
+    tighten: { level: block }
+    note: 库存同步/订单确认写动作阻断；超售漏售只盘点不处置（进《房态对账差异清单》）
+
+  - rule_id: R21
+    tighten: { level: block }
+    note: AI 接待对外回复/报价一律阻断（体检期承接线只读：统计首响时长与未承接高意向）
+
+  - rule_id: R22
+    tighten: { level: block }
+    note: 券库存熔断维持 block（基线纪律）
+
+  - rule_id: R23
+    tighten: { level: block }
+    note: 线索数据出域维持必审→block（体检期客资不出域，只做线索流失点盘点）
+
+  - rule_id: R24
+    tighten: { level: block }
+    note: 客资隐私红线维持 block（基线纪律，不得放宽）
+
+  - rule_id: R25
+    tighten: { level: block }
+    note: 获客内容发布一律阻断（口径校验发现只进报告）
+
+  - rule_id: R26
+    tighten: { level: block }
+    note: 券定价红线维持 block（基线纪律）
+
+  # ========== 获客转化线：发布/回评论/私信/投放 一律阻断 ==========
+  # （ai-video-baseline/v2 与 geo-growth-baseline/v1 同 applies_to 叠加）
+  - rule_id: G9
+    tighten: { level: block }
+    note: 公网发布一律阻断（质检期内容线只读：账号健康/内容节律/主页组件盘点）
+
+  - rule_id: G9a
+    tighten: { level: block }
+    note: 新平台首发阻断（与 G9 并集取严）
+
+  - rule_id: G9b
+    tighten: { level: block }
+    note: 日发布超限熔断维持 block（基线纪律）
+
+  - rule_id: G10a
+    tighten: { level: block }
+    note: 评论回复一律阻断（含夸赞类自动回）——体检期评论区只读：未承接高意向咨询进《线索流失清单》
+
+  - rule_id: G10b
+    tighten: { level: block }
+    note: 咨询/售后类评论回复阻断（只生成候选草稿）
+
+  - rule_id: G10c
+    tighten: { level: block }
+    note: 负面/危机评论回复阻断+告警保留（只告警不处置）
+
+  - rule_id: G10d
+    tighten: { level: block }
+    note: 敏感内容禁区维持 block（基线纪律）
+
+  - rule_id: G12
+    tighten: { level: block }
+    note: 投放加投一律阻断（只产出《投放健康清单》含估算可省金额，客户人工处置）
+
+  - rule_id: G15
+    tighten: { level: block }
+    note: 对外商务文件一律阻断（体检期不代发任何对外文件）
+
+  - rule_id: G16
+    tighten: { level: block }
+    note: 账号异常登录/防关联违规维持 block（基线纪律）
+
+  - rule_id: G-GEO1
+    tighten: { level: block }
+    note: GEO 内容外发一律阻断（只产出《GEO 可见度缺口清单》）
+
+  - rule_id: G-GEO2
+    tighten: { level: block }
+    note: 事实红线一票否决维持 block（基线纪律）
+
+  - rule_id: G-GEO3
+    tighten: { level: block }
+    note: GEO 灰帽熔断维持 block（基线纪律，不得放宽）
+
+  - rule_id: G-GEO4
+    tighten: { level: block }
+    note: 信源日发超限熔断维持 block（基线纪律）
+
+  - rule_id: G20
+    tighten: { level: block }
+    note: 涉人设/品牌表态强制 L4 维持 block（基线纪律）
+
+# 体检期允许的唯一"写"：向系统自身事件库写入巡检发现/报告/建议（五元事件，不落任何平台）。
+# 体检双线检项（只读工具集裁剪保证）：
+#   酒店运营线：价格倒挂/超售漏售/对账差异/存量差评/担保异常
+#   获客转化线：账号健康/内容节律/评论区未承接高意向/GEO 可见度缺口/主页转化组件缺失/线索流失点
+# 产出物：一店一份《获客全链路快速体检报告》（fast-scan 当场版）+ 持续体检报告（inspection-suite 观察期版）
+#   + 整改建议单（按 P0/P1/P2 分级，按"流量→转化→成交"链路排序，估算标注口径）。

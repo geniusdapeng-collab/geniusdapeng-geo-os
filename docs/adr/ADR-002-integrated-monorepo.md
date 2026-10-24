@@ -1,6 +1,6 @@
 # ADR 002: Integrate production engines into one independent repository
 
-Status: accepted
+Status: historical; the video scope is superseded by [ADR 003](ADR-003-complete-video-runtime.md).
 
 Date: 2026-10-18
 
