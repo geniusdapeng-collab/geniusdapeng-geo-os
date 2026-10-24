@@ -10,6 +10,8 @@ import { VideoEditAdapter } from "./adapters/video-edit.mjs";
 import { PersonalGeoEngine } from "./engines/geo-evidence.mjs";
 import { VideoMediaEngine } from "./engines/video-media.mjs";
 import { createVideoRuntime } from "./video-runtime/index.mjs";
+import { createAdminAuth } from "./security/admin-auth.mjs";
+import { AccountOperationsService } from "./services/account-operations.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 
@@ -27,10 +29,12 @@ export async function createPengManagerApplication({
   const dataDir = join(rootDir, "data", "seed");
   const configuredHosts = env.ALLOWED_HOSTS?.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
   const allowedHosts = configuredHosts?.length ? configuredHosts : ["127.0.0.1", "localhost", "::1", "[::1]"];
+  const auth = createAdminAuth({ env, host, allowedHosts });
   const store = new JsonStore({ filePath: dataFile });
   await store.open(() => loadSeedState(dataDir));
   await migratePengManagerIdentity(store, dataDir);
   const service = new GeoOsService({ store });
+  const accountOperations = new AccountOperationsService({ service });
   const geoEngine = suppliedGeoEngine ?? new PersonalGeoEngine({
     rootDir, ...(env.GEO_ENGINE_DB ? { databasePath: resolve(rootDir, env.GEO_ENGINE_DB) } : {}),
     controlQueries: store.snapshot().queries,
@@ -55,14 +59,15 @@ export async function createPengManagerApplication({
     videoEdit: new VideoEditAdapter({ upstreamRoot: join(rootDir, "engines", "video-edit") }), mediaEngine,
   });
   const server = createGeoOsServer({ service, livePipeline, geoEngine, videoRuntime: runtime,
-    publicDir: join(rootDir, "public"), allowedHosts });
+    publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations,
+    publicWebsite: env.PUBLIC_WEBSITE === "1", mediaRenderEnabled: env.ENABLE_MEDIA_RENDER !== "false" });
   let stopPromise = null;
   let videoStart = null;
   let listenPromise = null;
   let listening = false;
   let stopping = false;
   return {
-    server, service, store, geoEngine, mediaEngine, videoRuntime: runtime,
+    server, service, store, geoEngine, mediaEngine, auth, accountOperations, videoRuntime: runtime,
     get videoStart() { return videoStart; },
     async listen(options = {}) {
       if (stopping) throw new Error("APPLICATION_STOPPED");

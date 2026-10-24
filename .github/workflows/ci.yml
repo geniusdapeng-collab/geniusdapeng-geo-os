@@ -27,6 +27,14 @@ jobs:
           node --check src/http/video-runtime.mjs
           node --check public/app.js
           node --check public/video-workbench.js
+          node --check public/operations.js
+          node --check public/site.js
+          node --check public/login.js
+          node --check scripts/package-deployment.mjs
+          node --check deploy/aliyun/configure.mjs
+          for script in deploy/aliyun/*.sh; do bash -n "$script"; done
+      - name: Deployment safety and recovery tests
+        run: python3 -m unittest discover -s deploy/aliyun -p 'test_*.py'
       - name: Unit and integration tests
         run: node --test tests/*.test.mjs
       - name: Engine regression tests
@@ -76,6 +84,7 @@ jobs:
             packages/base/bundles/acquisition-loop.test.ts \
             packages/base/skills/official.test.ts
           node --test scripts/pengmanager-tools.test.mjs
+          python3 scripts/pengmanager-asr.test.py
       - name: Embedded video engine tests
         run: npm run test:ci
       - name: Smoke test

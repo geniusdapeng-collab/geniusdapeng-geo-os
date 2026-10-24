@@ -1,0 +1,730 @@
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.text-link {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.text-link:active {
+  color: #173fa1;
+}
+
+.text-link:focus-visible, summary:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 4px;
+  border-radius: 5px;
+}
+
+.primary-button:active, .ghost-button:active {
+  transform: translateY(1px);
+}
+
+button:disabled:hover {
+  transform: none;
+}
+
+form[aria-busy="true"] {
+  cursor: progress;
+}
+
+form[aria-busy="true"] button {
+  cursor: progress;
+}
+
+form[aria-busy="true"] input, form[aria-busy="true"] textarea {
+  background: #f7f9fc;
+}
+
+.operation-note {
+  margin: 12px 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.operation-field-hint {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.form-error {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #f1c2bc;
+  border-radius: 9px;
+  color: var(--red);
+  font-size: 12px;
+  line-height: 1.75;
+  background: var(--red-soft);
+  overflow-wrap: anywhere;
+}
+
+.operation-intro {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #fff, #f8fbff);
+}
+
+.operation-intro > div {
+  min-width: 0;
+}
+
+.operation-step {
+  display: inline-grid;
+  width: 29px;
+  height: 29px;
+  margin-right: 9px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--blue-soft);
+}
+
+.operation-intro strong {
+  font-size: 13px;
+}
+
+.operation-intro p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.operation-create-preview {
+  max-height: 310px;
+  overflow: auto;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.operation-create-preview strong {
+  font-size: 14px;
+}
+
+.operation-create-preview .operation-body {
+  margin-top: 10px;
+  padding: 0;
+  background: transparent;
+}
+
+.operation-list-heading {
+  margin: 30px 0 16px;
+}
+
+.operations-list {
+  display: grid;
+  gap: 18px;
+}
+
+.operation-empty {
+  display: block;
+}
+
+.operation-empty strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.operation-empty p {
+  max-width: 620px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.operation-card {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.operation-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 17px;
+}
+
+.operation-card-heading > div {
+  min-width: 0;
+}
+
+.operation-card h3 {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.operation-subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.operation-target {
+  margin: 10px 0 15px;
+}
+
+.operation-snapshot {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.operation-snapshot summary, .operation-action summary, .account-settings summary {
+  min-height: 44px;
+  padding: 12px 14px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.7;
+  cursor: pointer;
+  border-radius: 9px;
+  transition: background 150ms ease;
+}
+
+.operation-snapshot summary:hover, .operation-action summary:hover, .account-settings summary:hover {
+  background: var(--blue-soft);
+}
+
+.operation-snapshot[open] > summary {
+  border-bottom: 1px solid var(--line);
+  border-radius: 9px 9px 0 0;
+}
+
+.operation-body {
+  min-width: 0;
+  padding: 16px;
+  color: #374256;
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.operation-snapshot .operation-body {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.operation-hash {
+  margin: 0;
+  padding: 0 16px 16px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.operation-hash code {
+  display: block;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.operation-facts {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.operation-facts > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.operation-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.operation-facts dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.operation-facts dd p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.operation-receipt {
+  margin: 18px 0 0;
+  padding: 18px;
+  border: 1px solid #c8e6d8;
+  border-radius: 10px;
+  background: #f4fbf7;
+}
+
+.operation-receipt .eyebrow {
+  color: var(--green);
+}
+
+.operation-receipt > p {
+  margin: 8px 0;
+}
+
+.operation-failure {
+  margin: 18px 0 0;
+  padding: 16px;
+  border-radius: 10px;
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.operation-failure strong {
+  font-size: 12px;
+}
+
+.operation-failure p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.operation-failure small {
+  font-size: 11px;
+}
+
+.status-chip.completed {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.status-chip.in_progress {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.status-chip.failed {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.policy.reviewed {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.account-state {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.operation-action {
+  margin-top: 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.operation-danger > summary {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.operation-inline-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+}
+
+.operation-inline-form label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.operation-inline-form .form-status {
+  margin: 0;
+}
+
+.operation-inline-form .form-error {
+  margin: 0;
+}
+
+.operation-inline-form > button {
+  justify-self: start;
+}
+
+.operation-action > .operation-inline-form {
+  padding: 6px 16px 18px;
+}
+
+.operation-card > .operation-inline-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.operation-inline-form .operation-note {
+  margin: 0;
+}
+
+.check-label {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px !important;
+}
+
+.check-label input {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: var(--blue);
+}
+
+.check-label span {
+  color: #47546a;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.8;
+}
+
+.account-settings {
+  margin-top: 19px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.account-settings summary {
+  padding-left: 0;
+  color: var(--blue);
+}
+
+.account-settings summary:hover {
+  padding-left: 10px;
+}
+
+.account-settings .operation-inline-form {
+  margin-top: 10px;
+}
+
+.claim-review-panel {
+  margin-bottom: 20px;
+}
+
+.claim-approval-list {
+  display: grid;
+  gap: 10px;
+}
+
+.claim-review {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.claim-review > summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.claim-review > summary::-webkit-details-marker {
+  display: none;
+}
+
+.claim-review > summary > span:first-child {
+  color: #46536a;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.claim-review > summary strong {
+  color: var(--blue);
+  font-size: 11px;
+}
+
+.claim-review > summary:hover {
+  background: #f8faff;
+}
+
+.claim-review[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.claim-review > summary::before {
+  flex: 0 0 auto;
+  content: "+";
+  color: var(--blue);
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.claim-review[open] > summary::before {
+  content: "−";
+}
+
+.claim-review > .operation-inline-form {
+  padding: 0 16px 18px;
+}
+
+.claim-source {
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.claim-source p {
+  margin: 0 0 7px;
+}
+
+.operation-content-controls {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.operation-content-controls .operation-inline-form {
+  max-width: 630px;
+}
+
+.content-full-text {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.content-full-text summary {
+  padding: 10px 12px;
+  color: var(--blue);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.content-full-text .operation-body {
+  max-height: 400px;
+  overflow: auto;
+}
+
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 32px 18px;
+  place-items: center;
+  background: radial-gradient(ellipse at 10% 5%, #e8effd 0, transparent 45%), radial-gradient(ellipse at 95% 90%, #e6f3f1 0, transparent 40%), #f6f8fb;
+}
+
+.login-card {
+  width: min(100%, 470px);
+  max-width: 470px;
+  padding: 38px;
+  border-color: #dbe3ef;
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(36, 54, 75, 0.1);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 38px;
+  color: var(--navy);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-brand .brand-mark {
+  color: #fff;
+  background: var(--navy);
+}
+
+.login-brand small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.login-card h1 {
+  margin: 0 0 14px;
+  font-size: clamp(26px, 5vw, 32px);
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+}
+
+.login-copy {
+  margin: 0 0 26px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.login-card form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-card label {
+  display: grid;
+  gap: 8px;
+}
+
+.login-card input {
+  min-height: 46px;
+}
+
+.login-card button {
+  width: 100%;
+  min-height: 46px;
+}
+
+.login-card .form-error {
+  margin: 0;
+}
+
+.login-note {
+  margin: 24px 0 18px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.85;
+}
+
+@media (max-width: 1080px) {
+  .operation-intro {
+    gap: 17px;
+  }
+  .topbar-actions > .text-link {
+    flex-basis: 100%;
+    text-align: right;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .topbar-actions {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .topbar-actions > .text-link {
+    flex-basis: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+  .operation-intro {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px;
+  }
+  .operation-intro > div + div {
+    padding-top: 17px;
+    border-top: 1px solid var(--line);
+  }
+  .operation-intro p {
+    margin-top: 8px;
+  }
+  .operation-card {
+    padding: 18px;
+  }
+  .operation-card-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .operation-action > .operation-inline-form {
+    padding: 5px 12px 14px;
+  }
+  .operation-inline-form > button {
+    width: 100%;
+  }
+  .operation-receipt {
+    padding: 14px;
+  }
+  .claim-review > summary {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .claim-review > summary > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+  .claim-review > summary .status-chip {
+    margin-left: 19px;
+  }
+  .claim-review-panel .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+  }
+  .operation-list-heading {
+    align-items: flex-start;
+    gap: 9px;
+  }
+  .login-card {
+    padding: 28px 22px;
+    border-radius: 18px;
+  }
+  .login-brand {
+    margin-bottom: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button, .ghost-button, .text-link, summary {
+    transition: none;
+  }
+}

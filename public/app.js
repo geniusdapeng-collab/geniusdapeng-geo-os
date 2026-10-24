@@ -1,4 +1,5 @@
 import { initializeVideoWorkbench } from "./video-workbench.js";
+import { mountOperations } from "/operations.js";
 
 const state = {
   data: null,
@@ -36,12 +37,17 @@ function escapeHtml(value) {
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
+    credentials: "same-origin",
     ...options,
     headers: {
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
     },
   });
+  if (response.status === 401) {
+    window.location.replace("/login");
+    throw new Error("登录已过期，请重新登录管理后台。");
+  }
   const payload = await response.json();
   if (!response.ok) {
     const error = new Error(payload.error?.message || "请求失败");
@@ -233,6 +239,7 @@ function renderAccounts() {
   const profile = primaryProfile();
   for (const account of state.data.accounts) {
     const card = template.content.firstElementChild.cloneNode(true);
+    card.dataset.accountId = account.id;
     const english = String(account.language ?? "").toLowerCase().startsWith("en");
     const name = english
       ? account.nameEn || account.englishName || profile.nameEn
@@ -244,7 +251,9 @@ function renderAccounts() {
       ? account.bioEn || account.englishBio || profile.bioEn
       : account.bioZh || profile.bioZh);
     card.querySelector(".wave").textContent = `${account.wave} 波`;
-    card.querySelector(".policy").textContent = "规则待确认";
+    const policy = card.querySelector(".policy");
+    policy.textContent = account.policyStatus === "reviewed" ? "规则已审阅" : "规则待审阅";
+    policy.classList.toggle("reviewed", account.policyStatus === "reviewed");
     card.querySelector("h3").textContent = account.platform;
     card.querySelector(".handle").textContent = account.handle;
     const accountProfile = card.querySelector(".account-profile");
@@ -255,7 +264,7 @@ function renderAccounts() {
     card.querySelector(".focus").textContent = account.contentFocus;
     card.querySelector(".audience").textContent = account.audience;
     card.querySelector(".cadence").textContent = account.cadence;
-    card.querySelector(".mode").textContent = account.publishMode;
+    card.querySelector(".mode").textContent = `${account.publishMode} · ${{ active: "已启用", draft: "未启用", paused: "已暂停" }[account.status] || account.status}`;
     grid.append(card);
   }
 }
@@ -269,10 +278,11 @@ function renderContent() {
     contentList.innerHTML = state.data.content
       .map(
         (content) => `
-          <article class="content-card">
+          <article class="content-card" data-content-id="${escapeHtml(content.id)}">
             <div>
               <h3>${escapeHtml(content.title)}</h3>
-              <p>${escapeHtml(content.body).slice(0, 240)}${content.body.length > 240 ? "…" : ""}</p>
+              <p>${escapeHtml(content.body.slice(0, 240))}${content.body.length > 240 ? "…" : ""}</p>
+              <details class="content-full-text"><summary>查看完整正文</summary><div class="operation-body">${escapeHtml(content.body)}</div></details>
               <div class="meta-row">
                 <span class="meta">${escapeHtml(content.contentType)}</span>
                 ${content.claimIds.map((id) => `<span class="meta">${escapeHtml(id)}</span>`).join("")}
@@ -483,7 +493,7 @@ function populateContentForm() {
       .map(
         (claim) =>
           `<option value="${escapeHtml(claim.id)}">${escapeHtml(claim.id)} · ${escapeHtml(
-            claim.text.slice(0, 52),
+            `${claim.state === "approved" ? "已批准" : "待批准"} · ${claim.text.slice(0, 52)}`,
           )}</option>`,
       )
       .join("");
@@ -501,9 +511,11 @@ function renderAll() {
   renderContent();
   renderGeo();
   populateContentForm();
+  operationsUi.render();
 }
 
 function switchView(view) {
+  if (![...document.querySelectorAll(".nav-item")].some((button) => button.dataset.view === view)) return;
   state.view = view;
   for (const button of document.querySelectorAll(".nav-item")) {
     button.classList.toggle("active", button.dataset.view === view);
@@ -513,7 +525,12 @@ function switchView(view) {
     section.hidden = !active;
     section.classList.toggle("active", active);
   }
-  window.location.hash = view;
+  if (window.location.hash !== `#${view}`) window.location.hash = view;
+}
+
+async function loadAuthStatus() {
+  const status = await api("/api/auth/status");
+  document.querySelector("#logout").hidden = !(status.enabled && status.authenticated);
 }
 
 function requestedView() {
@@ -524,16 +541,23 @@ function requestedView() {
 async function loadData() {
   clearError();
   setLoading(true);
+  const refresh = document.querySelector("#refresh");
+  refresh.disabled = true;
+  refresh.textContent = "正在刷新…";
   try {
     state.data = await api("/api/bootstrap");
+    await operationsUi.load();
     renderAll();
     setLoading(false);
     switchView(requestedView());
-    loadIntegratedEngineData().catch(showError);
-    loadAdapterHealth().catch(showError);
+    const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus()]);
+    for (const result of secondary) if (result.status === "rejected") showError(result.reason);
   } catch (error) {
     showError(error);
+  } finally {
     setLoading(false);
+    refresh.disabled = false;
+    refresh.textContent = "刷新数据";
   }
 }
 
@@ -544,6 +568,19 @@ for (const button of document.querySelectorAll(".nav-item")) {
 window.addEventListener("hashchange", () => switchView(requestedView()));
 
 document.querySelector("#refresh").addEventListener("click", loadData);
+document.querySelector("#logout").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "正在退出…";
+  try {
+    await api("/api/auth/logout", { method: "POST", body: "{}" });
+    window.location.replace("/login");
+  } catch (error) {
+    showError(error);
+    button.disabled = false;
+    button.textContent = "退出登录";
+  }
+});
 
 document.querySelector("#open-content-form").addEventListener("click", () => {
   document.querySelector("#content-form").hidden = false;
@@ -561,6 +598,9 @@ document.querySelector("#content-form").addEventListener("submit", async (event)
   const form = new FormData(formElement);
   const claimId = String(form.get("claimId") || "");
   const contentType = String(form.get("contentType"));
+  const button = formElement.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = "正在保存…";
   try {
     await api("/api/content", {
       method: "POST",
@@ -579,6 +619,9 @@ document.querySelector("#content-form").addEventListener("submit", async (event)
     await loadData();
   } catch (error) {
     showError(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存草稿";
   }
 });
 
@@ -638,6 +681,8 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
     button.disabled = false;
   }
 });
+
+const operationsUi = mountOperations({ api, getData: () => state.data, reload: loadData, showError, profile: primaryProfile });
 
 initializeVideoWorkbench();
 loadData();

@@ -110,20 +110,26 @@ async function readJsonBody(request) {
     return {};
   }
 
+  let body;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
     throw new ApiError(400, "INVALID_JSON", "请求体不是有效 JSON。");
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new ApiError(400, "INVALID_INPUT", "请求体必须是 JSON 对象。");
+  }
+  return body;
 }
 
-function writeJson(response, status, payload) {
+function writeJson(response, status, payload, headers = {}) {
   const body = JSON.stringify(payload);
   response.writeHead(status, {
     ...securityHeaders(),
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
     "Cache-Control": "no-store",
+    ...headers,
   });
   response.end(body);
 }
@@ -186,12 +192,104 @@ export function createGeoOsServer({
   videoRuntime,
   publicDir,
   allowedHosts = ["127.0.0.1", "localhost", "::1"],
+  auth,
+  accountOperations,
+  publicWebsite = false,
+  mediaRenderEnabled = true,
 }) {
   return createServer(async (request, response) => {
     try {
-      validateRequestSource(request, allowedHosts);
+      if (auth) auth.validateRequestSource(request, allowedHosts);
+      else validateRequestSource(request, allowedHosts);
       const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
       const path = url.pathname;
+
+      if (path === "/healthz") {
+        if (!["GET", "HEAD"].includes(request.method)) {
+          methodNotAllowed(response, ["GET", "HEAD"]);
+          return;
+        }
+        writeJson(response, 200, { ok: true, service: SYSTEM_IDENTITY.id });
+        return;
+      }
+
+      if (path === "/public-api/profile") {
+        if (request.method !== "GET") {
+          methodNotAllowed(response, ["GET"]);
+          return;
+        }
+        writeJson(response, 200, service.publicPreview());
+        return;
+      }
+
+      if (path === "/api/auth/status") {
+        if (request.method !== "GET") {
+          methodNotAllowed(response, ["GET"]);
+          return;
+        }
+        writeJson(response, 200, auth?.status(request) ?? { enabled: false, authenticated: true, actor: "PengManager", method: "local" });
+        return;
+      }
+      if (path === "/api/auth/login") {
+        if (request.method !== "POST") {
+          methodNotAllowed(response, ["POST"]);
+          return;
+        }
+        if (!auth?.enabled) throw new ApiError(409, "AUTH_NOT_ENABLED", "本地模式未启用管理员登录。");
+        const body = await readJsonBody(request);
+        if (!body || typeof body !== "object" || Array.isArray(body) || typeof body.password !== "string") {
+          throw new ApiError(400, "INVALID_INPUT", "登录请求必须包含密码文本。");
+        }
+        const result = await auth.login(request, body.password);
+        writeJson(response, 200, { authenticated: true, expiresAt: result.expiresAt }, { "Set-Cookie": result.cookie });
+        return;
+      }
+      if (path === "/api/auth/logout") {
+        if (request.method !== "POST") {
+          methodNotAllowed(response, ["POST"]);
+          return;
+        }
+        const cookie = auth?.logout(request);
+        writeJson(response, 200, { authenticated: !auth?.enabled }, cookie ? { "Set-Cookie": cookie } : {});
+        return;
+      }
+
+      const publicAssets = {
+        "/login": "/login.html", "/login.js": "/login.js", "/styles.css": "/styles.css",
+        "/operations.css": "/operations.css", "/site.css": "/site.css", "/site.js": "/site.js",
+        "/favicon.svg": "/favicon.svg",
+      };
+      if (Object.hasOwn(publicAssets, path)) {
+        await serveStatic(request, response, publicDir, publicAssets[path]);
+        return;
+      }
+      if ((publicWebsite && path === "/") || path === "/about") {
+        await serveStatic(request, response, publicDir, "/site.html");
+        return;
+      }
+      if (path === "/robots.txt") {
+        if (!["GET", "HEAD"].includes(request.method)) {
+          methodNotAllowed(response, ["GET", "HEAD"]);
+          return;
+        }
+        response.writeHead(200, { ...securityHeaders(), "Content-Type": "text/plain; charset=utf-8" });
+        response.end("User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /index.html\n");
+        return;
+      }
+
+      let principal = { actor: "PengManager", method: "local" };
+      if (auth) {
+        try {
+          principal = auth.requireAccess(request, path);
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401 && ["GET", "HEAD"].includes(request.method) && ["/", "/admin", "/index.html"].includes(path)) {
+            response.writeHead(302, { ...securityHeaders(), Location: "/login", "Cache-Control": "no-store" });
+            response.end();
+            return;
+          }
+          throw error;
+        }
+      }
 
       if (path === "/api/video-runtime" || path.startsWith("/api/video-runtime/")) {
         if (!["/api/video-runtime/status", "/api/video-runtime/capabilities"].includes(path)) {
@@ -202,6 +300,61 @@ export function createGeoOsServer({
           throw new ApiError(400, "VIDEO_RUNTIME_REQUEST_INVALID", "视频状态与能力目录不接受查询参数。");
         }
         writeJson(response, 200, await readVideoRuntime(videoRuntime, path.endsWith("/status") ? "status" : "capabilities"));
+        return;
+      }
+
+      if (path === "/api/operations") {
+        if (!accountOperations) throw new ApiError(503, "OPERATIONS_UNAVAILABLE", "运营动作服务未启用。");
+        if (request.method === "GET") {
+          writeJson(response, 200, accountOperations.list());
+          return;
+        }
+        if (request.method === "POST") {
+          writeJson(response, 201, await accountOperations.create({ ...(await readJsonBody(request)), actor: principal.actor }));
+          return;
+        }
+        methodNotAllowed(response, ["GET", "POST"]);
+        return;
+      }
+      const accountUpdate = path.match(/^\/api\/accounts\/([A-Za-z0-9_-]+)$/);
+      if (accountUpdate) {
+        if (request.method !== "PATCH") {
+          methodNotAllowed(response, ["PATCH"]);
+          return;
+        }
+        if (!accountOperations) throw new ApiError(503, "OPERATIONS_UNAVAILABLE", "运营动作服务未启用。");
+        writeJson(response, 200, await accountOperations.updateAccount(accountUpdate[1], { ...(await readJsonBody(request)), actor: principal.actor }));
+        return;
+      }
+      const operationAction = path.match(/^\/api\/operations\/([A-Za-z0-9_-]+)\/(approve|start|complete|fail)$/);
+      if (operationAction) {
+        if (request.method !== "POST") {
+          methodNotAllowed(response, ["POST"]);
+          return;
+        }
+        if (!accountOperations) throw new ApiError(503, "OPERATIONS_UNAVAILABLE", "运营动作服务未启用。");
+        if (principal.method === "agent") {
+          const operation = accountOperations.list().find((row) => row.id === operationAction[1]);
+          if (!operation) throw new ApiError(404, "OPERATION_NOT_FOUND", "找不到运营动作。");
+          if (!operation.approval || operation.executionMode !== "browser" ||
+              ["L0", "L3"].includes(operation.classification?.level)) {
+            throw new ApiError(403, "AGENT_OPERATION_SCOPE_DENIED", "Agent 只能更新已授权的普通浏览器动作；本人手工处理的动作需管理员操作。");
+          }
+        }
+        const input = { ...(await readJsonBody(request)), actor: principal.actor };
+        if (operationAction[2] === "approve") input.approvedBy = principal.actor;
+        if (principal.method === "agent" && operationAction[2] === "complete") {
+          if (!input.receipt || typeof input.receipt !== "object" || Array.isArray(input.receipt)) {
+            throw new ApiError(400, "INVALID_INPUT", "完成动作必须提供回执对象。");
+          }
+          input.receipt = {
+            ...input.receipt,
+            verificationMethod: "browser_readback",
+            verifiedBy: principal.actor,
+            capturedBy: principal.actor,
+          };
+        }
+        writeJson(response, 200, await accountOperations[operationAction[2]](operationAction[1], input));
         return;
       }
 
@@ -378,6 +531,7 @@ export function createGeoOsServer({
           return;
         }
         if (path === "/api/live/media/render") {
+          if (!mediaRenderEnabled) throw new ApiError(503, "MEDIA_RENDER_DISABLED", "当前云端仅保存运营资料和回执。视频后期请在本机运行。");
           writeJson(response, 201, await livePipeline.renderMedia(body));
           return;
         }
@@ -445,7 +599,7 @@ export function createGeoOsServer({
           methodNotAllowed(response, ["POST"]);
           return;
         }
-        writeJson(response, 201, await service.recordPublication(await readJsonBody(request)));
+        writeJson(response, 201, await service.recordPublication({ ...(await readJsonBody(request)), actor: principal.actor }));
         return;
       }
 
@@ -460,7 +614,7 @@ export function createGeoOsServer({
 
       if (path === "/api/interactions") {
         if (request.method === "POST") {
-          writeJson(response, 201, await service.createInteraction(await readJsonBody(request)));
+          writeJson(response, 201, await service.createInteraction({ ...(await readJsonBody(request)), actor: principal.actor }));
           return;
         }
         if (request.method === "GET") {
@@ -512,7 +666,7 @@ export function createGeoOsServer({
         throw new ApiError(404, "API_NOT_FOUND", "接口不存在。");
       }
 
-      await serveStatic(request, response, publicDir, path);
+      await serveStatic(request, response, publicDir, path === "/admin" ? "/index.html" : path);
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
       const payload =
