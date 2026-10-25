@@ -2,6 +2,7 @@ import { initializeVideoWorkbench } from "./video-workbench.js";
 import { mountOperations } from "/operations.js";
 import { mountFinalBackup } from "./final-backup-browser.js";
 import { mountEditorialWorkbench } from "./editorial-workbench.js";
+import { summarizeAccountCoverage, renderPlatformCoverage, renderUnconfiguredPlatforms } from "./account-coverage.js";
 
 const state = {
   data: null,
@@ -80,15 +81,16 @@ function setLoading(loading) {
 
 function renderStats() {
   const { metrics } = state.data;
+  const coverage = accountCoverage();
   const pendingClaims = state.data.claims.filter((item) => item.state !== "approved").length;
   const pendingContent = state.data.content.filter((item) =>
     ["draft", "fact_check"].includes(item.status),
   ).length;
   const cards = [
     {
-      label: "平台账号",
-      value: state.data.accounts.length,
-      note: `${state.data.accounts.filter((item) => item.wave === "A").length} 个 A 波入口`,
+      label: "当前登记账号",
+      value: coverage.currentAccounts.length,
+      note: `${coverage.currentAWaveCount} 个 A 波入口 · ${coverage.archivedAccounts.length} 个已归档`,
     },
     {
       label: "待批准事实",
@@ -117,6 +119,17 @@ function renderStats() {
       `,
     )
     .join("");
+}
+
+function accountCoverage() {
+  return summarizeAccountCoverage(state.data.accounts, editorialUi.getCatalog());
+}
+
+function renderAccountCoverage() {
+  const coverage = accountCoverage();
+  document.querySelector("#platform-coverage").innerHTML = renderPlatformCoverage(coverage);
+  document.querySelector("#unconfigured-platforms").innerHTML = renderUnconfiguredPlatforms(coverage);
+  document.querySelector("#account-matrix-label").textContent = `${coverage.currentAccounts.length} 个当前登记账号 · ${coverage.archivedAccounts.length} 个已归档 · 不代表平台已登录`;
 }
 
 function renderStatusList(selector, counts, labels) {
@@ -183,6 +196,7 @@ function renderIdentity() {
 function renderOverview() {
   renderIdentity();
   renderStats();
+  renderAccountCoverage();
   document.querySelector("#revision-label").textContent =
     `账本版本 r${state.data.revision} · 事件头 ${state.data.eventHead?.slice(0, 10) ?? "GENESIS"}`;
   renderStatusList("#content-status", state.data.summary.statusCounts ?? {}, statusLabels);
@@ -231,8 +245,7 @@ function renderAccounts() {
   const template = document.querySelector("#account-card-template");
   const grid = document.querySelector("#account-grid");
   grid.replaceChildren();
-  const accounts = state.data.accounts.filter(account => account.status !== "archived");
-  document.querySelector("#account-matrix-label").textContent = `${accounts.length} 个当前登记账号 · 不代表平台已登录`;
+  const accounts = accountCoverage().currentAccounts;
   if (accounts.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-panel";
@@ -690,7 +703,9 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
 });
 
 const operationsUi = mountOperations({ api, getData: () => state.data, reload: loadData, showError, profile: primaryProfile });
-const editorialUi = mountEditorialWorkbench({ api, getData: () => state.data, showError, afterMutation: async () => {
+const editorialUi = mountEditorialWorkbench({ api, getData: () => state.data, showError, onCatalogChange: () => {
+  if (state.data) { renderStats(); renderAccountCoverage(); }
+}, afterMutation: async () => {
   state.data = await api("/api/bootstrap");
   await operationsUi.load();
   renderOverview(); renderAccounts(); renderContent(); populateContentForm(); operationsUi.render();

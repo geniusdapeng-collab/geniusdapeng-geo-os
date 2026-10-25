@@ -96,9 +96,9 @@ function destinationLocatorSummary(destination) {
   return externalLink(typeof locator === "string" ? locator : locator.origin || locator.url, "打开真实位置");
 }
 
-export function mountEditorialWorkbench({ api, getData, showError, afterMutation } = {}) {
+export function mountEditorialWorkbench({ api, getData, showError, afterMutation, onCatalogChange } = {}) {
   const root = document.querySelector("#editorial-root");
-  if (!root) return { async load() {}, render() {} };
+  if (!root) return { async load() {}, render() {}, getCatalog: () => null };
   const state = { tab: "stories", data: null, assets: [], loading: false, error: null, mediaError: null, notice: "", selectedStoryId: "", showArchived: false, catalogQuery: "", file: null };
   const drafts = new Map();
   const attempts = new Map();
@@ -293,6 +293,7 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
       } else state.mediaError = results[1].reason;
       state.loading = false;
       render();
+      if (onCatalogChange) onCatalogChange(state.error ? null : state.data?.catalog || null);
       return !state.error;
     })();
     try { return await loadPromise; }
@@ -630,5 +631,5 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
     if (input && position !== null) input.setSelectionRange(position, position);
   });
   render();
-  return { load, render, getData: () => state.data };
+  return { load, render, getData: () => state.data, getCatalog: () => state.error ? null : state.data?.catalog || null };
 }
