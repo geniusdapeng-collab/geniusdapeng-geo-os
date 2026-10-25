@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
 import { JsonStore } from "./storage/json-store.mjs";
-import { loadSeedState, migratePengManagerIdentity } from "./services/bootstrap.mjs";
+import { loadSeedState, migratePengManagerIdentity, migrateEditorialState } from "./services/bootstrap.mjs";
 import { GeoOsService } from "./services/geo-os-service.mjs";
 import { LivePipelineService } from "./services/live-pipeline.mjs";
 import { createGeoOsServer } from "./http/server.mjs";
@@ -13,6 +13,10 @@ import { createVideoRuntime } from "./video-runtime/index.mjs";
 import { createAdminAuth } from "./security/admin-auth.mjs";
 import { AccountOperationsService } from "./services/account-operations.mjs";
 import { createMacFinalContentBackup } from "./services/final-content-backup.mjs";
+import { EditorialService } from "./services/editorial-service.mjs";
+import { MediaAssets } from "./services/media-assets.mjs";
+import { createWebsiteReadback } from "./services/website-readback.mjs";
+import { createEditorialBackup } from "./services/editorial-backup.mjs";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 
@@ -23,19 +27,33 @@ export async function createPengManagerApplication({
   logger = console, geoEngine: suppliedGeoEngine, mediaEngine: suppliedMediaEngine,
   livePipeline: suppliedLivePipeline,
   finalContentBackup = createMacFinalContentBackup(),
+  httpDrainTimeoutMs = 10_000,
 } = {}) {
   const host = env.HOST || "127.0.0.1";
   const port = Number(env.PORT || 4318);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error("PORT must be an integer between 1 and 65535.");
+  if (!Number.isSafeInteger(httpDrainTimeoutMs) || httpDrainTimeoutMs < 1 || httpDrainTimeoutMs > 30_000) throw new Error("HTTP drain timeout must be between 1 and 30000 ms.");
   const dataFile = resolve(rootDir, env.DATA_FILE || "var/state.json");
   const dataDir = join(rootDir, "data", "seed");
   const configuredHosts = env.ALLOWED_HOSTS?.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
   const allowedHosts = configuredHosts?.length ? configuredHosts : ["127.0.0.1", "localhost", "::1", "[::1]"];
   const auth = createAdminAuth({ env, host, allowedHosts });
-  const store = new JsonStore({ filePath: dataFile });
+  const store = new JsonStore({ filePath: dataFile, writerLock: true });
   await store.open(() => loadSeedState(dataDir));
+  let constructedGeo = null;
+  let constructedRuntime = null;
+  try {
   await migratePengManagerIdentity(store, dataDir);
+  const publicOrigin = env.PUBLIC_ORIGIN || `http://${host === "::1" ? "[::1]" : host}:${port}`;
+  await migrateEditorialState(store, { publicOrigin });
   const service = new GeoOsService({ store, finalContentBackup });
+  let editorial;
+  const mediaAssets = new MediaAssets({ store, publicAssetAuthorizer: (id, hash) => editorial?.isAssetPublic(id, hash) === true });
+  await mediaAssets.initialize();
+  const editorialBackup = createEditorialBackup({ store, mediaAssets });
+  editorial = new EditorialService({ store, geoService: service, mediaAssets, publicOrigin,
+    verifyReadback: createWebsiteReadback({ origin: publicOrigin, allowLoopback: env.NODE_ENV !== "production" && !env.PUBLIC_ORIGIN }),
+    beforeActivation: editorialBackup });
   if (finalContentBackup) {
     await finalContentBackup.prepare();
     for (const content of store.snapshot().content) await service.backupFinalContent(content);
@@ -45,6 +63,7 @@ export async function createPengManagerApplication({
     rootDir, ...(env.GEO_ENGINE_DB ? { databasePath: resolve(rootDir, env.GEO_ENGINE_DB) } : {}),
     controlQueries: store.snapshot().queries,
   });
+  constructedGeo = geoEngine;
   const mediaEngine = suppliedMediaEngine ?? new VideoMediaEngine({ rootDir });
   let runtime = videoRuntime;
   if (!runtime) {
@@ -60,12 +79,13 @@ export async function createPengManagerApplication({
       };
     }
   }
+  constructedRuntime = runtime;
   const livePipeline = suppliedLivePipeline ?? new LivePipelineService({
     service, deepSeek: new DeepSeekAdapter(), github: new GitHubAdapter(), geoEngine,
     videoEdit: new VideoEditAdapter({ upstreamRoot: join(rootDir, "engines", "video-edit") }), mediaEngine,
   });
   const server = createGeoOsServer({ service, livePipeline, geoEngine, videoRuntime: runtime,
-    publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations,
+    publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations, editorial, mediaAssets,
     publicWebsite: env.PUBLIC_WEBSITE === "1", mediaRenderEnabled: env.ENABLE_MEDIA_RENDER !== "false" });
   let stopPromise = null;
   let videoStart = null;
@@ -73,7 +93,8 @@ export async function createPengManagerApplication({
   let listening = false;
   let stopping = false;
   return {
-    server, service, store, geoEngine, mediaEngine, auth, accountOperations, videoRuntime: runtime, finalContentBackup,
+    server, service, store, geoEngine, mediaEngine, auth, accountOperations, editorial, mediaAssets, editorialBackup,
+    videoRuntime: runtime, finalContentBackup,
     get videoStart() { return videoStart; },
     async listen(options = {}) {
       if (stopping) throw new Error("APPLICATION_STOPPED");
@@ -97,22 +118,35 @@ export async function createPengManagerApplication({
     async stop() {
       if (stopPromise) return stopPromise;
       stopping = true;
+      server.beginShutdown();
       stopPromise = (async () => {
         // A signal arriving while listen() is pending must not leave a late
         // HTTP listener behind after shutdown has already completed.
         if (listenPromise) await Promise.allSettled([listenPromise]);
         const closeHttp = new Promise((done, reject) => {
           if (!server.listening) return done();
-          server.close(error => error ? reject(error) : done());
+          const deadline = setTimeout(() => server.closeAllConnections(), httpDrainTimeoutMs);
+          deadline.unref();
+          server.close(error => { clearTimeout(deadline); error ? reject(error) : done(); });
           server.closeIdleConnections?.();
         });
         const results = await Promise.allSettled([closeHttp, Promise.resolve().then(() => runtime.stop())]);
         await videoStart;
         try { await geoEngine.close(); } catch (error) { results.push({ status: "rejected", reason: error }); }
+        try { await store.close(); } catch (error) { results.push({ status: "rejected", reason: error }); }
         listening = false;
         if (results.some(result => result.status === "rejected")) throw new Error("APPLICATION_SHUTDOWN_FAILED");
       })();
       return stopPromise;
     },
   };
+  } catch (error) {
+    const cleanup = await Promise.allSettled([
+      Promise.resolve().then(() => constructedRuntime?.stop()),
+      Promise.resolve().then(() => constructedGeo?.close()),
+      store.close(),
+    ]);
+    if (cleanup.some(result => result.status === "rejected")) logger.error?.("应用初始化失败，部分资源关闭未完成，请检查进程和状态锁。");
+    throw error;
+  }
 }

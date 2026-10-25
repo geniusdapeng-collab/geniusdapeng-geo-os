@@ -642,6 +642,20 @@ form[aria-busy="true"] input, form[aria-busy="true"] textarea {
   line-height: 1.85;
 }
 
+.operation-original-account { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 9px; background: #f8fafc; font-size: 11px; line-height: 1.85; overflow-wrap: anywhere; }
+.operation-original-account p { margin: 5px 0; }
+.operation-structured-source { min-width: 0; max-width: 100%; max-height: 360px; overflow: auto; margin: 10px 0 16px; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: #f8fafc; font-size: 11px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.operation-media-readback { min-width: 0; margin: 0; padding: 15px; border: 1px solid var(--line); border-radius: 9px; }
+.operation-media-readback legend { padding: 0 7px; color: var(--muted); font-size: 11px; }
+.operation-media-readback > div { min-width: 0; padding: 16px 0; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.85; overflow-wrap: anywhere; }
+.operation-media-readback > div > p { margin: 0 0 8px; }
+.operation-media-readback code { display: block; margin: 10px 0 15px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+.operation-reconciliation { border-color: #d6c8ae; background: #fffdf8; }
+.operation-reconciliation > summary { color: #7a5932; }
+.operation-recovered { margin: 18px 0; padding: 16px; border: 1px solid #d6c8ae; border-radius: 9px; color: #66533b; background: #fffaf0; font-size: 11px; line-height: 1.9; overflow-wrap: anywhere; }
+.operation-recovered p { margin: 8px 0 0; }
+.operation-recovered ul { margin: 10px 0 0; padding-left: 18px; }
+
 @media (max-width: 1080px) {
   .operation-intro {
     gap: 17px;

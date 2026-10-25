@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-25 — Bilingual editorial publishing and real media
+
+- Add crawlable Chinese/English article, visual and video pages with full text,
+  independent language revisions, real player/attachments and private previews.
+- Add versioned Stories/Editions/destination-specific variants, explicit account
+  and destination lifecycle, platform catalog and migration baselines while
+  preserving original content, receipts and event hashes.
+- Add exact snapshot approvals, optimistic concurrency and idempotent retries;
+  owned-site activation requires an actual complete state/media backup and
+  publication requires fixed-origin document/hydration/media-byte readback.
+- Add actual bounded binary uploads, rights/privacy review, authenticated and
+  current-release media access, Range/HEAD, revocation and isolated restore.
+- Add administrator recovery of existing operation results against original
+  snapshots without replaying outbound publishing or overwriting changed text.
+- Add exclusive JSON writer ownership, bounded HTTP shutdown, read-only migration
+  planning and complete editorial backup/verification/isolated-restore tooling.
+- Preserve scoped Agent boundaries, local video generation and Mac final-content
+  backup; catalog presence does not represent a connected platform account.
+
 ## 2026-10-24 — PengManager identity update
 
 ### Changed

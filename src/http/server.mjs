@@ -5,6 +5,8 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { ApiError } from "../domain/errors.mjs";
 import { SYSTEM_IDENTITY } from "../domain/identity.mjs";
 import { readVideoRuntime } from "./video-runtime.mjs";
+import { routeEditorialApi, routePublicContentApi, routePublicMedia } from "./editorial-routes.mjs";
+import { createPublicWebsite } from "./public-website.mjs";
 
 const MIME_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -13,6 +15,11 @@ const MIME_TYPES = Object.freeze({
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".mp4": "video/mp4",
+  ".vtt": "text/vtt; charset=utf-8",
   ".svg": "image/svg+xml",
 });
 
@@ -23,7 +30,7 @@ function securityHeaders() {
     "Content-Security-Policy":
       "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; " +
       "script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
-      "font-src 'self' data:; connect-src 'self'; form-action 'self'",
+      "font-src 'self' data:; media-src 'self'; connect-src 'self'; form-action 'self'",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Cross-Origin-Resource-Policy": "same-origin",
@@ -182,7 +189,10 @@ async function serveStatic(request, response, publicDir, pathname) {
     response.end();
     return;
   }
-  createReadStream(filePath).pipe(response);
+  const stream = createReadStream(filePath);
+  stream.on("error", () => response.destroy());
+  response.once("close", () => stream.destroy());
+  stream.pipe(response);
 }
 
 export function createGeoOsServer({
@@ -194,11 +204,22 @@ export function createGeoOsServer({
   allowedHosts = ["127.0.0.1", "localhost", "::1"],
   auth,
   accountOperations,
+  editorial,
+  mediaAssets,
   publicWebsite = false,
   mediaRenderEnabled = true,
 }) {
-  return createServer(async (request, response) => {
+  const routeWebsite = createPublicWebsite({ publicDir, editorial, service, securityHeaders });
+  let shuttingDown = false;
+  const server = createServer(async (request, response) => {
     try {
+      // Byte helpers write their own protocol headers while retaining these
+      // defaults, including an error after a stream has started.
+      for (const [name, value] of Object.entries(securityHeaders())) response.setHeader(name, value);
+      if (shuttingDown) {
+        writeJson(response, 503, { error: { code: "APPLICATION_STOPPING", message: "服务正在受控重启，请稍后重试。" } }, { Connection: "close" });
+        return;
+      }
       if (auth) auth.validateRequestSource(request, allowedHosts);
       else validateRequestSource(request, allowedHosts);
       const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
@@ -221,6 +242,8 @@ export function createGeoOsServer({
         writeJson(response, 200, service.publicPreview());
         return;
       }
+      if (routePublicContentApi({ request, response, url, editorial, writeJson, methodNotAllowed })) return;
+      if (await routePublicMedia({ request, response, url, mediaAssets, methodNotAllowed })) return;
 
       if (path === "/api/auth/status") {
         if (request.method !== "GET") {
@@ -257,16 +280,23 @@ export function createGeoOsServer({
       const publicAssets = {
         "/login": "/login.html", "/login.js": "/login.js", "/styles.css": "/styles.css",
         "/operations.css": "/operations.css", "/site.css": "/site.css", "/site.js": "/site.js",
+        "/publication-view.js": "/publication-view.js",
         "/favicon.svg": "/favicon.svg",
       };
       if (Object.hasOwn(publicAssets, path)) {
         await serveStatic(request, response, publicDir, publicAssets[path]);
         return;
       }
+      if ((publicWebsite || /^\/(?:zh|en)(?:\/|$)/.test(path)) && await routeWebsite({ request, response, url })) return;
+      if (editorial && path === "/about") {
+        if (!["GET", "HEAD"].includes(request.method)) { methodNotAllowed(response, ["GET", "HEAD"]); return; }
+        response.writeHead(308, { ...securityHeaders(), Location: "/zh/about", "Cache-Control": "no-store" }); response.end(); return;
+      }
       if ((publicWebsite && path === "/") || path === "/about") {
         await serveStatic(request, response, publicDir, "/site.html");
         return;
       }
+
       if (path === "/robots.txt") {
         if (!["GET", "HEAD"].includes(request.method)) {
           methodNotAllowed(response, ["GET", "HEAD"]);
@@ -289,6 +319,22 @@ export function createGeoOsServer({
           }
           throw error;
         }
+      }
+
+      const privatePreview = path.match(/^\/admin\/preview\/([A-Za-z0-9_-]{1,100})$/);
+      if (privatePreview && editorial) {
+        if (principal.method === "agent") throw new ApiError(403, "AGENT_SCOPE_DENIED", "私有预览仅允许管理员。");
+        await routeWebsite({ request, response, url, previewId: privatePreview[1] }); return;
+      }
+      if (await routeEditorialApi({ request, response, url, principal, editorial, mediaAssets,
+        readJsonBody, writeJson, methodNotAllowed })) return;
+      const reconcile = path.match(/^\/api\/operations\/([A-Za-z0-9_-]+)\/reconcile$/);
+      if (reconcile && accountOperations?.reconcile) {
+        if (request.method !== "POST") { methodNotAllowed(response, ["POST"]); return; }
+        if (principal.method === "agent") throw new ApiError(403, "AGENT_SCOPE_DENIED", "历史结果核对仅允许管理员。");
+        writeJson(response, 200, await accountOperations.reconcile(reconcile[1], await readJsonBody(request), {
+          actor: principal.actor, method: principal.method, idempotencyKey: request.headers["idempotency-key"], ifMatch: request.headers["if-match"],
+        })); return;
       }
 
       if (path === "/api/video-runtime" || path.startsWith("/api/video-runtime/")) {
@@ -692,7 +738,13 @@ export function createGeoOsServer({
           `request failed: ${request.method} ${path} ${error?.name || "Error"} ${error?.code || ""}`,
         );
       }
-      writeJson(response, status, payload);
+      if (response.headersSent) response.destroy();
+      else writeJson(response, status, payload);
     }
   });
+  server.requestTimeout = 120_000;
+  server.headersTimeout = 30_000;
+  server.timeout = 120_000;
+  server.beginShutdown = () => { shuttingDown = true; };
+  return server;
 }

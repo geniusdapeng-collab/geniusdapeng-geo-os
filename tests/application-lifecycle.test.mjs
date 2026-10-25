@@ -1,14 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, realpath, rm } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
+import { connect } from "node:net";
+import { setTimeout as delay } from "node:timers/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createPengManagerApplication } from "../src/application.mjs";
 import { hashAdminPassword, hashAgentToken } from "../src/security/admin-auth.mjs";
+import { JsonStore } from "../src/storage/json-store.mjs";
 
 async function applicationFixture(t, options = {}) {
-  const directory = await mkdtemp(join(tmpdir(), "pengmanager-application-"));
+  const directory = await mkdtemp(join(await realpath(tmpdir()), "pengmanager-application-"));
   const calls = { start: 0, stop: 0, geoClose: 0, errors: [] };
   const runtime = {
     async status() { return { state: "error", ready: false }; },
@@ -23,6 +26,7 @@ async function applicationFixture(t, options = {}) {
     geoEngine: { close() { calls.geoClose += 1; }, summary() { return { preserved: true }; } },
     mediaEngine: {}, livePipeline: options.livePipeline ?? {}, logger: { log() {}, error(message) { calls.errors.push(message); } },
     finalContentBackup: null,
+    httpDrainTimeoutMs: options.httpDrainTimeoutMs,
   });
   t.after(async () => { try { await app.stop(); } finally { await rm(directory, { recursive: true, force: true }); } });
   return { app, calls };
@@ -49,6 +53,22 @@ test("one root lifecycle keeps original identity, JSON ledger and GEO available 
   assert.equal(calls.geoClose, 1);
   assert.equal(app.server.listening, false);
   await assert.rejects(app.listen({ port: 0 }), /APPLICATION_STOPPED/);
+});
+
+test("shutdown drains an incomplete HTTP body with a deadline and releases the exclusive writer lock", async t => {
+  const { app } = await applicationFixture(t, { httpDrainTimeoutMs: 50, env: { ENABLE_MEDIA_RENDER: "false" } });
+  const address = await app.listen({ port: 0 });
+  const socket = connect(address.port, "127.0.0.1");
+  t.after(() => socket.destroy());
+  await new Promise((done, reject) => { socket.once("connect", done); socket.once("error", reject); });
+  socket.write(`POST /api/stories HTTP/1.1\r\nHost: 127.0.0.1:${address.port}\r\nContent-Type: application/json\r\nContent-Length: 999999\r\nIdempotency-Key: incomplete-body-stop-test\r\n\r\n{`);
+  await delay(20);
+  const result = await Promise.race([app.stop().then(() => "stopped"), delay(2_000, "timed_out")]);
+  assert.equal(result, "stopped");
+  await assert.rejects(access(`${app.store.filePath}.writer.lock`), { code: "ENOENT" });
+  const reopened = new JsonStore({ filePath: app.store.filePath, writerLock: true });
+  await reopened.open(() => { throw new Error("Existing state must be preserved"); });
+  await reopened.close();
 });
 
 test("shutdown during pending runtime start cancels through the supervisor and waits before closing GEO", async t => {

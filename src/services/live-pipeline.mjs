@@ -249,6 +249,9 @@ export class LivePipelineService {
       if (!content) {
         throw new ApiError(404, "CONTENT_NOT_FOUND", `找不到内容 ${contentId}。`);
       }
+      if (Object.hasOwn(content, "snapshotSchema") || content.editionId || content.destinationId) {
+        throw new PolicyError("EDITORIAL_OPERATION_REQUIRED", "编辑渠道稿必须按原文、媒体和目的地的完整快照建立单账号动作；旧 GitHub 发布入口不能发送此稿。");
+      }
       if (content.status !== "scheduled") {
         throw new PolicyError(
           "CONTENT_NOT_SCHEDULED",

@@ -231,7 +231,8 @@ server {{
     ssl_certificate_key {self.key};
     ssl_protocols TLSv1.2 TLSv1.3;
     add_header Strict-Transport-Security "max-age=31536000" always;
-    client_max_body_size 2m;
+    client_max_body_size 50m;
+    client_body_timeout 120s;
     location / {{
         proxy_pass http://127.0.0.1:4318;
         proxy_http_version 1.1;
@@ -240,6 +241,7 @@ server {{
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header Connection "";
         proxy_read_timeout 60s;
+        proxy_send_timeout 120s;
     }}
 }}
 """
