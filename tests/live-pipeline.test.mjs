@@ -12,6 +12,20 @@ const rootDir = resolve(import.meta.dirname, "..");
 const dataDir = join(rootDir, "data", "seed");
 const now = () => new Date("2026-10-18T12:30:00.000Z");
 
+test("legacy GitHub entry rejects editorial and unknown snapshots before any outbound platform call", async () => {
+  for (const marker of [{ snapshotSchema: 2 }, { snapshotSchema: "editorial-v2" }, { snapshotSchema: 999 },
+    { snapshotSchema: null }, { snapshotSchema: undefined }, { editionId: "ED-00001" }, { destinationId: "DST-00001" }]) {
+    let outboundCalls = 0, receiptCalls = 0;
+    const live = new LivePipelineService({
+      service: { store: { snapshot() { return { content: [{ id: "CNT-V2", status: "scheduled", ...marker }], accounts: [], claims: [] }; } },
+        async recordPublication() { receiptCalls += 1; } },
+      github: { async createIssue() { outboundCalls += 1; return { url: "https://github.com/owner/repo/issues/1" }; } }, clock: now,
+    });
+    await assert.rejects(live.publishContentToGitHub({ contentId: "CNT-V2" }), error => error.code === "EDITORIAL_OPERATION_REQUIRED");
+    assert.equal(outboundCalls, 0); assert.equal(receiptCalls, 0); assert.equal(live.publishingContentIds.size, 0);
+  }
+});
+
 test("current-model content can pass the evidence state machine and receive a platform receipt", async () => {
   const directory = await mkdtemp(join(tmpdir(), "pengstack-live-"));
   const filePath = join(directory, "state.json");

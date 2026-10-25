@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/operations.css" />
     <link rel="stylesheet" href="/final-backup.css" />
+    <link rel="stylesheet" href="/editorial-workbench.css" />
   </head>
   <body>
     <div class="shell">
@@ -25,6 +26,7 @@
 
         <nav aria-label="主导航">
           <button class="nav-item active" data-view="overview">概览</button>
+          <button class="nav-item" data-view="editorial">编辑出版</button>
           <button class="nav-item" data-view="accounts">账号矩阵</button>
           <button class="nav-item" data-view="content">内容工厂</button>
           <button class="nav-item" data-view="operations">运营动作</button>
@@ -156,12 +158,20 @@ Turning model capabilities into domain-specific AI employees and autonomous busi
           <section class="view" id="view-accounts" aria-labelledby="accounts-title" hidden>
             <div class="section-heading">
               <div>
-                <p class="eyebrow">16 个平台</p>
+                <p id="account-matrix-label" class="eyebrow">真实登记账号</p>
                 <h2 id="accounts-title">账号矩阵</h2>
               </div>
-              <p class="section-copy">A 波建立证据，B 波扩散，C 波沉淀搜索。</p>
+              <p class="section-copy">目录不等于已连接账号。身份核对、目的地与归档历史在编辑出版管理。</p>
             </div>
             <div id="account-grid" class="account-grid"></div>
+          </section>
+
+          <section class="view" id="view-editorial" aria-labelledby="editorial-title" hidden>
+            <div class="section-heading">
+              <div><p class="eyebrow">PengManager · Editorial workspace</p><h2 id="editorial-title">编辑出版</h2></div>
+              <p class="section-copy">从一个具体问题，到独立审阅的中英正文、真实媒体和官网回读。</p>
+            </div>
+            <div id="editorial-root" aria-live="polite"><div class="empty-panel">正在读取真实编辑资料。</div></div>
           </section>
 
           <section class="view" id="view-content" aria-labelledby="content-title" hidden>

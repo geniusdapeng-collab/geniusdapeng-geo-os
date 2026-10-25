@@ -13,7 +13,7 @@ The product name is `鹏经理系统` / `PengManager System`. The underlying Git
 repository URL remains `geniusdapeng-collab/geniusdapeng-geo-os`; changing the
 display brand does not redirect or rename external account URLs.
 
-All write endpoints accept JSON and return structured errors:
+Write endpoints accept JSON except the raw binary media-upload endpoint below. Errors are structured:
 
 ```json
 {
@@ -29,8 +29,9 @@ All write endpoints accept JSON and return structured errors:
 
 ## Public website and authentication
 
-With `PUBLIC_WEBSITE=1`, `GET /` serves the public personal website. `GET /about`
-also serves that website. `GET /admin` serves the operational dashboard and is
+With `PUBLIC_WEBSITE=1`, `GET /` serves the Chinese public journal with canonical `/zh`.
+`/zh` and `/en` provide full bilingual article, visual and video pages; `/about`
+redirects to `/zh/about`. `GET /admin` serves the operational dashboard and is
 protected when administrator authentication is enabled. The default local-only
 development listener keeps the dashboard at `/` as well.
 
@@ -80,6 +81,14 @@ Only a safe source `label`, `url`, and `visibility` are exported; arbitrary
 source notes are omitted. Credential-bearing source URLs are excluded.
 
 ## Private read
+
+The new editorial, account/destination, media and owned-site release interfaces
+are specified in [CONTENT-PUBLISHING.md](CONTENT-PUBLISHING.md#新接口的写入合同).
+They are administrator-only. Every new write requires `Idempotency-Key`; writes
+against existing entities also require their exact `If-Match`. Binary upload is
+`POST /api/media/assets` with a raw allowlisted file body, not JSON or multipart.
+The new public content list/detail and exact-hash media routes do not expose
+any private API namespace. Private previews remain authenticated and noindex.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -262,23 +271,32 @@ below.
 
 ## Account settings
 
-`PATCH /api/accounts/:id` accepts any of:
+The current application provides `GET /api/accounts/:id` and versioned
+`PATCH /api/accounts/:id`. Read the entity first, then send its quoted ETag as
+`If-Match` and retain an `Idempotency-Key` for the same write attempt. The body
+accepts profile fields and explicit identity/rules review:
 
 ```json
 {
   "handle": "actual-platform-handle",
   "profileUrl": "https://github.com/geniusdapeng-collab",
   "status": "active",
+  "identityConfirmed": true,
   "policyStatus": "reviewed",
-  "policyCheckedAt": "2026-10-24T00:00:00+08:00"
+  "policyCheckedAt": "2026-10-25T00:00:00+08:00",
+  "reviewNote": "Use an actual identity and platform-policy review, not this example."
 }
 ```
 
-`status` is `draft`, `active`, or `paused`; `policyStatus` is `reviewed` or
+`status` is `draft`, `active`, `paused`, or `archived`; `policyStatus` is `reviewed` or
 `manual_review_required`. Reviewed rules require a valid review date and record
 the server-derived reviewing actor. `profileUrl` may be empty to clear the URL;
 a non-empty value must be a public HTTPS URL without credentials. This updates
 the internal account record, not the platform's remote profile or login session.
+Activation requires verified identity and reviewed rules. Pausing/archiving also
+requires a reason; unresolved executing operations must be reconciled first.
+New accounts start unverified. History records explicit changes and a migration
+baseline rather than inventing missing old field history.
 
 ## Account-operation state machine
 
@@ -372,6 +390,13 @@ process per JSON data file.
 
 `POST /api/operations/:id/fail` requires `reason`; the authenticated actor and
 time are retained. A recorded publication cannot be overwritten by failure.
+
+`POST /api/operations/:id/reconcile` is a separate administrator-only recovery
+route with `Idempotency-Key` and `If-Match`. It records an already existing result
+against the original authorized snapshots and exact hash, with explicit account
+and content confirmation, actual receipt and reason. It never republishes and
+does not silently replace the current account/text with old data. The detailed
+input and incident behavior is described in [the content workflow](CONTENT-PUBLISHING.md#新接口的写入合同).
 
 ## Example
 

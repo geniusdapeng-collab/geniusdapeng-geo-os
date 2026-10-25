@@ -1,6 +1,7 @@
 import { initializeVideoWorkbench } from "./video-workbench.js";
 import { mountOperations } from "/operations.js";
 import { mountFinalBackup } from "./final-backup-browser.js";
+import { mountEditorialWorkbench } from "./editorial-workbench.js";
 
 const state = {
   data: null,
@@ -52,6 +53,7 @@ async function api(path, options = {}) {
   const payload = await response.json();
   if (!response.ok) {
     const error = new Error(payload.error?.message || "请求失败");
+    error.status = response.status;
     error.code = payload.error?.code;
     error.details = payload.error?.details;
     throw error;
@@ -229,16 +231,18 @@ function renderAccounts() {
   const template = document.querySelector("#account-card-template");
   const grid = document.querySelector("#account-grid");
   grid.replaceChildren();
-  if (state.data.accounts.length === 0) {
+  const accounts = state.data.accounts.filter(account => account.status !== "archived");
+  document.querySelector("#account-matrix-label").textContent = `${accounts.length} 个当前登记账号 · 不代表平台已登录`;
+  if (accounts.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-panel";
-    empty.textContent = "还没有平台账号。主账号资料可在概览查看。";
+    empty.textContent = "暂无当前运营账号。可以在编辑出版登记真实账号或查看已归档历史。";
     grid.append(empty);
     return;
   }
 
   const profile = primaryProfile();
-  for (const account of state.data.accounts) {
+  for (const account of accounts) {
     const card = template.content.firstElementChild.cloneNode(true);
     card.dataset.accountId = account.id;
     const english = String(account.language ?? "").toLowerCase().startsWith("en");
@@ -251,7 +255,7 @@ function renderAccounts() {
     const bio = account.bio || (english
       ? account.bioEn || account.englishBio || profile.bioEn
       : account.bioZh || profile.bioZh);
-    card.querySelector(".wave").textContent = `${account.wave} 波`;
+    card.querySelector(".wave").textContent = account.wave ? `${account.wave} 波` : "新登记";
     const policy = card.querySelector(".policy");
     policy.textContent = account.policyStatus === "reviewed" ? "规则已审阅" : "规则待审阅";
     policy.classList.toggle("reviewed", account.policyStatus === "reviewed");
@@ -262,10 +266,10 @@ function renderAccounts() {
     card.querySelector(".account-name").textContent = name;
     card.querySelector(".account-display-name").textContent = displayName;
     card.querySelector(".account-bio").textContent = bio;
-    card.querySelector(".focus").textContent = account.contentFocus;
-    card.querySelector(".audience").textContent = account.audience;
-    card.querySelector(".cadence").textContent = account.cadence;
-    card.querySelector(".mode").textContent = `${account.publishMode} · ${{ active: "已启用", draft: "未启用", paused: "已暂停" }[account.status] || account.status}`;
+    card.querySelector(".focus").textContent = account.contentFocus || "按每个渠道版本的真实目标填写";
+    card.querySelector(".audience").textContent = account.audience || "尚未登记读者定位";
+    card.querySelector(".cadence").textContent = account.cadence || "按每次批准的排期执行";
+    card.querySelector(".mode").textContent = `${account.publishMode || "按具体动作授权"} · ${{ active: "已启用", draft: "未启用", paused: "已暂停" }[account.status] || account.status} · ${account.identityReview?.status === "verified" ? "身份已核对" : "身份待核对"}`;
     grid.append(card);
   }
 }
@@ -498,7 +502,7 @@ function populateContentForm() {
           )}</option>`,
       )
       .join("");
-  platformSelect.innerHTML = state.data.accounts
+  platformSelect.innerHTML = state.data.accounts.filter(account => account.status !== "archived")
     .map(
       (account) =>
         `<option value="${escapeHtml(account.platform)}">${escapeHtml(account.platform)}</option>`,
@@ -513,6 +517,7 @@ function renderAll() {
   renderGeo();
   populateContentForm();
   operationsUi.render();
+  editorialUi.render();
 }
 
 function switchView(view) {
@@ -552,7 +557,7 @@ async function loadData() {
     void finalBackup.sync();
     setLoading(false);
     switchView(requestedView());
-    const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus()]);
+    const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus(), editorialUi.load()]);
     for (const result of secondary) if (result.status === "rejected") showError(result.reason);
   } catch (error) {
     showError(error);
@@ -685,6 +690,12 @@ document.querySelector("#media-form").addEventListener("submit", async (event) =
 });
 
 const operationsUi = mountOperations({ api, getData: () => state.data, reload: loadData, showError, profile: primaryProfile });
+const editorialUi = mountEditorialWorkbench({ api, getData: () => state.data, showError, afterMutation: async () => {
+  state.data = await api("/api/bootstrap");
+  await operationsUi.load();
+  renderOverview(); renderAccounts(); renderContent(); populateContentForm(); operationsUi.render();
+  void finalBackup.sync();
+} });
 const finalBackup = mountFinalBackup({ api });
 
 initializeVideoWorkbench();

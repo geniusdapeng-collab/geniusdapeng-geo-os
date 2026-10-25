@@ -1,0 +1,853 @@
+{
+  "schema": "pengmanager.platform-catalog/v1",
+  "version": "2026-10-25.1",
+  "note": "Catalog recommendations are not owned-account, policy-review, API-connection or publication evidence. New accounts and destinations require explicit setup and review. Existing IDs and history are retained.",
+  "platforms": [
+    {
+      "id": "official-site",
+      "name": "个人官网 pengmanager.com",
+      "nameZh": "个人官网 pengmanager.com",
+      "nameEn": "Personal Website",
+      "kind": "owned_site",
+      "roleGroup": "owned_core",
+      "recommendedTier": "core",
+      "recommendationEvidence": "D",
+      "role": "个人正式资料与中英文章/图文/视频原始版本的长期入口",
+      "preferredContentForms": [
+        "article",
+        "image_text",
+        "video_with_transcript"
+      ],
+      "localeHint": "zh-CN+en",
+      "recommendedAction": "add_owned_core",
+      "integrationStatus": "owned_site",
+      "automaticPublication": false,
+      "policySources": []
+    },
+    {
+      "id": "wechat-official",
+      "name": "微信公众号",
+      "nameZh": "微信公众号",
+      "nameEn": "WeChat Official Account",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "中文深度文章和案例复盘",
+      "preferredContentForms": [
+        "article",
+        "image_text"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_focus",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "微信公众平台",
+          "url": "https://mp.weixin.qq.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "本文不以跳转到服务号的旧开发文档推定个人公众号API权限。长文/图文为现有seed配置与本方案选型；账号实际发布待核。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaohongshu",
+      "name": "小红书",
+      "nameZh": "小红书",
+      "nameEn": "Xiaohongshu",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "中文图解、产品前后对比和短Demo",
+      "preferredContentForms": [
+        "image_text",
+        "short_video"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_focus",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "小红书分享开放平台",
+          "url": "https://agora.xiaohongshu.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "正文为动态页面；官方索引同时显示暂停接入，本研究不把分享SDK当可立即接入API，不作自动发布承诺。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bilibili",
+      "name": "哔哩哔哩",
+      "nameZh": "哔哩哔哩",
+      "nameEn": "Bilibili",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "中文可运行演示和深度拆解",
+      "preferredContentForms": [
+        "video",
+        "demo"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_focus",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "公司信息｜哔哩哔哩",
+          "url": "https://ir.bilibili.com/cn/corporate-information/?tab=company-profile",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "页面正文内置工具403，代理仅抽取官方metadata；不引用人数、排名、具体时长上限或API能力。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "nameZh": "LinkedIn",
+      "nameEn": "LinkedIn",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "英文专业观点、案例摘要与可读图卡",
+      "preferredContentForms": [
+        "social_post",
+        "document_carousel",
+        "article",
+        "video"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "retain_focus",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Share Content｜LinkedIn Help",
+          "url": "https://www.linkedin.com/help/linkedin/topic/a148004",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "x",
+      "name": "X",
+      "nameZh": "X",
+      "nameEn": "X",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "英文Builder进度、Demo片段与讨论",
+      "preferredContentForms": [
+        "social_post",
+        "thread",
+        "image_text",
+        "short_video"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "promote_from_wave_B",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "How to Post｜X Help",
+          "url": "https://help.x.com/en/using-x/how-to-post",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "不在方案中固化字符/媒体限额或付费权益；没有测试API或订阅资格。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "nameZh": "YouTube",
+      "nameEn": "YouTube",
+      "kind": "social",
+      "roleGroup": "primary_media",
+      "recommendedTier": "focus",
+      "recommendationEvidence": "D",
+      "role": "英文完整Demo、讲解和Shorts",
+      "preferredContentForms": [
+        "video",
+        "short_video"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "promote_from_wave_B",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Upload YouTube videos｜YouTube Help",
+          "url": "https://support.google.com/youtube/answer/57407",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "nameZh": "GitHub",
+      "nameEn": "GitHub",
+      "kind": "technical_artifact",
+      "roleGroup": "technical_proof",
+      "recommendedTier": "artifact_triggered",
+      "recommendationEvidence": "D",
+      "role": "代码、README、可复现版本与讨论证据",
+      "preferredContentForms": [
+        "repository",
+        "readme",
+        "release",
+        "discussion"
+      ],
+      "localeHint": "en+zh-CN",
+      "recommendedAction": "retain_technical_core",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "What is GitHub?｜GitHub Docs",
+          "url": "https://docs.github.com/en/get-started/start-your-journey/what-is-github",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "未访问仓库或GitHubAPI；现有seed的api-or-manual/active仅为配置记录，不等于本轮确认所有GitHub发布类型可用。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "huggingface",
+      "name": "Hugging Face",
+      "nameZh": "Hugging Face",
+      "nameEn": "Hugging Face",
+      "kind": "technical_artifact",
+      "roleGroup": "technical_proof",
+      "recommendedTier": "artifact_triggered",
+      "recommendationEvidence": "D",
+      "role": "可体验AI Demo、模型/数据集说明与AI协作",
+      "preferredContentForms": [
+        "space_demo",
+        "model_card_if_model_exists",
+        "dataset_card_if_dataset_exists",
+        "technical_blog_optional"
+      ],
+      "localeHint": "en+zh-CN",
+      "recommendedAction": "add_ai_core",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Hugging Face Hub documentation",
+          "url": "https://huggingface.co/docs/hub/index",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "将Spaces/模型卡/数据集优先是产品建议；不声称HF只能发模型或不能写博客，也不假装没有模型时应发布模型卡。未启动付费/免费算力。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "modelscope",
+      "name": "ModelScope 魔搭",
+      "nameZh": "ModelScope 魔搭",
+      "nameEn": "ModelScope",
+      "kind": "technical_artifact",
+      "roleGroup": "technical_proof",
+      "recommendedTier": "artifact_triggered",
+      "recommendationEvidence": "D",
+      "role": "中文AI作品、模型/数据集与在线Demo",
+      "preferredContentForms": [
+        "online_demo",
+        "model_card_if_model_exists",
+        "dataset_if_exists"
+      ],
+      "localeHint": "zh-CN+en",
+      "recommendedAction": "add_ai_core_cn",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "ModelScope 魔搭社区",
+          "url": "https://modelscope.cn/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "动态正文未取得；不固化具体Studio SDK/算力/权限细节；目录存在不代表本人的模型/创空间已经发布。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "nameZh": "TikTok",
+      "nameEn": "TikTok",
+      "kind": "social",
+      "roleGroup": "extended_media",
+      "recommendedTier": "phase2_reuse",
+      "recommendationEvidence": "D",
+      "role": "国际短视频Demo与单点说明",
+      "preferredContentForms": [
+        "short_video",
+        "photo_post"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_visible_mainstream",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Get Started - Direct Post｜TikTok for Developers",
+          "url": "https://developers.tiktok.com/docs/en/content-posting-api-get-started",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "这里核实平台能力与集成门槛，没有注册应用、申请scope或测试发布；本方案默认人工/浏览器授权执行。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "nameZh": "Instagram",
+      "nameEn": "Instagram",
+      "kind": "social",
+      "roleGroup": "extended_media",
+      "recommendedTier": "phase2_reuse",
+      "recommendationEvidence": "D",
+      "role": "Reels、产品图卡和视觉化过程",
+      "preferredContentForms": [
+        "reel",
+        "image_carousel",
+        "photo"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_visible_mainstream",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "New Ways to Create Content on Instagram｜Meta",
+          "url": "https://about.fb.com/news/2023/11/new-ways-to-create-content-on-instagram/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "2023年官方文章仅用作基础内容类型依据，不推定2026所有限制/推荐算法/账号权限。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "nameZh": "Facebook",
+      "nameEn": "Facebook",
+      "kind": "social",
+      "roleGroup": "extended_media",
+      "recommendedTier": "phase2_reuse",
+      "recommendationEvidence": "D",
+      "role": "Feed/Reels与已明确目标的主题Group沟通",
+      "preferredContentForms": [
+        "social_post",
+        "photo",
+        "video_reel"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_visible_mainstream",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Making it Easier to Create, Discover, and Share Content on Facebook｜Meta",
+          "url": "https://about.fb.com/news/2025/12/making-it-easier-to-create-discover-and-share-content-on-facebook/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "2025年官方说明不替代本账号Page/个人profile/Group权限核验；不承诺与Instagram自动同步。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "douyin",
+      "name": "抖音",
+      "nameZh": "抖音",
+      "nameEn": "Douyin",
+      "kind": "social",
+      "roleGroup": "extended_media",
+      "recommendedTier": "phase2_reuse",
+      "recommendationEvidence": "D",
+      "role": "中文短视频演示和单点判断",
+      "preferredContentForms": [
+        "short_video"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_secondary",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "抖音创作者中心",
+          "url": "https://creator.douyin.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "短视频格式沿用现有seed建议；没有检查登录后的发布格式、时长或账号资格。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wechat-channels",
+      "name": "微信视频号",
+      "nameZh": "微信视频号",
+      "nameEn": "WeChat Channels",
+      "kind": "social",
+      "roleGroup": "extended_media",
+      "recommendedTier": "phase2_reuse",
+      "recommendationEvidence": "D",
+      "role": "中文视频触达与已有关系沟通",
+      "preferredContentForms": [
+        "short_video",
+        "video"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_secondary",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "视频号助手",
+          "url": "https://channels.weixin.qq.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zhihu",
+      "name": "知乎",
+      "nameZh": "知乎",
+      "nameEn": "Zhihu",
+      "kind": "social",
+      "roleGroup": "topic_community",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "针对真实问题的完整回答与专题文章",
+      "preferredContentForms": [
+        "answer",
+        "article"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_selective",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "公司信息｜知乎",
+          "url": "https://ir.zhihu.com/cn/corporate-information/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "不采纳官方自述的最大/领先排名，不用投资者资料推定具体账号权限。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "nameZh": "Reddit",
+      "nameEn": "Reddit",
+      "kind": "community",
+      "roleGroup": "topic_community",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "按具体subreddit规则参与问答、技术反馈和演示讨论",
+      "preferredContentForms": [
+        "community_post",
+        "comment",
+        "link_or_media_if_allowed"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_visible_community",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "How do I post and comment on Reddit?｜Reddit Help",
+          "url": "https://support.reddithelp.com/hc/en-us/articles/360060422572-How-do-I-post-and-comment-on-Reddit",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "nameZh": "Discord",
+      "nameEn": "Discord",
+      "kind": "community",
+      "roleGroup": "topic_community",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "已有AI项目社区的反馈、技术支持与讨论",
+      "preferredContentForms": [
+        "channel_message",
+        "forum_post",
+        "thread_reply"
+      ],
+      "localeHint": "en+zh-CN",
+      "recommendedAction": "add_visible_community",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Forum Channels FAQ｜Discord",
+          "url": "https://support.discord.com/hc/en-us/articles/6208479917079-Forum-Channels-FAQ",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "社区服务器/频道/成员权限与个人媒体账号不同；没有创建服务器、机器人或发送消息。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jike",
+      "name": "即刻",
+      "nameZh": "即刻",
+      "nameEn": "Jike",
+      "kind": "social",
+      "roleGroup": "topic_community",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "产品观察、Build Log和同行交流",
+      "preferredContentForms": [
+        "short_post",
+        "image_text",
+        "demo_link"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_selective",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "即刻App",
+          "url": "https://www.ruguoapp.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "动态正文未读取；短动态/图文/Demo格式来自现有seed，不将其当本轮平台功能验证。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "juejin",
+      "name": "掘金",
+      "nameZh": "掘金",
+      "nameEn": "Juejin",
+      "kind": "social",
+      "roleGroup": "technical_articles",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "中文实现复盘、代码示例与工程解释",
+      "preferredContentForms": [
+        "technical_article",
+        "code_example"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "retain_technical",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "稀土掘金",
+          "url": "https://juejin.cn/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "只用于技术内容形态和定位；不把用户文章观点、阅读数或首页推荐当行业事实/排名。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csdn",
+      "name": "CSDN",
+      "nameZh": "CSDN",
+      "nameEn": "CSDN",
+      "kind": "social",
+      "roleGroup": "technical_articles",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "中文技术文章与可重现问题解决",
+      "preferredContentForms": [
+        "technical_article",
+        "code_example"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "add_catalog_optional",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "CSDN 专业开发者社区",
+          "url": "https://www.csdn.net/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "devto",
+      "name": "DEV Community",
+      "nameZh": "DEV Community",
+      "nameEn": "DEV Community",
+      "kind": "social",
+      "roleGroup": "technical_articles",
+      "recommendedTier": "selective",
+      "recommendationEvidence": "D",
+      "role": "英文开发复盘与代码解释",
+      "preferredContentForms": [
+        "technical_article",
+        "code_example"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_catalog_optional",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Editor Guide｜DEV Community",
+          "url": "https://dev.to/p/editor_guide",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "仅为编辑器能力，不将网页草稿地址当外部公开发布回执。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "medium",
+      "name": "Medium",
+      "nameZh": "Medium",
+      "nameEn": "Medium",
+      "kind": "social",
+      "roleGroup": "longform_reserve",
+      "recommendedTier": "reserve",
+      "recommendationEvidence": "D",
+      "role": "少量适合该读者群的英文文章",
+      "preferredContentForms": [
+        "article",
+        "image_text",
+        "media_embed"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "retain_reserve",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Writing and publishing your first story｜Medium Help",
+          "url": "https://help.medium.com/hc/en-us/articles/225168768-Writing-and-publishing-your-first-story",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "只推荐选择性英文文章，不因存在编辑器就声称API自动发布已接通。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hashnode",
+      "name": "Hashnode",
+      "nameZh": "Hashnode",
+      "nameEn": "Hashnode",
+      "kind": "social",
+      "roleGroup": "longform_reserve",
+      "recommendedTier": "reserve",
+      "recommendationEvidence": "D",
+      "role": "英文开发博客分发或既有博客维护",
+      "preferredContentForms": [
+        "technical_article",
+        "image_text"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_catalog_reserve",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Hashnode CLI: publish and manage your blog from the terminal",
+          "url": "https://hashnode.com/blog/hashnode-cli",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "旧docs编辑器URL已404，采用当前官方文章；没有安装CLI/连接账号/付费，不把官方工具存在当本系统已接入。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kaggle",
+      "name": "Kaggle",
+      "nameZh": "Kaggle",
+      "nameEn": "Kaggle",
+      "kind": "technical_artifact",
+      "roleGroup": "ml_reserve",
+      "recommendedTier": "reserve",
+      "recommendationEvidence": "D",
+      "role": "评测、公开数据、模型与可复现notebook",
+      "preferredContentForms": [
+        "notebook_if_exists",
+        "dataset_if_exists",
+        "model_if_exists",
+        "discussion"
+      ],
+      "localeHint": "en",
+      "recommendedAction": "add_catalog_reserve",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "Models Documentation｜Kaggle",
+          "url": "https://www.kaggle.com/docs/models",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "当前动态正文为空；本研究不核实竞赛/算力配额。无数据、评测或可复现notebook时无需开任务。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "baijiahao",
+      "name": "百家号",
+      "nameZh": "百家号",
+      "nameEn": "Baijiahao",
+      "kind": "social",
+      "roleGroup": "legacy_archive",
+      "recommendedTier": "archived_default",
+      "recommendationEvidence": "D",
+      "role": "旧分发记录与必要时恢复的渠道",
+      "preferredContentForms": [
+        "article"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "archive_default_keep_history",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "百家号",
+          "url": "https://baijiahao.baidu.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "No authenticated publishing, API credentials, account eligibility or live integration tested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toutiao",
+      "name": "今日头条",
+      "nameZh": "今日头条",
+      "nameEn": "Toutiao",
+      "kind": "social",
+      "roleGroup": "legacy_archive",
+      "recommendedTier": "archived_default",
+      "recommendationEvidence": "D",
+      "role": "旧图文/视频分发记录",
+      "preferredContentForms": [
+        "image_text",
+        "video"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "archive_default_keep_history",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "头条号",
+          "url": "https://mp.toutiao.com/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "动态正文未读取；内容格式沿用现有seed，不评价覆盖人数或发布API。"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "maimai",
+      "name": "脉脉",
+      "nameZh": "脉脉",
+      "nameEn": "Maimai",
+      "kind": "social",
+      "roleGroup": "legacy_archive",
+      "recommendedTier": "archived_default",
+      "recommendationEvidence": "D",
+      "role": "职业人脉/招聘目标重新明确时恢复",
+      "preferredContentForms": [
+        "professional_post",
+        "article"
+      ],
+      "localeHint": "zh-CN",
+      "recommendedAction": "archive_default_keep_history",
+      "integrationStatus": "manual_not_connected",
+      "automaticPublication": false,
+      "policySources": [
+        {
+          "title": "脉脉",
+          "url": "https://maimai.cn/",
+          "checkedAt": "2026-10-25",
+          "evidence": "B",
+          "limits": [
+            "忽略官网历史人数宣传；降优先级基于本次AI作品/内容定位，不表示该平台没有价值。"
+          ]
+        }
+      ]
+    }
+  ]
+}

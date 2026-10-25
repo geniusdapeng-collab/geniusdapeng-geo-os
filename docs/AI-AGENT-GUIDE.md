@@ -18,7 +18,7 @@ P0 是证据、审批、单账号授权、执行与真实回执，缺一项就�
 
 | 位置／入口 | 做什么 | 凭据与限制 |
 | --- | --- | --- |
-| `https://pengmanager.com` | 公开介绍和已批准公开的事实 | 无需登录；不提供账号矩阵、草稿、互动、媒体目录和经营统计 |
+| `https://pengmanager.com/zh`、`/en` | 完整文章、图文、视频、文稿和已批准公开资料 | 无需登录；不提供账号矩阵、草稿、互动、私有媒体目录和经营统计 |
 | 云端 `/admin` 与 `/api/*` | 私有账号资料、Claim、内容状态、操作授权、回执和 GEO 数据 | 管理员会话或明确支持的受限 Agent 令牌；云端不持有社媒 Cookie |
 | 本人电脑上的浏览器 | 登录目标平台、检查当前账号、执行具体获准发布／回复、打开结果核对 | 平台登录态留在本人设备；验证码、登录确认及需要本人选择的新协议交给本人 |
 | 本机 `scripts/agent.mjs`／`agent-mcp.mjs` | 调用本机完整视频引擎登记的能力 | 使用原生本机身份、围栏、审批、预算和回执；与云端 HTTP Agent 令牌是两套入口 |
@@ -145,15 +145,21 @@ unset PM_COOKIE_JAR PM_AUTH_DIR
 
 管理员读取 `GET /api/claims`、`GET /api/bootstrap`，核对 Claim 的来源、有效期、敏感度和真实文本；核对账号 `id`、`platform`、真实 `handle`、`profileUrl`、状态与规则审阅。平台名称与账号 ID 不同，例如内容的平台通常为 `GitHub`，账号 ID 通常为 `github`，以返回数据为准。
 
-账号设置示例只改内部资料，不会修改平台主页或替你登录：
+账号设置示例只改内部资料，不会修改平台主页或替你登录。新应用必须先 GET 取得 ETag，并保留本次请求的幂等键：
 
 ```bash
-pm_admin -X PATCH https://pengmanager.com/api/accounts/github \
+PM_ACCOUNT_ETAG=$(pm_admin "$PM_ORIGIN/api/accounts/github" | python3 -c 'import json,sys; print(json.load(sys.stdin)["etag"])')
+pm_admin -X PATCH "$PM_ORIGIN/api/accounts/github" \
   -H 'Content-Type: application/json' \
-  --data '{"handle":"geniusdapeng-collab","profileUrl":"https://github.com/geniusdapeng-collab","status":"active","policyStatus":"reviewed","policyCheckedAt":"2026-10-25T00:00:00+08:00"}'
+  -H "If-Match: $PM_ACCOUNT_ETAG" -H 'Idempotency-Key: actual-review-attempt-0001' \
+  --data '{"handle":"geniusdapeng-collab","profileUrl":"https://github.com/geniusdapeng-collab","status":"active","identityConfirmed":true,"policyStatus":"reviewed","policyCheckedAt":"2026-10-25T00:00:00+08:00","reviewNote":"填写本次实际身份与规则核对依据"}'
 ```
 
 只有实际核对过这个账号和规则后才使用该请求，日期改为真实审阅时间。已有 Claim 可通过管理员 `POST /api/claims/:id/approve` 审批，body 为 `{"approvedBy":"真实审核人","publicLevel":"private"}` 或 `approved_public`。**目前没有通用 HTTP 新增／修改 Claim 的端点**；缺证据时先走受控事实维护流程，不得编 Claim、修改历史事件或为过闸门随意使用 `opinion`。
+
+新内容优先使用“编辑出版”的选题、不可变原文修订和独立渠道稿，完整新接口见[双语内容站与平台编辑流程](CONTENT-PUBLISHING.md)。这些管理员接口统一要求幂等键；修改／引用已有父版本还要求精确 `If-Match`。v2 批准必须 `reviewed:true` 并提供完整 `snapshotHash`，不能套用下节旧 v1 文本审批示例。官网稿走独立的公开快照批准、真实全媒体备份、激活与服务端真实回读；`live_unverified` 不能称发布验收完成。媒体上传／审核与素材可匿名读取也是不同状态，审核通过本身不会公开媒体。
+
+目录中的个人官网与 27 个外部平台表示可登记的阵地范围，账号已登记、平台已登录、官方接口可用、正文已获批准与发布已回读须分别核对。受限 HTTP Agent 仍不能创建或审批这些新对象。每个外部渠道稿绑定具体目的地与原账号快照，不能为了给另一账号发同主题而复用旧稿。
 
 批准为 `approved_public` 也不保证一定导出：公开预览还检查来源 `visibility: "public"`、安全公开 URL、低敏感度及有效期。不公开的已批准 Claim 可以用于获准的私有准备流程；是否对外使用其事实仍须本人审核。
 
@@ -304,18 +310,20 @@ Agent 回写时，服务会把 `capturedBy`、`verifiedBy` 设为 Agent 身份�
 | 发布账本已成功、动作第二次写入失败 | 重试原回执恢复动作；`PUBLICATION_ALREADY_RECORDED` 表示不能再标失败 |
 | `start`、`approve`、创建草稿超时 | 它们没有同一套重试保证；先 GET 当前状态再决定下一步 |
 
-不要添加未经实现支持的 `Idempotency-Key` 来假装所有接口幂等。动作完成的幂等依赖同一动作 ID 和规范化回执哈希；本机视频原生执行工具的 `idempotencyKey` 是另一套合同。
+管理员另有窄范围 `POST /api/operations/:id/reconcile`，用于已有原授权和实际执行、但旧身份／正文等变化使通常 `complete` 无法准确恢复的既有结果。它要求原批准快照哈希、明确账号与内容核对、原始真实回执、原因及新的 ETag／幂等合同，不会重新发送平台请求，也不会把当前已修改的正文误标为当时发布。普通 Agent 不可调用；不能编造原审批、原结果或发生时间来“清掉”执行中动作。
+
+不要添加未经实现支持的 `Idempotency-Key` 来假装所有接口幂等。旧动作完成的幂等依赖同一动作 ID 和规范化回执哈希；本机视频原生执行工具的 `idempotencyKey` 是另一套合同。“编辑出版”、新账号／目的地、媒体与上述 reconcile 已实现明确的 `Idempotency-Key` 和 ETag 合同，按其文档执行，不能互相推断。
 
 ## 7. 已在平台发布的内容如何导入
 
 有两种不同入口，先判断是否已经存在获准动作。
 
 1. **已有相应的获准动作：** 保留该动作，以实际结果完成它；对真实既有结果可使用 `dataMode:"imported"`，仍须先核对账号、正文、状态、授权和实际回读，不回填虚假发生时间。
-2. **没有原动作，需要管理员登记既有真实发布：** 使用管理员专用 `POST /api/publications/manual`，body 至少含真实 `contentId`、`accountId`、`receipt.url`、`receipt.publishedAt`、`receipt.capturedBy`、`receipt.dataMode:"imported"`。该内容仍需 `scheduled`，账号／平台／Claim 闸门仍生效。此旧接口兼容公开 HTTP/HTTPS，不要求新动作的全部核验字段，也不具备动作完成的重复回执恢复合同；先检查现有 publications，避免重复录入。
+2. **没有原动作，需要管理员登记既有真实发布：** 仅旧 v1 内容可使用下面的手工入口；v2 渠道稿必须走独立已批准的运营动作。使用管理员专用 `POST /api/publications/manual`，body 至少含真实 `contentId`、`accountId`、`receipt.url`、`receipt.publishedAt`、`receipt.capturedBy`、`receipt.dataMode:"imported"`。该内容仍需 `scheduled`，账号／平台／Claim 闸门仍生效。此旧接口兼容公开 HTTP/HTTPS，不要求新动作的全部核验字段，也不具备动作完成的重复回执恢复合同；先检查现有 publications，避免重复录入。
 
 受限 Agent 不能使用手工发布入口。不能先导入一条手工回执，再试图用内容已变 `published` 的状态跳过新动作批准。`imported` 是来源说明，不是放松真实性要求。`fixture`、`draft`、本地 Markdown、截图路径、上传成功或任意 HTTP 200 都不是外部平台的发布证据。
 
-GitHub 官方直接发布是另一条管理员入口 `/api/live/github/publish`，需 `confirm:true`、已批准并 `scheduled` 的内容、GitHub 目标账号、服务进程中有效的 GitHub 凭据及本次真实外发授权。它会实际创建 Issue，并可能创建指定 label。不要在仅核对指南、健康检查或演示时调用。超时可能已创建 Issue，必须先查真实仓库和现有账本，不能盲重试。
+GitHub 官方直接发布仅用于旧 v1 内容；v2 渠道稿在任何外发前即拒绝，须走独立已批准的单账号动作。旧入口是另一条管理员入口 `/api/live/github/publish`，需 `confirm:true`、已批准并 `scheduled` 的内容、GitHub 目标账号、服务进程中有效的 GitHub 凭据及本次真实外发授权。它会实际创建 Issue，并可能创建指定 label。不要在仅核对指南、健康检查或演示时调用。超时可能已创建 Issue，必须先查真实仓库和现有账本，不能盲重试。
 
 ## 8. GEO 采集、导入与指标
 

@@ -14,6 +14,7 @@ import { verifyEventChain } from "../storage/json-store.mjs";
 import { MAIN_PROFILE, SYSTEM_IDENTITY } from "../domain/identity.mjs";
 import { requirePublicUrl } from "../domain/public-url.mjs";
 import { isFinalContent } from "../../public/final-backup-format.js";
+import { EDITORIAL_SCHEMA, EDITORIAL_PUBLICATION_AUTHORIZATION, validateEditorialVariant } from "../domain/editorial.mjs";
 
 const CONTENT_TYPES = new Set([
   "article",
@@ -280,6 +281,9 @@ export class GeoOsService {
         if (index === -1) {
           throw new ApiError(404, "CONTENT_NOT_FOUND", `找不到内容 ${id}。`);
         }
+        if (state.content[index].snapshotSchema !== undefined) {
+          throw new PolicyError("EDITORIAL_TRANSITION_REQUIRED", "编辑版本必须通过精确快照审核接口变更，不能借用旧正文审批。");
+        }
         if (target === "approved") {
           validateContentForApproval(state.content[index], state.claims, {
             now: this.clock(),
@@ -326,6 +330,17 @@ export class GeoOsService {
         const contentIndex = state.content.findIndex((item) => item.id === contentId);
         const account = state.accounts.find((item) => item.id === accountId);
         const content = state.content[contentIndex];
+        if (content?.snapshotSchema !== undefined) {
+          const authorization = input[EDITORIAL_PUBLICATION_AUTHORIZATION];
+          const operation = (state.accountOperations ?? []).find(row => row.id === authorization?.operationId);
+          if (content.snapshotSchema !== EDITORIAL_SCHEMA || authorization?.snapshotHash !== content.snapshotHash ||
+              !operation || operation.status !== "in_progress" || operation.contentId !== contentId ||
+              operation.accountId !== accountId || operation.editorialSnapshotHash !== content.snapshotHash ||
+              operation.approval?.editorialSnapshotHash !== content.snapshotHash || receipt.editorialSnapshotHash !== content.snapshotHash) {
+            throw new PolicyError("EDITORIAL_OPERATION_REQUIRED", "完整编辑快照须通过原获准动作回读入账，不能使用旧手工发布入口。");
+          }
+          validateEditorialVariant(state, content, account, { now: this.clock(), requireReady: true, requireApproval: true });
+        }
         validatePublication({
           account,
           content,
@@ -358,6 +373,8 @@ export class GeoOsService {
           receiptHash: hashObject(safeReceipt),
           recordedAt: at,
           recordedBy: actor,
+          ...(content.snapshotSchema === EDITORIAL_SCHEMA ? { snapshotSchema: EDITORIAL_SCHEMA,
+            editorialSnapshotHash: content.snapshotHash, destinationId: content.destinationId, assetHashes: receipt.assetHashes } : {}),
         };
         state.publications.push(publication);
         state.content[contentIndex] = {
