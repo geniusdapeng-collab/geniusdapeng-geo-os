@@ -1,7 +1,6 @@
-import { constants } from "node:fs";
+import { constants, realpathSync } from "node:fs";
 import { open } from "node:fs/promises";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { planEditorialMigration } from "../src/services/bootstrap.mjs";
 import { JsonStore, verifyEventChain } from "../src/storage/json-store.mjs";
 import { MediaAssets } from "../src/services/media-assets.mjs";
@@ -54,7 +53,20 @@ export async function runEditorialData(args, write = value => process.stdout.wri
   } finally { await store.close(); }
 }
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+function isMainModule() {
+  if (typeof import.meta.main === "boolean") return import.meta.main;
+  if (!process.argv[1]) return false;
+  // Node 24.0/24.1 have no import.meta.main. Both paths must resolve the
+  // release symlink rather than compare argv's spelling to the module URL.
+  try { return realpathSync(resolve(process.argv[1])) === realpathSync(import.meta.filename); }
+  catch (error) {
+    // An eval/import host can put an argument, rather than a file, in argv[1].
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
+if (isMainModule()) {
   runEditorialData(process.argv.slice(2)).catch(error => {
     const known = /^[A-Z][A-Z0-9_]+$/.test(error?.code || "") ? error.code : /^EDITORIAL_DATA_[A-Z_]+$/.test(error?.message || "") ? error.message : "EDITORIAL_DATA_FAILED";
     process.stderr.write(`${JSON.stringify({ ok: false, code: known, message: "编辑数据管理未完成；核对命令参数、停服状态、文件权限与备份摘要。" })}\n`);
