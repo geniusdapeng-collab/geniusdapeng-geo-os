@@ -378,6 +378,8 @@ node scripts/agent-mcp.mjs
 
 CLI/MCP 在首次需要原生后端时管理自己的运行时，退出时停止自己启动的服务；同一私有目录只运行一个监督进程。已拥有本机原生 `WORKLOOM_ACCESS_TOKEN` 且后端端口相同时可附着现有会话；它不是 `ADMIN_AGENT_TOKEN_HASH` 对应的云端令牌。模型密钥仅在当前进程环境生效；原生围栏、预算、资格和审批照常执行。目录中 `declared`、`codePresent`、依赖 `ready`、`productionVerified` 含义不同；不能把目录存在、数据库健康或工具返回 envelope 当作视频产物验收。
 
+本机 owner 集成需要明确选用既有合成角色时，可用程序构造参数 `createVideoRuntime({ dataDir, portraitReuseManifestPath })` 选择复用 manifest；默认关闭，HTTP／metadata、继承的 `HR_PORTRAIT_REUSE_MANIFEST` 及媒体工具环境不能代替这个选择。manifest 必须是 `dataDir` 内既有的规范绝对路径、无软链普通文件，大小为 1–8,000,000 字节；在本 Mac 上，私有根、途中目录与文件都须由当前用户所有且无组／其他用户权限。构造时记录完整字节 hash，每次构建原生环境时重核，改变或失效即报 `PORTRAIT_REUSE_MANIFEST_CHANGED`／`PORTRAIT_REUSE_MANIFEST_INVALID`。后端只收到通过检查的路径；Studio 在任务首次读取时另验 schema、合成身份、明确版本与源字节，并用该次 manifest hash 绑定后续验收。同 UID owner 在后端启动后改文件仍可能影响下一任务选择，因此本参数不承诺整个运行期文件不可变，也不代替原生模型配置、审批、预算或产物验收。
+
 安装／模型／素材许可／工位缺项时依 [VIDEO-RUNTIME.md](VIDEO-RUNTIME.md) 和实际诊断处理，不下载到其他项目、不共用外部数据库、不杀别人的进程。小型云端禁用媒体渲染时返回 `503 MEDIA_RENDER_DISABLED`，应转到本机执行，云端只留实际运营回执，不为了过检查打开重型任务。
 
 ## 10. 定稿自动备份到这台 Mac
@@ -521,6 +523,7 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 | JSON 单进程序列化与事件链 | [json-store.mjs](../src/storage/json-store.mjs) |
 | GEO 引擎与文章草案 | [根引擎包装](../src/engines/geo-evidence.mjs)、[引擎 service](../engines/geo-evidence/lib/service.mjs) |
 | 本机 CLI／MCP 与能力 schema | [src/agent.mjs](../src/agent.mjs)、[CLI](../scripts/agent.mjs)、[MCP](../scripts/agent-mcp.mjs)、[登记调用实现](../engines/video-edit/scripts/agent-capabilities.mjs) |
+| 本机 owner 既有定妆照复用选择 | [构造与文件核验](../src/video-runtime/config.mjs)、[原生环境](../src/video-runtime/environment.mjs)、[Studio 既有验证器](../engines/video-edit/apps/server/src/video/portrait-reuse-acceptance.ts) |
 | 网页本机定稿备份与精确正文格式 | [final-backup-browser.js](../public/final-backup-browser.js)、[final-backup-format.js](../public/final-backup-format.js)、[app.js](../public/app.js) |
 | 本机定稿落盘、触发点与只读 CLI | [final-content-backup.mjs](../src/services/final-content-backup.mjs)、[application.mjs](../src/application.mjs)、[backup-final-content.mjs](../scripts/backup-final-content.mjs) |
 | 内容岗位、严格计划、预算、租约、真实附件与最终检查 | [content-ops-service.mjs](../src/services/content-ops-service.mjs)、[content-ops-routes.mjs](../src/http/content-ops-routes.mjs)、[production-artifacts.mjs](../src/services/production-artifacts.mjs)、[领域模块](../src/domain/content-ops.mjs) |

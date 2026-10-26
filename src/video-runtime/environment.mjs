@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { createHmac } from 'node:crypto';
-import { SCOPE, textModelReadiness, VideoRuntimeError } from './config.mjs';
+import { SCOPE, textModelReadiness, verifiedPortraitReuseManifest, VideoRuntimeError } from './config.mjs';
 
 /** Release credentials are needed only by the authenticated dependency downloader. */
 export function withoutInstallationCredentials(environment) {
@@ -18,7 +18,7 @@ export function nativeEnvironment(config, privateState, urls, desktopKey, toolEn
       PENGMANAGER_ENGINE_ROOT:config.engineRoot, PENGMANAGER_VIDEO_DATA_DIR:config.dataRoot, PENGMANAGER_VIDEO_SOURCE_MAIN:config.sourceMain,
       BUNDLES_ROOT:path.join(config.engineRoot,'bundles'), HR_WORK_DIR:path.join(config.dataRoot,'work'), WORKLOOM_MEDIA_DIR:path.join(config.dataRoot,'media'),
       HR_CHARACTER_LIBRARY:path.join(config.engineRoot,'bundles','ai-video','library','characters'), HR_PRODUCT_LIBRARY:path.join(config.engineRoot,'bundles','ai-video','library','products'),
-      HR_PORTRAIT_REUSE_MANIFEST:'', WORKLOOM_DELIVERY_DIR:path.join(config.dataRoot,'delivery'),
+      HR_PORTRAIT_REUSE_MANIFEST:verifiedPortraitReuseManifest(config), WORKLOOM_DELIVERY_DIR:path.join(config.dataRoot,'delivery'),
       WORKLOOM_POST_WORK_DIR:path.join(config.dataRoot,'post'), WORKLOOM_POST_JOBS_DIR:path.join(config.dataRoot,'post','jobs'),
       WORKLOOM_VOICE_STATION_DIR:path.join(config.dataRoot,'tools','voice'), WORKLOOM_COLOR_HOME:path.join(config.dataRoot,'tools','color'),
       WORKLOOM_KEYS_FILE:path.join(config.dataRoot,'process-model-keys-only.env'), WORKLOOM_API:`http://127.0.0.1:${config.ports.backend}`,
