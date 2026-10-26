@@ -4,17 +4,17 @@
   "sourceCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
   "scope": "complete-local-embedded-asset-integrity-only",
   "workloomActivationGranted": false,
-  "assetCount": 618,
-  "digest": "b8d741069d413278aeb7d93fc952474ad0fc0ca446b1ee5083a252f51318b048",
+  "assetCount": 644,
+  "digest": "110a01146c06ab137249baf93cd50d6c8bfe904f8abc88d5281bf4488b562dca",
   "omittedUpstreamAssets": [],
   "bundles": [
     {
       "bundle": "ai-video",
       "version": "1.0.0",
       "status": "candidate",
-      "assets": 618,
-      "digest": "b8d741069d413278aeb7d93fc952474ad0fc0ca446b1ee5083a252f51318b048",
-      "manifestSha256": "5643eb269b8976a6c135660b000a67bbb9e95e9a3a215b6cd47efb63759bd389"
+      "assets": 644,
+      "digest": "110a01146c06ab137249baf93cd50d6c8bfe904f8abc88d5281bf4488b562dca",
+      "manifestSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325"
     },
     {
       "bundle": "geo-growth",

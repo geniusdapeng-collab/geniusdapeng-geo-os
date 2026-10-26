@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 export const SOURCE_MAIN = '8707ac5fb7503e48c698a5029bef860e52d93342';
@@ -21,6 +21,50 @@ function port(value, fallback) {
   if (!/^[1-9]\d{0,4}$/.test(raw) || Number(raw) > 65535) throw new VideoRuntimeError('PORT_INVALID', 'Video runtime ports must be integers from 1 to 65535.');
   return Number(raw);
 }
+const PORTRAIT_REUSE_MAX_BYTES = 8_000_000;
+function portraitReuseSnapshot(dataRoot, file) {
+  const invalid = () => { throw new VideoRuntimeError('PORTRAIT_REUSE_MANIFEST_INVALID', 'Portrait reuse requires a bounded owner-only ordinary manifest inside this private data directory, with no redirected path.'); };
+  if (typeof file !== 'string' || !path.isAbsolute(file) || path.resolve(file) !== file || file === dataRoot || !inside(dataRoot, file)) invalid();
+  let fd;
+  try {
+    const ordinary = (stat, directory) => (directory ? stat.isDirectory() : stat.isFile()) && !stat.isSymbolicLink()
+      && (process.platform === 'win32' || !(stat.mode & 0o077) && (typeof process.getuid !== 'function' || stat.uid === process.getuid()));
+    let directory = dataRoot;
+    for (const part of ['', ...path.relative(dataRoot, path.dirname(file)).split(path.sep).filter(Boolean)]) {
+      if (part) directory = path.join(directory, part);
+      if (!ordinary(fs.lstatSync(directory), true) || fs.realpathSync(directory) !== directory) invalid();
+    }
+    const named = fs.lstatSync(file);
+    if (!ordinary(named, false) || named.size < 1 || named.size > PORTRAIT_REUSE_MAX_BYTES || fs.realpathSync(file) !== file) invalid();
+    fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+    const before = fs.fstatSync(fd);
+    if (!ordinary(before, false) || before.dev !== named.dev || before.ino !== named.ino || before.size !== named.size) invalid();
+    const buffer = Buffer.alloc(before.size + 1); let size = 0;
+    while (size < buffer.length) {
+      const count = fs.readSync(fd, buffer, size, buffer.length - size, null);
+      if (!count) break;
+      size += count;
+    }
+    const after = fs.fstatSync(fd), current = fs.lstatSync(file);
+    if (size !== before.size || !ordinary(after, false) || !ordinary(current, false)
+      || before.dev !== after.dev || before.ino !== after.ino || before.dev !== current.dev || before.ino !== current.ino
+      || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.size !== current.size
+      || before.mtimeMs !== current.mtimeMs || fs.realpathSync(file) !== file) invalid();
+    return Object.freeze({ path: file, bytes: size, sha256: createHash('sha256').update(buffer.subarray(0, size)).digest('hex') });
+  } catch (error) {
+    if (error instanceof VideoRuntimeError) throw error;
+    throw new VideoRuntimeError('PORTRAIT_REUSE_MANIFEST_INVALID', 'The private portrait reuse manifest could not be verified.', { cause: error });
+  } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+/** Only an explicit owner runtime option selects a manifest; inherited env and HTTP metadata do not. */
+export function verifiedPortraitReuseManifest(config) {
+  if (!config.portraitReuseManifest) return '';
+  const current = portraitReuseSnapshot(config.dataRoot, config.portraitReuseManifest.path);
+  if (current.sha256 !== config.portraitReuseManifest.sha256 || current.bytes !== config.portraitReuseManifest.bytes) {
+    throw new VideoRuntimeError('PORTRAIT_REUSE_MANIFEST_CHANGED', 'The selected portrait reuse manifest changed after the owner runtime configuration was frozen.');
+  }
+  return current.path;
+}
 export function runtimeConfig(options = {}) {
   if (!options.rootDir) throw new VideoRuntimeError('ROOT_REQUIRED', 'PengManager rootDir is required.');
   const rootDir = fs.realpathSync(path.resolve(options.rootDir));
@@ -35,6 +79,7 @@ export function runtimeConfig(options = {}) {
   while (!fs.existsSync(ancestor)) ancestor = path.dirname(ancestor);
   const canonical = path.resolve(fs.realpathSync(ancestor), path.relative(ancestor, requestedData));
   if (inside(rootDir, canonical) || inside(canonical, rootDir)) throw new VideoRuntimeError('PRIVATE_DATA_REQUIRED', 'Video data directory resolves into the repository.');
+  const portraitReuseManifest = options.portraitReuseManifestPath === undefined ? null : portraitReuseSnapshot(canonical, options.portraitReuseManifestPath);
   const ports = {
     postgres: port(options.ports?.postgres ?? env.PENGMANAGER_VIDEO_PG_PORT, 16432),
     backend: port(options.ports?.backend ?? env.PENGMANAGER_VIDEO_BACKEND_PORT, 18797),
@@ -51,7 +96,7 @@ export function runtimeConfig(options = {}) {
   if (new Set(Object.values(ports)).size !== Object.keys(ports).length) throw new VideoRuntimeError('PORT_CONFLICT', 'Each managed service requires a distinct port.');
   const serveWorkbench=options.serveWorkbench??env.PENGMANAGER_VIDEO_WORKBENCH==='1';
   if(typeof serveWorkbench!=='boolean')throw new VideoRuntimeError('WORKBENCH_OPTION_INVALID','serveWorkbench must be an explicit boolean when supplied.');
-  return { rootDir, engineRoot, dataRoot: canonical, env, ports, node: process.execPath,
+  return { rootDir, engineRoot, dataRoot: canonical, env, ports, node: process.execPath, portraitReuseManifest,
     serveWorkbench,
     webRoot: path.join(engineRoot, 'apps', 'web', 'dist'), pgRoot: path.join(canonical, 'tools', 'postgres'), pgData: path.join(canonical, 'postgres-data'), logs: path.join(canonical, 'logs'),
     sourceMain: SOURCE_MAIN, sourceFileCount: SOURCE_FILE_COUNT, logger: typeof options.logger === 'function' ? options.logger : () => undefined };

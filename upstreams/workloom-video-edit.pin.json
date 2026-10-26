@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "ef54c2fa91e85f088b8f368db8354daf82fdaade87271fa5df7aaad2bd27b306",
+  "snapshotSha256": "b60d4a1136dd59679fc7c3902b81d459682291e3ec1f84fc5785dea006d863ee",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,10 +23,22 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 46,
-  "sourceOverlayCount": 26,
+  "targetOwnedFileCount": 72,
+  "sourceOverlayCount": 32,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
+  ],
+  "assetOverlays": [
+    {
+      "characterId": "young-rider-01",
+      "portraitVersion": 2,
+      "sourceCommit": "529c5f56c4d640bbd8607cab54f6a06e54fbc77a",
+      "sourceTree": "74ca31b451e882a1ee31325e3d50552420f40d43",
+      "receipt": "upstreams/liyingzi-seedream-v2.asset-overlay.json",
+      "receiptSha256": "4bc3fe64b93aa4b39df77d6a2602c0791d42a612d1ca48518d638a75fbed58c8",
+      "scope": "LiYingzi-v2-original-assets-and-exact-supporting-metadata-only",
+      "wholeEngineUpgradeClaimed": false
+    }
   ]
 }

@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-24T13:07:14.178567+00:00",
+  "generatedAt": "2026-10-26T17:50:53.297Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -6560,11 +6560,11 @@
       "sourceMode": "100644",
       "gitBlob": "db19eedc68ccd1de3b026e539b4e7e7e48425487",
       "bytes": 136441,
-      "targetBytes": 136441,
+      "targetBytes": 142775,
       "sourceSha256": "15d915aa4ff9e64df16ca70166cc99593add28d76a6a3c3ced62766d44da9632",
-      "targetSha256": "5643eb269b8976a6c135660b000a67bbb9e95e9a3a215b6cd47efb63759bd389",
+      "targetSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325",
       "evidence": "B",
-      "adaptation": "Refresh candidate bundle integrity for explicitly retained portable local gate/review references; all 618 original declarations retained."
+      "adaptation": "Refresh candidate bundle integrity for explicitly retained portable local gate/review references; all 618 original declarations retained. LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/bundle.json; source SHA256 46263b270acb66e202503b564439735114d2a73638ea96d7dc725db7bfc2344f; PM manifest closure retained with exact scoped additions."
     },
     {
       "path": "bundles/ai-video/connectors/bgm-bridge/README.md",
@@ -8872,10 +8872,11 @@
       "sourceMode": "100644",
       "gitBlob": "24bfbc2b21ae62ceb92679e8b2e077e64925554a",
       "bytes": 4265,
-      "targetBytes": 4265,
+      "targetBytes": 4803,
       "sourceSha256": "e00799c334c8bfed3e5bd7f23b63444314e1e0fed191b4e7189b876d1b59f549",
-      "targetSha256": "e00799c334c8bfed3e5bd7f23b63444314e1e0fed191b4e7189b876d1b59f549",
-      "evidence": "B"
+      "targetSha256": "b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained."
     },
     {
       "path": "bundles/ai-video/library/characters/model-01-chen-zhuo/gates.jsonl",
@@ -9030,10 +9031,11 @@
       "sourceMode": "100644",
       "gitBlob": "0d22bd94a421ed42e7dd9ebbcad2498c65d436ce",
       "bytes": 1950,
-      "targetBytes": 1950,
+      "targetBytes": 2569,
       "sourceSha256": "02ab8d70d48035cecd9ff001d629c610b923a047c766da4f233a1eb7f3d8ba79",
-      "targetSha256": "02ab8d70d48035cecd9ff001d629c610b923a047c766da4f233a1eb7f3d8ba79",
-      "evidence": "B"
+      "targetSha256": "d51cd0f5119dd087c0b5ffb41d469f4ce4862aa820d2111f4a3db0e257667b50",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/README.md; source SHA256 d51cd0f5119dd087c0b5ffb41d469f4ce4862aa820d2111f4a3db0e257667b50; original bytes retained."
     },
     {
       "path": "bundles/ai-video/library/characters/model-01-young-rider/gates.jsonl",
@@ -9152,10 +9154,11 @@
       "sourceMode": "100644",
       "gitBlob": "62fc483548f8d61b9da837875b66782842240039",
       "bytes": 10043,
-      "targetBytes": 10043,
+      "targetBytes": 12165,
       "sourceSha256": "811ac0ed64f50348188fdeafeeb9109a57da8e821d757e3abb98f2d6b99a8e9d",
-      "targetSha256": "811ac0ed64f50348188fdeafeeb9109a57da8e821d757e3abb98f2d6b99a8e9d",
-      "evidence": "B"
+      "targetSha256": "66b00f61aa0b4507bcb6b69a12d2ee75bc21a047cfdaf2285b4f29ad9ac6d890",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/profile.json; source SHA256 66b00f61aa0b4507bcb6b69a12d2ee75bc21a047cfdaf2285b4f29ad9ac6d890; original bytes retained."
     },
     {
       "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance.json",
@@ -9405,10 +9408,11 @@
       "sourceMode": "100644",
       "gitBlob": "05d0abac2240cee1a31878d1277262ebcdffb1d4",
       "bytes": 1814,
-      "targetBytes": 1814,
+      "targetBytes": 1781,
       "sourceSha256": "f99d17f53d75fb4a5d485274394f5020dc7d98ec0468b95f8149077328753dae",
-      "targetSha256": "f99d17f53d75fb4a5d485274394f5020dc7d98ec0468b95f8149077328753dae",
-      "evidence": "B"
+      "targetSha256": "6f58056504182f484790a831857b53dea36e0f12ce2b0a50f64784f4bce13205",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/registry.json; source SHA256 6f58056504182f484790a831857b53dea36e0f12ce2b0a50f64784f4bce13205; original bytes retained."
     },
     {
       "path": "bundles/ai-video/library/cinematography-kb/CINE-001-运镜语言.md",
@@ -17876,10 +17880,11 @@
       "sourceMode": "100644",
       "gitBlob": "ae25405c83cfc0e856f5301bf30f3f262c16687e",
       "bytes": 4507,
-      "targetBytes": 4507,
+      "targetBytes": 4984,
       "sourceSha256": "0476794fc652ca9b06f77dce04477d59b4da93cc5b9dc3ca89b550d84d7e4a63",
-      "targetSha256": "0476794fc652ca9b06f77dce04477d59b4da93cc5b9dc3ca89b550d84d7e4a63",
-      "evidence": "B"
+      "targetSha256": "35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained."
     },
     {
       "path": "docs/cinematography-kb-audit-2026-09-24.md",
@@ -24710,10 +24715,11 @@
       "sourceMode": "100644",
       "gitBlob": "c3c8c2f7dfddf92f8525161da6289636a5d10ea6",
       "bytes": 4801,
-      "targetBytes": 4801,
+      "targetBytes": 7189,
       "sourceSha256": "939566dae5f64caec0ee87749f9eb7996b158bb57078cc521854c3afc0cdeebd",
-      "targetSha256": "939566dae5f64caec0ee87749f9eb7996b158bb57078cc521854c3afc0cdeebd",
-      "evidence": "B"
+      "targetSha256": "0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c",
+      "evidence": "B",
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path packages/video-studio/src/builtin-character-library.test.ts; source SHA256 0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c; original bytes retained."
     },
     {
       "path": "packages/video-studio/src/character-archive.test.ts",
@@ -38224,6 +38230,214 @@
       "targetSha256": "afc68452835753a273aa3d6dd68a41b3def889164370cf117737e65362377a72",
       "evidence": "B",
       "reason": "Authorized local Compositor headless artifact/bridge with explicit MIT provenance and binary SHA; original headless adapter source-build availability is not claimed."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portrait-sets/v2.json",
+      "mode": "100644",
+      "bytes": 1734,
+      "targetSha256": "a6e16364eeb36d585447eeae81ecd7a531059f36c1d8515b20fa7cc265e99134",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portrait-sets/v2.json; source SHA256 a6e16364eeb36d585447eeae81ecd7a531059f36c1d8515b20fa7cc265e99134; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2.json",
+      "mode": "100644",
+      "bytes": 35522,
+      "targetSha256": "c06fe2d02e79587a755b1f7798166dbc2ab9c219f94e026a1af4fcc5073eb0a6",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2.json; source SHA256 c06fe2d02e79587a755b1f7798166dbc2ab9c219f94e026a1af4fcc5073eb0a6; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png",
+      "mode": "100644",
+      "bytes": 5003858,
+      "targetSha256": "c605785bb52e634f8e2c9d765ed44f228b908f68dbe089fede5bb7e2467b9541",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png; source SHA256 c605785bb52e634f8e2c9d765ed44f228b908f68dbe089fede5bb7e2467b9541; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-threeQuarter.png",
+      "mode": "100644",
+      "bytes": 4762996,
+      "targetSha256": "ebc1ec5c38e5d33642ca23cdd686e2f0b7a8c8fc62b79f08e4a4cc56944c51d9",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-threeQuarter.png; source SHA256 ebc1ec5c38e5d33642ca23cdd686e2f0b7a8c8fc62b79f08e4a4cc56944c51d9; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-closeup.png",
+      "mode": "100644",
+      "bytes": 4868216,
+      "targetSha256": "40c0aae3ec51cfdf851feb1f539d33a1dc3ec1ab83d958db02e57ae719bbd927",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-closeup.png; source SHA256 40c0aae3ec51cfdf851feb1f539d33a1dc3ec1ab83d958db02e57ae719bbd927; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-side.png",
+      "mode": "100644",
+      "bytes": 4659658,
+      "targetSha256": "38edcba9e595906563b56cb46d19811fd178529b69b7aa919412bc6c42c94d8b",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-side.png; source SHA256 38edcba9e595906563b56cb46d19811fd178529b69b7aa919412bc6c42c94d8b; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-back.png",
+      "mode": "100644",
+      "bytes": 4393218,
+      "targetSha256": "55e05273673087425e9e510043c500ebcdae62adc64eeaf0989a7472479c6187",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-back.png; source SHA256 55e05273673087425e9e510043c500ebcdae62adc64eeaf0989a7472479c6187; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-actionPose.png",
+      "mode": "100644",
+      "bytes": 4949733,
+      "targetSha256": "8ff900395ec955c14a668fd3a20d1c756ebcce00cc610eb4e581fbae4b258eef",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-actionPose.png; source SHA256 8ff900395ec955c14a668fd3a20d1c756ebcce00cc610eb4e581fbae4b258eef; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-emotionCloseup.png",
+      "mode": "100644",
+      "bytes": 5071120,
+      "targetSha256": "58dbbcedd7a85efbe3ec66caec888b2e5825978e25f1f236276966c7f769bf24",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-emotionCloseup.png; source SHA256 58dbbcedd7a85efbe3ec66caec888b2e5825978e25f1f236276966c7f769bf24; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-handDetail.png",
+      "mode": "100644",
+      "bytes": 4994853,
+      "targetSha256": "78db8dac0b150642612df9c6c3ed47e69e588a41f178bf379a65c5a7208ddd37",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-handDetail.png; source SHA256 78db8dac0b150642612df9c6c3ed47e69e588a41f178bf379a65c5a7208ddd37; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/front.dispatch.json",
+      "mode": "100644",
+      "bytes": 1271,
+      "targetSha256": "3e0cc78e5d2cbd27a8dac8afde12c4877ab6d6f77ccb5ab6a1aad54313fcbdc5",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/front.dispatch.json; source SHA256 3e0cc78e5d2cbd27a8dac8afde12c4877ab6d6f77ccb5ab6a1aad54313fcbdc5; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/front.provenance.json",
+      "mode": "100644",
+      "bytes": 3431,
+      "targetSha256": "7dfd71389b3ea284aae551178f8f215ffa92ff5575ccdfc35978e981c58727d2",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/front.provenance.json; source SHA256 7dfd71389b3ea284aae551178f8f215ffa92ff5575ccdfc35978e981c58727d2; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json",
+      "mode": "100644",
+      "bytes": 1274,
+      "targetSha256": "08688c3d4a7281eb6d4ecd53401a436c3143b9a2d7ea5ca19664fcdf0724ca9f",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json; source SHA256 08688c3d4a7281eb6d4ecd53401a436c3143b9a2d7ea5ca19664fcdf0724ca9f; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json",
+      "mode": "100644",
+      "bytes": 3437,
+      "targetSha256": "0654b16ade6f311e94d8ada1a0f0d20ef36f1967ad25a5f7ec4b0b7eb91c9582",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json; source SHA256 0654b16ade6f311e94d8ada1a0f0d20ef36f1967ad25a5f7ec4b0b7eb91c9582; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/closeup.dispatch.json",
+      "mode": "100644",
+      "bytes": 1282,
+      "targetSha256": "ac4cf9b41490db5e75265cb4ab265d935ac6f6e2384c5c75bf361e8d12f33658",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/closeup.dispatch.json; source SHA256 ac4cf9b41490db5e75265cb4ab265d935ac6f6e2384c5c75bf361e8d12f33658; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/closeup.provenance.json",
+      "mode": "100644",
+      "bytes": 3453,
+      "targetSha256": "8eb0c24018a5b6f114b10127d2b1d44918c8fcddf2c6735a33b4c544627a512d",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/closeup.provenance.json; source SHA256 8eb0c24018a5b6f114b10127d2b1d44918c8fcddf2c6735a33b4c544627a512d; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/side.dispatch.json",
+      "mode": "100644",
+      "bytes": 1275,
+      "targetSha256": "4bd11b4ab7d6e4f933a9b026c55657deb3b838ee272b4df05a19119e34654325",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/side.dispatch.json; source SHA256 4bd11b4ab7d6e4f933a9b026c55657deb3b838ee272b4df05a19119e34654325; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/side.provenance.json",
+      "mode": "100644",
+      "bytes": 3439,
+      "targetSha256": "edf30822cff524ee1cd068cb78ba18b1173fa49a81949eccdc49be2a78a6433c",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/side.provenance.json; source SHA256 edf30822cff524ee1cd068cb78ba18b1173fa49a81949eccdc49be2a78a6433c; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/back.dispatch.json",
+      "mode": "100644",
+      "bytes": 1099,
+      "targetSha256": "cbf52bee093ca9d2bad887d80b8d019561f702061b2391aedd57b2d82eb6d399",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/back.dispatch.json; source SHA256 cbf52bee093ca9d2bad887d80b8d019561f702061b2391aedd57b2d82eb6d399; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/back.provenance.json",
+      "mode": "100644",
+      "bytes": 3087,
+      "targetSha256": "afc8e55cb758d480020bb88ab74d5d155fe49f04d7dc38aaf2450d3f726801d2",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/back.provenance.json; source SHA256 afc8e55cb758d480020bb88ab74d5d155fe49f04d7dc38aaf2450d3f726801d2; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/actionPose.dispatch.json",
+      "mode": "100644",
+      "bytes": 1291,
+      "targetSha256": "23bac38fedfc280d8ec6e6b6ef9d4d2d784b9b52cc37f76cb095c9676ced95e1",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/actionPose.dispatch.json; source SHA256 23bac38fedfc280d8ec6e6b6ef9d4d2d784b9b52cc37f76cb095c9676ced95e1; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/actionPose.provenance.json",
+      "mode": "100644",
+      "bytes": 3471,
+      "targetSha256": "e814ba5f53955f2797c93a9889fe1d82c6a052828786e647efa57890e67473d3",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/actionPose.provenance.json; source SHA256 e814ba5f53955f2797c93a9889fe1d82c6a052828786e647efa57890e67473d3; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/emotionCloseup.dispatch.json",
+      "mode": "100644",
+      "bytes": 1289,
+      "targetSha256": "e8254e4c54e193b7ce88fbbf78c6512aca8d4ef74840e011f1533f9ee870386e",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/emotionCloseup.dispatch.json; source SHA256 e8254e4c54e193b7ce88fbbf78c6512aca8d4ef74840e011f1533f9ee870386e; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/emotionCloseup.provenance.json",
+      "mode": "100644",
+      "bytes": 3467,
+      "targetSha256": "279487ce91871502f79cb6261d4e0ae953bd3345c30dfb11b47a69c2cf9e388c",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/emotionCloseup.provenance.json; source SHA256 279487ce91871502f79cb6261d4e0ae953bd3345c30dfb11b47a69c2cf9e388c; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/handDetail.dispatch.json",
+      "mode": "100644",
+      "bytes": 1294,
+      "targetSha256": "476acc478ac1189abdf9c65cf4cac02c4b901437d98e4e1a5d08935dd4a63928",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/handDetail.dispatch.json; source SHA256 476acc478ac1189abdf9c65cf4cac02c4b901437d98e4e1a5d08935dd4a63928; original bytes retained."
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json",
+      "mode": "100644",
+      "bytes": 3477,
+      "targetSha256": "68d6f656db90989df6db286070746a91f732e9a33489861289e021c99c2f6974",
+      "evidence": "B",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json; source SHA256 68d6f656db90989df6db286070746a91f732e9a33489861289e021c99c2f6974; original bytes retained."
     }
   ],
   "adaptations": [
@@ -38283,9 +38497,9 @@
     },
     {
       "path": "bundles/ai-video/bundle.json",
-      "reason": "Refresh candidate bundle integrity for explicitly retained portable local gate/review references; all 618 original declarations retained.",
+      "reason": "Refresh candidate bundle integrity for explicitly retained portable local gate/review references; all 618 original declarations retained. LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/bundle.json; source SHA256 46263b270acb66e202503b564439735114d2a73638ea96d7dc725db7bfc2344f; PM manifest closure retained with exact scoped additions.",
       "sourceSha256": "15d915aa4ff9e64df16ca70166cc99593add28d76a6a3c3ced62766d44da9632",
-      "targetSha256": "5643eb269b8976a6c135660b000a67bbb9e95e9a3a215b6cd47efb63759bd389"
+      "targetSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325"
     },
     {
       "path": "bundles/ai-video/connectors/post-bridge/core.mjs",
@@ -38382,6 +38596,42 @@
       "reason": "Select explicit target HTTP model backend, request word timestamps and report actual word/segment precision; reject invalid or partial word timings.",
       "sourceSha256": "e0a83d55dc164553ef3f04f49c0c1bf7713fc761e2157cd9b8d693aff891bcca",
       "targetSha256": "f169684df8b29b25bda84214fe4043dc74fe1af9e7439aa3284798b8704b5f5c"
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/profile.json",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/profile.json; source SHA256 66b00f61aa0b4507bcb6b69a12d2ee75bc21a047cfdaf2285b4f29ad9ac6d890; original bytes retained.",
+      "sourceSha256": "811ac0ed64f50348188fdeafeeb9109a57da8e821d757e3abb98f2d6b99a8e9d",
+      "targetSha256": "66b00f61aa0b4507bcb6b69a12d2ee75bc21a047cfdaf2285b4f29ad9ac6d890"
+    },
+    {
+      "path": "bundles/ai-video/library/characters/registry.json",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/registry.json; source SHA256 6f58056504182f484790a831857b53dea36e0f12ce2b0a50f64784f4bce13205; original bytes retained.",
+      "sourceSha256": "f99d17f53d75fb4a5d485274394f5020dc7d98ec0468b95f8149077328753dae",
+      "targetSha256": "6f58056504182f484790a831857b53dea36e0f12ce2b0a50f64784f4bce13205"
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/README.md",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/README.md; source SHA256 d51cd0f5119dd087c0b5ffb41d469f4ce4862aa820d2111f4a3db0e257667b50; original bytes retained.",
+      "sourceSha256": "02ab8d70d48035cecd9ff001d629c610b923a047c766da4f233a1eb7f3d8ba79",
+      "targetSha256": "d51cd0f5119dd087c0b5ffb41d469f4ce4862aa820d2111f4a3db0e257667b50"
+    },
+    {
+      "path": "bundles/ai-video/library/characters/README.md",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained.",
+      "sourceSha256": "e00799c334c8bfed3e5bd7f23b63444314e1e0fed191b4e7189b876d1b59f549",
+      "targetSha256": "b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4"
+    },
+    {
+      "path": "docs/character-registry.md",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained.",
+      "sourceSha256": "0476794fc652ca9b06f77dce04477d59b4da93cc5b9dc3ca89b550d84d7e4a63",
+      "targetSha256": "35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e"
+    },
+    {
+      "path": "packages/video-studio/src/builtin-character-library.test.ts",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path packages/video-studio/src/builtin-character-library.test.ts; source SHA256 0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c; original bytes retained.",
+      "sourceSha256": "939566dae5f64caec0ee87749f9eb7996b158bb57078cc521854c3afc0cdeebd",
+      "targetSha256": "0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c"
     }
   ],
   "evidence": "B",
