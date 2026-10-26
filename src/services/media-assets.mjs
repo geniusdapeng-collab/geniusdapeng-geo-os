@@ -305,6 +305,12 @@ function inspect(data, mime) {
   if (mime === "video/mp4") return mp4(data);
   return caption(data);
 }
+// Shared byte validation for the separate private worker artifact store. This
+// grants no upload, rights review, publication or administrator capability.
+export function inspectMediaBytes(data, mime) {
+  if (!Buffer.isBuffer(data) || !KINDS[mime]) formatError();
+  return { kind: KINDS[mime], ...inspect(data, mime) };
+}
 async function hashHandle(handle, size) {
   const hash = createHash("sha256"), buffer = Buffer.alloc(64 * 1024);
   let offset = 0;

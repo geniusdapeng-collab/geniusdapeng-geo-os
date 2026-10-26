@@ -2,7 +2,7 @@ import { ApiError, PolicyError } from "../domain/errors.mjs";
 import { hashObject, hashText } from "../domain/hash.mjs";
 import { requirePublicUrl as publicUrl } from "../domain/public-url.mjs";
 import { classifyInteraction, validatePublication } from "../domain/policy.mjs";
-import { EDITORIAL_SCHEMA, EDITORIAL_PUBLICATION_AUTHORIZATION, editorialEtag, editorialInput,
+import { EDITORIAL_SCHEMA, EDITORIAL_NATIVE_SCHEMA, isEditorialVariantSchema, EDITORIAL_PUBLICATION_AUTHORIZATION, editorialEtag, editorialInput,
   editorialSensitiveFindings, editorialVariantSnapshot, validateEditorialVariant } from "../domain/editorial.mjs";
 import { JsonStore } from "../storage/json-store.mjs";
 
@@ -91,7 +91,7 @@ function normalizedReceipt(operation, source, now) {
   if (new Date(receipt.verifiedAt).getTime() < new Date(receipt.publishedAt).getTime()) throw new ApiError(400, "RECEIPT_VERIFICATION_BEFORE_PUBLICATION", "回读核验时间不能早于发布时间。");
   if (source.contentHash !== undefined && source.contentHash !== operation.contentHash) throw new ApiError(409, "RECEIPT_CONTENT_MISMATCH", "回执正文哈希与批准的内容不一致。");
   if (operation.snapshotSchema !== undefined) {
-    if (operation.snapshotSchema !== EDITORIAL_SCHEMA || source.editorialSnapshotHash !== operation.editorialSnapshotHash) {
+    if (!isEditorialVariantSchema(operation.snapshotSchema) || source.editorialSnapshotHash !== operation.editorialSnapshotHash) {
       throw new ApiError(409, "RECEIPT_EDITORIAL_SNAPSHOT_MISMATCH", "回执必须绑定获准的完整编辑快照。");
     }
     const expected = [...new Map(operation.editorialSnapshot.assetRefs.map(ref => [`${ref.assetId}:${ref.sha256}`, { assetId: ref.assetId, sha256: ref.sha256 }])).values()]
@@ -102,13 +102,23 @@ function normalizedReceipt(operation, source, now) {
     }
     receipt.editorialSnapshotHash = operation.editorialSnapshotHash;
     receipt.assetHashes = expected;
+    if (operation.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+      const pkg = operation.editorialSnapshot.publicationPackage;
+      const artifacts = pkg.artifactRefs.map(ref => ({ artifactId: ref.id, sha256: ref.sha256 })).sort((a, b) => a.artifactId.localeCompare(b.artifactId));
+      if (source.packageHash !== operation.packageHash || source.reviewSnapshotHash !== operation.reviewSnapshotHash ||
+          !Array.isArray(source.artifactHashes) || source.artifactHashes.some(row => !row || typeof row !== "object" || Object.keys(row).length !== 2 || typeof row.artifactId !== "string" || typeof row.sha256 !== "string") ||
+          hashObject([...source.artifactHashes].sort((a, b) => a.artifactId.localeCompare(b.artifactId))) !== hashObject(artifacts)) {
+        throw new ApiError(409, "RECEIPT_NATIVE_PACKAGE_MISMATCH", "回读必须绑定原生完整包、审核快照及全部实际附件。");
+      }
+      receipt.packageHash = operation.packageHash; receipt.reviewSnapshotHash = operation.reviewSnapshotHash; receipt.artifactHashes = artifacts;
+    }
   }
   return receipt;
 }
 
 function assertEditorialOperation(state, operation, content, account, now) {
   if (content.snapshotSchema === undefined && operation.snapshotSchema === undefined) return;
-  if (content.snapshotSchema !== EDITORIAL_SCHEMA || operation.snapshotSchema !== EDITORIAL_SCHEMA ||
+  if (!isEditorialVariantSchema(content.snapshotSchema) || operation.snapshotSchema !== content.snapshotSchema ||
       operation.editorialSnapshotHash !== content.snapshotHash || hashObject(operation.editorialSnapshot) !== operation.editorialSnapshotHash) {
     throw new ApiError(409, "EDITORIAL_SNAPSHOT_CHANGED", "运营动作的完整编辑快照发生变化。");
   }
@@ -118,6 +128,10 @@ function assertEditorialOperation(state, operation, content, account, now) {
   }
   if (operation.approval && operation.approval.editorialSnapshotHash !== operation.editorialSnapshotHash) {
     throw new ApiError(409, "EDITORIAL_APPROVAL_MISMATCH", "运营审批未绑定这一完整编辑快照。");
+  }
+  if (operation.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && (operation.packageHash !== content.packageHash || operation.reviewSnapshotHash !== content.reviewSnapshotHash ||
+      operation.approval && (operation.approval.packageHash !== content.packageHash || operation.approval.reviewSnapshotHash !== content.reviewSnapshotHash))) {
+    throw new ApiError(409, "NATIVE_PACKAGE_CHANGED", "运营动作或原始审批未绑定准确的最终原生包与独立终检。");
   }
 }
 
@@ -160,10 +174,22 @@ function assertReady(state, operation, now) {
 }
 
 export class AccountOperationsService {
-  constructor({ service, clock = () => new Date() }) {
+  constructor({ service, clock = () => new Date(), productionArtifacts = null, mediaAssets = null }) {
     this.service = service;
     this.store = service.store;
     this.clock = clock;
+    this.productionArtifacts = productionArtifacts;
+    this.mediaAssets = mediaAssets;
+  }
+
+  async #verifyNativeContent(content) {
+    if (content?.snapshotSchema !== EDITORIAL_NATIVE_SCHEMA) return;
+    if (typeof this.productionArtifacts?.verifyReferences !== "function") throw new ApiError(503, "NATIVE_ARTIFACT_VERIFICATION_UNAVAILABLE", "原生发布前必须配置真实附件字节核对。");
+    await this.productionArtifacts.verifyReferences(content.publicationPackage.artifactRefs);
+    if (content.assetRefs.length) {
+      if (typeof this.mediaAssets?.verifyForRelease !== "function") throw new ApiError(503, "MEDIA_VERIFICATION_UNAVAILABLE", "原生发布前必须核对真实媒体。");
+      await this.mediaAssets.verifyForRelease(content.assetRefs);
+    }
   }
 
   list() {
@@ -225,6 +251,7 @@ export class AccountOperationsService {
     const executionMode = input.executionMode ?? "browser";
     if (!["browser", "manual"].includes(executionMode)) throw new ApiError(400, "INVALID_EXECUTION_MODE", "执行方式只能是 browser 或 manual。");
     return this.#serialize(async () => {
+      if (input.type === "publish") await this.#verifyNativeContent(this.store.snapshot().content.find(row => row.id === input.contentId));
       const { result } = await this.store.mutate(
         { type: "account.operation_created", actor, payload: { accountId, operationType: input.type } },
         (state) => {
@@ -250,13 +277,14 @@ export class AccountOperationsService {
             row.contentSnapshot = { title: content.title, body: content.body, version: content.version };
             row.contentHash = hashText(`${content.title}\n${content.body}`);
             if (content.snapshotSchema !== undefined) {
-              if (content.snapshotSchema !== EDITORIAL_SCHEMA) throw new PolicyError("EDITORIAL_SCHEMA_UNSUPPORTED", "未知编辑版本不能进入旧发布流程。");
+              if (!isEditorialVariantSchema(content.snapshotSchema)) throw new PolicyError("EDITORIAL_SCHEMA_UNSUPPORTED", "未知编辑版本不能进入旧发布流程。");
               validateEditorialVariant(state, content, account, { now: this.clock(), requireReady: true, requireApproval: true });
               if (content.destinationSnapshot.visibility !== "public") throw new PolicyError("RESTRICTED_RECEIPT_WORKFLOW_REQUIRED", "受限目的地需要独立回执合同。");
-              row.snapshotSchema = EDITORIAL_SCHEMA;
+              row.snapshotSchema = content.snapshotSchema;
               row.editorialSnapshot = editorialVariantSnapshot(content);
               row.editorialSnapshotHash = content.snapshotHash;
               row.destinationId = content.destinationId;
+              if (content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) { row.packageHash = content.packageHash; row.reviewSnapshotHash = content.reviewSnapshotHash; }
             }
           } else {
             row.replyText = text(input.replyText, "replyText", 10_000);
@@ -284,6 +312,8 @@ export class AccountOperationsService {
     const approvedBy = text(input.approvedBy, "approvedBy");
     const authorizationNote = text(input.authorizationNote, "authorizationNote", 2_000);
     return this.#serialize(async () => {
+      const snapshot = this.store.snapshot(), original = operationFor(snapshot, id);
+      await this.#verifyNativeContent(snapshot.content.find(row => row.id === original.contentId));
       const { result } = await this.store.mutate(
         { type: "account.operation_approved", actor: approvedBy, payload: { operationId: id } },
         (state) => {
@@ -291,7 +321,8 @@ export class AccountOperationsService {
           expectedState(row, ["draft"]);
           assertReady(state, row, this.clock());
           row.approval = { approvedBy, authorizationNote, approvedAt: this.clock().toISOString(), contentHash: row.contentHash };
-          if (row.snapshotSchema === EDITORIAL_SCHEMA) row.approval.editorialSnapshotHash = row.editorialSnapshotHash;
+          if (isEditorialVariantSchema(row.snapshotSchema)) row.approval.editorialSnapshotHash = row.editorialSnapshotHash;
+          if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) { row.approval.packageHash = row.packageHash; row.approval.reviewSnapshotHash = row.reviewSnapshotHash; }
           row.status = "approved";
           row.updatedAt = this.clock().toISOString();
           return row;
@@ -305,6 +336,8 @@ export class AccountOperationsService {
     safeInput(input);
     const actor = text(input.actor, "actor");
     return this.#serialize(async () => {
+      const snapshot = this.store.snapshot(), original = operationFor(snapshot, id);
+      await this.#verifyNativeContent(snapshot.content.find(row => row.id === original.contentId));
       const { result } = await this.store.mutate(
         { type: "account.operation_started", actor, payload: { operationId: id } },
         (state) => {
@@ -335,6 +368,7 @@ export class AccountOperationsService {
         if (operation.receipt.receiptHash !== receiptHash) throw new ApiError(409, "RECEIPT_CONFLICT", "动作已完成，不能以不同回执覆盖原记录。");
         return operation;
       }
+      await this.#verifyNativeContent(state.content.find(row => row.id === operation.contentId));
       expectedState(operation, ["in_progress"]);
       const approvedAt = Date.parse(operation.approval?.approvedAt), startedAt = Date.parse(operation.execution?.startedAt);
       if (operation.approval?.contentHash !== operation.contentHash || !Number.isFinite(approvedAt) || !Number.isFinite(startedAt) ||
@@ -361,7 +395,8 @@ export class AccountOperationsService {
         } else {
           assertReady(state, operation, this.clock());
           const publication = await this.service.recordPublication({ contentId: operation.contentId, accountId: operation.accountId, actor, receipt,
-            [EDITORIAL_PUBLICATION_AUTHORIZATION]: operation.snapshotSchema === EDITORIAL_SCHEMA ? { operationId: operation.id, snapshotHash: operation.editorialSnapshotHash } : null });
+            [EDITORIAL_PUBLICATION_AUTHORIZATION]: isEditorialVariantSchema(operation.snapshotSchema) ? { operationId: operation.id, snapshotHash: operation.editorialSnapshotHash,
+              ...(operation.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { packageHash: operation.packageHash, reviewSnapshotHash: operation.reviewSnapshotHash } : {}) } : null });
           publicationId = publication.id;
         }
       } else {
@@ -373,7 +408,8 @@ export class AccountOperationsService {
           const row = operationFor(next, id);
           expectedState(row, ["in_progress"]);
           if (row.approval?.contentHash !== row.contentHash) throw new ApiError(409, "OPERATION_CONTENT_CHANGED", "审批正文哈希不一致。");
-          if (row.snapshotSchema === EDITORIAL_SCHEMA && row.approval.editorialSnapshotHash !== row.editorialSnapshotHash) throw new ApiError(409, "EDITORIAL_APPROVAL_MISMATCH", "编辑审批摘要不一致。");
+          if (isEditorialVariantSchema(row.snapshotSchema) && row.approval.editorialSnapshotHash !== row.editorialSnapshotHash) throw new ApiError(409, "EDITORIAL_APPROVAL_MISMATCH", "编辑审批摘要不一致。");
+          if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && (row.approval.packageHash !== row.packageHash || row.approval.reviewSnapshotHash !== row.reviewSnapshotHash)) throw new ApiError(409, "NATIVE_PACKAGE_CHANGED", "原生审批与回读的包摘要不一致。");
           row.receipt = { ...receipt, receiptHash, recordedAt: this.clock().toISOString(), recordedBy: actor };
           row.publicationId = publicationId;
           row.status = "completed";
@@ -413,11 +449,15 @@ export class AccountOperationsService {
         if (!Number.isFinite(approvedAt) || !Number.isFinite(startedAt) || startedAt < approvedAt || startedAt > this.clock().getTime() + 60_000) {
           throw new PolicyError("ORIGINAL_APPROVAL_REQUIRED", "原始审批与执行时间无效，不能以调和绕过授权时间。");
         }
-        const approvedHash = operation.snapshotSchema === EDITORIAL_SCHEMA ? operation.editorialSnapshotHash : operation.contentHash;
+        const approvedHash = isEditorialVariantSchema(operation.snapshotSchema) ? operation.editorialSnapshotHash : operation.contentHash;
         if (input.approvedSnapshotHash !== approvedHash) throw new PolicyError("RECONCILIATION_SNAPSHOT_MISMATCH", "调和请求与原始获准快照不一致。");
-        if (operation.snapshotSchema !== undefined && (operation.snapshotSchema !== EDITORIAL_SCHEMA ||
+        if (operation.snapshotSchema !== undefined && (!isEditorialVariantSchema(operation.snapshotSchema) ||
             hashObject(operation.editorialSnapshot) !== approvedHash || operation.approval.editorialSnapshotHash !== approvedHash)) {
           throw new PolicyError("ORIGINAL_APPROVAL_REQUIRED", "原始完整编辑快照或审批已不一致。");
+        }
+        if (operation.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && (operation.approval.packageHash !== operation.packageHash || operation.approval.reviewSnapshotHash !== operation.reviewSnapshotHash ||
+            operation.editorialSnapshot.packageHash !== operation.packageHash || operation.editorialSnapshot.reviewSnapshotHash !== operation.reviewSnapshotHash)) {
+          throw new PolicyError("ORIGINAL_APPROVAL_REQUIRED", "原始原生包或完整审核快照与批准不符。");
         }
         const exactText = operation.type === "publish" ? `${operation.contentSnapshot?.title}\n${operation.contentSnapshot?.body}` : operation.replyText;
         if (hashText(exactText) !== operation.contentHash) throw new PolicyError("RECONCILIATION_SNAPSHOT_MISMATCH", "原始正文快照已变化。");
@@ -448,9 +488,9 @@ export class AccountOperationsService {
         if (operation.type === "publish") {
           const content = state.content.find(row => row.id === operation.contentId);
           const unchanged = content && hashText(`${content.title}\n${content.body}`) === operation.contentHash &&
-            (operation.snapshotSchema !== EDITORIAL_SCHEMA || hashObject(editorialVariantSnapshot(content)) === approvedHash);
+            (!isEditorialVariantSchema(operation.snapshotSchema) || hashObject(editorialVariantSnapshot(content)) === approvedHash);
           if (!unchanged) deviations.push("CURRENT_CONTENT_CHANGED_OR_MISSING");
-          if (operation.snapshotSchema === EDITORIAL_SCHEMA && content && account) {
+          if (isEditorialVariantSchema(operation.snapshotSchema) && content && account) {
             try { validateEditorialVariant(state, content, account, { now: this.clock(), requireReady: true, requireApproval: true }); }
             catch (error) { if (error instanceof ApiError) deviations.push(error.code); else throw error; }
           }
@@ -469,7 +509,8 @@ export class AccountOperationsService {
               platform: operation.platform, url: receipt.url, publishedAt: receipt.publishedAt, capturedBy: receipt.capturedBy,
               dataMode: receipt.dataMode, contentHash: operation.contentHash, receiptHash, recordedAt: now, recordedBy: actor,
               origin: "historical_result_reconciliation", originalContentSnapshot: structuredClone(operation.contentSnapshot),
-              ...(operation.snapshotSchema === EDITORIAL_SCHEMA ? { snapshotSchema: EDITORIAL_SCHEMA, editorialSnapshotHash: approvedHash, editorialSnapshot: structuredClone(operation.editorialSnapshot) } : {}) });
+              ...(isEditorialVariantSchema(operation.snapshotSchema) ? { snapshotSchema: operation.snapshotSchema, editorialSnapshotHash: approvedHash, editorialSnapshot: structuredClone(operation.editorialSnapshot),
+                ...(operation.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { packageHash: operation.packageHash, reviewSnapshotHash: operation.reviewSnapshotHash, artifactHashes: receipt.artifactHashes } : {}) } : {}) });
           }
           if (unchanged && content.status === "scheduled") Object.assign(content, { status: "published", version: content.version + 1, publicationId, updatedAt: now });
         }

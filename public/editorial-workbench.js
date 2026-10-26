@@ -1,4 +1,5 @@
 import { escapeHtml as html, safePublicUrl, documentBlocksFromText, renderDocumentBlocks } from "./publication-view.js";
+import { EDITORIAL_NATIVE_SCHEMA, renderNativePackageReview, nativeReviewConfirmationFields, assertNativeReviewConfirmations, loadNativePackageReview, bindNativePackagePreviews } from "./content-ops.js";
 
 const STATUS = { draft: "草稿", active: "已启用", paused: "已暂停", archived: "已归档", unverified: "待核对", verified: "身份已核对", fact_check: "事实核验中", approved: "此版本已批准", scheduled: "已排期", candidate: "私有候选", live_unverified: "已激活 · 待回读", published: "回读已核验", withdrawn: "已撤稿", staged: "私有待审核", reviewed: "素材已审核", revoked: "已撤销使用" };
 const FORMATS = { article: "文章", image_text: "图文", video: "视频" };
@@ -96,10 +97,31 @@ function destinationLocatorSummary(destination) {
   return externalLink(typeof locator === "string" ? locator : locator.origin || locator.url, "打开真实位置");
 }
 
+export function buildEditorialVariantTransition(variant, fields, { nativeReviewReady = false } = {}) {
+  const value = key => typeof fields.get === "function" ? fields.get(key) : fields[key];
+  const target = String(value("target") || "");
+  const input = { target, note: value("note") || "" };
+  if (target === "approved") {
+    if (value("reviewed") !== "on") throw new Error("只有实际核对完整版本后才能勾选审阅声明。");
+    input.reviewed = true;
+    input.snapshotHash = snapshotHash(variant || {});
+    if (variant?.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+      if (!nativeReviewReady || !variant.reviewSnapshotHash) throw new Error("请先读取并核对准确原生包、真实附件与独立终检，不能只批准正文。");
+      assertNativeReviewConfirmations(variant, fields);
+      input.reviewSnapshotHash = variant.reviewSnapshotHash;
+    }
+  }
+  return input;
+}
+
 export function mountEditorialWorkbench({ api, getData, showError, afterMutation, onCatalogChange } = {}) {
   const root = document.querySelector("#editorial-root");
   if (!root) return { async load() {}, render() {}, getCatalog: () => null };
   const state = { tab: "stories", data: null, assets: [], loading: false, error: null, mediaError: null, notice: "", selectedStoryId: "", showArchived: false, catalogQuery: "", file: null };
+  const nativeReviews = new Map();
+  const nativeErrors = new Map();
+  const nativeLoading = new Set();
+  const nativeKey = row => `${row.id}:${snapshotHash(row)}:${row.reviewSnapshotHash || ""}`;
   const drafts = new Map();
   const attempts = new Map();
   const activeForms = new Set();
@@ -127,7 +149,7 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
         if (!field.name || field.type === "file" || field.type === "hidden") continue;
         const value = previous.find(item => item.name === field.name && (field.type !== "checkbox" || item.value === field.value));
         if (!value) continue;
-        if (field.type === "checkbox") field.checked = ["reviewed", "confirm", "identityConfirmed", "policyReviewed", "rightsConfirmed", "privacyConfirmed"].includes(field.name) ? false : value.checked;
+        if (field.type === "checkbox") field.checked = ["reviewed", "confirm", "identityConfirmed", "policyReviewed", "rightsConfirmed", "privacyConfirmed", "nativePackageConfirmed"].includes(field.name) || field.name.startsWith("nativeArtifactConfirmed-") ? false : value.checked;
         else if (field.tagName !== "SELECT" || [...field.options].some(option => option.value === value.value)) field.value = value.value;
       }
     }
@@ -149,17 +171,21 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
   }
 
   function editionCard(edition) {
+    if (edition.snapshotSchema === "pengmanager.editorial-edition/v3") return `<article class="editorial-card"><header class="editorial-card-heading"><div><p class="eyebrow">${html(LOCALES[edition.locale])} · ${html(FORMATS[edition.format])} · 中立派生修订</p><h3>${html(edition.title)}</h3><p>${html(edition.id)}</p></div><span class="status-chip">不可变中立稿</span></header>${exactDocument(edition, state.assets)}<details class="editorial-disclosure"><summary>准确跨形式 / 跨语言谱系</summary><pre class="co-json">${html(JSON.stringify(edition.formatLineage, null, 2))}</pre></details><p class="operation-note">此中立稿来自受控转换。新的平台成品继续从内容运营师建立候选、独立终检与完整人审，保留全部原生字段与附件绑定。</p><a class="text-link" href="#content-ops">进入内容运营师 →</a></article>`;
     const destinations = rows("destinations").filter(item => item.status !== "archived");
     return `<article class="editorial-card"><header class="editorial-card-heading"><div><p class="eyebrow">${html(LOCALES[edition.locale])} · ${html(FORMATS[edition.format])} · 修订 ${html(edition.editorialRevision || edition.revision || 1)}</p><h3>${html(edition.title)}</h3><p>${html(edition.id)}${edition.sourceEditionId ? ` · 译文来源 ${html(edition.sourceEditionId)}` : ""}${edition.supersedesEditionId ? ` · 替代 ${html(edition.supersedesEditionId)}` : ""}</p></div><span class="status-chip">不可变正文</span></header>${edition.translationStatus === "needs_review" ? '<p class="operation-note" role="note">译文来源已有较新修订。本版本保持原审阅内容；请核对最新来源后建立新修订，旧审批不会自动迁移。</p>' : ""}${exactDocument(edition, state.assets)}<details class="editorial-disclosure"><summary>为一个真实目的地准备草稿</summary>${formStart("variant-create", edition)}<label><span>发布目的地</span><select name="destinationId" required><option value="">选择实际目的地</option>${destinations.map(destination => `<option value="${html(destination.id)}">${html(destination.name || platformName(destination.platformId))} · ${html(statusLabel(destination.status))} · ${destination.identityReview?.status === "verified" ? "身份已核对" : "身份待核对"}</option>`).join("")}</select></label><p class="operation-field-hint">创建草稿不会启用账号或触发外发。待核对目的地必须完成身份与规则审核，才能批准此渠道版本。</p><label><span>该渠道完整标题</span><input name="title" required maxlength="240" value="${html(edition.title)}" /></label><label><span>导语</span><textarea name="summary" maxlength="2000" rows="3">${html(edition.summary || "")}</textarea></label><label><span>该渠道完整正文</span><textarea name="body" required maxlength="50000" rows="11">${html(edition.body)}</textarea></label><label><span>这次替代的渠道稿（可选）</span><select name="supersedesContentId"><option value="">独立新草稿，不替代旧稿</option></select></label><label><span>渠道调整说明</span><textarea name="adaptationNote" maxlength="2000" rows="2" placeholder="记录为什么为该读者与发布场景调整表达。"></textarea></label>${assetFields(state.assets, edition.assetRefs || [])}${structuredField(edition.blocks)}${feedback()}<button class="primary-button" type="submit"${destinations.length ? "" : " disabled"}>保存独立渠道草稿</button>${!destinations.length ? '<p class="operation-field-hint">请先在“发布目的地”登记一个实际位置。</p>' : ""}</form></details></article>`;
   }
 
   function variantCard(variant) {
     const destination = rows("destinations").find(item => item.id === variant.destinationId);
+    const native = variant.snapshotSchema === EDITORIAL_NATIVE_SCHEMA;
+    const review = nativeReviews.get(nativeKey(variant));
     const next = { draft: ["fact_check", "提交事实核验"], fact_check: ["approved", "批准这个精确渠道版本"], approved: ["scheduled", "确认排期"], blocked: ["draft", "返回草稿"] }[variant.status];
-    const transition = next ? `${formStart("variant-transition", variant, snapshotHash(variant))}<input type="hidden" name="target" value="${next[0]}" /><label><span>${next[0] === "approved" ? "本次审阅说明" : "处理说明"}</span><textarea name="note" maxlength="2000" rows="2"${next[0] === "approved" ? " required" : ""}></textarea></label>${next[0] === "approved" ? reviewCheck("我具有本次审阅权限，已核对上方完整标题、正文、页面结构、语言、素材顺序与目的地；批准的仅是这个校验值对应的版本。") : ""}${feedback()}<button class="primary-button" type="submit">${next[1]}</button></form>` : "";
+    const transition = next ? `${formStart("variant-transition", variant, snapshotHash(variant))}<input type="hidden" name="target" value="${next[0]}" /><label><span>${next[0] === "approved" ? "本次审阅说明" : "处理说明"}</span><textarea name="note" maxlength="2000" rows="2"${next[0] === "approved" ? " required" : ""}></textarea></label>${next[0] === "approved" ? `${native ? nativeReviewConfirmationFields(variant) : ""}${reviewCheck("我具有本次审阅权限，已核对上方完整标题、正文、页面结构、语言、素材顺序与目的地；批准的仅是这个校验值对应的版本。")}` : ""}${feedback()}<button class="primary-button" type="submit"${native && next[0] === "approved" && !review?.ready ? " disabled" : ""}>${next[1]}</button>${native && next[0] === "approved" && !review?.ready ? '<p class="operation-field-hint">先读取下方准确原生候选、全部附件与终检。缺失或未核实维度不能批准。</p>' : ""}</form>` : "";
     const owned = destination?.kind === "owned_origin" || destination?.platformId === "official-site";
     const release = variant.status === "scheduled" && owned ? `<details class="editorial-disclosure"><summary>建立官网私有发布候选</summary>${formStart("release-create", variant)}<label><span>固定地址 slug（小写英文、数字和连字符）</span><input name="slug" required maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="a-concrete-product-question" /></label><p class="operation-note">这里只建立私有候选。还需要核对公开预览、独立批准、激活和真实回读，才会形成官网发布回执。更新同一地址时请填写原 slug。</p>${feedback()}<button class="primary-button" type="submit">建立私有候选</button></form></details>` : variant.status === "scheduled" && !owned ? '<p class="operation-note">外部平台仍需在“运营动作”逐账号授权、实际执行与回读；渠道排期不会自动发帖。</p><a class="text-link" href="#operations">进入运营动作 →</a>' : "";
-    return `<article class="editorial-card" data-editorial-variant="${html(variant.id)}"><header class="editorial-card-heading"><div><p class="eyebrow">${html(LOCALES[variant.locale])} · ${html(FORMATS[variant.format])} · ${html(destination?.name || variant.destinationId)}</p><h3>${html(variant.title)}</h3><p>${html(variant.id)} · ${html(variant.editionId)}</p></div><span class="status-chip ${html(variant.status)}">${html(statusLabel(variant.status))}</span></header>${exactDocument(variant, state.assets)}${transition}${release}</article>`;
+    const document = native ? `<button class="ghost-button" type="button" data-editorial-native="${html(variant.id)}"${nativeLoading.has(variant.id) ? " disabled" : ""}>${nativeLoading.has(variant.id) ? "正在读取准确成品与真实附件…" : "读取完整原生包、真实附件与独立终检"}</button>${nativeErrors.has(variant.id) ? `<p class="form-error" role="alert">${html(nativeErrors.get(variant.id))}</p>` : ""}${renderNativePackageReview(variant, review)}` : exactDocument(variant, state.assets);
+    return `<article class="editorial-card" data-editorial-variant="${html(variant.id)}"><header class="editorial-card-heading"><div><p class="eyebrow">${html(LOCALES[variant.locale])} · ${html(FORMATS[variant.format])} · ${html(destination?.name || variant.destinationId)}</p><h3>${html(variant.title)}</h3><p>${html(variant.id)} · ${html(variant.editionId)}</p></div><span class="status-chip ${html(variant.status)}">${html(statusLabel(variant.status))}</span></header>${document}${transition}${release}</article>`;
   }
 
   function releasePanel() {
@@ -192,7 +218,7 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
     const preview = asset.kind === "image" ? `<img class="editorial-asset-preview" src="${privateUrl}" loading="lazy" alt="私有素材预览" />` : asset.kind === "video" ? `<video class="editorial-asset-preview" src="${privateUrl}" controls playsinline preload="metadata"></video>` : externalLink(privateUrl, "打开原始字幕文件");
     const approve = asset.status === "staged" ? `${formStart("asset-approve", asset, asset.sha256)}<label><span>素材来源、许可与隐私核对说明</span><textarea name="rightsNote" required minlength="8" maxlength="2000" rows="3" placeholder="记录真实来源、使用许可与是否包含他人信息。不上传许可证中的私密账号或凭据。"></textarea></label>${reviewCheck("我已核对这份精确字节素材的来源和使用权，允许本项目按已审阅范围使用。", "rightsConfirmed")}${reviewCheck("我已检查这份素材不包含未获准公开的个人、客户或其他私密信息。", "privacyConfirmed")}${feedback()}<button class="primary-button" type="submit">批准这份素材的使用范围</button></form>` : "";
     const revoke = asset.status === "reviewed" ? `<details class="editorial-disclosure editorial-danger"><summary>撤销此素材的公开使用</summary>${formStart("asset-revoke", asset, asset.sha256)}<label><span>撤销原因</span><textarea name="reason" required maxlength="2000" rows="2"></textarea></label>${reviewCheck("停止此素材的公开交付；引用它的发布版本可能随之不再具备公开条件，历史仍保留。", "confirm")}${feedback()}<button class="ghost-button" type="submit">撤销使用</button></form></details>` : "";
-    return `<article class="editorial-card"><header class="editorial-card-heading"><div><p class="eyebrow">${html(asset.kind)} · ${html(asset.mime)} · ${byteSize(asset.size)}</p><h3>${html(asset.name || asset.id)}</h3><p>${html(asset.id)} · ${html(timestamp(asset.createdAt))}${asset.width && asset.height ? ` · ${html(asset.width)} × ${html(asset.height)}` : ""}</p></div><span class="status-chip ${asset.status === "reviewed" ? "approved" : ""}">${html(statusLabel(asset.status))}</span></header><details class="editorial-disclosure"><summary>查看私有原文件</summary>${preview}<p class="operation-field-hint">此预览使用管理员权限；审核通过本身不会生成匿名可读素材地址，仍须有符合条件的活跃官网版本引用它。</p></details>${hashLine(asset.sha256)}${asset.review ? `<p class="operation-note">最近审核：${html(asset.review.actor || asset.review.reviewedBy || "管理员会话")} · ${html(timestamp(asset.review.at || asset.review.reviewedAt))}<br />${html(asset.review.rightsNote || "")}</p>` : ""}${approve}${revoke}</article>`;
+    return `<article class="editorial-card" data-editorial-asset="${html(asset.id)}"><header class="editorial-card-heading"><div><p class="eyebrow">${html(asset.kind)} · ${html(asset.mime)} · ${byteSize(asset.size)}</p><h3>${html(asset.name || asset.id)}</h3><p>${html(asset.id)} · ${html(timestamp(asset.createdAt))}${asset.width && asset.height ? ` · ${html(asset.width)} × ${html(asset.height)}` : ""}</p></div><span class="status-chip ${asset.status === "reviewed" ? "approved" : ""}">${html(statusLabel(asset.status))}</span></header><details class="editorial-disclosure"><summary>查看私有原文件</summary>${preview}<p class="operation-field-hint">此预览使用管理员权限；审核通过本身不会生成匿名可读素材地址，仍须有符合条件的活跃官网版本引用它。</p></details>${hashLine(asset.sha256)}${asset.review ? `<p class="operation-note">最近审核：${html(asset.review.actor || asset.review.reviewedBy || "管理员会话")} · ${html(timestamp(asset.review.at || asset.review.reviewedAt))}<br />${html(asset.review.rightsNote || "")}</p>` : ""}${approve}${revoke}</article>`;
   }
 
   function accountsPanel() {
@@ -455,10 +481,7 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
     }
     if (action === "variant-transition") {
       const variant = rows("variants").find(item => item.id === id);
-      const target = String(fields.get("target"));
-      const approved = target === "approved";
-      if (approved && fields.get("reviewed") !== "on") throw new Error("只有实际核对完整版本后才能勾选审阅声明。");
-      return mutate(`/api/content/${encodeURIComponent(id)}/transition`, { target, note: fields.get("note") || "", ...(approved ? { reviewed: true, snapshotHash: snapshotHash(variant || {}) } : {}) }, parent);
+      return mutate(`/api/content/${encodeURIComponent(id)}/transition`, buildEditorialVariantTransition(variant, fields, { nativeReviewReady: nativeReviews.get(nativeKey(variant || {}))?.ready === true }), parent);
     }
     if (action === "release-create") return mutate("/api/website/releases", { contentId: id, slug: fields.get("slug") }, parent);
     if (action === "release-approve") {
@@ -585,6 +608,20 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
     finally { button.disabled = false; button.textContent = "重新读取真实变更历史"; }
   }
 
+  async function loadNativeReview(id) {
+    if (nativeLoading.has(id)) return;
+    const variant = rows("variants").find(row => row.id === id);
+    if (!variant || variant.snapshotSchema !== EDITORIAL_NATIVE_SCHEMA) return;
+    nativeLoading.add(id); nativeErrors.delete(id); render();
+    try {
+      const review = await loadNativePackageReview(api, variant, { editions: rows("editions") });
+      nativeReviews.set(nativeKey(variant), review);
+    } catch (error) { nativeErrors.set(id, error.message || "准确原生包与附件暂时无法读取，请保留缺口后重试。"); }
+    finally { nativeLoading.delete(id); render(); }
+  }
+
+  bindNativePackagePreviews(root, { api });
+
   root.addEventListener("submit", event => {
     const form = event.target.closest("form[data-editorial-form]");
     if (!form) return;
@@ -600,6 +637,7 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
       root.querySelector(`[data-editorial-tab="${state.tab}"]`)?.focus({ preventScroll: true });
     } else if (button.hasAttribute("data-editorial-refresh")) void load();
     else if (button.dataset.accountHistory) void loadHistory(button);
+    else if (button.dataset.editorialNative) void loadNativeReview(button.dataset.editorialNative);
   });
   root.addEventListener("keydown", event => {
     const tab = event.target.closest("[role=tab][data-editorial-tab]");
@@ -631,5 +669,18 @@ export function mountEditorialWorkbench({ api, getData, showError, afterMutation
     if (input && position !== null) input.setSelectionRange(position, position);
   });
   render();
-  return { load, render, getData: () => state.data, getCatalog: () => state.error ? null : state.data?.catalog || null };
+  return { load, render, getData: () => state.data, getCatalog: () => state.error ? null : state.data?.catalog || null, selectContent(id) {
+    const variant = rows("variants").find(row => row.id === id);
+    if (!variant) return false;
+    state.selectedStoryId = variant.storyId; state.tab = "stories"; render();
+    window.location.hash = "editorial";
+    requestAnimationFrame(() => root.querySelector(`[data-editorial-variant="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return true;
+  }, selectMedia(id) {
+    if (!state.assets.some(asset => asset.id === id)) return false;
+    state.tab = "media"; render();
+    window.location.hash = "editorial";
+    requestAnimationFrame(() => root.querySelector(`[data-editorial-asset="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return true;
+  } };
 }

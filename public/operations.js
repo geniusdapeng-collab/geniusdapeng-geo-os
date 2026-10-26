@@ -1,6 +1,9 @@
+import { EDITORIAL_NATIVE_SCHEMA, nativePublicationPackage, nativeArtifactReferences, renderNativePackageReview, nativeReviewConfirmationFields, assertNativeReviewConfirmations, loadNativePackageReview, bindNativePackagePreviews } from "./content-ops.js";
+
 const labels = { draft: "待授权", approved: "已授权", in_progress: "执行中", completed: "已完成", failed: "已结束 · 未完成" };
 const accountLabels = { draft: "未启用", active: "已启用", paused: "已暂停", archived: "已归档" };
 const EDITORIAL_SCHEMA = "pengmanager.editorial-snapshot/v2";
+const editorialSchema = value => [EDITORIAL_SCHEMA, EDITORIAL_NATIVE_SCHEMA].includes(value);
 const incidentLabels = {
   ACCOUNT_MISSING: "当前账号资料已不存在", ACCOUNT_IDENTITY_CHANGED: "当前账号身份与原授权不同",
   ACCOUNT_NOT_ACTIVE: "当前账号未启用", PLATFORM_POLICY_NOT_REVIEWED: "当前平台规则尚未审阅",
@@ -52,17 +55,22 @@ export function contentMatchesAccount(content, account) {
   return content.platforms?.includes(account.platform) === true;
 }
 
-function approvedSnapshotHash(row) { return row.snapshotSchema === EDITORIAL_SCHEMA ? row.editorialSnapshotHash : row.contentHash; }
+function approvedSnapshotHash(row) { return editorialSchema(row.snapshotSchema) ? row.editorialSnapshotHash : row.contentHash; }
 
 export function operationMediaReferences(row) {
-  if (row.snapshotSchema !== EDITORIAL_SCHEMA) return [];
+  if (!editorialSchema(row.snapshotSchema)) return [];
   return [...new Map((row.editorialSnapshot?.assetRefs || []).map(ref => [`${ref.assetId}:${ref.sha256}`, ref])).values()]
     .sort((a, b) => a.assetId.localeCompare(b.assetId));
 }
 
-function originalEditorialSnapshot(row) {
-  if (row.snapshotSchema !== EDITORIAL_SCHEMA) return "";
+export function operationArtifactReferences(row) {
+  return row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? nativeArtifactReferences(row).sort((a, b) => a.artifactId.localeCompare(b.artifactId)) : [];
+}
+
+function originalEditorialSnapshot(row, review = null) {
+  if (!editorialSchema(row.snapshotSchema)) return "";
   const snapshot = row.editorialSnapshot || {};
+  if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) return `<details class="operation-snapshot"><summary>查看原获准的完整原生包、有序附件、设置与独立终检</summary><p class="operation-hash">完整编辑快照 SHA-256 <code>${html(row.editorialSnapshotHash)}</code></p><button class="ghost-button" type="button" data-operation-native-review="${html(row.id)}">读取原包的独立报告与真实附件</button>${renderNativePackageReview({ ...snapshot, snapshotSchema: row.snapshotSchema, packageHash: row.packageHash, reviewSnapshotHash: row.reviewSnapshotHash }, review)}</details>`;
   return `<details class="operation-snapshot"><summary>查看原获准的完整编辑快照、目的地与媒体</summary><p class="operation-note">${html(snapshot.locale)} · ${html(snapshot.format)} · ${html(snapshot.destinationId || row.destinationId)}</p><div class="operation-body">${html(snapshot.summary || "")}</div><h4>原页面结构与全部文字</h4><pre class="operation-structured-source">${html(JSON.stringify(snapshot.blocks || [], null, 2))}</pre><h4>原媒体顺序、替代文字、图注与字幕语言</h4><pre class="operation-structured-source">${html(JSON.stringify(snapshot.assetRefs || [], null, 2))}</pre><h4>原发布目的地</h4><pre class="operation-structured-source">${html(JSON.stringify(snapshot.destinationSnapshot || {}, null, 2))}</pre><p class="operation-hash">完整编辑快照 SHA-256 <code>${html(row.editorialSnapshotHash)}</code></p></details>`;
 }
 
@@ -70,6 +78,11 @@ function mediaReadbackFields(row) {
   const references = operationMediaReferences(row);
   if (!references.length) return "";
   return `<fieldset class="operation-media-readback"><legend>逐项实际核对原素材在平台的呈现</legend><p class="operation-note">请在真实平台打开并核对图序、画面、图注及字幕。下方摘要标识原定稿素材；勾选表示你实际完成了比对，服务器不会代替你打开外部平台。</p>${references.map(ref => `<div><p><strong>${html(ref.assetId)} · ${html(ref.role)}${ref.locale ? ` · ${html(ref.locale)}` : ""}</strong></p><p>${html(ref.alt || ref.caption || "原快照未附文字说明")}</p><a class="text-link" href="/api/media/assets/${encodeURIComponent(ref.assetId)}/bytes" target="_blank" rel="noopener noreferrer">打开原定稿素材 ↗</a><code>${html(ref.sha256)}</code><label class="check-label"><input type="checkbox" name="assetConfirmed-${html(ref.assetId)}" value="${html(ref.sha256)}" required /><span>我已在实际平台核对此项素材与原获准版本一致。</span></label></div>`).join("")}</fieldset>`;
+}
+
+function artifactReadbackFields(row) {
+  if (row.snapshotSchema !== EDITORIAL_NATIVE_SCHEMA) return "";
+  return `<p class="operation-note">请在实际平台逐个读取 / 播放原生附件，核对图序、文档页、线程、字幕、代码或 Notebook 原文与发布设置；文件在后台存在不表示已在平台正确呈现。</p>${nativeReviewConfirmationFields(row, { prefix: "artifactConfirmed" })}`;
 }
 
 function actualReceiptFields() {
@@ -93,11 +106,19 @@ export function buildOperationReceipt(row, fields) {
   if (Date.parse(verifiedAt) < Date.parse(publishedAt)) throw new Error("实际回读时间不能早于真实发布时间。");
   const receipt = { url: value("url"), publishedAt, capturedBy: value("capturedBy"), dataMode: value("dataMode"), verificationMethod: value("verificationMethod"), verifiedAt, verifiedBy: value("verifiedBy"), contentHash: row.contentHash };
   if (row.snapshotSchema !== undefined) {
-    if (row.snapshotSchema !== EDITORIAL_SCHEMA || !row.editorialSnapshotHash || !row.editorialSnapshot) throw new Error("原完整编辑快照不完整，不能登记此回执。请先核对原授权记录。");
+    if (!editorialSchema(row.snapshotSchema) || !row.editorialSnapshotHash || !row.editorialSnapshot) throw new Error("原完整编辑快照不完整，不能登记此回执。请先核对原授权记录。");
     const references = operationMediaReferences(row);
     for (const ref of references) if (fields[`assetConfirmed-${ref.assetId}`] !== ref.sha256) throw new Error(`请在实际平台核对原素材 ${ref.assetId}，不能只凭附件存在就确认。`);
     receipt.editorialSnapshotHash = row.editorialSnapshotHash;
     receipt.assetHashes = references.map(ref => ({ assetId: ref.assetId, sha256: ref.sha256 }));
+    if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+      const pkg = nativePublicationPackage(row);
+      if (!pkg || pkg.packageHash !== row.packageHash || !row.reviewSnapshotHash || row.editorialSnapshot.reviewSnapshotHash !== row.reviewSnapshotHash || !Array.isArray(pkg.artifactRefs)) throw new Error("原完整原生包、终检或审阅快照不完整，不能登记此回执。");
+      assertNativeReviewConfirmations(row, fields, { prefix: "artifactConfirmed" });
+      receipt.packageHash = row.packageHash;
+      receipt.reviewSnapshotHash = row.reviewSnapshotHash;
+      receipt.artifactHashes = operationArtifactReferences(row).map(ref => ({ artifactId: ref.artifactId, sha256: ref.sha256 }));
+    }
   }
   return receipt;
 }
@@ -134,13 +155,22 @@ export function createOperationReconciler({ api, createKey = () => {
   };
 }
 
-function approvalForm(row, person) {
+export function buildOperationApproval(row, fields, { nativeReviewReady = false } = {}) {
+  if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+    if (!nativeReviewReady) throw new Error("请先读取原完整原生包、独立报告与全部真实附件，再授权这一次外发。");
+    assertNativeReviewConfirmations(row, fields);
+  }
+  return { approvedBy: fields.approvedBy, authorizationNote: fields.authorizationNote };
+}
+
+function approvalForm(row, person, nativeReviewReady = false) {
   return `<details class="operation-action"><summary>授权这一次${row.type === "publish" ? "发布" : "回复"}</summary>
     <form data-operation-form="approve" data-operation-id="${html(row.id)}" class="operation-inline-form">
       ${actorField("approvedBy", "授权人", person)}
       <label><span>本次授权范围</span><textarea name="authorizationNote" required maxlength="2000" rows="3" placeholder="例如：允许 Codex 使用本机已登录的该账号，发布上方精确正文一次。"></textarea></label>
+      ${row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? nativeReviewConfirmationFields(row) : ""}
       <label class="check-label"><input type="checkbox" required /><span>我已核对目标账号和完整正文，授权执行这一次动作。</span></label>
-      ${feedback()}<button class="primary-button" type="submit">确认授权</button>
+      ${feedback()}<button class="primary-button" type="submit"${row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && !nativeReviewReady ? " disabled" : ""}>确认授权</button>${row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && !nativeReviewReady ? '<p class="operation-field-hint">先打开原生包并读取准确独立报告与真实附件。</p>' : ""}
     </form></details>`;
 }
 
@@ -148,7 +178,7 @@ function receiptForm(row) {
   return `<details class="operation-action"><summary>登记完成回执</summary>
     <form data-operation-form="complete" data-operation-id="${html(row.id)}" data-snapshot-hash="${html(approvedSnapshotHash(row))}" class="operation-inline-form">
       <p class="operation-note">先打开平台结果，核对原账号、完整正文、素材与发布状态。请填写实际发生的时间与人员；后台保存你的回读记录，不会代替你核验外部页面。</p>
-      ${actualReceiptFields()}${mediaReadbackFields(row)}
+      ${actualReceiptFields()}${mediaReadbackFields(row)}${artifactReadbackFields(row)}
       <label><span>实际后台登记人</span><input name="actor" required maxlength="120" autocomplete="off" /></label>
       <label class="check-label"><input type="checkbox" name="contentConfirmed" required /><span>我已打开真实平台结果，核对上方原获准的完整标题、正文、结构与全部媒体，确认本次实际结果一致。</span></label>
       ${feedback()}<button class="primary-button" type="submit">保存真实回执并完成</button>
@@ -163,7 +193,7 @@ function reconciliationForm(row) {
       <p class="operation-hash">本次绑定原获准快照 SHA-256 <code>${html(approvedSnapshotHash(row))}</code></p>
       <input type="hidden" name="approvedSnapshotHash" value="${html(approvedSnapshotHash(row))}" />
       <label class="check-label"><input type="checkbox" name="accountConfirmed" required /><span>我已在真实平台核对原账号 ${html(row.accountSnapshot.handle)}（${html(row.accountSnapshot.id)}）与上方原主页，确认这份结果属于原授权账号。</span></label>
-      ${actualReceiptFields()}${mediaReadbackFields(row)}
+      ${actualReceiptFields()}${mediaReadbackFields(row)}${artifactReadbackFields(row)}
       <label class="check-label"><input type="checkbox" name="contentConfirmed" required /><span>我已对照原完整正文、结构、语言、目的地与全部媒体，确认实际结果对应原获准版本，未用当前修改后的正文替代。</span></label>
       <label><span>普通完成受阻的实际原因与本次核对依据</span><textarea name="reason" required maxlength="2000" rows="4" placeholder="只记录已查明的真实情况，不填写令牌、Cookie、私密联系资料或虚构审批。"></textarea></label>
       <p class="operation-field-hint">管理员身份由本次登录会话记录。若结果仍不明确，先保留执行中状态继续核对，不能用失败或调和清除未知结果。</p>
@@ -181,17 +211,19 @@ function failureForm(row, person) {
     </form></details>`;
 }
 
-export function renderOperations(rows, { profile = {}, accounts = [], content = null } = {}) {
+export function renderOperations(rows, { profile = {}, accounts = [], content = null, nativeReviews = new Map(), nativeErrors = new Map() } = {}) {
   const person = profile.nameZh || "李大鹏";
   if (!rows.length) return '<div class="empty-panel operation-empty"><strong>还没有运营动作</strong><p>先准备一条已排期内容，或新建一次回复。完成授权、实际执行与回读后，真实结果会保存在这里。</p></div>';
   return [...rows].reverse().map((row) => {
+    const nativeReview = typeof nativeReviews.get === "function" ? nativeReviews.get(`${row.id}:${row.editorialSnapshotHash}`) : nativeReviews[row.id];
+    const nativeError = typeof nativeErrors.get === "function" ? nativeErrors.get(row.id) : nativeErrors[row.id];
     const account = accounts.find((item) => item.id === row.accountId);
     const expectedAccount = row.accountSnapshot ?? account;
     const identityChanged = row.accountSnapshot && (!account || row.accountSnapshot.platform !== account.platform ||
       row.accountSnapshot.handle !== account.handle || row.accountSnapshot.profileUrl !== (account.profileUrl ?? ""));
     const currentContent = content?.find(item => item.id === row.contentId);
     const contentChanged = content && row.type === "publish" && (!currentContent || currentContent.title !== row.contentSnapshot?.title || currentContent.body !== row.contentSnapshot?.body ||
-      row.snapshotSchema === EDITORIAL_SCHEMA && currentContent.snapshotHash !== row.editorialSnapshotHash);
+      editorialSchema(row.snapshotSchema) && currentContent.snapshotHash !== row.editorialSnapshotHash);
     const title = row.type === "publish" ? row.contentSnapshot?.title || row.contentId : "回复评论 / 帖子";
     const body = row.type === "publish" ? row.contentSnapshot?.body : row.replyText;
     const approval = row.approval;
@@ -203,7 +235,7 @@ export function renderOperations(rows, { profile = {}, accounts = [], content = 
       <div class="operation-original-account"><strong>原授权账号</strong><p>${html(expectedAccount?.platform || row.platform)} · ${html(expectedAccount?.handle || row.accountId)} · ${html(expectedAccount?.id || row.accountId)}</p>${expectedAccount?.profileUrl ? link(expectedAccount.profileUrl, "打开原授权主页核对") : '<p class="operation-field-hint">原记录未提供可打开的主页，不能用当前相似账号补造原身份。</p>'}</div>
       ${row.targetUrl ? `<div class="operation-target">${link(row.targetUrl, "打开要回复的帖子 / 评论")}</div>` : ""}
       <details class="operation-snapshot"><summary>查看完整${row.type === "publish" ? "发布内容" : "回复正文"}与校验哈希</summary><div class="operation-body">${html(body)}</div><p class="operation-hash">正文 SHA-256 <code>${html(row.contentHash)}</code></p></details>
-      ${originalEditorialSnapshot(row)}
+      ${nativeError ? `<p class="form-error" role="alert">${html(nativeError)}</p>` : ""}${originalEditorialSnapshot(row, nativeReview)}
       <dl class="operation-facts"><div><dt>创建</dt><dd>${html(row.createdBy)} · ${html(time(row.createdAt))}</dd></div>
       ${approval ? `<div><dt>授权</dt><dd>${html(approval.approvedBy)} · ${html(time(approval.approvedAt))}<p>${html(approval.authorizationNote)}</p></dd></div>` : ""}
       ${row.execution ? `<div><dt>执行</dt><dd>${html(row.execution.actor)} · ${html(time(row.execution.startedAt))}</dd></div>` : ""}</dl>
@@ -211,7 +243,8 @@ export function renderOperations(rows, { profile = {}, accounts = [], content = 
       ${row.failure ? `<div class="operation-failure"><strong>未完成原因</strong><p>${html(row.failure.reason)}</p><small>${html(row.failure.actor)} · ${html(time(row.failure.failedAt))}</small></div>` : ""}
       ${row.reconciliationId ? `<div class="operation-recovered"><strong>原结果已调和 · ${html(row.reconciliationId)}</strong><p>已保留原授权与回执，并登记本次偏差；没有重新发布。当前账号、正文与事实仍按各自的现状处理。</p>${row.reconciliation ? `<p>${html(row.reconciliation.reason)} · ${html(row.reconciliation.recordedBy)} · ${html(time(row.reconciliation.recordedAt))}</p>${row.reconciliation.incidentCodes?.length ? `<ul>${row.reconciliation.incidentCodes.map(code => `<li>${html(incidentLabels[code] || code)}</li>`).join("")}</ul>` : '<p>本次调和未记录额外偏差。</p>'}` : '<p>偏差详情以管理员事件记录为准。</p>'}</div>` : ""}
       ${row.classification?.level === "L0" ? '<p class="operation-note">此互动涉及高风险事项，只能由本人手工处理。</p>' : ""}
-      ${row.status === "draft" ? approvalForm(row, person) : ""}
+      ${row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && receipt ? `<details class="operation-snapshot"><summary>原生包真实回执的精确绑定</summary><pre class="operation-structured-source">${html(JSON.stringify({ editorialSnapshotHash: receipt.editorialSnapshotHash, packageHash: receipt.packageHash, reviewSnapshotHash: receipt.reviewSnapshotHash, assetHashes: receipt.assetHashes, artifactHashes: receipt.artifactHashes }, null, 2))}</pre></details>` : ""}
+      ${row.status === "draft" ? approvalForm(row, person, nativeReview?.ready === true) : ""}
       ${row.status === "approved" ? `<form data-operation-form="start" data-operation-id="${html(row.id)}" class="operation-inline-form"><p class="operation-note">标记后，请在本机浏览器实际执行这一次动作。此按钮不会触发外部发布。</p>${actorField("actor", "实际执行人", person)}${feedback()}<button class="primary-button" type="submit">标记开始执行</button></form>` : ""}
       ${row.status === "in_progress" ? receiptForm(row) : ""}
       ${reconciliationForm(row)}
@@ -225,6 +258,9 @@ export function mountOperations({ api, getData, reload, showError, profile }) {
   let loading = false;
   const receiptDrafts = new Map();
   const reconcileOperation = createOperationReconciler({ api });
+  const nativeReviews = new Map();
+  const nativeErrors = new Map();
+  const nativeLoading = new Set();
   const form = document.querySelector("#operation-create-form");
   const person = () => (typeof profile === "function" ? profile() : profile) ?? {};
   const data = () => getData() ?? { accounts: [], content: [], claims: [], interactions: [] };
@@ -302,7 +338,7 @@ export function mountOperations({ api, getData, reload, showError, profile }) {
     if (!preview) { preview = document.createElement("div"); preview.className = "operation-create-preview wide"; form.querySelector(".form-grid").append(preview); }
     const content = available.find((item) => item.id === form.elements.contentId.value);
     preview.hidden = !publish || !content;
-    preview.innerHTML = content ? `<strong>${html(content.title)}</strong><div class="operation-body">${html(content.body)}</div>` : "";
+    preview.innerHTML = content ? `<strong>${html(content.title)}</strong><div class="operation-body">${html(content.body)}</div>${content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? renderNativePackageReview(content) : ""}` : "";
   }
 
   function renderCreate() {
@@ -383,7 +419,7 @@ export function mountOperations({ api, getData, reload, showError, profile }) {
   function render() {
     captureReceiptDrafts();
     document.querySelector("#operation-count").textContent = `${rows.length} 次动作 · ${rows.filter((row) => row.status === "completed").length} 次已完成`;
-    document.querySelector("#operations-list").innerHTML = renderOperations(rows, { profile: person(), accounts: data().accounts, content: data().content });
+    document.querySelector("#operations-list").innerHTML = renderOperations(rows, { profile: person(), accounts: data().accounts, content: data().content, nativeReviews, nativeErrors });
     restoreReceiptDrafts();
     renderCreate();
     renderClaims();
@@ -456,6 +492,11 @@ export function mountOperations({ api, getData, reload, showError, profile }) {
       if (contentId) return api(`/api/content/${encodeURIComponent(contentId)}/transition`, { method: "POST", body: JSON.stringify({ ...fields, approvedBy: fields.actor }) });
       const id = target.dataset.operationId;
       let input = fields;
+      if (action === "approve") {
+        const operation = rows.find(row => row.id === id);
+        if (!operation) throw new Error("原动作已变化，请刷新并核对记录。");
+        input = buildOperationApproval(operation, fields, { nativeReviewReady: nativeReviews.get(`${operation.id}:${operation.editorialSnapshotHash}`)?.ready === true });
+      }
       if (action === "reconcile") {
         const operation = rows.find(row => row.id === id);
         if (!operation) throw new Error("原动作已变化，请刷新并核对记录。");
@@ -470,7 +511,21 @@ export function mountOperations({ api, getData, reload, showError, profile }) {
     });
   });
 
+  bindNativePackagePreviews(document.querySelector("#view-operations"), { api });
+
   document.addEventListener("click", (event) => {
+    const nativeButton = event.target.closest("[data-operation-native-review]");
+    if (nativeButton) {
+      const id = nativeButton.dataset.operationNativeReview;
+      const row = rows.find(item => item.id === id);
+      if (!row || nativeLoading.has(id)) return;
+      nativeLoading.add(id); nativeErrors.delete(id);
+      nativeButton.disabled = true; nativeButton.textContent = "正在读取准确报告与真实附件…";
+      void loadNativePackageReview(api, row).then(review => { nativeReviews.set(`${row.id}:${row.editorialSnapshotHash}`, review); })
+        .catch(error => { nativeErrors.set(id, error.message || "准确原包与附件暂时无法读取。"); })
+        .finally(() => { nativeLoading.delete(id); render(); });
+      return;
+    }
     const button = event.target.closest("[data-prepare-publication]");
     if (!button) return;
     const content = data().content.find((item) => item.id === button.dataset.preparePublication);

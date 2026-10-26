@@ -2,8 +2,13 @@ import { ApiError, PolicyError } from "./errors.mjs";
 import { hashObject } from "./hash.mjs";
 import { isClaimPubliclyExportable, scanSensitiveText, validateContentForApproval } from "./policy.mjs";
 import { requirePublicUrl } from "./public-url.mjs";
+import { validateCandidateForReview } from "./content-ops-quality.mjs";
 
 export const EDITORIAL_SCHEMA = "pengmanager.editorial-snapshot/v2";
+export const EDITORIAL_NATIVE_SCHEMA = "pengmanager.editorial-variant/v3";
+export const EDITORIAL_NATIVE_EDITION_SCHEMA = "pengmanager.editorial-edition/v3";
+export const isEditorialVariantSchema = value => [EDITORIAL_SCHEMA, EDITORIAL_NATIVE_SCHEMA].includes(value);
+export const isEditorialEditionSchema = value => [EDITORIAL_SCHEMA, EDITORIAL_NATIVE_EDITION_SCHEMA].includes(value);
 // A process-local capability cannot be supplied by an HTTP JSON body.
 export const EDITORIAL_PUBLICATION_AUTHORIZATION = Symbol("editorial publication authorization");
 export const EDITORIAL_LOCALES = Object.freeze(["zh-CN", "en-US"]);
@@ -11,7 +16,11 @@ export const EDITORIAL_FORMATS = Object.freeze(["article", "image_text", "video"
 const SECRET_FIELD = /^(?:cookies?|passwords?|secrets?|(?:access[_-]?)?tokens?|api[_-]?key|authorization|credentials|storage[_-]?state|local[_-]?storage|session[_-]?storage|headers)$/i;
 const ASSET_ROLES = new Set(["cover", "image", "video", "poster", "subtitle"]);
 const ROLE_KINDS = { cover: "image", image: "image", video: "video", poster: "image", subtitle: "caption" };
-const HASH_FIELDS = new Set(["hash", "sha256", "snapshotHash", "editorialSnapshotHash", "approvedSnapshotHash", "contentHash", "manifestSha256", "stateSha256"]);
+const HASH_FIELDS = new Set(["hash", "sha256", "snapshotHash", "editorialSnapshotHash", "approvedSnapshotHash", "contentHash", "manifestSha256", "stateSha256",
+  "packageHash", "nativePackageHash", "reviewSnapshotHash", "reportHash", "checkContextHash", "taskHash", "resolvedInputHash", "scopeHash", "pricingSnapshotHash",
+  "lineageHash", "authorizationHash", "rightsReviewHash", "privacyReviewHash", "blueprintHash", "compiledBlueprintHash",
+  "fingerprint", "checkedPackageHash", "adaptationPlanHash", "planHash", "compileInputHash", "sourceBundleHash", "formatTransformKey", "transformSpecHash"]);
+const HASH_ARRAY_FIELDS = new Set(["qualityReportHashes", "rightsReviewHashes", "privacyReviewHashes", "artifactHashes"]);
 const LOCATOR_ID_FIELDS = new Set(["serverId", "channelId", "threadId"]);
 const CREDENTIAL_PARAMETER = /token|password|secret|cookie|authorization|api[_-]?key|session|signature|credential/i;
 
@@ -21,6 +30,7 @@ const CREDENTIAL_PARAMETER = /token|password|secret|cookie|authorization|api[_-]
 export function editorialSensitiveFindings(value, { credentialUrls = true } = {}) {
   const serialized = JSON.stringify(value, (key, child) => {
     if (typeof child === "string" && HASH_FIELDS.has(key) && /^[a-f0-9]{64}$/.test(child)) return "[sha256]";
+    if (Array.isArray(child) && HASH_ARRAY_FIELDS.has(key) && child.every(item => typeof item === "string" && /^[a-f0-9]{64}$/.test(item))) return child.map(() => "[sha256]");
     if (typeof child === "string" && LOCATOR_ID_FIELDS.has(key) && /^\d{5,30}$/.test(child)) return "[community-id]";
     return child;
   });
@@ -192,20 +202,26 @@ export function normalizeEditorialBlocks(value, body, assetRefs) {
 }
 
 export function editorialEditionSnapshot(edition) {
-  return { schema: EDITORIAL_SCHEMA, id: edition.id, familyId: edition.familyId, storyId: edition.storyId,
+  const snapshot = { schema: EDITORIAL_SCHEMA, id: edition.id, familyId: edition.familyId, storyId: edition.storyId,
     locale: edition.locale, format: edition.format, editorialRevision: edition.editorialRevision,
     sourceEditionId: edition.sourceEditionId, supersedesEditionId: edition.supersedesEditionId,
     title: edition.title, summary: edition.summary, body: edition.body, blocks: edition.blocks,
     claimIds: edition.claimIds, claimBindings: edition.claimBindings, assetRefs: edition.assetRefs };
+  return edition.snapshotSchema === EDITORIAL_NATIVE_EDITION_SCHEMA ? { ...snapshot, schema: EDITORIAL_NATIVE_EDITION_SCHEMA,
+    formatLineage: edition.formatLineage, formatTransformKey: edition.formatTransformKey } : snapshot;
 }
 
 export function editorialVariantSnapshot(content) {
-  return { schema: EDITORIAL_SCHEMA, id: content.id, storyId: content.storyId, editionId: content.editionId,
+  const snapshot = { schema: EDITORIAL_SCHEMA, id: content.id, storyId: content.storyId, editionId: content.editionId,
     editionHash: content.editionHash, locale: content.locale, format: content.format,
     title: content.title, summary: content.summary, body: content.body, blocks: content.blocks,
     platforms: content.platforms, opinion: content.opinion,
     claimIds: content.claimIds, claimBindings: content.claimBindings, assetRefs: content.assetRefs,
     destinationSnapshot: content.destinationSnapshot, accountSnapshot: content.accountSnapshot };
+  return content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { ...snapshot, schema: EDITORIAL_NATIVE_SCHEMA,
+    candidateId: content.candidateId, publicationPackage: content.publicationPackage, packageHash: content.packageHash,
+    qualityReportHashes: content.qualityReportHashes, reviewEnvelope: content.reviewEnvelope,
+    reviewSnapshotHash: content.reviewSnapshotHash } : snapshot;
 }
 
 export function assertEditorialAssets(state, refs, { reviewed = false } = {}) {
@@ -221,8 +237,23 @@ export function assertEditorialAssets(state, refs, { reviewed = false } = {}) {
 }
 
 export function validateEditorialVariant(state, content, account, { now = new Date(), requireReady = true, requireApproval = false } = {}) {
-  if (content?.snapshotSchema !== EDITORIAL_SCHEMA) return;
+  if (!isEditorialVariantSchema(content?.snapshotSchema)) return;
   if (hashObject(editorialVariantSnapshot(content)) !== content.snapshotHash) throw new PolicyError("EDITORIAL_SNAPSHOT_CHANGED", "渠道版本与原快照不一致。");
+  if (content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+    const review = validateCandidateForReview(state, content.candidateId, { packageHash: content.packageHash,
+      qualityReportHashes: content.qualityReportHashes, reviewSnapshotHash: content.reviewSnapshotHash, now, assertCurrentBindings: requireReady });
+    const pkg = review.package;
+    if (hashObject(pkg) !== hashObject(content.publicationPackage) || hashObject(review.envelope) !== hashObject(content.reviewEnvelope) ||
+        pkg.storyId !== content.storyId || pkg.locale !== content.locale || pkg.editorialFormat !== content.format ||
+        pkg.title !== content.title || pkg.summary !== content.summary || pkg.body !== content.body ||
+        hashObject(pkg.orderedBlocks) !== hashObject(content.blocks) || hashObject(pkg.orderedMediaRefs) !== hashObject(content.assetRefs) ||
+        hashObject(pkg.destinationIdentitySnapshot) !== hashObject(content.destinationSnapshot) || hashObject(pkg.accountIdentitySnapshot) !== hashObject(content.accountSnapshot)) {
+      throw new PolicyError("NATIVE_PACKAGE_CHANGED", "渠道稿与已独立终检的完整原生包不一致。");
+    }
+    if (requireApproval && (content.approval?.reviewSnapshotHash !== content.reviewSnapshotHash || content.approval?.packageHash !== content.packageHash)) {
+      throw new PolicyError("EXACT_EDITORIAL_REVIEW_REQUIRED", "原生包缺少准确的完整审核快照批准。");
+    }
+  }
   const edition = (state.editions ?? []).find(row => row.id === content.editionId);
   if (!edition || hashObject(editorialEditionSnapshot(edition)) !== edition.snapshotHash || edition.snapshotHash !== content.editionHash) {
     throw new PolicyError("EDITORIAL_EDITION_CHANGED", "来源语言修订不存在或发生变化。");
@@ -277,7 +308,7 @@ export function publicEditorialClaim(claim, { now = new Date() } = {}) {
 // expired Claims and revoked assets remain valid history, while ambiguous IDs,
 // missing parent links and altered immutable snapshots stop the writer.
 export function assertEditorialStateIntegrity(state) {
-  if (state.schemaVersion !== 2) return;
+  if (![2, 3].includes(state.schemaVersion)) return;
   const fail = () => { throw new ApiError(503, "STATE_EDITORIAL_INVALID", "编辑状态的唯一标识、修订引用或不可变快照不完整，停止启动并保留原文件。"); };
   if (!Array.isArray(state.migrations) || !state.migrations.some(row => row.id === "content-platform-v1")) fail();
   const indexes = {};
@@ -293,7 +324,7 @@ export function assertEditorialStateIntegrity(state) {
   for (const key of ["editorialRequests", "mediaAssetRequests"]) if (!Array.isArray(state[key])) fail();
   const editionRevisions = new Set();
   for (const row of state.editions) {
-    if (row.snapshotSchema !== EDITORIAL_SCHEMA || !indexes.stories.has(row.storyId) || !EDITORIAL_LOCALES.includes(row.locale) ||
+    if (!isEditorialEditionSchema(row.snapshotSchema) || !indexes.stories.has(row.storyId) || !EDITORIAL_LOCALES.includes(row.locale) ||
         !EDITORIAL_FORMATS.includes(row.format) || row.familyId !== `${row.storyId}-${row.locale}-${row.format}` ||
         !Number.isSafeInteger(row.editorialRevision) || row.editorialRevision < 1 || !Array.isArray(row.claimIds) || !Array.isArray(row.claimBindings) || !Array.isArray(row.assetRefs)) fail();
     const key = `${row.familyId}:${row.editorialRevision}`;
@@ -307,17 +338,44 @@ export function assertEditorialStateIntegrity(state) {
       const source = indexes.editions.get(row.sourceEditionId);
       if (!source || source.storyId !== row.storyId || source.locale === row.locale || source.format !== row.format) fail();
     }
+    if (row.snapshotSchema === EDITORIAL_NATIVE_EDITION_SCHEMA) {
+      const lineage = row.formatLineage;
+      if (!lineage || lineage.schema !== "pengmanager.format-lineage/v1" || !Array.isArray(lineage.derivedFromEditionRefs) || !lineage.derivedFromEditionRefs.length ||
+          !/^[a-f0-9]{64}$/.test(lineage.transformSpecHash ?? "") || !/^[a-f0-9]{64}$/.test(row.formatTransformKey ?? "")) fail();
+      const { lineageHash, ...base } = lineage;
+      if (hashObject(base) !== lineageHash) fail();
+      for (const ref of lineage.derivedFromEditionRefs) {
+        const source = indexes.editions.get(ref.id);
+        if (!source || source.id === row.id || source.storyId !== row.storyId || source.snapshotHash !== ref.sha256 || source.editorialRevision !== ref.revision) fail();
+      }
+    }
     for (const ref of row.assetRefs) if (!indexes.mediaAssets.has(ref.assetId)) fail();
   }
   for (const row of state.destinations) {
     if (row.accountId && (!indexes.accounts.has(row.accountId) || indexes.accounts.get(row.accountId).platformId !== row.platformId)) fail();
   }
+  const visitingEditions = new Set(), checkedEditions = new Set();
+  const visitEdition = row => {
+    if (visitingEditions.has(row.id)) fail();
+    if (checkedEditions.has(row.id)) return;
+    visitingEditions.add(row.id);
+    const parents = [...(row.sourceEditionId ? [row.sourceEditionId] : []), ...(row.formatLineage?.derivedFromEditionRefs ?? []).map(ref => ref.id)];
+    for (const parentId of parents) { const parent = indexes.editions.get(parentId); if (!parent) fail(); visitEdition(parent); }
+    visitingEditions.delete(row.id); checkedEditions.add(row.id);
+  };
+  state.editions.forEach(visitEdition);
   for (const row of state.content.filter(item => item.snapshotSchema !== undefined)) {
     const edition = indexes.editions.get(row.editionId), destination = indexes.destinations.get(row.destinationId);
-    if (row.snapshotSchema !== EDITORIAL_SCHEMA || !edition || !destination || !indexes.stories.has(row.storyId) ||
+    if (!isEditorialVariantSchema(row.snapshotSchema) || !edition || !destination || !indexes.stories.has(row.storyId) ||
         edition.storyId !== row.storyId || edition.locale !== row.locale || edition.format !== row.format || edition.snapshotHash !== row.editionHash ||
         !Array.isArray(row.assetRefs) || hashObject(editorialVariantSnapshot(row)) !== row.snapshotHash) fail();
     for (const ref of row.assetRefs) if (!indexes.mediaAssets.has(ref.assetId)) fail();
+    if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA) {
+      const candidate = state.nativeCandidatePackages?.find(candidate => candidate.id === row.candidateId);
+      if (!candidate || candidate.packageHash !== row.packageHash || hashObject(candidate.package) !== hashObject(row.publicationPackage) ||
+          hashObject(row.reviewEnvelope) !== row.reviewSnapshotHash || row.reviewEnvelope.packageHash !== row.packageHash ||
+          hashObject(row.reviewEnvelope.qualityReportHashes) !== hashObject(row.qualityReportHashes)) fail();
+    }
     if (row.supersedesContentId) {
       const previous = indexes.content.get(row.supersedesContentId);
       if (!previous || previous.storyId !== row.storyId || previous.locale !== row.locale || previous.format !== row.format || previous.destinationId !== row.destinationId) fail();
@@ -326,7 +384,7 @@ export function assertEditorialStateIntegrity(state) {
   const familyPaths = new Map();
   for (const row of state.websiteReleases) {
     const content = indexes.content.get(row.contentId);
-    if (!content || content.snapshotSchema !== EDITORIAL_SCHEMA || content.storyId !== row.storyId || content.editionId !== row.editionId ||
+    if (!content || !isEditorialVariantSchema(content.snapshotSchema) || content.storyId !== row.storyId || content.editionId !== row.editionId ||
         content.locale !== row.locale || content.format !== row.format || content.snapshotHash !== row.contentSnapshotHash ||
         !row.publicSnapshot || hashObject(row.publicSnapshot) !== row.snapshotHash || row.publicSnapshot.canonicalPath !== row.canonicalPath) fail();
     const key = `${row.storyId}:${row.locale}:${row.format}`;

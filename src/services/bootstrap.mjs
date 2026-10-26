@@ -123,7 +123,7 @@ function migrationOrigin(value) {
 }
 
 export function planEditorialMigration(state, { publicOrigin } = {}) {
-  if (![1, 2].includes(state?.schemaVersion)) throw new ApiError(409, "STATE_SCHEMA_UNSUPPORTED", "无法迁移未知状态版本。");
+  if (![1, 2, 3].includes(state?.schemaVersion)) throw new ApiError(409, "STATE_SCHEMA_UNSUPPORTED", "无法迁移未知状态版本。");
   if (!Array.isArray(state.accounts) || !Array.isArray(state.events)) throw new ApiError(409, "EDITORIAL_MIGRATION_INVALID_STATE", "迁移输入缺少账号或事件集合。");
   const ids = new Set();
   for (const account of state.accounts) {
@@ -136,8 +136,8 @@ export function planEditorialMigration(state, { publicOrigin } = {}) {
   }
   if (state.migrations !== undefined && !Array.isArray(state.migrations)) throw new ApiError(409, "EDITORIAL_MIGRATION_INVALID_STATE", "迁移记录无效。");
   return {
-    migrationId: "content-platform-v1", fromSchema: state.schemaVersion, toSchema: 2,
-    alreadyApplied: state.schemaVersion === 2 && (state.migrations ?? []).some(row => row.id === "content-platform-v1"),
+    migrationId: "content-platform-v1", fromSchema: state.schemaVersion, toSchema: Math.max(2, state.schemaVersion),
+    alreadyApplied: state.schemaVersion >= 2 && (state.migrations ?? []).some(row => row.id === "content-platform-v1"),
     expectedRevision: state.revision, inputHash: hashObject(state), publicOrigin: origin,
     accounts: state.accounts.map(account => ({ id: account.id,
       platformId: account.platformId ?? (LEGACY_PLATFORM_IDS[account.id] === account.platform ? account.id : null),

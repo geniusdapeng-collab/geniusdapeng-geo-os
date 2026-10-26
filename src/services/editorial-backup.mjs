@@ -6,8 +6,10 @@ import { ApiError } from "../domain/errors.mjs";
 import { verifyEventChain } from "../storage/json-store.mjs";
 
 const SCHEMA = "pengmanager.editorial-backup/v1";
+const NATIVE_SCHEMA = "pengmanager.editorial-backup/v2";
 const BACKUP_ID = /^EDB-[a-f0-9]{32}$/;
 const ASSET_ID = /^MED-[a-f0-9]{32}$/;
+const ARTIFACT_ID = /^ART-[a-f0-9]{32}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const MAX_STATE_BYTES = 128 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;
@@ -46,7 +48,7 @@ async function directories(store, create = false) {
   return result;
 }
 function snapshotState(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || ![1, 2].includes(value.schemaVersion)
+  if (!value || typeof value !== "object" || Array.isArray(value) || ![1, 2, 3].includes(value.schemaVersion)
     || !Number.isSafeInteger(value.revision) || value.revision < 0 || !Array.isArray(value.events)
     || !verifyEventChain(value.events).valid || (value.mediaAssets !== undefined && !Array.isArray(value.mediaAssets))) {
     fail("EDITORIAL_BACKUP_INVALID_STATE", "当前状态或事件链无法作为可恢复备份。");
@@ -57,6 +59,12 @@ function snapshotState(value) {
     if (!ASSET_ID.test(asset?.id ?? "") || identifiers.has(asset.id) || !SHA.test(asset.sha256 ?? "")
       || !Number.isSafeInteger(asset.size) || asset.size < 1) fail("EDITORIAL_BACKUP_INVALID_ASSET", "注册素材的标识、摘要或大小无效。");
     identifiers.add(asset.id);
+  }
+  if (state.productionArtifacts !== undefined && !Array.isArray(state.productionArtifacts)) fail("EDITORIAL_BACKUP_INVALID_ARTIFACT", "附件集合无效。");
+  for (const artifact of state.productionArtifacts ?? []) {
+    if (!ARTIFACT_ID.test(artifact?.id ?? "") || identifiers.has(artifact.id) || !SHA.test(artifact.sha256 ?? "") ||
+        !Number.isSafeInteger(artifact.size) || artifact.size < 1) fail("EDITORIAL_BACKUP_INVALID_ARTIFACT", "登记附件的标识、摘要或大小无效。");
+    identifiers.add(artifact.id);
   }
   const bytes = Buffer.from(`${JSON.stringify(state, null, 2)}\n`, "utf8");
   if (bytes.length > MAX_STATE_BYTES) fail("EDITORIAL_BACKUP_TOO_LARGE", "状态文件超过备份工具的安全读取上限。");
@@ -106,12 +114,12 @@ async function syncDirectory(path) {
   try { await handle.sync(); } finally { await handle.close(); }
 }
 function receipt(manifest, manifestSha256) {
-  return { backupId: manifest.backupId, schema: SCHEMA, stage: manifest.stage, releaseId: manifest.releaseId,
+  return { backupId: manifest.backupId, schema: manifest.schema, stage: manifest.stage, releaseId: manifest.releaseId,
     createdAt: manifest.createdAt, sourceRevision: manifest.sourceRevision, manifestSha256,
-    stateSha256: manifest.files[0].sha256, assetCount: manifest.assetCount, totalBytes: manifest.totalBytes };
+    stateSha256: manifest.files[0].sha256, assetCount: manifest.assetCount, artifactCount: manifest.artifactCount ?? 0, totalBytes: manifest.totalBytes };
 }
 
-async function capture({ store, mediaAssets, stage, release, inputState }) {
+async function capture({ store, mediaAssets, productionArtifacts, clock, stage, release, inputState }) {
   let temporary, temporaryInfo, published = false;
   try {
     const { state, bytes } = snapshotState(inputState);
@@ -122,9 +130,12 @@ async function capture({ store, mediaAssets, stage, release, inputState }) {
       }
     }
     const assets = state.mediaAssets ?? [];
+    const artifacts = state.productionArtifacts ?? [];
+    const native = state.schemaVersion === 3 || artifacts.length > 0;
     if (assets.length && typeof mediaAssets?.openVerifiedAsset !== "function") fail("EDITORIAL_BACKUP_MEDIA_UNAVAILABLE", "完整备份需要注册素材的受控字节读取服务。");
+    if (artifacts.length && typeof productionArtifacts?.openBackupArtifact !== "function") fail("EDITORIAL_BACKUP_ARTIFACTS_UNAVAILABLE", "完整备份需要私有附件的受控字节读取服务。");
     const roots = await directories(store, true);
-    const assetBytes = assets.reduce((total, asset) => total + asset.size, 0);
+    const assetBytes = [...assets, ...artifacts].reduce((total, asset) => total + asset.size, 0);
     if (!Number.isSafeInteger(assetBytes)) fail("EDITORIAL_BACKUP_INVALID_ASSET", "注册素材总大小无效。");
     const disk = await statfs(roots.editorial);
     if (disk.bavail * disk.bsize < bytes.length + assetBytes + 64 * 1024 * 1024) fail("EDITORIAL_BACKUP_NO_SPACE", "备份空间不足；请先保全现有备份并释放空间，再公开激活。");
@@ -135,6 +146,11 @@ async function capture({ store, mediaAssets, stage, release, inputState }) {
     await mkdir(join(temporary, "media-assets"), { mode: 0o700 });
     await mkdir(join(temporary, "media-assets", "objects"), { mode: 0o700 });
     await mkdir(join(temporary, "media-assets", "staging"), { mode: 0o700 });
+    if (native) {
+      await mkdir(join(temporary, "worker-artifacts"), { mode: 0o700 });
+      await mkdir(join(temporary, "worker-artifacts", "objects"), { mode: 0o700 });
+      await mkdir(join(temporary, "worker-artifacts", "staging"), { mode: 0o700 });
+    }
     await writeImmutable(join(temporary, "state.json"), bytes);
     const files = [{ path: "state.json", kind: "state", size: bytes.length, sha256: digest(bytes) }];
     for (const asset of assets) {
@@ -145,13 +161,23 @@ async function capture({ store, mediaAssets, stage, release, inputState }) {
         files.push({ path: `media-assets/objects/${asset.id}.bin`, kind: "media", assetId: asset.id, size: asset.size, sha256: asset.sha256 });
       } finally { await opened.handle.close(); }
     }
-    const manifest = { schema: SCHEMA, backupId, stage, releaseId: release?.id ?? null, candidateSnapshotHash: release?.snapshotHash ?? null, createdAt: new Date().toISOString(),
+    for (const artifact of artifacts) {
+      const opened = await productionArtifacts.openBackupArtifact(artifact.id, { sha256: artifact.sha256, state });
+      try {
+        if (opened.artifact.id !== artifact.id || opened.artifact.sha256 !== artifact.sha256 || opened.artifact.size !== artifact.size) fail("EDITORIAL_BACKUP_INVALID_ARTIFACT", "附件读取结果与当前状态不符。");
+        await copyVerified(opened.handle, join(temporary, "worker-artifacts", "objects", `${artifact.id}.bin`), artifact);
+        files.push({ path: `worker-artifacts/objects/${artifact.id}.bin`, kind: "artifact", artifactId: artifact.id, size: artifact.size, sha256: artifact.sha256 });
+      } finally { await opened.handle.close(); }
+    }
+    const manifest = { schema: native ? NATIVE_SCHEMA : SCHEMA, backupId, stage, releaseId: release?.id ?? null, candidateSnapshotHash: release?.snapshotHash ?? null, createdAt: clock().toISOString(),
       sourceRevision: state.revision, sourceSchemaVersion: state.schemaVersion, assetCount: assets.length,
+      ...(native ? { artifactCount: artifacts.length } : {}),
       totalBytes: bytes.length + assetBytes, files };
     const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     if (manifestBytes.length > MAX_MANIFEST_BYTES) fail("EDITORIAL_BACKUP_TOO_LARGE", "备份清单超过安全读取上限。");
     await writeImmutable(join(temporary, "manifest.json"), manifestBytes);
     await syncDirectory(join(temporary, "media-assets", "objects"));
+    if (native) { await syncDirectory(join(temporary, "worker-artifacts", "objects")); await syncDirectory(join(temporary, "worker-artifacts")); }
     await syncDirectory(join(temporary, "media-assets")); await syncDirectory(temporary);
     // The random target is never an operator-supplied path. Refuse collisions.
     try { await lstat(target); fail("EDITORIAL_BACKUP_COLLISION", "备份标识冲突，请重试。"); }
@@ -175,11 +201,11 @@ async function capture({ store, mediaAssets, stage, release, inputState }) {
 }
 
 /** A real pre-activation backup gate; it performs no JsonStore mutation. */
-export function createEditorialBackup({ store, mediaAssets } = {}) {
+export function createEditorialBackup({ store, mediaAssets, productionArtifacts, clock = () => new Date() } = {}) {
   paths(store);
   const run = (stage, release, state) => {
     const previous = tails.get(store) ?? Promise.resolve();
-    const task = previous.then(() => capture({ store, mediaAssets, stage, release, inputState: state }));
+    const task = previous.then(() => capture({ store, mediaAssets, productionArtifacts, clock, stage, release, inputState: state }));
     tails.set(store, task.catch(() => undefined));
     return task;
   };
@@ -203,9 +229,12 @@ async function inspectBackup({ store, backupId, expectedManifestSha256 }) {
     if (expectedManifestSha256 !== undefined && expectedManifestSha256 !== manifestSha256) fail("EDITORIAL_BACKUP_HASH_MISMATCH", "备份清单与保存的回执不符。");
     manifest = JSON.parse(bytes.toString("utf8"));
   } finally { await manifestFile.handle.close(); }
-  if (manifest?.schema !== SCHEMA || manifest.backupId !== backupId || !["pre_activation", "current"].includes(manifest.stage)
+  const native = manifest?.schema === NATIVE_SCHEMA;
+  if (![SCHEMA, NATIVE_SCHEMA].includes(manifest?.schema) || manifest.backupId !== backupId || !["pre_activation", "current"].includes(manifest.stage)
     || !Array.isArray(manifest.files) || !Number.isSafeInteger(manifest.assetCount) || manifest.assetCount < 0
-    || manifest.files.length !== manifest.assetCount + 1 || manifest.files[0]?.path !== "state.json" || manifest.files[0].kind !== "state") {
+    || (native && (!Number.isSafeInteger(manifest.artifactCount) || manifest.artifactCount < 0))
+    || (!native && (manifest.artifactCount !== undefined || manifest.sourceSchemaVersion === 3))
+    || manifest.files.length !== manifest.assetCount + (native ? manifest.artifactCount : 0) + 1 || manifest.files[0]?.path !== "state.json" || manifest.files[0].kind !== "state") {
     fail("EDITORIAL_BACKUP_INVALID_MANIFEST", "备份清单结构无效。");
   }
   if (typeof manifest.createdAt !== "string" || !Number.isFinite(Date.parse(manifest.createdAt))
@@ -216,11 +245,13 @@ async function inspectBackup({ store, backupId, expectedManifestSha256 }) {
   await privateDirectory(join(directory, "media-assets"));
   await privateDirectory(join(directory, "media-assets", "objects"));
   await privateDirectory(join(directory, "media-assets", "staging"));
+  if (native) for (const path of ["worker-artifacts", "worker-artifacts/objects", "worker-artifacts/staging"]) await privateDirectory(join(directory, path));
   const names = new Set(); let state, total = 0;
   for (const entry of manifest.files) {
     if (!entry || !Number.isSafeInteger(entry.size) || entry.size < 1 || !SHA.test(entry.sha256 ?? "") || names.has(entry.path)
-      || (entry.kind === "state" ? entry.path !== "state.json" : entry.kind !== "media" || !ASSET_ID.test(entry.assetId ?? "")
-        || entry.path !== `media-assets/objects/${entry.assetId}.bin`)) fail("EDITORIAL_BACKUP_INVALID_MANIFEST", "备份文件条目无效。");
+      || (entry.kind === "state" ? entry.path !== "state.json" : entry.kind === "media" ? !ASSET_ID.test(entry.assetId ?? "")
+        || entry.path !== `media-assets/objects/${entry.assetId}.bin` : !native || entry.kind !== "artifact" || !ARTIFACT_ID.test(entry.artifactId ?? "")
+        || entry.path !== `worker-artifacts/objects/${entry.artifactId}.bin`)) fail("EDITORIAL_BACKUP_INVALID_MANIFEST", "备份文件条目无效。");
     names.add(entry.path); total += entry.size;
     const opened = await privateFile(join(directory, entry.path), entry.kind === "state" ? MAX_STATE_BYTES : entry.size);
     try {
@@ -237,17 +268,24 @@ async function inspectBackup({ store, backupId, expectedManifestSha256 }) {
     } finally { await opened.handle.close(); }
   }
   const assets = state.mediaAssets ?? [];
+  const artifacts = state.productionArtifacts ?? [];
   if (manifest.stage === "pre_activation" && !state.websiteReleases?.some(row => row.id === manifest.releaseId
     && row.status === "approved" && row.snapshotHash === manifest.candidateSnapshotHash)) fail("EDITORIAL_BACKUP_CANDIDATE_MISMATCH", "备份的候选修订与清单不一致。");
-  if (assets.length !== manifest.assetCount || total !== manifest.totalBytes || state.revision !== manifest.sourceRevision
+  if (assets.length !== manifest.assetCount || artifacts.length !== (manifest.artifactCount ?? 0) || total !== manifest.totalBytes || state.revision !== manifest.sourceRevision
     || state.schemaVersion !== manifest.sourceSchemaVersion || assets.some(asset => !manifest.files.some(entry => entry.kind === "media"
-      && entry.assetId === asset.id && entry.sha256 === asset.sha256 && entry.size === asset.size))) fail("EDITORIAL_BACKUP_INCOMPLETE", "备份状态与完整素材清单不一致。");
+      && entry.assetId === asset.id && entry.sha256 === asset.sha256 && entry.size === asset.size)) || artifacts.some(artifact => !manifest.files.some(entry => entry.kind === "artifact"
+      && entry.artifactId === artifact.id && entry.sha256 === artifact.sha256 && entry.size === artifact.size))) fail("EDITORIAL_BACKUP_INCOMPLETE", "备份状态与完整素材清单不一致。");
   const expectedObjects = manifest.files.filter(entry => entry.kind === "media").map(entry => `${entry.assetId}.bin`).sort();
   if (JSON.stringify((await readdir(join(directory, "media-assets", "objects"))).sort()) !== JSON.stringify(expectedObjects)
     || (await readdir(join(directory, "media-assets", "staging"))).length
     || JSON.stringify((await readdir(join(directory, "media-assets"))).sort()) !== JSON.stringify(["objects", "staging"])
-    || JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(["manifest.json", "media-assets", "state.json"])) {
+    || JSON.stringify((await readdir(directory)).sort()) !== JSON.stringify(native ? ["manifest.json", "media-assets", "state.json", "worker-artifacts"] : ["manifest.json", "media-assets", "state.json"])) {
     fail("EDITORIAL_BACKUP_UNKNOWN_FILE", "备份目录含有未登记文件，拒绝恢复。");
+  }
+  if (native && (JSON.stringify((await readdir(join(directory, "worker-artifacts", "objects"))).sort()) !== JSON.stringify(artifacts.map(row => `${row.id}.bin`).sort())
+    || (await readdir(join(directory, "worker-artifacts", "staging"))).length
+    || JSON.stringify((await readdir(join(directory, "worker-artifacts"))).sort()) !== JSON.stringify(["objects", "staging"]))) {
+    fail("EDITORIAL_BACKUP_UNKNOWN_FILE", "备份附件目录含有未登记文件，拒绝恢复。");
   }
   return { directory, manifest, manifestSha256, state };
 }
@@ -277,12 +315,20 @@ export async function restoreEditorialBackupToIsolatedDirectory({ store, backupI
     await mkdir(join(target, "media-assets"), { mode: 0o700 });
     await mkdir(join(target, "media-assets", "objects"), { mode: 0o700 });
     await mkdir(join(target, "media-assets", "staging"), { mode: 0o700 });
+    if (source.manifest.schema === NATIVE_SCHEMA) {
+      await mkdir(join(target, "worker-artifacts"), { mode: 0o700 });
+      await mkdir(join(target, "worker-artifacts", "objects"), { mode: 0o700 });
+      await mkdir(join(target, "worker-artifacts", "staging"), { mode: 0o700 });
+    }
     for (const entry of source.manifest.files) {
       const opened = await privateFile(join(source.directory, entry.path), entry.size);
       try { await copyVerified(opened.handle, join(target, entry.path), entry, 0o600); }
       finally { await opened.handle.close(); }
     }
     await syncDirectory(join(target, "media-assets", "objects"));
+    if (source.manifest.schema === NATIVE_SCHEMA) {
+      await syncDirectory(join(target, "worker-artifacts", "objects")); await syncDirectory(join(target, "worker-artifacts"));
+    }
     await syncDirectory(join(target, "media-assets")); await syncDirectory(target);
     // Compare the resulting tree's actual bytes too, independently of the copy.
     for (const entry of source.manifest.files) {

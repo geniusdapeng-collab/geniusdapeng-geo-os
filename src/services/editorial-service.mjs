@@ -4,13 +4,15 @@ import { requirePublicUrl } from "../domain/public-url.mjs";
 import { transitionContent } from "../domain/state-machine.mjs";
 import { platformById, platformCatalog } from "../domain/platform-catalog.mjs";
 import {
-  EDITORIAL_SCHEMA, EDITORIAL_LOCALES, EDITORIAL_FORMATS, accountEditorialIdentity,
+  EDITORIAL_SCHEMA, EDITORIAL_NATIVE_SCHEMA, EDITORIAL_NATIVE_EDITION_SCHEMA, isEditorialVariantSchema,
+  EDITORIAL_LOCALES, EDITORIAL_FORMATS, accountEditorialIdentity,
   assertEditorialAssets, claimEditorialFingerprint, destinationEditorialIdentity,
   editorialEditionSnapshot, editorialEtag, editorialId, editorialInput, editorialSensitiveFindings, editorialText,
   editorialVariantSnapshot, normalizeEditorialAssetRefs, normalizeEditorialBlocks,
   publicEditorialClaim, validateEditorialVariant,
 } from "../domain/editorial.mjs";
 import { JsonStore } from "../storage/json-store.mjs";
+import { validateCandidateForReview } from "../domain/content-ops-quality.mjs";
 
 export { editorialEtag, editorialVariantSnapshot, validateEditorialVariant } from "../domain/editorial.mjs";
 
@@ -105,11 +107,12 @@ function releaseSnapshot(release) { return release.publicSnapshot; }
 function releaseSnapshotValid(release) { return hashObject(releaseSnapshot(release)) === release.snapshotHash; }
 
 export class EditorialService {
-  constructor({ store, geoService = null, mediaAssets = null, publicOrigin = "https://pengmanager.com",
+  constructor({ store, geoService = null, mediaAssets = null, productionArtifacts = null, publicOrigin = "https://pengmanager.com",
     clock = () => new Date(), verifyReadback = null, beforeActivation = null } = {}) {
     this.store = store;
     this.geoService = geoService;
     this.mediaAssets = mediaAssets;
+    this.productionArtifacts = productionArtifacts;
     this.publicOrigin = ownOrigin(publicOrigin);
     this.clock = clock;
     this.verifyReadback = verifyReadback;
@@ -118,7 +121,7 @@ export class EditorialService {
 
   #state() {
     const state = this.store.snapshot();
-    if (state.schemaVersion !== 2 || ["stories", "editions", "destinations", "websiteReleases", "websiteRoutes", "editorialRequests"].some(key => !Array.isArray(state[key]))) {
+    if (![2, 3].includes(state.schemaVersion) || ["stories", "editions", "destinations", "websiteReleases", "websiteRoutes", "editorialRequests"].some(key => !Array.isArray(state[key]))) {
       throw new ApiError(503, "EDITORIAL_MIGRATION_REQUIRED", "编辑服务需要先完成版本化迁移。");
     }
     return state;
@@ -163,7 +166,7 @@ export class EditorialService {
     return { schemaVersion: state.schemaVersion, revision: state.revision, catalog: this.catalog(),
       accounts: state.accounts.map(entity), destinations: state.destinations.map(entity),
       stories: state.stories.map(entity), editions: state.editions.map(row => this.#editionEntity(state, row)),
-      variants: state.content.filter(row => row.snapshotSchema === EDITORIAL_SCHEMA).map(entity),
+      variants: state.content.filter(row => isEditorialVariantSchema(row.snapshotSchema)).map(entity),
       releases: state.websiteReleases.map(entity), routes: state.websiteRoutes.map(entity), claims: state.claims };
   }
 
@@ -177,7 +180,7 @@ export class EditorialService {
   ownsVariant(id) { return this.store.snapshot().content.some(row => row.id === id && row.snapshotSchema !== undefined); }
   getVariant(id) {
     const row = record(this.#state().content, id, "CONTENT_NOT_FOUND");
-    if (row.snapshotSchema !== EDITORIAL_SCHEMA) throw new ApiError(409, "EDITORIAL_SCHEMA_UNSUPPORTED", "内容不是受支持的编辑快照版本。");
+    if (!isEditorialVariantSchema(row.snapshotSchema)) throw new ApiError(409, "EDITORIAL_SCHEMA_UNSUPPORTED", "内容不是受支持的编辑快照版本。");
     return entity(row);
   }
 
@@ -185,7 +188,7 @@ export class EditorialService {
     const state = this.#state();
     return { ...entity(record(state.stories, id, "STORY_NOT_FOUND")),
       editions: state.editions.filter(row => row.storyId === id).map(row => this.#editionEntity(state, row)),
-      variants: state.content.filter(row => row.storyId === id && row.snapshotSchema === EDITORIAL_SCHEMA).map(entity),
+      variants: state.content.filter(row => row.storyId === id && isEditorialVariantSchema(row.snapshotSchema)).map(entity),
       releases: state.websiteReleases.filter(row => row.storyId === id).map(entity) };
   }
 
@@ -423,6 +426,7 @@ export class EditorialService {
     editorialInput(input, ["destinationId", "title", "summary", "body", "blocks", "assetRefs", "adaptationNote", "supersedesContentId"]);
     return this.#write(`variant_created:${editionId}`, input, ctx, (state, { actor, ifMatch, now, payload }) => {
       const edition = record(state.editions, editionId, "EDITION_NOT_FOUND"); assertMatch(edition, ifMatch);
+      if (edition.snapshotSchema === EDITORIAL_NATIVE_EDITION_SCHEMA) throw new PolicyError("NATIVE_CANDIDATE_REQUIRED", "自动派生的中立形式稿须通过完整原生候选与独立终检形成渠道稿。");
       if (hashObject(editorialEditionSnapshot(edition)) !== edition.snapshotHash) throw new PolicyError("EDITORIAL_EDITION_CHANGED", "来源修订摘要不一致。");
       const story = record(state.stories, edition.storyId, "STORY_NOT_FOUND");
       if (story.status === "archived") throw new PolicyError("STORY_ARCHIVED", "归档选题不能继续创建渠道稿。");
@@ -456,20 +460,119 @@ export class EditorialService {
     });
   }
 
+  async materializeCandidate(candidateId, input, ctx) {
+    editorialInput(input, ["packageHash", "qualityReportHashes", "reviewSnapshotHash"]);
+    if (!["local", "session"].includes(ctx?.method)) throw new ApiError(403, "AGENT_SCOPE_DENIED", "原生包建稿仅允许管理员。");
+    const initial = this.#state(), initialCandidate = record(initial.nativeCandidatePackages, candidateId, "CANDIDATE_NOT_FOUND");
+    const keyHash = hashObject({ actor: ctx.actor, scope: `native_materialized:${candidateId}`, key: ctx.idempotencyKey });
+    if (!initial.editorialRequests.some(request => request.keyHash === keyHash) && initialCandidate.package.artifactRefs.length) {
+      if (typeof this.productionArtifacts?.verifyReferences !== "function") throw new ApiError(503, "NATIVE_ARTIFACT_VERIFICATION_UNAVAILABLE", "原生包建稿前必须核对真实附件字节。");
+      await this.productionArtifacts.verifyReferences(initialCandidate.package.artifactRefs);
+    }
+    return this.#write(`native_materialized:${candidateId}`, input, ctx, (state, { actor, ifMatch, now, payload }) => {
+      const candidate = record(state.nativeCandidatePackages, candidateId, "CANDIDATE_NOT_FOUND"); assertMatch(candidate, ifMatch);
+      const review = validateCandidateForReview(state, candidateId, { ...input, now });
+      const pkg = review.package, story = record(state.stories, pkg.storyId, "STORY_NOT_FOUND");
+      if (story.status === "archived") throw new PolicyError("STORY_ARCHIVED", "归档选题不能创建新渠道稿。");
+      const effectKey = hashObject({ candidateId, packageHash: pkg.packageHash, reviewSnapshotHash: review.reviewSnapshotHash });
+      const previous = state.draftMaterializations.find(row => row.effectKey === effectKey);
+      if (previous) return entity(record(state.content, previous.contentId, "CONTENT_NOT_FOUND"));
+      const destination = record(state.destinations, pkg.destinationIdentitySnapshot?.id, "DESTINATION_NOT_FOUND");
+      const account = destination.accountId ? record(state.accounts, destination.accountId, "ACCOUNT_NOT_FOUND") : null;
+      assertLocaleFormat(pkg.locale, pkg.editorialFormat);
+      const title = editorialText(pkg.title, "title", 240), body = editorialText(pkg.body, "body", 50_000, { preserve: true });
+      const summary = editorialText(pkg.summary, "summary", 2000, { empty: true });
+      const refs = normalizeEditorialAssetRefs(pkg.orderedMediaRefs, pkg.locale), blocks = normalizeEditorialBlocks(pkg.orderedBlocks, body, refs);
+      if (hashObject(refs) !== hashObject(pkg.orderedMediaRefs) || hashObject(blocks) !== hashObject(pkg.orderedBlocks)) throw new PolicyError("NATIVE_PACKAGE_INVALID", "原生包正文块或媒体引用尚未符合编辑合同。");
+      assertEditorialAssets(state, refs, { reviewed: true });
+      const sourceEditions = pkg.sourceEditionRefs.map(ref => {
+        const source = record(state.editions, ref.id, "EDITION_NOT_FOUND");
+        if (source.storyId !== story.id || source.snapshotHash !== ref.sha256 || source.editorialRevision !== ref.revision) throw new PolicyError("SOURCE_OUTDATED", "中立母版来源与冻结版本不一致。");
+        return source;
+      });
+      let edition;
+      const compatible = sourceEditions.filter(source => source.locale === pkg.locale && source.format === pkg.editorialFormat);
+      if (compatible.length > 1) throw new PolicyError("AMBIGUOUS_MOTHER_EDITION", "同一语言与形式有多个母版修订，请明确唯一来源后重建计划。");
+      if (compatible.length === 1) edition = compatible[0];
+      else {
+        const transform = candidate.neutralTransformRef;
+        if (!transform || !/^[a-f0-9]{64}$/.test(transform.formatTransformKey ?? "") || !/^[a-f0-9]{64}$/.test(transform.transformSpecHash ?? "") || !Object.hasOwn(transform, "expectedFamilyHeadId")) throw new PolicyError("FORMAT_TRANSFORM_REQUIRED", "跨语言或跨形式须有已完成的中立转换任务与族版本快照。");
+        const task = state.productionTaskBlueprints.find(task => task.taskId === transform.taskId && task.kind === "format.transform" && task.jobId === candidate.jobId);
+        const attempt = state.productionTaskAttempts.find(attempt => attempt.taskId === task?.taskId && attempt.status === "succeeded");
+        const neutral = attempt?.resultManifest?.data;
+        if (!task || !neutral || neutral.locale !== pkg.locale || neutral.format !== pkg.editorialFormat) throw new PolicyError("FORMAT_TRANSFORM_REQUIRED", "中立转换没有准确语言、形式与真实成功回执。");
+        const familyId = `${story.id}-${pkg.locale}-${pkg.editorialFormat}`;
+        const head = state.editions.filter(row => row.familyId === familyId).sort((a, b) => b.editorialRevision - a.editorialRevision)[0];
+        const lineage = { schema: "pengmanager.format-lineage/v1", derivedFromEditionRefs: structuredClone(pkg.sourceEditionRefs),
+          transformKind: transform.transformKind, transformSpecHash: transform.transformSpecHash };
+        if (!["cross_format", "cross_language", "cross_format_and_language"].includes(lineage.transformKind)) throw new PolicyError("FORMAT_TRANSFORM_REQUIRED", "中立转换类型不完整。");
+        lineage.lineageHash = hashObject(lineage);
+        if (pkg.lineageHash !== lineage.lineageHash) throw new PolicyError("NATIVE_PACKAGE_CHANGED", "最终包与中立派生谱系不一致。");
+        if (head?.formatTransformKey === transform.formatTransformKey && head.formatLineage?.lineageHash === lineage.lineageHash) edition = head;
+        else {
+          if ((head?.id ?? null) !== transform.expectedFamilyHeadId) throw new ApiError(409, "EDITION_FAMILY_CHANGED", "该形式的最新中立修订已变化；保留人工版本并重新核对计划。");
+          const neutralTitle = editorialText(neutral.title, "neutral.title", 240), neutralBody = editorialText(neutral.body, "neutral.body", 50_000, { preserve: true });
+          const neutralBlocks = normalizeEditorialBlocks(neutral.blocks, neutralBody, []);
+          edition = { id: nextId("ED", state.editions), familyId, storyId: story.id, locale: pkg.locale, format: pkg.editorialFormat,
+            editorialRevision: (head?.editorialRevision ?? 0) + 1, supersedesEditionId: head?.id ?? null,
+            sourceEditionId: lineage.transformKind === "cross_language" && sourceEditions.length === 1 ? sourceEditions[0].id : null,
+            title: neutralTitle, summary: editorialText(neutral.summary ?? "", "neutral.summary", 2000, { empty: true }), body: neutralBody,
+            blocks: neutralBlocks, claimIds: pkg.sourceClaimBindings.map(binding => binding.claimId),
+            claimBindings: pkg.sourceClaimBindings.map(binding => ({ claimId: binding.claimId, hash: binding.fingerprint ?? binding.hash })), assetRefs: [],
+            snapshotSchema: EDITORIAL_NATIVE_EDITION_SCHEMA, formatLineage: lineage, formatTransformKey: transform.formatTransformKey,
+            createdBy: actor, createdAt: now.toISOString() };
+          edition.snapshotHash = hashObject(editorialEditionSnapshot(edition)); state.editions.push(edition);
+          state.formatLineage.push({ id: `LIN-${hashObject({ editionId: edition.id, lineage }).slice(0, 24)}`, formatEditionId: edition.id, ...lineage });
+        }
+      }
+      const row = { id: nextId("CNT", state.content), title, summary, body, blocks, contentType: pkg.editorialFormat,
+        claimIds: pkg.sourceClaimBindings.map(binding => binding.claimId),
+        claimBindings: pkg.sourceClaimBindings.map(binding => ({ claimId: binding.claimId, hash: binding.fingerprint ?? binding.hash })),
+        platforms: [account?.platform ?? "个人官网"], owner: actor, opinion: false, visibility: "private", status: "draft", version: 1,
+        approval: null, storyId: story.id, editionId: edition.id, editionHash: edition.snapshotHash, locale: pkg.locale, format: pkg.editorialFormat,
+        destinationId: destination.id, destinationSnapshot: structuredClone(pkg.destinationIdentitySnapshot), accountSnapshot: structuredClone(pkg.accountIdentitySnapshot),
+        assetRefs: refs, snapshotSchema: EDITORIAL_NATIVE_SCHEMA, supersedesContentId: null, adaptationNote: "来自受控平台准备工单；独立终检完成，等待完整人工审核。",
+        candidateId, publicationPackage: structuredClone(pkg), packageHash: pkg.packageHash, qualityReportHashes: [...review.envelope.qualityReportHashes],
+        reviewEnvelope: structuredClone(review.envelope), reviewSnapshotHash: review.reviewSnapshotHash, createdAt: now.toISOString(), updatedAt: now.toISOString() };
+      row.snapshotHash = hashObject(editorialVariantSnapshot(row));
+      validateEditorialVariant(state, row, account, { now, requireReady: true });
+      state.content.push(row);
+      state.draftMaterializations.push({ id: `MAT-${effectKey.slice(0, 24)}`, effectKey, candidateId, packageHash: pkg.packageHash,
+        reviewSnapshotHash: review.reviewSnapshotHash, editionId: edition.id, contentId: row.id, createdBy: actor, createdAt: now.toISOString() });
+      Object.assign(payload, { candidateId, packageHash: pkg.packageHash, reviewSnapshotHash: review.reviewSnapshotHash, contentId: row.id, editionId: edition.id });
+      return entity(row);
+    });
+  }
+
   async transitionVariant(id, input, ctx) {
-    editorialInput(input, ["target", "note", "reviewed", "snapshotHash"]);
+    editorialInput(input, ["target", "note", "reviewed", "snapshotHash", "reviewSnapshotHash"]);
+    if (!["local", "session"].includes(ctx?.method)) throw new ApiError(403, "AGENT_SCOPE_DENIED", "编辑审核与排期仅允许管理员。");
+    if (["approved", "scheduled"].includes(input.target)) {
+      const state = this.#state(), row = record(state.content, id, "CONTENT_NOT_FOUND");
+      const previousKey = ctx && hashObject({ actor: ctx.actor, scope: `variant_transitioned:${id}`, key: ctx.idempotencyKey });
+      if (row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && !state.editorialRequests.some(request => request.keyHash === previousKey)) {
+        if (typeof this.productionArtifacts?.verifyReferences !== "function") throw new ApiError(503, "NATIVE_ARTIFACT_VERIFICATION_UNAVAILABLE", "原生稿批准前必须核对真实附件字节。");
+        await this.productionArtifacts.verifyReferences(row.publicationPackage.artifactRefs);
+        if (row.assetRefs.length) {
+          if (typeof this.mediaAssets?.verifyForRelease !== "function") throw new ApiError(503, "MEDIA_VERIFICATION_UNAVAILABLE", "原生稿批准前必须核对真实媒体。");
+          await this.mediaAssets.verifyForRelease(row.assetRefs);
+        }
+      }
+    }
     const result = await this.#write(`variant_transitioned:${id}`, input, ctx, (state, { actor, ifMatch, now, payload }) => {
       const row = record(state.content, id, "CONTENT_NOT_FOUND"); assertMatch(row, ifMatch);
-      if (row.snapshotSchema !== EDITORIAL_SCHEMA) throw new ApiError(409, "EDITORIAL_SCHEMA_UNSUPPORTED", "内容不是受支持的编辑版本。");
+      if (!isEditorialVariantSchema(row.snapshotSchema)) throw new ApiError(409, "EDITORIAL_SCHEMA_UNSUPPORTED", "内容不是受支持的编辑版本。");
       validateEditorialVariant(state, row, null, { now, requireReady: ["approved", "scheduled"].includes(input.target), requireApproval: input.target === "scheduled" });
-      if (input.target === "approved" && (input.reviewed !== true || input.snapshotHash !== row.snapshotHash)) {
+      if (input.target === "approved" && (input.reviewed !== true || input.snapshotHash !== row.snapshotHash ||
+          row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && input.reviewSnapshotHash !== row.reviewSnapshotHash)) {
         throw new PolicyError("EXACT_EDITORIAL_REVIEW_REQUIRED", "批准前必须完整核对并确认这一正文与媒体快照。");
       }
       if (["draft", "blocked", "archived"].includes(input.target) && state.websiteRoutes.some(route => state.websiteReleases.find(release => release.id === route.activeReleaseId)?.contentId === id)) {
         throw new PolicyError("ACTIVE_RELEASE_WITHDRAWAL_REQUIRED", "先撤回正在公开的版本，不能直接改变其正文状态。");
       }
       const next = transitionContent(row, input.target, { approvedBy: actor, note: input.note }, { now });
-      if (input.target === "approved") next.approval = { ...next.approval, snapshotSchema: EDITORIAL_SCHEMA, snapshotHash: row.snapshotHash, reviewed: true };
+      if (input.target === "approved") next.approval = { ...next.approval, snapshotSchema: row.snapshotSchema, snapshotHash: row.snapshotHash, reviewed: true,
+        ...(row.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { packageHash: row.packageHash, reviewSnapshotHash: row.reviewSnapshotHash } : {}) };
       else if (["draft", "blocked", "archived"].includes(input.target)) next.approval = null;
       state.content[state.content.findIndex(item => item.id === id)] = next; payload.contentId = id; payload.target = input.target;
       return entity(next);
@@ -509,7 +612,8 @@ export class EditorialService {
     return this.#write("release_created", input, ctx, (state, { actor, ifMatch, now, payload }) => {
       const content = record(state.content, input.contentId, "CONTENT_NOT_FOUND"); assertMatch(content, ifMatch);
       if (state.websiteReleases.some(row => row.contentId === content.id)) throw new ApiError(409, "RELEASE_EXISTS", "此渠道稿已有官网修订，请复用现有记录。");
-      if (content.snapshotSchema !== EDITORIAL_SCHEMA) throw new PolicyError("EDITORIAL_VARIANT_REQUIRED", "官网只发布独立审核的 v2 渠道稿。");
+      if (!isEditorialVariantSchema(content.snapshotSchema)) throw new PolicyError("EDITORIAL_VARIANT_REQUIRED", "官网只发布独立审核的编辑渠道稿。");
+      if (content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && content.publicationPackage.nativeForm !== content.format) throw new PolicyError("WEBSITE_NATIVE_FORM_UNSUPPORTED", "官网页面只承载 article、image_text 和 video 原生包；其他形式请按准确目的地单独交付。");
       const canonicalPath = `/${LANGUAGES[content.locale]}/${SECTIONS[content.format]}/${slug}`;
       const existingFamily = state.websiteReleases.find(row => row.storyId === content.storyId && row.locale === content.locale && row.format === content.format);
       if (existingFamily && existingFamily.canonicalPath !== canonicalPath) throw new ApiError(409, "CANONICAL_ROUTE_MISMATCH", "同一语言形式的修订应沿用原正式 URL。");
@@ -518,7 +622,8 @@ export class EditorialService {
       const publicSnapshot = { locale: content.locale, format: content.format, title: content.title, summary: content.summary,
         body: content.body, blocks: structuredClone(content.blocks), assetRefs: structuredClone(content.assetRefs),
         claimIds: [...content.claimIds], claimBindings: structuredClone(content.claimBindings), canonicalPath,
-        canonicalUrl: `${this.publicOrigin}${canonicalPath}` };
+        canonicalUrl: `${this.publicOrigin}${canonicalPath}`,
+        ...(content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { nativePackageHash: content.packageHash, reviewSnapshotHash: content.reviewSnapshotHash } : {}) };
       const row = { id: nextId("REL", state.websiteReleases), siteId: "official-site", storyId: content.storyId,
         editionId: content.editionId, contentId: content.id, locale: content.locale, format: content.format, slug, canonicalPath,
         contentSnapshotHash: content.snapshotHash, publicSnapshot, snapshotHash: hashObject(publicSnapshot),
