@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-26T22:19:15.440481+00:00",
+  "generatedAt": "2026-10-26T23:19:47.678Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -2299,10 +2299,11 @@
       "sourceMode": "100644",
       "gitBlob": "fb77200c792e834222cf71ffaad50e3bc40d7127",
       "bytes": 24242,
-      "targetBytes": 24242,
+      "targetBytes": 34358,
       "sourceSha256": "2a5534d250da09d0d42083bc1605361ec79c2d71b1908e80e74c229a16a1071d",
-      "targetSha256": "2a5534d250da09d0d42083bc1605361ec79c2d71b1908e80e74c229a16a1071d",
-      "evidence": "B"
+      "targetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
+      "evidence": "B",
+      "adaptation": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-authority.test.ts; source SHA256 b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5."
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
@@ -2310,10 +2311,11 @@
       "sourceMode": "100644",
       "gitBlob": "d0c4b5204ed449a401b6d8a329895d9f23fce005",
       "bytes": 35798,
-      "targetBytes": 35798,
+      "targetBytes": 38033,
       "sourceSha256": "cdc0897089ecb1e484727f0b380faa0fe3673fe401eaf72d55796ce307e36a3a",
-      "targetSha256": "cdc0897089ecb1e484727f0b380faa0fe3673fe401eaf72d55796ce307e36a3a",
-      "evidence": "B"
+      "targetSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
+      "evidence": "B",
+      "adaptation": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-authority.ts; source SHA256 6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6."
     },
     {
       "path": "apps/server/src/video/marketing-facts.test.ts",
@@ -2321,10 +2323,11 @@
       "sourceMode": "100644",
       "gitBlob": "c0216baed8c0feb7bae9e00d391ff21d13d36545",
       "bytes": 7681,
-      "targetBytes": 7681,
+      "targetBytes": 9029,
       "sourceSha256": "9b8d45d10282715c82c92482138fafafb33e35a600f614330748346d3c399e3b",
-      "targetSha256": "9b8d45d10282715c82c92482138fafafb33e35a600f614330748346d3c399e3b",
-      "evidence": "B"
+      "targetSha256": "3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8",
+      "evidence": "B",
+      "adaptation": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-facts.test.ts; source SHA256 3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8."
     },
     {
       "path": "apps/server/src/video/marketing-facts.ts",
@@ -2332,10 +2335,11 @@
       "sourceMode": "100644",
       "gitBlob": "640ef3b4de395f41f0ac58f04a5699e2c60ab139",
       "bytes": 9428,
-      "targetBytes": 9428,
+      "targetBytes": 9725,
       "sourceSha256": "c50e2545f9e5f6cb6ac1758635a28fc718a15ea82dfd1b6ed5cd3233e6453af1",
-      "targetSha256": "c50e2545f9e5f6cb6ac1758635a28fc718a15ea82dfd1b6ed5cd3233e6453af1",
-      "evidence": "B"
+      "targetSha256": "1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b",
+      "evidence": "B",
+      "adaptation": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-facts.ts; source SHA256 1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b."
     },
     {
       "path": "apps/server/src/video/marketing-quote-index.test.ts",
@@ -38833,6 +38837,30 @@
       "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-compat.test.ts; source SHA256 a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6.",
       "sourceSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
       "targetSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6"
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.ts",
+      "reason": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-authority.ts; source SHA256 6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6.",
+      "sourceSha256": "cdc0897089ecb1e484727f0b380faa0fe3673fe401eaf72d55796ce307e36a3a",
+      "targetSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6"
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.test.ts",
+      "reason": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-authority.test.ts; source SHA256 b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5.",
+      "sourceSha256": "2a5534d250da09d0d42083bc1605361ec79c2d71b1908e80e74c229a16a1071d",
+      "targetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.ts",
+      "reason": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-facts.ts; source SHA256 1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b.",
+      "sourceSha256": "c50e2545f9e5f6cb6ac1758635a28fc718a15ea82dfd1b6ed5cd3233e6453af1",
+      "targetSha256": "1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.test.ts",
+      "reason": "Exact marketing extraction output/runtime compatibility overlay from Edit main c284dd9b9d1a0acaee4834a340618f9da3027763; source path apps/server/src/video/marketing-facts.test.ts; source SHA256 3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8.",
+      "sourceSha256": "9b8d45d10282715c82c92482138fafafb33e35a600f614330748346d3c399e3b",
+      "targetSha256": "3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8"
     }
   ],
   "evidence": "B",

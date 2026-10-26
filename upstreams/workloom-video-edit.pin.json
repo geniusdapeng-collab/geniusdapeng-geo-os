@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "8cd4bbef69107d58209308be0a36ca7ba9b36cd9cde2db7c9d353bf355bb273c",
+  "snapshotSha256": "e76e178af494ec6706c9400ef8f040631ab24c07467bd3363e39d8f2de288978",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -24,7 +24,7 @@
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
   "targetOwnedFileCount": 84,
-  "sourceOverlayCount": 47,
+  "sourceOverlayCount": 51,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -58,6 +58,15 @@
       "receipt": "upstreams/g3-requirement-and-marketing-evidence.compatibility-overlay.json",
       "receiptSha256": "9a1972bfad70b88877cd47738ebe8325a0b5c80b78c2c7c8b7fb13c99a96934a",
       "scope": "exact19-G3-requirement-and-original-G1-evidence-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "marketing-extraction-output",
+      "sourceCommit": "c284dd9b9d1a0acaee4834a340618f9da3027763",
+      "sourceTree": "93a934cd66d318f91dfbbdc7c80a5778def6098c",
+      "receipt": "upstreams/marketing-extraction-output.compatibility-overlay.json",
+      "receiptSha256": "2b3224093ac37bcded59a33b103cd879cbd527651b297897240c8aa154b3c16d",
+      "scope": "exact4-marketing-extraction-output-strict-facts-runtime-and-tests",
       "wholeEngineUpgradeClaimed": false
     }
   ]
