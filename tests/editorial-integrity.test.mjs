@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { editorialInput, normalizeEditorialAssetRefs, normalizeEditorialBlocks, assertEditorialStateIntegrity } from "../src/domain/editorial.mjs";
+import { editorialInput, normalizeEditorialAssetRefs, normalizeEditorialBlocks, assertEditorialAssets, assertEditorialStateIntegrity } from "../src/domain/editorial.mjs";
 import { JsonStore } from "../src/storage/json-store.mjs";
 import { editorialFixture, readyWebsite, createEditionVariant, approvedRelease, activateRelease, context, FIXED_TIME } from "./editorial-fixtures.mjs";
 
@@ -13,6 +13,62 @@ test("sensitive scan exempts validated machine digest and community IDs while ke
   assert.throws(() => editorialInput({ body: digest }, ["body"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
   assert.throws(() => editorialInput({ sha256: digest.slice(0, -1) }, ["sha256"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
   assert.throws(() => editorialInput({ serverId: "x13800138000" }, ["serverId"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+});
+
+test("canonical media asset IDs with phone-like digits survive reference and block normalization without changing input", () => {
+  const assetId = `MED-a13800138000a${"b".repeat(19)}`;
+  assert.equal(assetId.length, 36);
+  const input = { assetRefs: [{ assetId, sha256: "a".repeat(64), role: "image", alt: "Synthetic image", caption: "" }] };
+  const before = structuredClone(input);
+  assert.equal(editorialInput(input, ["assetRefs"]), input);
+  assert.deepEqual(input, before);
+  const refs = normalizeEditorialAssetRefs(input.assetRefs, "zh-CN");
+  assert.equal(refs[0].assetId, assetId);
+  assert.equal(normalizeEditorialBlocks([{ type: "image", assetId, alt: "Synthetic image" }], "body", refs)[0].assetId, assetId);
+});
+
+test("canonical media poster IDs require the video block's bound poster or cover reference", () => {
+  const posterAssetId = `MED-a13800138000a${"b".repeat(19)}`, assetId = `MED-${"c".repeat(32)}`;
+  for (const role of ["poster", "cover"]) {
+    const refs = normalizeEditorialAssetRefs([
+      { assetId, sha256: "a".repeat(64), role: "video", alt: "" },
+      { assetId: posterAssetId, sha256: "b".repeat(64), role, alt: "Synthetic poster" },
+    ], "zh-CN");
+    const block = { type: "video", assetId, posterAssetId, caption: "Synthetic video" };
+    assert.deepEqual(normalizeEditorialBlocks([block], "body", refs), [block]);
+    assert.throws(() => normalizeEditorialBlocks([block], "body", refs.filter(ref => ref.role === "video")), { code: "UNBOUND_DOCUMENT_ASSET" });
+  }
+});
+
+test("only exact media-reference fields exempt canonical IDs; malformed IDs, prose and credential URLs stay blocked", () => {
+  const assetId = `MED-a13800138000a${"b".repeat(19)}`;
+  for (const field of ["assetId", "posterAssetId"]) {
+    for (const value of [assetId.slice(0, -1), `${assetId}b`, assetId.toUpperCase(), assetId.replace("MED-", "med-"),
+      `${assetId.slice(0, -1)}g`, `prefix-${assetId}`, `${assetId} suffix`, `${assetId}\n`, [assetId], { value: assetId }]) {
+      assert.throws(() => editorialInput({ [field]: value }, [field]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+    }
+  }
+  for (const field of ["id", "body", "caption", "alt"]) {
+    assert.throws(() => editorialInput({ [field]: assetId }, [field]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+  }
+  assert.throws(() => editorialInput({ assetId, body: "Call 13800138000" }, ["assetId", "body"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+  assert.throws(() => editorialInput({ assetId, body: "https://docs.github.com/page?token=x" }, ["assetId", "body"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+});
+
+test("a canonical media ID never substitutes for an existing matching reviewed asset", () => {
+  const assetId = `MED-a13800138000a${"b".repeat(19)}`;
+  const refs = normalizeEditorialAssetRefs([{ assetId, sha256: "a".repeat(64), role: "image", alt: "Synthetic image" }], "zh-CN");
+  const asset = { id: assetId, sha256: "a".repeat(64), kind: "image", status: "reviewed",
+    review: { rightsConfirmed: true, privacyConfirmed: true } };
+  assert.doesNotThrow(() => assertEditorialAssets({ mediaAssets: [asset] }, refs, { reviewed: true }));
+  assert.throws(() => assertEditorialAssets({ mediaAssets: [] }, refs, { reviewed: true }), { code: "EDITORIAL_ASSET_MISMATCH" });
+  for (const patch of [{ sha256: "b".repeat(64) }, { kind: "video" }]) {
+    assert.throws(() => assertEditorialAssets({ mediaAssets: [{ ...asset, ...patch }] }, refs, { reviewed: true }), { code: "EDITORIAL_ASSET_MISMATCH" });
+  }
+  for (const patch of [{ status: "staged" }, { status: "revoked" }, { review: { rightsConfirmed: false, privacyConfirmed: true } },
+    { review: { rightsConfirmed: true, privacyConfirmed: false } }]) {
+    assert.throws(() => assertEditorialAssets({ mediaAssets: [{ ...asset, ...patch }] }, refs, { reviewed: true }), { code: "EDITORIAL_ASSET_NOT_REVIEWED" });
+  }
 });
 
 test("short and encoded credential URLs are blocked in body text but ordinary localhost tutorial links remain text", () => {

@@ -24,14 +24,15 @@ const HASH_ARRAY_FIELDS = new Set(["qualityReportHashes", "rightsReviewHashes", 
 const LOCATOR_ID_FIELDS = new Set(["serverId", "channelId", "threadId"]);
 const CREDENTIAL_PARAMETER = /token|password|secret|cookie|authorization|api[_-]?key|session|signature|credential/i;
 
-// Machine digests can contain a run of digits resembling a phone number. Only
-// exact validated digest fields are exempt; prose and malformed digests stay
-// visible to the sensitive-text gate.
+// Machine digests and opaque media IDs can contain phone-like digit runs. Only
+// exact validated fields are exempt; prose and malformed values stay visible.
+// Asset existence, bytes, kind and review authority are checked separately.
 export function editorialSensitiveFindings(value, { credentialUrls = true } = {}) {
   const serialized = JSON.stringify(value, (key, child) => {
     if (typeof child === "string" && HASH_FIELDS.has(key) && /^[a-f0-9]{64}$/.test(child)) return "[sha256]";
     if (Array.isArray(child) && HASH_ARRAY_FIELDS.has(key) && child.every(item => typeof item === "string" && /^[a-f0-9]{64}$/.test(item))) return child.map(() => "[sha256]");
     if (typeof child === "string" && LOCATOR_ID_FIELDS.has(key) && /^\d{5,30}$/.test(child)) return "[community-id]";
+    if ((key === "assetId" || key === "posterAssetId") && typeof child === "string" && /^MED-[a-f0-9]{32}$/.test(child)) return "[media-asset-id]";
     return child;
   });
   const findings = scanSensitiveText(serialized);

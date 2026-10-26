@@ -37,31 +37,6 @@ export function sourceUrl(raw: string): URL {
   return url;
 }
 
-/** 低层传输独立导出供真实本地HTTP回归；生产只能由fetchMarketingSource在校验后调用。 */
-export const requestSource: SourceTransport = (url, address, signal) => new Promise((resolve, reject) => {
-  const options: RequestOptions = {
-    method: "GET", agent: false, signal, family: address.family,
-    headers: { "user-agent": "WorkLoom-FactSource/1.0", accept: "text/html,text/plain,application/json", "accept-encoding": "identity" },
-    lookup: ((_hostname: string, options: { all?: boolean }, done: (...args: unknown[]) => void) => {
-      if (options.all) done(null, [address]); else done(null, address.address, address.family);
-    }) as RequestOptions["lookup"],
-  };
-  const request = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, options, response => {
-    response.once("error", reject);
-    if (Number(response.headers["content-length"] ?? 0) > SOURCE_MAX_BYTES) { response.destroy(new Error("SOURCE_TOO_LARGE：来源响应超过读取上限")); return; }
-    const chunks: Buffer[] = []; let bytes = 0;
-    response.on("data", (chunk: Buffer) => {
-      bytes += chunk.length;
-      if (bytes > SOURCE_MAX_BYTES) { response.destroy(new Error("SOURCE_TOO_LARGE：来源响应超过读取上限")); return; }
-      chunks.push(Buffer.from(chunk));
-    });
-    response.once("aborted", () => reject(new Error("SOURCE_ABORTED：来源响应中途断开")));
-    response.once("end", () => resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) }));
-  });
-  request.once("error", reject);
-  request.end();
-});
-
 function decodeEntities(text: string): string {
   const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
   return text.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (all, entity: string) => {

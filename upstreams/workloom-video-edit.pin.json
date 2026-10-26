@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "ff66d798c5f20a1dc5e85ad53c9cf7442b4a8218c70e7c6eeef3de84a7df03f9",
+  "snapshotSha256": "8cd4bbef69107d58209308be0a36ca7ba9b36cd9cde2db7c9d353bf355bb273c",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 76,
-  "sourceOverlayCount": 39,
+  "targetOwnedFileCount": 84,
+  "sourceOverlayCount": 47,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -49,6 +49,15 @@
       "receipt": "upstreams/seedance25-cli.compatibility-overlay.json",
       "receiptSha256": "63e7436916b2c5a34941e349e62fa98e6071675763ca87f0c4d5a01c2016c938",
       "scope": "exact14-official-CLI-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "g3-requirement-and-marketing-evidence",
+      "sourceCommit": "4258b584064372abc9ab73f89e80f2e9c9e9f68f",
+      "sourceTree": "8eb9919f09410efdb3f28c78ef5bdaa5cc253b15",
+      "receipt": "upstreams/g3-requirement-and-marketing-evidence.compatibility-overlay.json",
+      "receiptSha256": "9a1972bfad70b88877cd47738ebe8325a0b5c80b78c2c7c8b7fb13c99a96934a",
+      "scope": "exact19-G3-requirement-and-original-G1-evidence-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
