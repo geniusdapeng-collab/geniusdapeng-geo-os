@@ -17,6 +17,11 @@ import { EditorialService } from "./services/editorial-service.mjs";
 import { MediaAssets } from "./services/media-assets.mjs";
 import { createWebsiteReadback } from "./services/website-readback.mjs";
 import { createEditorialBackup } from "./services/editorial-backup.mjs";
+import { ProductionArtifacts } from "./services/production-artifacts.mjs";
+import { migrateContentOpsState } from "./services/content-ops-migration.mjs";
+import { ContentOpsService } from "./services/content-ops-service.mjs";
+import { contentOpsAdapterBindings } from "./content-ops-worker/adapters.mjs";
+import { randomUUID } from "node:crypto";
 
 const defaultRoot = resolve(import.meta.dirname, "..");
 
@@ -50,15 +55,20 @@ export async function createPengManagerApplication({
   let editorial;
   const mediaAssets = new MediaAssets({ store, publicAssetAuthorizer: (id, hash) => editorial?.isAssetPublic(id, hash) === true });
   await mediaAssets.initialize();
-  const editorialBackup = createEditorialBackup({ store, mediaAssets });
-  editorial = new EditorialService({ store, geoService: service, mediaAssets, publicOrigin,
+  const productionArtifacts = new ProductionArtifacts({ store }); await productionArtifacts.initialize();
+  const editorialBackup = createEditorialBackup({ store, mediaAssets, productionArtifacts });
+  await migrateContentOpsState(store, { beforeMigration: () => editorialBackup.captureCurrent() });
+  const contentOps = new ContentOpsService({ store, artifactStore: productionArtifacts,
+    adapterBindings: await contentOpsAdapterBindings({ rootDir }) });
+  await contentOps.recover({ actor: "system", method: "local", idempotencyKey: randomUUID() });
+  editorial = new EditorialService({ store, geoService: service, mediaAssets, productionArtifacts, publicOrigin,
     verifyReadback: createWebsiteReadback({ origin: publicOrigin, allowLoopback: env.NODE_ENV !== "production" && !env.PUBLIC_ORIGIN }),
     beforeActivation: editorialBackup });
   if (finalContentBackup) {
     await finalContentBackup.prepare();
     for (const content of store.snapshot().content) await service.backupFinalContent(content);
   }
-  const accountOperations = new AccountOperationsService({ service });
+  const accountOperations = new AccountOperationsService({ service, productionArtifacts, mediaAssets });
   const geoEngine = suppliedGeoEngine ?? new PersonalGeoEngine({
     rootDir, ...(env.GEO_ENGINE_DB ? { databasePath: resolve(rootDir, env.GEO_ENGINE_DB) } : {}),
     controlQueries: store.snapshot().queries,
@@ -85,7 +95,7 @@ export async function createPengManagerApplication({
     videoEdit: new VideoEditAdapter({ upstreamRoot: join(rootDir, "engines", "video-edit") }), mediaEngine,
   });
   const server = createGeoOsServer({ service, livePipeline, geoEngine, videoRuntime: runtime,
-    publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations, editorial, mediaAssets,
+    publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations, editorial, mediaAssets, contentOps, productionArtifacts,
     publicWebsite: env.PUBLIC_WEBSITE === "1", mediaRenderEnabled: env.ENABLE_MEDIA_RENDER !== "false" });
   let stopPromise = null;
   let videoStart = null;
@@ -93,7 +103,7 @@ export async function createPengManagerApplication({
   let listening = false;
   let stopping = false;
   return {
-    server, service, store, geoEngine, mediaEngine, auth, accountOperations, editorial, mediaAssets, editorialBackup,
+    server, service, store, geoEngine, mediaEngine, auth, accountOperations, editorial, mediaAssets, editorialBackup, contentOps, productionArtifacts,
     videoRuntime: runtime, finalContentBackup,
     get videoStart() { return videoStart; },
     async listen(options = {}) {

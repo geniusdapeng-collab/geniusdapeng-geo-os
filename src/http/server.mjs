@@ -7,6 +7,7 @@ import { SYSTEM_IDENTITY } from "../domain/identity.mjs";
 import { readVideoRuntime } from "./video-runtime.mjs";
 import { routeEditorialApi, routePublicContentApi, routePublicMedia } from "./editorial-routes.mjs";
 import { createPublicWebsite } from "./public-website.mjs";
+import { routeContentOpsAdmin, routeContentOpsWorker } from "./content-ops-routes.mjs";
 
 const MIME_TYPES = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -206,6 +207,8 @@ export function createGeoOsServer({
   accountOperations,
   editorial,
   mediaAssets,
+  contentOps,
+  productionArtifacts,
   publicWebsite = false,
   mediaRenderEnabled = true,
 }) {
@@ -277,6 +280,9 @@ export function createGeoOsServer({
         return;
       }
 
+      if (await routeContentOpsWorker({ request, response, url, contentOps, productionArtifacts, mediaAssets,
+        writeJson, methodNotAllowed })) return;
+
       const publicAssets = {
         "/login": "/login.html", "/login.js": "/login.js", "/styles.css": "/styles.css",
         "/operations.css": "/operations.css", "/site.css": "/site.css", "/site.js": "/site.js",
@@ -326,6 +332,8 @@ export function createGeoOsServer({
         if (principal.method === "agent") throw new ApiError(403, "AGENT_SCOPE_DENIED", "私有预览仅允许管理员。");
         await routeWebsite({ request, response, url, previewId: privatePreview[1] }); return;
       }
+      if (await routeContentOpsAdmin({ request, response, url, principal, contentOps, editorial, productionArtifacts, mediaAssets,
+        writeJson, methodNotAllowed })) return;
       if (await routeEditorialApi({ request, response, url, principal, editorial, mediaAssets,
         readJsonBody, writeJson, methodNotAllowed })) return;
       const reconcile = path.match(/^\/api\/operations\/([A-Za-z0-9_-]+)\/reconcile$/);

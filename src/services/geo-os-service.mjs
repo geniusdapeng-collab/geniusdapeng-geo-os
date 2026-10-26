@@ -14,7 +14,7 @@ import { verifyEventChain } from "../storage/json-store.mjs";
 import { MAIN_PROFILE, SYSTEM_IDENTITY } from "../domain/identity.mjs";
 import { requirePublicUrl } from "../domain/public-url.mjs";
 import { isFinalContent } from "../../public/final-backup-format.js";
-import { EDITORIAL_SCHEMA, EDITORIAL_PUBLICATION_AUTHORIZATION, validateEditorialVariant } from "../domain/editorial.mjs";
+import { EDITORIAL_SCHEMA, EDITORIAL_NATIVE_SCHEMA, isEditorialVariantSchema, EDITORIAL_PUBLICATION_AUTHORIZATION, validateEditorialVariant } from "../domain/editorial.mjs";
 
 const CONTENT_TYPES = new Set([
   "article",
@@ -333,11 +333,17 @@ export class GeoOsService {
         if (content?.snapshotSchema !== undefined) {
           const authorization = input[EDITORIAL_PUBLICATION_AUTHORIZATION];
           const operation = (state.accountOperations ?? []).find(row => row.id === authorization?.operationId);
-          if (content.snapshotSchema !== EDITORIAL_SCHEMA || authorization?.snapshotHash !== content.snapshotHash ||
+          if (!isEditorialVariantSchema(content.snapshotSchema) || authorization?.snapshotHash !== content.snapshotHash ||
               !operation || operation.status !== "in_progress" || operation.contentId !== contentId ||
               operation.accountId !== accountId || operation.editorialSnapshotHash !== content.snapshotHash ||
               operation.approval?.editorialSnapshotHash !== content.snapshotHash || receipt.editorialSnapshotHash !== content.snapshotHash) {
             throw new PolicyError("EDITORIAL_OPERATION_REQUIRED", "完整编辑快照须通过原获准动作回读入账，不能使用旧手工发布入口。");
+          }
+          if (content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA && (authorization.packageHash !== content.packageHash || authorization.reviewSnapshotHash !== content.reviewSnapshotHash ||
+              operation.snapshotSchema !== EDITORIAL_NATIVE_SCHEMA || operation.packageHash !== content.packageHash || operation.reviewSnapshotHash !== content.reviewSnapshotHash ||
+              operation.approval.packageHash !== content.packageHash || operation.approval.reviewSnapshotHash !== content.reviewSnapshotHash ||
+              receipt.packageHash !== content.packageHash || receipt.reviewSnapshotHash !== content.reviewSnapshotHash)) {
+            throw new PolicyError("EDITORIAL_OPERATION_REQUIRED", "原生包必须通过准确审核及单目标外发授权入账。");
           }
           validateEditorialVariant(state, content, account, { now: this.clock(), requireReady: true, requireApproval: true });
         }
@@ -373,8 +379,9 @@ export class GeoOsService {
           receiptHash: hashObject(safeReceipt),
           recordedAt: at,
           recordedBy: actor,
-          ...(content.snapshotSchema === EDITORIAL_SCHEMA ? { snapshotSchema: EDITORIAL_SCHEMA,
-            editorialSnapshotHash: content.snapshotHash, destinationId: content.destinationId, assetHashes: receipt.assetHashes } : {}),
+          ...(isEditorialVariantSchema(content.snapshotSchema) ? { snapshotSchema: content.snapshotSchema,
+            editorialSnapshotHash: content.snapshotHash, destinationId: content.destinationId, assetHashes: receipt.assetHashes,
+            ...(content.snapshotSchema === EDITORIAL_NATIVE_SCHEMA ? { packageHash: content.packageHash, reviewSnapshotHash: content.reviewSnapshotHash, artifactHashes: receipt.artifactHashes } : {}) } : {}),
         };
         state.publications.push(publication);
         state.content[contentIndex] = {

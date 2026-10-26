@@ -62,6 +62,7 @@ curl --silent --show-error --write-out '\nHTTP %{http_code}\n' \
 | 受限 HTTP Agent bearer | GET `bootstrap`、`summary`、`events`、`content`、`interactions`、`operations`；POST `interactions`；对已批准普通 `browser` 动作 `start`／`complete`／`fail` | 创建／审批内容或动作、改账号、批 Claim、调用 GEO 私有专用路由／实时模型／外发接口、使用旧手工发布接口 |
 | 管理员会话 | 在本人实际授权下使用私有管理 API，包括内容准备、审核、账号设置与动作批准 | 把拥有会话当作任意外发／付费调用授权；伪造审批或回读 |
 | 本机视频 CLI/MCP | 按登记工具的 schema 和原生身份调用本机视频能力 | 把 HTTP Agent bearer 当视频原生令牌；任意调用未登记 RPC；自动批准围栏与预算 |
+| 独立内容 worker／checker | 在云端配对与本机 owner 范围内领取准确准备任务、逐请求预留预算、提交真实产物与独立报告 | 借管理员 Cookie、批准内容／公开发布、自行扩大权限、清空未知费用或签自己的最终检查 |
 
 受限 bearer 是**路由权限**，没有按 token 细分的 `accountIds`、OAuth scope、JWT 角色或自动过期配置。能读的 bootstrap 包含私有账号和内容资料；不要把它交给不应读取这些数据的平台。动作写入还会检查管理员批准、`executionMode: "browser"` 及互动风险，不能借手工动作接手 L0。需要更细账号隔离时先提出权限功能修改，不能在文档或调用参数里假装隔离已经存在。
 
@@ -163,7 +164,7 @@ pm_admin -X PATCH "$PM_ORIGIN/api/accounts/github" \
 
 批准为 `approved_public` 也不保证一定导出：公开预览还检查来源 `visibility: "public"`、安全公开 URL、低敏感度及有效期。不公开的已批准 Claim 可以用于获准的私有准备流程；是否对外使用其事实仍须本人审核。
 
-**创作前的操作者义务：** 无论采用下节哪条既有草稿路线，都先人工核对具体目的地规则、允许的 AI 参与范围及真实作者材料。服务接口有权限，不代表目标平台允许 AI 起草整稿；人工最终批准不豁免被规则禁止的创作方式。第 13 节与三组研究列出公众号作者主导、DEV／Kaggle 评论、脉脉和 Medium 等需分别处理的边界。这是执行者在调用前必须履行的规则核对，当前代码尚未自动实现第 13 节拟议的新策略门禁，不能声称已有 compiler 替你检查。
+**创作前的操作者义务：** 无论采用下节哪条既有草稿路线，都先核对具体目的地规则、允许的 AI 参与范围及真实作者材料。服务接口有权限，不代表目标平台允许 AI 起草整稿；人工最终批准不豁免被规则禁止的创作方式。第 13 节与三组研究列出公众号作者主导、DEV／Kaggle 评论、脉脉和 Medium 等边界。新的内容运营计划会取岗位、目的地规则与授权的共同范围，缺规则／作者贡献时阻断；旧草稿入口不会因此自动取得这些新门禁或平台权限，实际规则核对责任仍在操作者。
 
 ### 5.2 两条草稿来源
 
@@ -467,23 +468,23 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 - 视频：原生任务／审批／预算／产物与当前字节证据；缺依赖或模型未调通写明。
 - 恢复：明确是定稿副本还是完整服务备份；未实际恢复验证的不称“可恢复已验收”。
 
-## 13. 内容岗位与二次生产的协作设计（尚未实现）
+## 13. 内容岗位与二次生产
 
-本节帮助接手 Agent 理解后续合作方式。**平台岗位、AdaptationPlan 导入／compiler、本机 worker、任务租约、原生发布包 v3 与下述交接对象均为 D 级设计，待本人对焦方案。** 本次只把研究与设计写入仓库，没有新增可调用接口或扩大受限 bearer 权限。第 1—12 节仍描述现有使用合同；目标服务是否已部署相同代码，须另外核对。
+本仓已实现 28 个岗位、严格 AdaptationPlan 导入与编译、真实源文件、独立本机工位、任务租约、逐请求预算、有限返修、原生包 v3、独立终检及人审衔接。**准备成功、独立终检、内容批准、单次外发授权与真实平台回读是分别完成的状态。** 旧受限 bearer 权限不变；新工位使用独立凭据和双端范围。当前源码、运行进程与生产部署仍须分别核对。完整可操作流程见[内容运营说明](CONTENT-OPS.md)。
 
 先阅读[岗位产品方案](CONTENT-OPERATORS-DESIGN.md)、[二次生产集成方案](PLATFORM-SECONDARY-PRODUCTION.md)，再按目标查看[A 组](platform-research/group-a.md)、[B 组](platform-research/group-b.md)、[C 组](platform-research/group-c.md)完整研究。研究均保留官方来源、取得日期、实际读取范围和样本缺口；内容语气与受众建议为设计，不能当平台推荐算法、账号权限或经营效果。原研究的 JSON／缓存取证标识未随正文入库，不能假装已从仓库读取这些证据文件。
 
 ### 13.1 实施前需要的输入与权限
 
-拟议准备任务需要准确 Story／母版 Edition ID 与 hash、已批准且可用于本次范围的 Claim 指纹、真实源媒体及权利／隐私资料、真实作者贡献、账号／目的地身份、目标语言与原生形式、岗位／规则／风格版本，以及明确的工具范围和预算。缺真实视频、模型、数据、notebook 或作者材料时，返回具体 needs_input／skip／blocked，不用说明文字补成“已制作”。
+准备任务需要准确 Story／母版 Edition ID 与 hash、已批准且可用于本次范围的 Claim 指纹、真实源媒体及权利／隐私资料、真实作者贡献、账号／目的地身份、目标语言与原生形式、岗位／规则／风格版本，以及明确工具范围和预算。管理员可先上传真实源文件，无需先建工单；源文件与工位产物有不同来源标记。缺真实视频、模型、数据、notebook 或作者材料时，保留具体 needs_input／skip／blocked，不用说明文字补成“已制作”。
 
 平台规则先于生成：公众号保留真实作者主导；Medium 区分作者贡献、AI 披露与分发资格；DEV／Kaggle 评论与讨论按其明确规则限制；脉脉不得由 AI 接管或模板批量运营。具体社区／频道另读当次规则与权限。人工最终审批不自动允许此前被规则禁止的 AI 起草方式。归档目的地不会因为研究齐全自动恢复。
 
-云端管理员的准备授权与本机工具域 owner 的执行授权必须同时满足。现有 HTTP Agent bearer 仍不能写编辑稿、审核媒体权利、批准内容或代替本机原生身份。未来 worker 使用独立的最小 scope，不接收管理员 Cookie、本机模型密钥或社交平台登录态。平台岗位只交策略数据，不传 shell、argv、任意路径或工具执行命令。
+云端管理员的准备授权与本机 owner 的执行授权必须同时满足。现有 HTTP Agent bearer 仍不能写编辑稿、审核媒体权利、批准内容或代替本机原生身份。worker 使用独立的最小 scope，云端不接收本机供应商密钥或社交平台登录态；worker 不接收管理员 Cookie。平台岗位只交策略数据，不传 shell、argv、任意路径或工具执行命令。工位诊断、配置及配对流程见[本机工位说明](CONTENT-OPS.md#本机工位与双端权限)。
 
 ### 13.2 每一步由谁交给谁
 
-以下五类交接是**拟议数据合同，当前没有对应 worker API**。具体字段、校验与异常路径以集成方案第 4—11 节为准。
+下表描述五类责任交接，名称帮助理解分工，不表示同名对象都作为独立 API schema 持久保存。实际管理员与 worker 路由、字段、幂等和异常路径以[当前使用说明](CONTENT-OPS.md)与[HTTP API](API.md#content-operators-and-private-worker)为准；设计文档保留原始论证。
 
 | 交接 | 谁交给谁 | 必须交出的准确材料 | 后一步何时可以继续 |
 | --- | --- | --- | --- |
@@ -493,7 +494,7 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 | ReviewHandoff | 平台编辑／独立 checker → 人工审核者 | 最终 candidate／packageHash、终检 checkedPackageHash／reportHash、覆盖与问题、reviewSnapshotHash | checker 重读润色后的同一完整包和真实附件，必需维度通过、无未解 blocker／major |
 | PublishHandoff | 审核者 → 单次授权发布执行者 → 账本 | 准确账号／目的地、运营授权、完整包与报告绑定、实际 URL／平台对象及回读证据 | 内容审核和单次外发分别完成；实际结果与授权正文／文件一致后才入账 |
 
-现有 `growth.video.production.plan` 是预览，`list`／`describe` 是发现；它们不等于真实制作。工具目录的 declared、codePresent、ready、productionVerified 分别展示。现有视频 CLI／MCP 按第 9 节与当前固定指南使用；拟议 compiler 只允许经过适配和隔离验证的固定任务，不自动执行 plan 返回的命令，也不为“补齐能力”逐个调用完整工具目录。
+现有 `growth.video.production.plan` 是预览，`list`／`describe` 是发现；它们不等于真实制作。工具目录的 declared、codePresent、ready、productionVerified 分别展示。视频 CLI／MCP 按第 9 节使用；内容运营 compiler 只允许固定适配器任务，不自动执行 plan 返回的命令，也不为“补齐能力”逐个调用完整工具目录。固定视频工位剪辑已授权源片；AI 视频生成仍保留原生视频围栏和生产合同。
 
 ### 13.3 最终质量、预算与恢复的交付条件
 
@@ -503,7 +504,7 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 
 本机 worker 的产物成功与平台发送成功分开；已成功的源片不为评分重复生成。不确定的平台结果先核对原对象与原回执，再走受控调和，不能重发整个任务。Discord 受限频道在专用对象／可见范围回执合同实现前，不冒充公开 URL 发布。新增原生附件、v3 工单、终检报告、未知预算、幂等与租约都须进入完整备份及隔离恢复，旧 v1／v2 历史 hash 不变。
 
-这套新能力的运行验收仍未执行。后续交付须分别报告岗位 28／28、本次目标 N／N、真实产物 K／K、最终检查维度与覆盖、真实发布 M／M，以及预算已结算／预留／未知；skip 不计发布成功。现有可用能力继续依第 1—12 节、[实际编辑 API](CONTENT-PUBLISHING.md)和[HTTP API](API.md)操作。
+交付须分别报告岗位 28／28、本次目标 N／N、实际产物 K／K、最终检查维度与覆盖、真实发布 M／M，以及预算已结算／预留／未知；skip 不计发布成功。隔离模型服务、测试账号和本机媒体测试不代表真实供应商或社媒发布。源码中的测试覆盖当前实现边界；生产部署和真实付费／外发仍以对应现场回执为准。
 
 ## 源码导航与证据边界
 
@@ -522,3 +523,5 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 | 本机 CLI／MCP 与能力 schema | [src/agent.mjs](../src/agent.mjs)、[CLI](../scripts/agent.mjs)、[MCP](../scripts/agent-mcp.mjs)、[登记调用实现](../engines/video-edit/scripts/agent-capabilities.mjs) |
 | 网页本机定稿备份与精确正文格式 | [final-backup-browser.js](../public/final-backup-browser.js)、[final-backup-format.js](../public/final-backup-format.js)、[app.js](../public/app.js) |
 | 本机定稿落盘、触发点与只读 CLI | [final-content-backup.mjs](../src/services/final-content-backup.mjs)、[application.mjs](../src/application.mjs)、[backup-final-content.mjs](../scripts/backup-final-content.mjs) |
+| 内容岗位、严格计划、预算、租约、真实附件与最终检查 | [content-ops-service.mjs](../src/services/content-ops-service.mjs)、[content-ops-routes.mjs](../src/http/content-ops-routes.mjs)、[production-artifacts.mjs](../src/services/production-artifacts.mjs)、[领域模块](../src/domain/content-ops.mjs) |
+| 固定本机工位与独立日志 | [worker](../src/content-ops-worker/worker.mjs)、[固定适配器](../src/content-ops-worker/adapters.mjs)、[CLI](../scripts/content-ops-worker.mjs) |

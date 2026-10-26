@@ -1,0 +1,1240 @@
+{
+  "schema": "pengmanager.content-operators/v1",
+  "version": "1.0.0",
+  "profiles": [
+    {
+      "id": "OP-official-site",
+      "platformId": "official-site",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "个人官网主编",
+      "nameZh": "个人官网主编",
+      "nameEn": "Personal Website content editor",
+      "supportedNativeForms": [
+        "article",
+        "image_text",
+        "video"
+      ],
+      "readerTask": "寻找完整作品与可信事实；中文／英文文章、图文、视频文稿",
+      "strategy": "留完整证据、过程、适用边界与正式来源；正文结构、媒体与作者定位形成长期可读页面",
+      "polishChecklist": "标题准确、目录与段落清楚、图注／替代文字／字幕齐全；两种语言各自完整，正式地址稳定",
+      "requirements": "现有公开目的地、合格 Claim、真实媒体；官网完整审批和服务端回读",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-wechat-official",
+      "platformId": "wechat-official",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "公众号编辑",
+      "nameZh": "公众号编辑",
+      "nameEn": "WeChat Official Account content editor",
+      "supportedNativeForms": [
+        "article",
+        "image_text"
+      ],
+      "readerTask": "中文读者一次看懂一件事；完整长文／图文",
+      "strategy": "重写开篇问题、段落层次和案例解释；把工程术语转成具体行为；保留可理解的证据与限制",
+      "polishChecklist": "手机阅读、标题与结果一致；开头能说明值得读什么；图注与链接位置可审",
+      "requirements": "实际公众号、当前规则与编辑器核验；不推定 API 权限",
+      "policy": {
+        "creationMode": "author_led_editor_assist",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate"
+        ],
+        "requiresAuthorContribution": true,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules",
+          "real_author_contribution"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-xiaohongshu",
+      "platformId": "xiaohongshu",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "小红书编辑",
+      "nameZh": "小红书编辑",
+      "nameEn": "Xiaohongshu content editor",
+      "supportedNativeForms": [
+        "image_text",
+        "video"
+      ],
+      "readerTask": "读者收藏可执行做法；图文卡片或短视频",
+      "strategy": "每张卡片只承担一个信息任务；重做封面题、步骤顺序、实际截图批注、正文补充与相关话题",
+      "polishChecklist": "逐张可读，封面不许夸大；卡片顺序与正文一致；最后给明确使用条件",
+      "requirements": "真实图片／实际短视频和权利；账号及当前发布形态核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-bilibili",
+      "platformId": "bilibili",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "哔哩哔哩编导",
+      "nameZh": "哔哩哔哩编导",
+      "nameEn": "Bilibili content editor",
+      "supportedNativeForms": [
+        "video"
+      ],
+      "readerTask": "观众看懂并能复现；演示视频、章节、说明",
+      "strategy": "重做可视化讲解、操作演示、失败案例和章节；母版文字变口语脚本，屏幕上有对应证据",
+      "polishChecklist": "成片可播放；口播、画面与字幕一致；封面与标题不承诺未展示能力",
+      "requirements": "真实成片、封面、字幕、授权音乐；已核实账号",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-linkedin",
+      "platformId": "linkedin",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "LinkedIn 编辑",
+      "nameZh": "LinkedIn 编辑",
+      "nameEn": "LinkedIn content editor",
+      "supportedNativeForms": [
+        "article",
+        "document",
+        "image_text"
+      ],
+      "readerTask": "同行理解专业判断；专业短帖、文档组页或文章",
+      "strategy": "从“我做了什么”转为问题、决策、约束与可借鉴影响；中文案例补足英文背景；文档按论证分页",
+      "polishChecklist": "职业身份准确、数字有来源；去口号与直译；文档每页独立可懂",
+      "requirements": "具体个人／Page 目的地；文档等新文件必须经新原生包校验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-x",
+      "platformId": "x",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "X 编辑",
+      "nameZh": "X 编辑",
+      "nameEn": "X content editor",
+      "supportedNativeForms": [
+        "thread",
+        "image_text",
+        "video"
+      ],
+      "readerTask": "快速理解一个有证据的观点；单帖或编号串",
+      "strategy": "选一个核心判断；拆成每条有信息的推进；演示放适当位置；论断与限定词不因压缩丢失",
+      "polishChecklist": "开头能独立成立，线程顺序与附件匹配；去无关标签、重复引流与悬空结论",
+      "requirements": "实际账号；执行前核对当前文字／媒体和账号权益限制",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-youtube",
+      "platformId": "youtube",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "YouTube 编导",
+      "nameZh": "YouTube 编导",
+      "nameEn": "YouTube content editor",
+      "supportedNativeForms": [
+        "video"
+      ],
+      "readerTask": "搜索并看完整解释；长视频或独立短片",
+      "strategy": "重做开头演示、学习路径、镜头表、章节、说明、语言与字幕；短片只讲一个完整问题",
+      "polishChecklist": "实际成片与缩略图一致；章节时间正确；可见范围、受众、合成内容等设置逐项审",
+      "requirements": "真实视频、权利与频道权限；处理完成和实际公开分别核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-github",
+      "platformId": "github",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "GitHub 发布编辑",
+      "nameZh": "GitHub 发布编辑",
+      "nameEn": "GitHub content editor",
+      "supportedNativeForms": [
+        "repository_change"
+      ],
+      "readerTask": "开发者取得可用软件；README／release／discussion 变更包",
+      "strategy": "绑定真实仓库与 tag／commit；说明变更、使用、迁移、限制、验证结果；给准确文件 diff 与资产清单",
+      "polishChecklist": "命令来自当前仓库／官方依据且可验证；版本不编造；不夹带宣传或假下载",
+      "requirements": "真实仓库、授权范围及相应作品；代码写入／release 另行明确授权",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-huggingface",
+      "platformId": "huggingface",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Hugging Face 作品编辑",
+      "nameZh": "Hugging Face 作品编辑",
+      "nameEn": "Hugging Face content editor",
+      "supportedNativeForms": [
+        "demo_bundle",
+        "model_card",
+        "dataset_card",
+        "article"
+      ],
+      "readerTask": "使用或复现实物；Space、模型卡、数据集卡或技术文章",
+      "strategy": "先识别真实作品类型；讲输入输出、示例、许可、限制和已完成评测；模型卡与 Demo 各有模板",
+      "polishChecklist": "示例能对应实际作品；模型／数据来源和许可有据；没有模型时不填训练结果",
+      "requirements": "实际作品及可分享权利；算力与部署预算另审",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-modelscope",
+      "platformId": "modelscope",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "魔搭作品编辑",
+      "nameZh": "魔搭作品编辑",
+      "nameEn": "ModelScope content editor",
+      "supportedNativeForms": [
+        "demo_bundle",
+        "model_card",
+        "dataset_card"
+      ],
+      "readerTask": "中文使用者体验作品；在线 Demo／模型说明／数据说明",
+      "strategy": "把实际作品改写为中文使用路径、运行条件、示例与边界；平台原生文件与依赖清单随包给出",
+      "polishChecklist": "说明与实际 Demo／文件一致；不把应用当自研模型；不编造评测和免费算力",
+      "requirements": "真实模型／数据／Demo 之一；当前平台指南与权限核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-tiktok",
+      "platformId": "tiktok",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "TikTok 编导",
+      "nameZh": "TikTok 编导",
+      "nameEn": "TikTok content editor",
+      "supportedNativeForms": [
+        "video",
+        "image_text"
+      ],
+      "readerTask": "快速看懂一个结果或步骤；短视频／照片稿",
+      "strategy": "重写英语或目标语言的视觉开场、连续演示、口语字幕、说明与声音方案；图片稿按步骤重排",
+      "polishChecklist": "视觉可理解、字幕安全区与节奏实际检查；标题不夸大；声音权利可追溯",
+      "requirements": "实际文件与账号；Direct Post 需要独立应用／scope／用户授权与审计条件",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-instagram",
+      "platformId": "instagram",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Instagram 编辑",
+      "nameZh": "Instagram 编辑",
+      "nameEn": "Instagram content editor",
+      "supportedNativeForms": [
+        "image_text",
+        "video"
+      ],
+      "readerTask": "看清作品和视觉过程；Reel／多图／照片",
+      "strategy": "先做视觉叙事；重做封面、逐图说明、过程截图和简洁文字；不照搬 X 串或公众号长段",
+      "polishChecklist": "图组风格与信息顺序一致；说明与 alt 完整；音视频和文字不矛盾",
+      "requirements": "真实视觉资产、明确账号；当前原生格式核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-facebook",
+      "platformId": "facebook",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Facebook 编辑",
+      "nameZh": "Facebook 编辑",
+      "nameEn": "Facebook content editor",
+      "supportedNativeForms": [
+        "article",
+        "image_text",
+        "video",
+        "community_message"
+      ],
+      "readerTask": "在具体关系或群体上下文理解内容；文字配图／视频稿",
+      "strategy": "说明受众背景、实际价值与讨论点；Page、个人动态与 Group 分别策划，群组规则单独绑定",
+      "polishChecklist": "受众和可见范围明确；不机械同步 Instagram；问题有实际可回答内容",
+      "requirements": "明确 profile／Page／Group，权限和社区规则；不同目的地独立审批",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-douyin",
+      "platformId": "douyin",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "抖音编导",
+      "nameZh": "抖音编导",
+      "nameEn": "Douyin content editor",
+      "supportedNativeForms": [
+        "video"
+      ],
+      "readerTask": "通过直观演示学会一件事；中文短视频",
+      "strategy": "挑一个动作与结果；重做镜头、口播、屏幕字幕、封面与结尾；长篇背景只保留必要条件",
+      "polishChecklist": "可视证据跟得上口播；成片无多余铺垫和夸张保证；字幕与截图清楚",
+      "requirements": "真实成片与权利；创作者账号和当前配置核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-wechat-channels",
+      "platformId": "wechat-channels",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "视频号编导",
+      "nameZh": "视频号编导",
+      "nameEn": "WeChat Channels content editor",
+      "supportedNativeForms": [
+        "video"
+      ],
+      "readerTask": "中文关系链读者理解案例；解释／演示视频",
+      "strategy": "补足人物与场景背景，突出可信过程；口语叙事与视频说明独立编辑，不简单搬抖音",
+      "polishChecklist": "人物身份、标题与案例一致；字幕和转发说明准确；不虚构客户背书",
+      "requirements": "真实视频、授权与具体视频号身份",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-zhihu",
+      "platformId": "zhihu",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "知乎编辑",
+      "nameZh": "知乎编辑",
+      "nameEn": "Zhihu content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "解决一个具体问题；回答或专题文章",
+      "strategy": "先回答题目；定义前提、比较方案、给实际证据与局限；将无关母版段落删掉",
+      "polishChecklist": "每节都能对应问题；结论不过度概括；引用与自有作品关系透明",
+      "requirements": "真实问题／专栏目的地、当前规则；与题目无关则 skip",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-reddit",
+      "platformId": "reddit",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Reddit 社区编辑",
+      "nameZh": "Reddit 社区编辑",
+      "nameEn": "Reddit content editor",
+      "supportedNativeForms": [
+        "community_message",
+        "article"
+      ],
+      "readerTask": "获得相关解答或讨论；指定 subreddit 的帖子／回复",
+      "strategy": "阅读问题和社区规则；写原生英文上下文、可检验例子和具体问题；需要时披露作者关联",
+      "polishChecklist": "先解决对方问题；链接与自荐比例遵从实际规则；不刷相同文本",
+      "requirements": "确定 subreddit／thread、规则与成员权限；禁止推广则 skip",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-discord",
+      "platformId": "discord",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Discord 社区编辑",
+      "nameZh": "Discord 社区编辑",
+      "nameEn": "Discord content editor",
+      "supportedNativeForms": [
+        "community_message"
+      ],
+      "readerTask": "在一个频道获得帮助；消息／forum 主题／回复",
+      "strategy": "针对已有对话做短答、必要代码块和 Demo；论坛标题、标签与频道规范单独适配",
+      "polishChecklist": "不打断无关讨论、不越界群发；敏感信息不进入公共记忆",
+      "requirements": "serverId＋channelId＋threadId（如有）及当前权限；私密／受限结果不能冒充公开 URL 回执",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-jike",
+      "platformId": "jike",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "即刻编辑",
+      "nameZh": "即刻编辑",
+      "nameEn": "Jike content editor",
+      "supportedNativeForms": [
+        "article",
+        "image_text"
+      ],
+      "readerTask": "同行看到真实过程与观点；观察短帖／图文／Demo",
+      "strategy": "从母版提炼一个亲历细节、取舍或阶段进展；保留个人口吻和可讨论点",
+      "polishChecklist": "去新闻稿语气与虚假亲历；一帖一个主题；配图确实支持观点",
+      "requirements": "实际账号、当前原生形态与目的地规则核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-juejin",
+      "platformId": "juejin",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "掘金技术编辑",
+      "nameZh": "掘金技术编辑",
+      "nameEn": "Juejin content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "中文开发者复现实现；技术文章",
+      "strategy": "以场景、环境、步骤、关键代码、失败处理和验证组织；具体命令依仓库／官方来源",
+      "polishChecklist": "代码可读且与实现一致；说明适用版本与限制；不把营销文改个标题当教程",
+      "requirements": "真实代码与验证材料；当前技术信息需重新核实",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-csdn",
+      "platformId": "csdn",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "CSDN 技术编辑",
+      "nameZh": "CSDN 技术编辑",
+      "nameEn": "CSDN content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "找到具体问题的可靠解法；故障／教程文章",
+      "strategy": "针对搜索问题说明症状、前提、根因、解决步骤和检查方法；保留来源与版本",
+      "polishChecklist": "标题与实际故障相符；命令和结果可查；不复制无关目录或堆词",
+      "requirements": "真实复现／实现证据、授权代码与当前编辑规则",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-devto",
+      "platformId": "devto",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "DEV 技术编辑",
+      "nameZh": "DEV 技术编辑",
+      "nameEn": "DEV Community content editor",
+      "supportedNativeForms": [
+        "article",
+        "community_message"
+      ],
+      "readerTask": "英文开发者理解和复现；Markdown 技术文章",
+      "strategy": "重写英文解释、可运行样例和教训；整理正文标题、图像 alt、相关标签与 canonical 元数据",
+      "polishChecklist": "Markdown 与嵌入实际可预览；官方首发地址准确；草稿链接不当私密资料",
+      "requirements": "当前编辑规则；敏感母版不上传到公开但隐蔽的草稿地址",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules",
+          "community_original_only",
+          "not_marketing_primary"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-medium",
+      "platformId": "medium",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Medium 编辑",
+      "nameZh": "Medium 编辑",
+      "nameEn": "Medium content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "一次读完完整的英文观点与案例；长文",
+      "strategy": "重做叙事弧线、必要背景、段落节奏和证据解释；保留作者声音及局限",
+      "polishChecklist": "不用空泛开头；引文准确；图片／嵌入权利与解释完整",
+      "requirements": "实际账号、文章目的地和当前编辑规则",
+      "policy": {
+        "creationMode": "author_led_editor_assist",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate"
+        ],
+        "requiresAuthorContribution": true,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules",
+          "real_author_contribution",
+          "ai_disclosure",
+          "distribution_eligibility_separate",
+          "partner_paywall_eligibility_separate"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-hashnode",
+      "platformId": "hashnode",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Hashnode 编辑",
+      "nameZh": "Hashnode 编辑",
+      "nameEn": "Hashnode content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "持续阅读开发博客；技术文章",
+      "strategy": "以实践问题与实现路径组织英文稿；系列关系、代码、图片和原始文章信息单独整理",
+      "polishChecklist": "代码与来源准确；博客身份与首发关系明确；不复制 DEV front matter 冒充原生设置",
+      "requirements": "实际博客目的地；API／付费条件当次核实，不能默认开通",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-kaggle",
+      "platformId": "kaggle",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "Kaggle 作品编辑",
+      "nameZh": "Kaggle 作品编辑",
+      "nameEn": "Kaggle content editor",
+      "supportedNativeForms": [
+        "notebook",
+        "dataset_card",
+        "model_card",
+        "community_message"
+      ],
+      "readerTask": "重现评测或使用数据；notebook／数据集／模型说明",
+      "strategy": "交付真实可执行 notebook、数据字典、来源许可、依赖及已完成运行记录；说明实验限制",
+      "polishChecklist": "结果对应真实输出；无数据泄漏或虚构分数；文件和文字共同审核",
+      "requirements": "实际数据／notebook／模型及许可；无实物则 skip，不能发空卡片",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules",
+          "community_original_only",
+          "not_marketing_primary"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-baijiahao",
+      "platformId": "baijiahao",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "百家号编辑",
+      "nameZh": "百家号编辑",
+      "nameEn": "Baijiahao content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "非技术读者了解一个具体应用；可读文章",
+      "strategy": "解释陌生概念、具体场景与来源；删除需要大量上下文的内部术语",
+      "polishChecklist": "标题与内容对应；不杜撰趋势、市场数据或“必然替代”结论",
+      "requirements": "默认归档保留历史；明确恢复任务后核实账号与规则",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-toutiao",
+      "platformId": "toutiao",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "今日头条编辑",
+      "nameZh": "今日头条编辑",
+      "nameEn": "Toutiao content editor",
+      "supportedNativeForms": [
+        "image_text",
+        "video"
+      ],
+      "readerTask": "看懂实际事件或方法；图文／视频稿",
+      "strategy": "重写普通读者能理解的开头与段落；有真实图像则编排，有成片再选视频",
+      "polishChecklist": "杜绝夸张标题与虚构新闻性；图文／视频说明一致",
+      "requirements": "默认归档；明确恢复、真实素材、账号与当前形态核验",
+      "policy": {
+        "creationMode": "ai_assisted_draft",
+        "deliveryMode": "separately_authorized",
+        "allowedAiActions": [
+          "research",
+          "outline",
+          "copyedit",
+          "translate",
+          "draft",
+          "generate_media"
+        ],
+        "requiresAuthorContribution": false,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    },
+    {
+      "id": "OP-maimai",
+      "platformId": "maimai",
+      "revision": 1,
+      "version": "1.0.0",
+      "name": "脉脉编辑",
+      "nameZh": "脉脉编辑",
+      "nameEn": "Maimai content editor",
+      "supportedNativeForms": [
+        "article"
+      ],
+      "readerTask": "理解职业实践或团队方法；专业动态／文章",
+      "strategy": "围绕个人可证实的工作判断和经验；写清行业背景、取舍与可借鉴做法",
+      "polishChecklist": "不披露雇主／客户隐私，不编造招聘关系或职务；去无关流量话术",
+      "requirements": "默认归档；只有职业目标明确时恢复；身份及隐私复核",
+      "policy": {
+        "creationMode": "author_led_editor_assist",
+        "deliveryMode": "manual_only",
+        "allowedAiActions": [
+          "research",
+          "copyedit"
+        ],
+        "requiresAuthorContribution": true,
+        "requiredConditions": [
+          "no_unverified_facts",
+          "separate_publication_authorization",
+          "current_destination_rules",
+          "real_author_contribution",
+          "single_original_only",
+          "no_account_takeover",
+          "no_template_bulk"
+        ]
+      },
+      "qualityGates": [
+        "deterministic",
+        "semantic",
+        "media",
+        "artistic"
+      ],
+      "sourceDocument": "docs/CONTENT-OPERATORS-DESIGN.md",
+      "strategyEvidence": "D",
+      "automaticPublication": false
+    }
+  ]
+}

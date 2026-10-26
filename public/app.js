@@ -2,6 +2,7 @@ import { initializeVideoWorkbench } from "./video-workbench.js";
 import { mountOperations } from "/operations.js";
 import { mountFinalBackup } from "./final-backup-browser.js";
 import { mountEditorialWorkbench } from "./editorial-workbench.js";
+import { mountContentOps } from "./content-ops.js";
 import { summarizeAccountCoverage, renderPlatformCoverage, renderUnconfiguredPlatforms } from "./account-coverage.js";
 
 const state = {
@@ -570,7 +571,7 @@ async function loadData() {
     void finalBackup.sync();
     setLoading(false);
     switchView(requestedView());
-    const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus(), editorialUi.load()]);
+    const secondary = await Promise.allSettled([loadIntegratedEngineData(), loadAdapterHealth(), loadAuthStatus(), editorialUi.load(), contentOpsUi.load()]);
     for (const result of secondary) if (result.status === "rejected") showError(result.reason);
   } catch (error) {
     showError(error);
@@ -707,11 +708,20 @@ const editorialUi = mountEditorialWorkbench({ api, getData: () => state.data, sh
   if (state.data) { renderStats(); renderAccountCoverage(); }
 }, afterMutation: async () => {
   state.data = await api("/api/bootstrap");
-  await operationsUi.load();
+  await Promise.all([operationsUi.load(), contentOpsUi.load()]);
   renderOverview(); renderAccounts(); renderContent(); populateContentForm(); operationsUi.render();
   void finalBackup.sync();
 } });
 const finalBackup = mountFinalBackup({ api });
+const contentOpsUi = mountContentOps({ api, getData: () => state.data, afterMaterialize: async (result) => {
+  await editorialUi.load();
+  editorialUi.selectContent(result.id || result.contentId || result.variantId);
+  state.data = await api("/api/bootstrap");
+  renderOverview(); renderContent(); operationsUi.render();
+}, afterMediaImport: async result => {
+  await editorialUi.load();
+  if (!editorialUi.selectMedia(result.id)) throw new Error("准确私有媒体尚未读取，请刷新后按原媒体 ID 核对。");
+} });
 
 initializeVideoWorkbench();
 loadData();

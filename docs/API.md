@@ -13,7 +13,7 @@ The product name is `鹏经理系统` / `PengManager System`. The underlying Git
 repository URL remains `geniusdapeng-collab/geniusdapeng-geo-os`; changing the
 display brand does not redirect or rename external account URLs.
 
-Write endpoints accept JSON except the raw binary media-upload endpoint below. Errors are structured:
+Write endpoints accept JSON except the raw binary media and content-artifact uploads below. Errors are structured:
 
 ```json
 {
@@ -397,6 +397,93 @@ against the original authorized snapshots and exact hash, with explicit account
 and content confirmation, actual receipt and reason. It never republishes and
 does not silently replace the current account/text with old data. The detailed
 input and incident behavior is described in [the content workflow](CONTENT-PUBLISHING.md#新接口的写入合同).
+
+## Content operators and private worker
+
+The implemented workflow, file subset, local configuration, budget and restore
+steps are documented in [CONTENT-OPS.md](CONTENT-OPS.md). Its private preparation
+objects use state schema 3. Administrator sessions/local identity and independent
+worker credentials are separate. An old restricted Agent bearer cannot call
+administrator preparation, artifact review, materialization or quality review.
+Supplying an administrator cookie does not elevate a worker/bearer identity.
+
+All JSON bodies use strict UTF-8 parsing, a 1,000,000-byte bound, duplicate-key
+rejection and closed schemas. Every write needs `Idempotency-Key` (8–128
+base64url characters). Administrator mutations of existing versioned objects and
+source uploads also need the exact quoted ETag as `If-Match`, as listed below.
+New author contributions instead bind the exact storyRef; worker requests bind
+their own active grant and lease identity. Upload and execution identities are
+checked again after file IO.
+No endpoint executes commands, arbitrary paths or remote downloads from a plan.
+
+| Method | Administrator path | Purpose / exact binding |
+| --- | --- | --- |
+| GET | `/api/content-ops/bootstrap`, `/profiles` | Complete private sources, 28 profiles, current jobs, budgets, grants and fixed binding metadata |
+| POST | `/api/content-ops/plan-template` | Read-only data plan from storyId, motherEditionIds, targets, goal, budgetAuthorizationId and optional sourceArtifactIds/nativeInputs |
+| POST | `/api/content-ops/plan-imports/validate` | Exactly one of plan or rawPlanJson; strict validation and immutable import; no execution |
+| GET / POST | `/api/content-ops/jobs` | List / create from validatedImportId, planHash, budgetAuthorizationHash, mode:`prepare`; exact Story If-Match |
+| GET | `/api/content-ops/jobs/:id` | Tasks, attempts, outputs, reports, reservations and used/reserved/unknown totals |
+| POST | `/api/content-ops/jobs/:id/cancel` | Exact Job If-Match and reason; stops subsequent dispatch, preserves unknown usage |
+| POST | `/api/content-ops/jobs/:id/targets/:key/revise` | Exact Job If-Match, candidateId, packageHash, instructions; creates bounded new revision, preserves old package/reports |
+| GET / POST | `/api/content-ops/budget-authorizations` | List / authorize explicit flat resource limits, currency, deadlineAt and pricingSnapshot |
+| GET | `/api/content-ops/workers` | Worker/grant metadata without credential hashes |
+| POST | `/api/content-ops/workers/pair` | One-time challenge and exact cloud scope; plaintext challenge returned once, not stored |
+| POST | `/api/content-ops/workers/:id/revoke` | Exact Worker If-Match and reason; stops its authority without clearing reservations |
+| POST | `/api/content-ops/author-contributions` | Versioned actual author source, exact Story reference and authorship |
+| POST | `/api/content-ops/rule-snapshots` | Actual reviewed destination rules, policy axes, source URLs and finite validity dates |
+| GET / POST | `/api/content-ops/source-artifacts` | List / raw binary upload of actual Story-bound source files, initially unreviewed |
+| GET | `/api/content-ops/artifacts/:id`, `/:id/preview`, `/:id/bytes` | Authenticated metadata / complete passive preview / exact bytes; bytes also support HEAD and ranges |
+| POST | `/api/content-ops/artifacts/:id/review` | Exact ART If-Match, sha256, rightsConfirmed/privacyConfirmed/licenseConfirmed:true and actual note |
+| POST | `/api/content-ops/artifacts/:id/import-media` | Exact ART If-Match and sha256; imports identical private bytes, leaves MED rights review separate |
+| GET | `/api/content-ops/candidates/:id` | Complete immutable package, reports, review envelope and requiredCoverage.textKeys/artifactHashes for all native outputs/pages/images/files/settings/disclosures |
+| POST | `/api/content-ops/candidates/:id/quality-reports` | Exact candidate If-Match; explicit independent administrator review, full text/attachment coverage and evidence |
+| POST | `/api/content-ops/candidates/:id/materialize` | Exact candidate If-Match and packageHash/qualityReportHashes/reviewSnapshotHash; creates a private draft, never approves |
+| POST | `/api/content-ops/jobs/:id/usage/:reservationId/reconcile` | Exact Job If-Match; itemized actual usage/billing evidence for original attempt/request; no execution retry |
+| POST | `/api/content-ops/style-memory-candidates` | Scoped genuine before/after human revision evidence |
+| POST | `/api/content-ops/style-memory-candidates/:id/promote` | Exact candidate If-Match; reviewed same account/destination/locale scope |
+| POST | `/api/content-ops/style-versions/:id/rollback` | Exact current scope-head If-Match; appends a version instead of rewriting history |
+
+Source upload body is raw binary, not JSON or multipart. Required headers are
+`Content-Type`, `X-Story-Id`, `X-Artifact-Role`, `X-Content-Size`,
+`X-Content-Sha256`, `Idempotency-Key` and exact Story `If-Match`;
+`X-Artifact-Name` is a percent-encoded file name. The server validates actual
+MIME/role, byte size and SHA before committing. Default ART limits are 50 MiB per
+file / 500 MiB total, separately from the existing MED store. Source origin is
+explicitly `administrator_upload`, with null taskId/attemptId; no fake task is
+created to bootstrap source upload.
+
+Only `/api/content-ops/worker/pairing/confirm` uses the one-time pairing
+principal. All other worker routes require their own bearer credential; no
+administrator cookie or old Agent credential substitutes for it. The transport
+is HTTPS to the paired origin; local HTTP is an explicit isolated-test option.
+
+| Method | Worker path under `/api/content-ops/worker` | Purpose |
+| --- | --- | --- |
+| POST | `/pairing/confirm` | challengeId/challenge/localGrantHash/scopeHash/credentialHash; single-use exact scope |
+| POST | `/tasks/claim` | Current workerId, bounded actual adapterReadinessRefs, maxTasks:1; 204 when no task |
+| GET | `/tasks/:id` | Current scoped task and frozen lease inputs |
+| POST | `/tasks/:id/heartbeat` | Renew exact attemptId/epoch/taskHash/resolvedInputHash while authority and source remain valid |
+| POST | `/tasks/:id/dispatch` | Persist per-bottom-request reservation and permit before execution; callKey/requestHash plus exact lease identity |
+| POST | `/reservations/:id/settle` | Actual usage and original provider request/response receipt; unverified actual cost remains null |
+| POST | `/reservations/:id/unknown` | Preserve worst-case reservation and exact unresolved request |
+| POST | `/tasks/:id/artifacts` | Raw output bytes bound to declared outputKey/role/MIME, exact task/attempt/epoch/input, hash and length |
+| POST | `/tasks/:id/complete` | Executed non-dryRun result manifest, actual committed artifacts and execution receipts |
+| POST | `/tasks/:id/fail` | Explicit known/unknown failure; no general provider retry |
+| GET / HEAD | `/artifacts/:id/bytes`, `/media/:id/bytes` | Only exact current resolved-input files allowed by the active grant and lease |
+
+Worker raw uploads carry `X-Attempt-Id`, `X-Task-Epoch`, `X-Task-Hash`,
+`X-Resolved-Input-Hash`, `X-Output-Key`, `X-Artifact-Role`, `X-Content-Sha256`,
+`X-Content-Size`, MIME/name and idempotency. Artifact IDs are server-derived.
+Late results remain private/quarantined and do not activate dependants.
+Dispatch readback returns `execute:false`; it is never a second provider permit.
+
+Final native candidates bind a complete PublicationPackage v3, independent
+QualityReport hashes, and ReviewEnvelope. Materialized editorial variants use
+`snapshotSchema: pengmanager.editorial-variant/v3`. Approval additionally requires
+the exact `reviewSnapshotHash`. Existing v1/v2 snapshot/hash contracts remain
+unchanged. The v3 operation receipt retains editorialSnapshotHash/assetHashes and
+also requires original packageHash/reviewSnapshotHash/all ART artifactHashes.
+Private native files never become public merely through review or materialize.
 
 ## Example
 

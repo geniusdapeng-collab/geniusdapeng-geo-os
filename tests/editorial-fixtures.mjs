@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -18,7 +18,7 @@ export function context(row, key = randomUUID()) {
 // All callbacks and state in these fixtures are isolated test doubles. They do
 // not contact a social platform or prove any real website publication.
 export async function editorialFixture(t, { verifier = true, mediaAssets, beforeActivation, seedTransform } = {}) {
-  const directory = await mkdtemp(join(tmpdir(), "pengmanager-editorial-test-"));
+  const directory = await mkdtemp(join(await realpath(tmpdir()), "pengmanager-editorial-test-"));
   const store = new JsonStore({ filePath: join(directory, "state.json"), clock });
   t.after(async () => { await store.close(); await rm(directory, { recursive: true, force: true }); });
   const seed = await loadSeedState(join(ROOT, "data/seed"));
