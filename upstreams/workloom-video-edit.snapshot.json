@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-26T18:34:25.310Z",
+  "generatedAt": "2026-10-26T22:19:15.440481+00:00",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -314,11 +314,11 @@
       "sourceMode": "100644",
       "gitBlob": "4620be4f06a848cfb2fc4889d644f70d27b7f910",
       "bytes": 39102,
-      "targetBytes": 40919,
+      "targetBytes": 41307,
       "sourceSha256": "c161c8ff2e6414dd68efd254c751a3168852bf965b69197b79f15fb5cb4105b2",
-      "targetSha256": "2f773a23a3418777779fd493bc83c7d3b5dc9f1045de322ee0a8977f1ae28e05",
+      "targetSha256": "aaa5ce6bdd4e1c9f8f04b4f75c229b042224c545a6f15c21cddbcaad876bb6e8",
       "evidence": "B",
-      "adaptation": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7."
+      "adaptation": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path README.md; source SHA256 9f8a47c561efbafa207ea55577d8604ff00bbe091725f4b123a4b92ef8dd62d4."
     },
     {
       "path": "WORKLOOM_PRODUCT_CONTEXT.md",
@@ -2772,10 +2772,11 @@
       "sourceMode": "100644",
       "gitBlob": "58303f28e73da28722a281ef1e041eb5125330f9",
       "bytes": 40899,
-      "targetBytes": 40899,
+      "targetBytes": 45396,
       "sourceSha256": "40edca77f635676b36218395b3d334d206d8780ce3ec0beeae0b17f8feccee4e",
-      "targetSha256": "40edca77f635676b36218395b3d334d206d8780ce3ec0beeae0b17f8feccee4e",
-      "evidence": "B"
+      "targetSha256": "ec7824008a53d7fb8cb45d3876a1952486c0d7bf2fe35bf63d43817a1c11e100",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/studio-worker.test.ts; source SHA256 ec7824008a53d7fb8cb45d3876a1952486c0d7bf2fe35bf63d43817a1c11e100."
     },
     {
       "path": "apps/server/src/video/studio-worker.ts",
@@ -2783,10 +2784,11 @@
       "sourceMode": "100644",
       "gitBlob": "168c15d1f4f150bf7772ddf0866961a01b64d821",
       "bytes": 84168,
-      "targetBytes": 84168,
+      "targetBytes": 85559,
       "sourceSha256": "4a9b0fdf8bfd2674fa81f02699a97d8f2f5449851e6f6839ea3536b3f54a07f5",
-      "targetSha256": "4a9b0fdf8bfd2674fa81f02699a97d8f2f5449851e6f6839ea3536b3f54a07f5",
-      "evidence": "B"
+      "targetSha256": "13932792dae9c5b004d420368134626b2c0d217425327045bdd15ae5b26798c4",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/studio-worker.ts; source SHA256 13932792dae9c5b004d420368134626b2c0d217425327045bdd15ae5b26798c4."
     },
     {
       "path": "apps/server/src/video/whiteboard/annotate.ts",
@@ -17726,11 +17728,11 @@
       "sourceMode": "100644",
       "gitBlob": "d688f52b3dda90c839eeaf36a3624bcc7ca6eebe",
       "bytes": 25719,
-      "targetBytes": 27440,
+      "targetBytes": 29893,
       "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "targetSha256": "1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751",
+      "targetSha256": "bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6",
       "evidence": "B",
-      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751."
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6."
     },
     {
       "path": "docs/audit/DEEP-AUDIT-ROUND2-2026-09-27.md",
@@ -26127,10 +26129,11 @@
       "sourceMode": "100644",
       "gitBlob": "8b43e808166834e48b5317bdac0bbddc9a1f0fd1",
       "bytes": 14098,
-      "targetBytes": 14098,
+      "targetBytes": 22643,
       "sourceSha256": "b23ecd51494c5d150e0f79d48af060937f1aad79a634018d3be6e64da31d922c",
-      "targetSha256": "b23ecd51494c5d150e0f79d48af060937f1aad79a634018d3be6e64da31d922c",
-      "evidence": "B"
+      "targetSha256": "2e866861e24fdb098916ac9fba8e843911a7b24aeb5c052bdff5d83b48042eca",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/producer-gate.test.ts; source SHA256 2e866861e24fdb098916ac9fba8e843911a7b24aeb5c052bdff5d83b48042eca."
     },
     {
       "path": "packages/video-studio/src/producer-gate.ts",
@@ -26138,10 +26141,11 @@
       "sourceMode": "100644",
       "gitBlob": "859110dc342c6384f849255183581d06fb47d16c",
       "bytes": 34270,
-      "targetBytes": 34270,
+      "targetBytes": 34830,
       "sourceSha256": "9215a3a172dff6f1499e5b5d47dcfdc343b2ce53424cb1d234e10413b16cf418",
-      "targetSha256": "9215a3a172dff6f1499e5b5d47dcfdc343b2ce53424cb1d234e10413b16cf418",
-      "evidence": "B"
+      "targetSha256": "605167eb88b5483ed951399c26228bd334bd8ddfcf3dd8c7ffb326097a56344f",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/producer-gate.ts; source SHA256 605167eb88b5483ed951399c26228bd334bd8ddfcf3dd8c7ffb326097a56344f."
     },
     {
       "path": "packages/video-studio/src/product-archive.multitype.test.ts",
@@ -26644,10 +26648,11 @@
       "sourceMode": "100644",
       "gitBlob": "fcf026413a6df8423124776625d439a8618700d5",
       "bytes": 6890,
-      "targetBytes": 6890,
+      "targetBytes": 6819,
       "sourceSha256": "9353d8b2c098c0cc6fd116208d02d21937780feee1c2b7ee562e2d8fe0e2812e",
-      "targetSha256": "9353d8b2c098c0cc6fd116208d02d21937780feee1c2b7ee562e2d8fe0e2812e",
-      "evidence": "B"
+      "targetSha256": "5c237361c36e9c77f300e8eccb643ae2c63c307ec58530b227a61119a75f2d47",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio-portrait-reuse.test.ts; source SHA256 5c237361c36e9c77f300e8eccb643ae2c63c307ec58530b227a61119a75f2d47."
     },
     {
       "path": "packages/video-studio/src/studio.test.ts",
@@ -26655,10 +26660,11 @@
       "sourceMode": "100644",
       "gitBlob": "f8c284fba0961e92a324c6884d046ee962083772",
       "bytes": 15259,
-      "targetBytes": 15259,
+      "targetBytes": 16679,
       "sourceSha256": "f9d7c35bf49b481f9947668381df19d52bb99593fa61a90a505c3ac849f7a489",
-      "targetSha256": "f9d7c35bf49b481f9947668381df19d52bb99593fa61a90a505c3ac849f7a489",
-      "evidence": "B"
+      "targetSha256": "b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio.test.ts; source SHA256 b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828."
     },
     {
       "path": "packages/video-studio/src/studio.ts",
@@ -26666,10 +26672,11 @@
       "sourceMode": "100644",
       "gitBlob": "aac956c66ebe31d97d2ae56661bcd9b246333b85",
       "bytes": 28865,
-      "targetBytes": 28865,
+      "targetBytes": 29815,
       "sourceSha256": "611c85527289687a2aeff14417a24be7a459fa62f863e77d7d0bfb49f7618721",
-      "targetSha256": "611c85527289687a2aeff14417a24be7a459fa62f863e77d7d0bfb49f7618721",
-      "evidence": "B"
+      "targetSha256": "3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio.ts; source SHA256 3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d."
     },
     {
       "path": "packages/video-studio/src/uhd-delivery.test.ts",
@@ -26710,10 +26717,11 @@
       "sourceMode": "100644",
       "gitBlob": "ed3302b517f4139b71bbaa3147fd7ba9e9088bd7",
       "bytes": 55827,
-      "targetBytes": 55827,
+      "targetBytes": 58983,
       "sourceSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
-      "targetSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
-      "evidence": "B"
+      "targetSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6",
+      "evidence": "B",
+      "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-compat.test.ts; source SHA256 a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6."
     },
     {
       "path": "packages/video-studio/src/vendor-compat.ts",
@@ -27570,9 +27578,9 @@
       "bytes": 14020,
       "targetBytes": 14020,
       "sourceSha256": "5b4a09ca5fc38d6767619780eac878359274cae70c42a4dd75e370131087d120",
-      "targetSha256": "553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426",
+      "targetSha256": "9f565a051bd83039d96d83561d26372b2a5242f611c4a4d08c096d572eaed346",
       "evidence": "B",
-      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426."
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 9f565a051bd83039d96d83561d26372b2a5242f611c4a4d08c096d572eaed346."
     },
     {
       "path": "scripts/audit-scan.ts",
@@ -38097,10 +38105,10 @@
     {
       "path": "packages/video-studio/src/research-source.ts",
       "mode": "100644",
-      "bytes": 8787,
-      "targetSha256": "a493f0797910cbfa3a48941ae575fa8baf99a6e2ddbfad8371c59bdfb11088f5",
+      "bytes": 7182,
+      "targetSha256": "c6f603ba1aa26ab9ae99cfee40e772620595d6f2e4d60a358c5550358c342e6d",
       "evidence": "B",
-      "reason": "Additive PengManager runtime integration, regression, documentation or compatible host module; file is included by exact target bytes."
+      "reason": "Additive PengManager runtime integration, regression, documentation or compatible host module; file is included by exact target bytes. PengManager local compile correction: remove an unused orphan network transport from this offline parser; parsing functions stay unchanged and actual network transport remains in the server marketing-source-fetcher module."
     },
     {
       "path": "packages/video-studio/src/video-library.ts",
@@ -38477,14 +38485,78 @@
       "targetSha256": "2ec2cd7aa1438245a342a38776f913654116b0fc98881a5931579e365dad6e9c",
       "evidence": "B",
       "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path packages/video-studio/src/video-submission-task.test.ts; source SHA256 2ec2cd7aa1438245a342a38776f913654116b0fc98881a5931579e365dad6e9c."
+    },
+    {
+      "path": "apps/server/src/video/marketing-gate-evidence.ts",
+      "mode": "100644",
+      "bytes": 10141,
+      "targetSha256": "f28d54908d87753a3ff01144ff0ce95c8a36eaade348d8a17121c2be93cfe015",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/marketing-gate-evidence.ts; source SHA256 f28d54908d87753a3ff01144ff0ce95c8a36eaade348d8a17121c2be93cfe015."
+    },
+    {
+      "path": "apps/server/src/video/marketing-gate-evidence.test.ts",
+      "mode": "100644",
+      "bytes": 13941,
+      "targetSha256": "c3a06a71c5d548ea138d075f25585f2e4db9b73834d90f475af18001446dc9be",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/marketing-gate-evidence.test.ts; source SHA256 c3a06a71c5d548ea138d075f25585f2e4db9b73834d90f475af18001446dc9be."
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.ts",
+      "mode": "100644",
+      "bytes": 25272,
+      "targetSha256": "d49ff433f74d06894b0a606f95a6b63776528cd57995f5bce0033087e2e7191f",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/requirement-contract.ts; source SHA256 d49ff433f74d06894b0a606f95a6b63776528cd57995f5bce0033087e2e7191f."
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "mode": "100644",
+      "bytes": 12910,
+      "targetSha256": "bae1076ddcd3ddd3053545be9baac73f9cbc865b0a255a5d5cc7040754925408",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/requirement-contract-bridge.ts; source SHA256 bae1076ddcd3ddd3053545be9baac73f9cbc865b0a255a5d5cc7040754925408."
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.test.ts",
+      "mode": "100644",
+      "bytes": 31058,
+      "targetSha256": "96c36c8031d300521a2235939ec3db7519707d79b15cb4687ed047254a0e1a4a",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/requirement-contract.test.ts; source SHA256 96c36c8031d300521a2235939ec3db7519707d79b15cb4687ed047254a0e1a4a."
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "mode": "100644",
+      "bytes": 3863,
+      "targetSha256": "d622ec44c901f379d51eaab4438cd772d76a76d6d35bfb4770e166a8216da7fb",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/requirement-contract-production-bridge.test.ts; source SHA256 d622ec44c901f379d51eaab4438cd772d76a76d6d35bfb4770e166a8216da7fb."
+    },
+    {
+      "path": "packages/video-studio/src/vendor-requirement-entry.ts",
+      "mode": "100644",
+      "bytes": 11836,
+      "targetSha256": "eaa9c54bcfc08c2b8c11b8df9b1cf824de7a5c71a1562905e34aec34e5c380ca",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-requirement-entry.ts; source SHA256 eaa9c54bcfc08c2b8c11b8df9b1cf824de7a5c71a1562905e34aec34e5c380ca."
+    },
+    {
+      "path": "packages/video-studio/src/vendor-requirement-entry.test.ts",
+      "mode": "100644",
+      "bytes": 18410,
+      "targetSha256": "d7f057c00933bc016681d489d453687f49f7522a6f9c6aab3f8f655279572bb2",
+      "evidence": "B",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-requirement-entry.test.ts; source SHA256 d7f057c00933bc016681d489d453687f49f7522a6f9c6aab3f8f655279572bb2."
     }
   ],
   "adaptations": [
     {
       "path": "README.md",
-      "reason": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7.",
+      "reason": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path README.md; source SHA256 9f8a47c561efbafa207ea55577d8604ff00bbe091725f4b123a4b92ef8dd62d4.",
       "sourceSha256": "c161c8ff2e6414dd68efd254c751a3168852bf965b69197b79f15fb5cb4105b2",
-      "targetSha256": "2f773a23a3418777779fd493bc83c7d3b5dc9f1045de322ee0a8977f1ae28e05"
+      "targetSha256": "aaa5ce6bdd4e1c9f8f04b4f75c229b042224c545a6f15c21cddbcaad876bb6e8"
     },
     {
       "path": "apps/server/src/index.ts",
@@ -38692,15 +38764,15 @@
     },
     {
       "path": "docs/ai-video-workbench-guide.md",
-      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751.",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6.",
       "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "targetSha256": "1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751"
+      "targetSha256": "bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6"
     },
     {
       "path": "scripts/ai-video-workbench-guide.test.mjs",
-      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426.",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 9f565a051bd83039d96d83561d26372b2a5242f611c4a4d08c096d572eaed346.",
       "sourceSha256": "5b4a09ca5fc38d6767619780eac878359274cae70c42a4dd75e370131087d120",
-      "targetSha256": "553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426"
+      "targetSha256": "9f565a051bd83039d96d83561d26372b2a5242f611c4a4d08c096d572eaed346"
     },
     {
       "path": "docs/capabilities.auto.md",
@@ -38713,6 +38785,54 @@
       "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/capabilities.auto.json; source SHA256 522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a.",
       "sourceSha256": "ae2803e6325972bcc4325732c82d03be17fd4d5832dcc5b4da70c0a8c612c2f0",
       "targetSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a"
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/studio-worker.ts; source SHA256 13932792dae9c5b004d420368134626b2c0d217425327045bdd15ae5b26798c4.",
+      "sourceSha256": "4a9b0fdf8bfd2674fa81f02699a97d8f2f5449851e6f6839ea3536b3f54a07f5",
+      "targetSha256": "13932792dae9c5b004d420368134626b2c0d217425327045bdd15ae5b26798c4"
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.test.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/studio-worker.test.ts; source SHA256 ec7824008a53d7fb8cb45d3876a1952486c0d7bf2fe35bf63d43817a1c11e100.",
+      "sourceSha256": "40edca77f635676b36218395b3d334d206d8780ce3ec0beeae0b17f8feccee4e",
+      "targetSha256": "ec7824008a53d7fb8cb45d3876a1952486c0d7bf2fe35bf63d43817a1c11e100"
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/producer-gate.ts; source SHA256 605167eb88b5483ed951399c26228bd334bd8ddfcf3dd8c7ffb326097a56344f.",
+      "sourceSha256": "9215a3a172dff6f1499e5b5d47dcfdc343b2ce53424cb1d234e10413b16cf418",
+      "targetSha256": "605167eb88b5483ed951399c26228bd334bd8ddfcf3dd8c7ffb326097a56344f"
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.test.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/producer-gate.test.ts; source SHA256 2e866861e24fdb098916ac9fba8e843911a7b24aeb5c052bdff5d83b48042eca.",
+      "sourceSha256": "b23ecd51494c5d150e0f79d48af060937f1aad79a634018d3be6e64da31d922c",
+      "targetSha256": "2e866861e24fdb098916ac9fba8e843911a7b24aeb5c052bdff5d83b48042eca"
+    },
+    {
+      "path": "packages/video-studio/src/studio.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio.ts; source SHA256 3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d.",
+      "sourceSha256": "611c85527289687a2aeff14417a24be7a459fa62f863e77d7d0bfb49f7618721",
+      "targetSha256": "3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d"
+    },
+    {
+      "path": "packages/video-studio/src/studio.test.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio.test.ts; source SHA256 b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828.",
+      "sourceSha256": "f9d7c35bf49b481f9947668381df19d52bb99593fa61a90a505c3ac849f7a489",
+      "targetSha256": "b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828"
+    },
+    {
+      "path": "packages/video-studio/src/studio-portrait-reuse.test.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/studio-portrait-reuse.test.ts; source SHA256 5c237361c36e9c77f300e8eccb643ae2c63c307ec58530b227a61119a75f2d47.",
+      "sourceSha256": "9353d8b2c098c0cc6fd116208d02d21937780feee1c2b7ee562e2d8fe0e2812e",
+      "targetSha256": "5c237361c36e9c77f300e8eccb643ae2c63c307ec58530b227a61119a75f2d47"
+    },
+    {
+      "path": "packages/video-studio/src/vendor-compat.test.ts",
+      "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-compat.test.ts; source SHA256 a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6.",
+      "sourceSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
+      "targetSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6"
     }
   ],
   "evidence": "B",
