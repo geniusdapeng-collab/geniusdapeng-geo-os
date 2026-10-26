@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "marketing-extraction-output",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "c284dd9b9d1a0acaee4834a340618f9da3027763",
+  "sourceTree": "93a934cd66d318f91dfbbdc7c80a5778def6098c",
+  "sourceMainReadback": {
+    "commit": "c284dd9b9d1a0acaee4834a340618f9da3027763",
+    "tree": "93a934cd66d318f91dfbbdc7c80a5778def6098c",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-26T23:19:47.678Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "a122f70719a79fae05086767099a56835cf802fc",
+  "previousPinSha256": "0b8fe90411bc2331c4b8086836bc7abc80aaf22519da6026ff54aa713b6bce79",
+  "previousSnapshotSha256": "8cd4bbef69107d58209308be0a36ca7ba9b36cd9cde2db7c9d353bf355bb273c",
+  "scope": "exact4-marketing-extraction-output-strict-facts-runtime-and-tests",
+  "files": [
+    {
+      "path": "apps/server/src/video/marketing-authority.ts",
+      "sourceGitBlob": "9a261acf6d9fa31cbb393ca0ad8c6fba484c7c5b",
+      "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
+      "sourceBytes": 38033,
+      "sourceMode": "100644",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
+      "targetSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
+      "targetBytes": 38033,
+      "targetMode": "100644",
+      "transform": "none"
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.test.ts",
+      "sourceGitBlob": "c664621c163c2d31b0d9d4c0bbd28c909062126b",
+      "sourceSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
+      "sourceBytes": 34358,
+      "sourceMode": "100644",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "targetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
+      "targetBytes": 34358,
+      "targetMode": "100644",
+      "transform": "none"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.ts",
+      "sourceGitBlob": "7a5980805cbbf196134590d050258cd6a2f10569",
+      "sourceSha256": "1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b",
+      "sourceBytes": 9725,
+      "sourceMode": "100644",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-facts.ts",
+      "targetSha256": "1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b",
+      "targetBytes": 9725,
+      "targetMode": "100644",
+      "transform": "none"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.test.ts",
+      "sourceGitBlob": "4ab3ccb5fef747e6949c884ae45e9e9e5503aaaa",
+      "sourceSha256": "3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8",
+      "sourceBytes": 9029,
+      "sourceMode": "100644",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-facts.test.ts",
+      "targetSha256": "3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8",
+      "targetBytes": 9029,
+      "targetMode": "100644",
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "B-Root-actual-merged-main-receipt-and-offline4SHA-size-gitblob-checks",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644
+}
