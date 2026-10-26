@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "b60d4a1136dd59679fc7c3902b81d459682291e3ec1f84fc5785dea006d863ee",
+  "snapshotSha256": "ff66d798c5f20a1dc5e85ad53c9cf7442b4a8218c70e7c6eeef3de84a7df03f9",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 72,
-  "sourceOverlayCount": 32,
+  "targetOwnedFileCount": 76,
+  "sourceOverlayCount": 39,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -38,6 +38,17 @@
       "receipt": "upstreams/liyingzi-seedream-v2.asset-overlay.json",
       "receiptSha256": "4bc3fe64b93aa4b39df77d6a2602c0791d42a612d1ca48518d638a75fbed58c8",
       "scope": "LiYingzi-v2-original-assets-and-exact-supporting-metadata-only",
+      "wholeEngineUpgradeClaimed": false
+    }
+  ],
+  "compatibilityOverlays": [
+    {
+      "id": "seedance25-official-cli",
+      "sourceCommit": "2ae81efd43caf204694d7fd7cae51e0406af26fe",
+      "sourceTree": "4b111c361e5073b14e0a7dba084364639726bbf5",
+      "receipt": "upstreams/seedance25-cli.compatibility-overlay.json",
+      "receiptSha256": "63e7436916b2c5a34941e349e62fa98e6071675763ca87f0c4d5a01c2016c938",
+      "scope": "exact14-official-CLI-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]

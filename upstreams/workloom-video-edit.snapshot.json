@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-26T17:50:53.297Z",
+  "generatedAt": "2026-10-26T18:34:25.310Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -314,11 +314,11 @@
       "sourceMode": "100644",
       "gitBlob": "4620be4f06a848cfb2fc4889d644f70d27b7f910",
       "bytes": 39102,
-      "targetBytes": 40604,
+      "targetBytes": 40919,
       "sourceSha256": "c161c8ff2e6414dd68efd254c751a3168852bf965b69197b79f15fb5cb4105b2",
-      "targetSha256": "52db7b5fc6c791eb5e7306e1198b87ea60cdfcb77b6d3dfe2a71fdddc5b545d1",
+      "targetSha256": "2f773a23a3418777779fd493bc83c7d3b5dc9f1045de322ee0a8977f1ae28e05",
       "evidence": "B",
-      "adaptation": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md."
+      "adaptation": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7."
     },
     {
       "path": "WORKLOOM_PRODUCT_CONTEXT.md",
@@ -8872,11 +8872,11 @@
       "sourceMode": "100644",
       "gitBlob": "24bfbc2b21ae62ceb92679e8b2e077e64925554a",
       "bytes": 4265,
-      "targetBytes": 4803,
+      "targetBytes": 4961,
       "sourceSha256": "e00799c334c8bfed3e5bd7f23b63444314e1e0fed191b4e7189b876d1b59f549",
-      "targetSha256": "b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4",
+      "targetSha256": "1d1dcefcab0956ae27441af7e38c41e974cd222beeddc60db8201112c2e95a92",
       "evidence": "B",
-      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained."
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path bundles/ai-video/library/characters/README.md; source SHA256 1d1dcefcab0956ae27441af7e38c41e974cd222beeddc60db8201112c2e95a92."
     },
     {
       "path": "bundles/ai-video/library/characters/model-01-chen-zhuo/gates.jsonl",
@@ -17726,10 +17726,11 @@
       "sourceMode": "100644",
       "gitBlob": "d688f52b3dda90c839eeaf36a3624bcc7ca6eebe",
       "bytes": 25719,
-      "targetBytes": 25719,
+      "targetBytes": 27440,
       "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "targetSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "evidence": "B"
+      "targetSha256": "1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751."
     },
     {
       "path": "docs/audit/DEEP-AUDIT-ROUND2-2026-09-27.md",
@@ -17827,8 +17828,9 @@
       "bytes": 32289,
       "targetBytes": 32289,
       "sourceSha256": "ae2803e6325972bcc4325732c82d03be17fd4d5832dcc5b4da70c0a8c612c2f0",
-      "targetSha256": "ae2803e6325972bcc4325732c82d03be17fd4d5832dcc5b4da70c0a8c612c2f0",
-      "evidence": "B"
+      "targetSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/capabilities.auto.json; source SHA256 522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a."
     },
     {
       "path": "docs/capabilities.auto.md",
@@ -17838,8 +17840,9 @@
       "bytes": 13063,
       "targetBytes": 13063,
       "sourceSha256": "0d10f90b49d3a0f1d0bebe1d4e8daf6531975485c689c8cbde12b464b1da919f",
-      "targetSha256": "0d10f90b49d3a0f1d0bebe1d4e8daf6531975485c689c8cbde12b464b1da919f",
-      "evidence": "B"
+      "targetSha256": "f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/capabilities.auto.md; source SHA256 f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e."
     },
     {
       "path": "docs/capability-map.md",
@@ -17880,11 +17883,11 @@
       "sourceMode": "100644",
       "gitBlob": "ae25405c83cfc0e856f5301bf30f3f262c16687e",
       "bytes": 4507,
-      "targetBytes": 4984,
+      "targetBytes": 5191,
       "sourceSha256": "0476794fc652ca9b06f77dce04477d59b4da93cc5b9dc3ca89b550d84d7e4a63",
-      "targetSha256": "35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e",
+      "targetSha256": "210347f38215647b1845a910b0cf6cd7eb50f7d575051ec39ac4f722c0497d64",
       "evidence": "B",
-      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained."
+      "adaptation": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/character-registry.md; source SHA256 210347f38215647b1845a910b0cf6cd7eb50f7d575051ec39ac4f722c0497d64."
     },
     {
       "path": "docs/cinematography-kb-audit-2026-09-24.md",
@@ -27567,8 +27570,9 @@
       "bytes": 14020,
       "targetBytes": 14020,
       "sourceSha256": "5b4a09ca5fc38d6767619780eac878359274cae70c42a4dd75e370131087d120",
-      "targetSha256": "5b4a09ca5fc38d6767619780eac878359274cae70c42a4dd75e370131087d120",
-      "evidence": "B"
+      "targetSha256": "553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426."
     },
     {
       "path": "scripts/audit-scan.ts",
@@ -29858,10 +29862,11 @@
       "sourceMode": "100644",
       "gitBlob": "896d0ce079d4d3da222f42f14ce9b28a77652c96",
       "bytes": 37371,
-      "targetBytes": 37371,
+      "targetBytes": 43674,
       "sourceSha256": "96f607630ca3230e0aad62b5803518de5a4a4f8913b6cd9dc9161dcf2e43040b",
-      "targetSha256": "96f607630ca3230e0aad62b5803518de5a4a4f8913b6cd9dc9161dcf2e43040b",
-      "evidence": "B"
+      "targetSha256": "ed947b5e40c10e749cc5157bede45d0c9bd7dbcb3e377ab6f46736a12451ba87",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/full-chain-failure.test.mjs; source SHA256 ed947b5e40c10e749cc5157bede45d0c9bd7dbcb3e377ab6f46736a12451ba87."
     },
     {
       "path": "scripts/tools/full-chain-film.mts",
@@ -29869,10 +29874,11 @@
       "sourceMode": "100644",
       "gitBlob": "aed97ff9976acaaedf98f2a46e1be4ea151662c2",
       "bytes": 407995,
-      "targetBytes": 407995,
+      "targetBytes": 428642,
       "sourceSha256": "124d478fd7bda351189b7cc9281daaa15c340c470484e846ec63e5f135231f54",
-      "targetSha256": "124d478fd7bda351189b7cc9281daaa15c340c470484e846ec63e5f135231f54",
-      "evidence": "B"
+      "targetSha256": "eff92e5925969ba718af45067f7d6a61ccfd9dfec4bf2957acd63c4199e2378f",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/full-chain-film.mts; source SHA256 eff92e5925969ba718af45067f7d6a61ccfd9dfec4bf2957acd63c4199e2378f."
     },
     {
       "path": "scripts/tools/gate-ledger-report.mts",
@@ -30332,10 +30338,11 @@
       "sourceMode": "100644",
       "gitBlob": "49aa97a31dea02e5ba05e7865adbedef9fbc9b46",
       "bytes": 35620,
-      "targetBytes": 35620,
+      "targetBytes": 57553,
       "sourceSha256": "af041729dd0fe0a6c917a524b0367224083b2bb553234cd50395044fa9195d9c",
-      "targetSha256": "af041729dd0fe0a6c917a524b0367224083b2bb553234cd50395044fa9195d9c",
-      "evidence": "B"
+      "targetSha256": "8a68b96062e36fa261e4054b1c073191339d0b2623b977b5fd00825a11015ec6",
+      "evidence": "B",
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/video-request-regression.test.ts; source SHA256 8a68b96062e36fa261e4054b1c073191339d0b2623b977b5fd00825a11015ec6."
     },
     {
       "path": "scripts/tools/vision-entity.swift",
@@ -38438,14 +38445,46 @@
       "targetSha256": "68d6f656db90989df6db286070746a91f732e9a33489861289e021c99c2f6974",
       "evidence": "B",
       "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json; source SHA256 68d6f656db90989df6db286070746a91f732e9a33489861289e021c99c2f6974; original bytes retained."
+    },
+    {
+      "path": "packages/video-studio/src/video-submission-request.ts",
+      "mode": "100644",
+      "bytes": 11510,
+      "targetSha256": "992d7c5a5833ea27fb31d30736fcb05280025a91d354a8afb8bf11084c37e11d",
+      "evidence": "B",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path packages/video-studio/src/video-submission-request.ts; source SHA256 992d7c5a5833ea27fb31d30736fcb05280025a91d354a8afb8bf11084c37e11d."
+    },
+    {
+      "path": "packages/video-studio/src/video-submission-request.test.ts",
+      "mode": "100644",
+      "bytes": 15094,
+      "targetSha256": "d1946f377368543d5083bd26afd020d4b31c3e22cafa28b51e8c2298546eff00",
+      "evidence": "B",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path packages/video-studio/src/video-submission-request.test.ts; source SHA256 d1946f377368543d5083bd26afd020d4b31c3e22cafa28b51e8c2298546eff00."
+    },
+    {
+      "path": "packages/video-studio/src/video-submission-task.ts",
+      "mode": "100644",
+      "bytes": 20706,
+      "targetSha256": "f235b6bc2566d2446cef6db675cb943f9b7dd22ab72e642ef20745d23f3a8079",
+      "evidence": "B",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path packages/video-studio/src/video-submission-task.ts; source SHA256 f235b6bc2566d2446cef6db675cb943f9b7dd22ab72e642ef20745d23f3a8079."
+    },
+    {
+      "path": "packages/video-studio/src/video-submission-task.test.ts",
+      "mode": "100644",
+      "bytes": 16306,
+      "targetSha256": "2ec2cd7aa1438245a342a38776f913654116b0fc98881a5931579e365dad6e9c",
+      "evidence": "B",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path packages/video-studio/src/video-submission-task.test.ts; source SHA256 2ec2cd7aa1438245a342a38776f913654116b0fc98881a5931579e365dad6e9c."
     }
   ],
   "adaptations": [
     {
       "path": "README.md",
-      "reason": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md.",
+      "reason": "PengManager complete-contained runtime instructions; original upstream README retained as UPSTREAM_README.md. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path README.md; source SHA256 fc93b47877a9499121045b0e769634a1ed78212c08dc29d3b1d6b6b81e59c8e7.",
       "sourceSha256": "c161c8ff2e6414dd68efd254c751a3168852bf965b69197b79f15fb5cb4105b2",
-      "targetSha256": "52db7b5fc6c791eb5e7306e1198b87ea60cdfcb77b6d3dfe2a71fdddc5b545d1"
+      "targetSha256": "2f773a23a3418777779fd493bc83c7d3b5dc9f1045de322ee0a8977f1ae28e05"
     },
     {
       "path": "apps/server/src/index.ts",
@@ -38617,21 +38656,63 @@
     },
     {
       "path": "bundles/ai-video/library/characters/README.md",
-      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained.",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path bundles/ai-video/library/characters/README.md; source SHA256 b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4; original bytes retained. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path bundles/ai-video/library/characters/README.md; source SHA256 1d1dcefcab0956ae27441af7e38c41e974cd222beeddc60db8201112c2e95a92.",
       "sourceSha256": "e00799c334c8bfed3e5bd7f23b63444314e1e0fed191b4e7189b876d1b59f549",
-      "targetSha256": "b3371d64ffa435249e6ec37fe102a3b1b5e36c9f04500f2f949d2ad53731ebd4"
+      "targetSha256": "1d1dcefcab0956ae27441af7e38c41e974cd222beeddc60db8201112c2e95a92"
     },
     {
       "path": "docs/character-registry.md",
-      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained.",
+      "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path docs/character-registry.md; source SHA256 35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e; original bytes retained. Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/character-registry.md; source SHA256 210347f38215647b1845a910b0cf6cd7eb50f7d575051ec39ac4f722c0497d64.",
       "sourceSha256": "0476794fc652ca9b06f77dce04477d59b4da93cc5b9dc3ca89b550d84d7e4a63",
-      "targetSha256": "35ff317bf90227039a2392e33365873d13696252cf332b0b89177fb22e14593e"
+      "targetSha256": "210347f38215647b1845a910b0cf6cd7eb50f7d575051ec39ac4f722c0497d64"
     },
     {
       "path": "packages/video-studio/src/builtin-character-library.test.ts",
       "reason": "LiYingzi logical v2 asset-only overlay from Edit main 529c5f56c4d640bbd8607cab54f6a06e54fbc77a; source path packages/video-studio/src/builtin-character-library.test.ts; source SHA256 0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c; original bytes retained.",
       "sourceSha256": "939566dae5f64caec0ee87749f9eb7996b158bb57078cc521854c3afc0cdeebd",
       "targetSha256": "0adfb5fc4fa7c6a8d95e1364b7b147c72fcdbecc296603d529a4f2c10790dc0c"
+    },
+    {
+      "path": "scripts/tools/full-chain-film.mts",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/full-chain-film.mts; source SHA256 eff92e5925969ba718af45067f7d6a61ccfd9dfec4bf2957acd63c4199e2378f.",
+      "sourceSha256": "124d478fd7bda351189b7cc9281daaa15c340c470484e846ec63e5f135231f54",
+      "targetSha256": "eff92e5925969ba718af45067f7d6a61ccfd9dfec4bf2957acd63c4199e2378f"
+    },
+    {
+      "path": "scripts/tools/video-request-regression.test.ts",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/video-request-regression.test.ts; source SHA256 8a68b96062e36fa261e4054b1c073191339d0b2623b977b5fd00825a11015ec6.",
+      "sourceSha256": "af041729dd0fe0a6c917a524b0367224083b2bb553234cd50395044fa9195d9c",
+      "targetSha256": "8a68b96062e36fa261e4054b1c073191339d0b2623b977b5fd00825a11015ec6"
+    },
+    {
+      "path": "scripts/tools/full-chain-failure.test.mjs",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/tools/full-chain-failure.test.mjs; source SHA256 ed947b5e40c10e749cc5157bede45d0c9bd7dbcb3e377ab6f46736a12451ba87.",
+      "sourceSha256": "96f607630ca3230e0aad62b5803518de5a4a4f8913b6cd9dc9161dcf2e43040b",
+      "targetSha256": "ed947b5e40c10e749cc5157bede45d0c9bd7dbcb3e377ab6f46736a12451ba87"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751.",
+      "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
+      "targetSha256": "1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path scripts/ai-video-workbench-guide.test.mjs; source SHA256 553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426.",
+      "sourceSha256": "5b4a09ca5fc38d6767619780eac878359274cae70c42a4dd75e370131087d120",
+      "targetSha256": "553a78e64bdc3adf04d1c4c0512e59e552466d89a65b16ff4521312a6723d426"
+    },
+    {
+      "path": "docs/capabilities.auto.md",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/capabilities.auto.md; source SHA256 f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e.",
+      "sourceSha256": "0d10f90b49d3a0f1d0bebe1d4e8daf6531975485c689c8cbde12b464b1da919f",
+      "targetSha256": "f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e"
+    },
+    {
+      "path": "docs/capabilities.auto.json",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/capabilities.auto.json; source SHA256 522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a.",
+      "sourceSha256": "ae2803e6325972bcc4325732c82d03be17fd4d5832dcc5b4da70c0a8c612c2f0",
+      "targetSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a"
     }
   ],
   "evidence": "B",
