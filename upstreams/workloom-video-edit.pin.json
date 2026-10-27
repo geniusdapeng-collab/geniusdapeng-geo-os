@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "a1bf7f6ba9bd4805ffe0e6006dec3ce4e03c6dd89bae28d0ef66d65800e0b5a4",
+  "snapshotSha256": "5a7ac95dd50d5f2784dfd425880db494d83e8f5176a3bda7751f291b1dec6c84",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -139,6 +139,15 @@
       "receipt": "upstreams/production-authority.compatibility-overlay.json",
       "receiptSha256": "bd7b75fff07a14d9e4b85bcd6ac8497af0de3cd064a010ea05a2f0f982dacea8",
       "scope": "exact9-approved-production-authority-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "native-handoff",
+      "sourceCommit": "0f43ecc1922c2f58916872cffa215dcb4c1ba406",
+      "sourceTree": "c637b3dabc03d410b0cdac17587a532cbc957635",
+      "receipt": "upstreams/native-handoff.compatibility-overlay.json",
+      "receiptSha256": "4301945b44d28b29978a97cd2839ac4f91a9caed886d7853b7714349a8d4fdaa",
+      "scope": "exact8-approved-native-handoff-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
