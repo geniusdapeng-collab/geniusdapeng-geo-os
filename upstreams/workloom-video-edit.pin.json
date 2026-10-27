@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "3cb2de473e19675e39209fd47fd0537663256fda38e1764bac0dc4d576d56d14",
+  "snapshotSha256": "4e4d94906857cabe7cad7c8b315bde22961603bc2a9eb3a8eb67af8ef1056650",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -103,6 +103,15 @@
       "receipt": "upstreams/scene-feedback.compatibility-overlay.json",
       "receiptSha256": "067b9de243a1baa22df238dd0ed60f7fdf29e06349bf7589938a09d2727113ce",
       "scope": "exact5-scene-timing-guidance-and-bounded-retry-feedback-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prd-schema",
+      "sourceCommit": "8e96169f19e711cd7014e728a14eda6922917156",
+      "sourceTree": "211bd22663f70238f26b1b733ed7e30422745923",
+      "receipt": "upstreams/prd-schema.compatibility-overlay.json",
+      "receiptSha256": "36dcc5b0183b28f17ed5cde92cea4b7425410f9e64e5e30480534d47d91df375",
+      "scope": "exact5-private-PRD-model-schema-disclosure-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]

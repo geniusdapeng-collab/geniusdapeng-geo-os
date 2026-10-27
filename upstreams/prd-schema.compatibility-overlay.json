@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "prd-schema",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "8e96169f19e711cd7014e728a14eda6922917156",
+  "sourceTree": "211bd22663f70238f26b1b733ed7e30422745923",
+  "sourceMainReadback": {
+    "commit": "8e96169f19e711cd7014e728a14eda6922917156",
+    "tree": "211bd22663f70238f26b1b733ed7e30422745923",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T13:25:45.202Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "e145fe04514d3d79334ac22653f85da15994aa0d",
+  "previousPinSha256": "6f982f036a11f2b87dc675eb2ef44b12a53dc85f4fd12683a11234d67678c55a",
+  "previousSnapshotSha256": "3cb2de473e19675e39209fd47fd0537663256fda38e1764bac0dc4d576d56d14",
+  "scope": "exact5-private-PRD-model-schema-disclosure-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/prd-authority.ts",
+      "sourceSha256": "9aeb8ae94adfe9eb757f7a24ab580161aabba9808bfc785a0a444e4c84f1bf14",
+      "sourceBytes": 21630,
+      "sourceMode": "100644",
+      "sourceGitBlob": "9769fdb89949131e6bb528bb27c79ef852385eb5",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "targetMode": "100644",
+      "targetSha256": "9aeb8ae94adfe9eb757f7a24ab580161aabba9808bfc785a0a444e4c84f1bf14",
+      "targetBytes": 21630,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "sourceSha256": "e11b0d75881b1c72358dfa87802830f52827a00b8168aac3f6eb4e11090a1d5a",
+      "sourceBytes": 27062,
+      "sourceMode": "100644",
+      "sourceGitBlob": "6bd4cb5b7e99244a127a6b738bb818e12be3358a",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetMode": "100644",
+      "targetSha256": "e11b0d75881b1c72358dfa87802830f52827a00b8168aac3f6eb4e11090a1d5a",
+      "targetBytes": 27062,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.test.ts",
+      "sourceSha256": "0bb94009d8caf7c01164a377ec3116624da39b3af1edbff0744b645da9ac0c62",
+      "sourceBytes": 15285,
+      "sourceMode": "100644",
+      "sourceGitBlob": "f35bf1e29ba3ace881b58919b5ff40ec9a134c44",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "0bb94009d8caf7c01164a377ec3116624da39b3af1edbff0744b645da9ac0c62",
+      "targetBytes": 15285,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
+      "sourceSha256": "d6521706998cf3f6af099b2b2ecea79f3e00f0ab5ecc6fc694726b1716172730",
+      "sourceBytes": 34468,
+      "sourceMode": "100644",
+      "sourceGitBlob": "7819c5e582714145071c5e56ae16449948e11341",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "d6521706998cf3f6af099b2b2ecea79f3e00f0ab5ecc6fc694726b1716172730",
+      "targetBytes": 34468,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b",
+      "sourceBytes": 35788,
+      "sourceMode": "100644",
+      "sourceGitBlob": "a0e78404c96b288c53a68171578a18534827e67a",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b",
+      "targetBytes": 35788,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "protectionScope": {
+    "coreBefore": 3542,
+    "coreAfter": 3543,
+    "coreProtected": 3535,
+    "auxiliaryGuardCount": 1,
+    "expandedBefore": 3543,
+    "expandedAfter": 3544,
+    "expandedProtected": 3536,
+    "auxiliaryPaths": [
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
