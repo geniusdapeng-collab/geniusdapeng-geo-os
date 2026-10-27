@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "review-text-budget",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "4ae607906886d619da6f6d2f59d75b64c3abc713",
+  "sourceTree": "fb8778a383477750b125742746428985664e65ea",
+  "sourceMainReadback": {
+    "commit": "4ae607906886d619da6f6d2f59d75b64c3abc713",
+    "tree": "fb8778a383477750b125742746428985664e65ea",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T22:28:58.520Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "cacb239321bfa494c4e4aef3f5080f7060c34dc5",
+  "previousPinSha256": "a773aaec6141230a5d98bb82dbfd149d5498af2165b1e1eae96d7a5b582470cb",
+  "previousSnapshotSha256": "5a7ac95dd50d5f2784dfd425880db494d83e8f5176a3bda7751f291b1dec6c84",
+  "scope": "exact4-approved-review-text-budget-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/producer-gate.ts",
+      "sourceSha256": "d5812d44e2b1344639c6c465e786283442c97ae53edd2476689ad4a233a1f6a0",
+      "sourceBytes": 35428,
+      "sourceMode": "100644",
+      "sourceGitBlob": "32c79c4ffad839761ffce1f40128f147b15f6088",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
+      "targetMode": "100644",
+      "targetSha256": "d5812d44e2b1344639c6c465e786283442c97ae53edd2476689ad4a233a1f6a0",
+      "targetBytes": 35428,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.test.ts",
+      "sourceSha256": "7443fda2afd39916644f08314eb7f0e4cd7b2b707a29c58e448b5fc7215f228d",
+      "sourceBytes": 33048,
+      "sourceMode": "100644",
+      "sourceGitBlob": "9a84f3a6289ad05b5865aed178af34c129e8cb40",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "7443fda2afd39916644f08314eb7f0e4cd7b2b707a29c58e448b5fc7215f228d",
+      "targetBytes": 33048,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "8609d70dba58c581ed8fa84dc86cfd79215b5e6890c4cc6ab1e646dc1e98a519",
+      "sourceBytes": 44080,
+      "sourceMode": "100644",
+      "sourceGitBlob": "a77ae3e5d60eafc54a107f463d83146c50211768",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "8609d70dba58c581ed8fa84dc86cfd79215b5e6890c4cc6ab1e646dc1e98a519",
+      "targetBytes": 44080,
+      "transform": "none"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "sourceSha256": "c8dfdca8ac5741c653c7c8f5d1d930d63d90e931fe39f5a43791442a2225a48a",
+      "sourceBytes": 14403,
+      "sourceMode": "100644",
+      "sourceGitBlob": "5cd2e9e49b853e659cf6638ea08cbe8447d197a6",
+      "targetPath": "engines/video-edit/scripts/ai-video-workbench-guide.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "c8dfdca8ac5741c653c7c8f5d1d930d63d90e931fe39f5a43791442a2225a48a",
+      "targetBytes": 14403,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "sourceAdaptationScope": {
+    "before": 55,
+    "after": 55,
+    "newPaths": [],
+    "sourcePathsUpdated": 4,
+    "ownedPathsUpdated": 0,
+    "sourceInventoryUnchanged": true,
+    "ownedInventoryUnchanged": true
+  },
+  "protectionScope": {
+    "coreBefore": 3547,
+    "coreAfter": 3548,
+    "coreProtected": 3541,
+    "auxiliaryGuardCount": 2,
+    "expandedBefore": 3549,
+    "expandedAfter": 3550,
+    "expandedProtected": 3543,
+    "auxiliaryPaths": [
+      "README.md",
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
