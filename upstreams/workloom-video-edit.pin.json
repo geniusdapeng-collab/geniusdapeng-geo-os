@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "4e4d94906857cabe7cad7c8b315bde22961603bc2a9eb3a8eb67af8ef1056650",
+  "snapshotSha256": "287bbf4841dfbe07148d6d99fd56f9ccadd0b5d2cd71b1fb3da48efcb7285385",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -112,6 +112,15 @@
       "receipt": "upstreams/prd-schema.compatibility-overlay.json",
       "receiptSha256": "36dcc5b0183b28f17ed5cde92cea4b7425410f9e64e5e30480534d47d91df375",
       "scope": "exact5-private-PRD-model-schema-disclosure-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prd-display",
+      "sourceCommit": "6c72a1351432994055c38ecbb67696d702f98c2a",
+      "sourceTree": "cadfb17072966f1dc50490a8cd5be7db17115e05",
+      "receipt": "upstreams/prd-display.compatibility-overlay.json",
+      "receiptSha256": "5819f8fdad01169f8e957b9308053dea5d77190db1a6016ca5acbade1f78c9a4",
+      "scope": "exact3-private-PRD-display-normalization-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]

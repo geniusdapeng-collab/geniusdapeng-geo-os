@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "prd-display",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "6c72a1351432994055c38ecbb67696d702f98c2a",
+  "sourceTree": "cadfb17072966f1dc50490a8cd5be7db17115e05",
+  "sourceMainReadback": {
+    "commit": "6c72a1351432994055c38ecbb67696d702f98c2a",
+    "tree": "cadfb17072966f1dc50490a8cd5be7db17115e05",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T16:16:59.971Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "0b2c5ceb896efe10c9427ffb4839ee2552f5d730",
+  "previousPinSha256": "96fe1245e6e18946197e7da5a67b772aafdc88398acda0cdb7ab6cb5afead698",
+  "previousSnapshotSha256": "4e4d94906857cabe7cad7c8b315bde22961603bc2a9eb3a8eb67af8ef1056650",
+  "scope": "exact3-private-PRD-display-normalization-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "sourceSha256": "bdd3eb8ebb92a871cb612901148ef818579074108172b40193251e18855ba480",
+      "sourceBytes": 27513,
+      "sourceMode": "100644",
+      "sourceGitBlob": "fd31dcbccbfb9baa92fe4f8f603962e27cefe8a6",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetMode": "100644",
+      "targetSha256": "bdd3eb8ebb92a871cb612901148ef818579074108172b40193251e18855ba480",
+      "targetBytes": 27513,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
+      "sourceSha256": "dbe28b040e291b54c38f6b75a9bcd6de913651f1edd6843192741a5db6af34c5",
+      "sourceBytes": 40546,
+      "sourceMode": "100644",
+      "sourceGitBlob": "c17098e11f7e785fcd4b0e0e940bd7c42ee8451d",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "dbe28b040e291b54c38f6b75a9bcd6de913651f1edd6843192741a5db6af34c5",
+      "targetBytes": 40546,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6",
+      "sourceBytes": 36222,
+      "sourceMode": "100644",
+      "sourceGitBlob": "60ba7260f3df269ba38e6808a56bfd73e68f894d",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6",
+      "targetBytes": 36222,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "protectionScope": {
+    "coreBefore": 3543,
+    "coreAfter": 3544,
+    "coreProtected": 3538,
+    "auxiliaryGuardCount": 1,
+    "expandedBefore": 3544,
+    "expandedAfter": 3545,
+    "expandedProtected": 3539,
+    "auxiliaryPaths": [
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
