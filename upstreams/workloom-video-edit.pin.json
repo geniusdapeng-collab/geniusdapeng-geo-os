@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "e76e178af494ec6706c9400ef8f040631ab24c07467bd3363e39d8f2de288978",
+  "snapshotSha256": "1aa895ba7842bf2f4712dea38d954ef7e9a6724eab251887846defab3246cbfd",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 84,
-  "sourceOverlayCount": 51,
+  "targetOwnedFileCount": 89,
+  "sourceOverlayCount": 53,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -67,6 +67,15 @@
       "receipt": "upstreams/marketing-extraction-output.compatibility-overlay.json",
       "receiptSha256": "2b3224093ac37bcded59a33b103cd879cbd527651b297897240c8aa154b3c16d",
       "scope": "exact4-marketing-extraction-output-strict-facts-runtime-and-tests",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prd-authority",
+      "sourceCommit": "eab5c724a6f665e34f59025acf9b3430fd60c293",
+      "sourceTree": "9ee7c4851d95e902ad936c086b8d999b8b9c0789",
+      "receipt": "upstreams/prd-authority.compatibility-overlay.json",
+      "receiptSha256": "7d11b4c5c9fd48c72cedd350ae1ad1ded5cfcf70e590e7b3b97d0e87a3ff142c",
+      "scope": "exact16-host-PRD-current-G1-authority-approved-review-advisories-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
