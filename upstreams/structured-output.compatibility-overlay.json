@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "structured-output",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "0b6414419c8641c2fc5dabc1d89ac49608fb28c7",
+  "sourceTree": "a4c6a9f1cd302dbbe422ce738b3c75e0312588fe",
+  "sourceMainReadback": {
+    "commit": "0b6414419c8641c2fc5dabc1d89ac49608fb28c7",
+    "tree": "a4c6a9f1cd302dbbe422ce738b3c75e0312588fe",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T17:44:39.436Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "af01f9eeeebf1cad6b6e4f0fcd6fa6079d94e6f1",
+  "previousPinSha256": "6b2300201869f46800f0f7d54046d3de204da6250ff6f3a9fb44f5381b44d071",
+  "previousSnapshotSha256": "287bbf4841dfbe07148d6d99fd56f9ccadd0b5d2cd71b1fb3da48efcb7285385",
+  "scope": "exact3-routed-structured-output-response-contract-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/llm-adapter.ts",
+      "sourceSha256": "5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c",
+      "sourceBytes": 17843,
+      "sourceMode": "100644",
+      "sourceGitBlob": "223a6126c100320d4e2b42b57c36009418b9f749",
+      "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
+      "targetMode": "100644",
+      "targetSha256": "5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c",
+      "targetBytes": 17843,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/routed-adapter.test.ts",
+      "sourceSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb",
+      "sourceBytes": 14193,
+      "sourceMode": "100644",
+      "sourceGitBlob": "54b2107319bfcd363671526a075d7cabf1cb4b4f",
+      "targetPath": "engines/video-edit/packages/video-studio/src/routed-adapter.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb",
+      "targetBytes": 14193,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b",
+      "sourceBytes": 37220,
+      "sourceMode": "100644",
+      "sourceGitBlob": "67751921a8bb6e31c1ba03ee112befa39d81ea94",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b",
+      "targetBytes": 37220,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "sourceAdaptationScope": {
+    "before": 53,
+    "after": 55,
+    "newPaths": [
+      "packages/video-studio/src/llm-adapter.ts",
+      "packages/video-studio/src/routed-adapter.test.ts"
+    ],
+    "sourceInventoryUnchanged": true,
+    "ownedInventoryUnchanged": true
+  },
+  "protectionScope": {
+    "coreBefore": 3544,
+    "coreAfter": 3545,
+    "coreProtected": 3539,
+    "auxiliaryGuardCount": 1,
+    "expandedBefore": 3545,
+    "expandedAfter": 3546,
+    "expandedProtected": 3540,
+    "auxiliaryPaths": [
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
