@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "10bcc2067075c33b05ae7094d2657a742084eef1c55490a312d81de659545cb1",
+  "snapshotSha256": "751ad19a09ef6fb9d658f35241803a661d5580c17ad335f7768d392d8d27a892",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -85,6 +85,15 @@
       "receipt": "upstreams/requirement-authority.compatibility-overlay.json",
       "receiptSha256": "0530738f2aec1dc612c29dd6fc9e934954cfc92f3e34368c7c66a50faaa9cebb",
       "scope": "exact10-host-qualified-G1-theme-and-requirement-purpose-authority-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "scene-contract",
+      "sourceCommit": "6dd6785ff4cb2a41ca2104cbb227f289096fc17c",
+      "sourceTree": "81d05c995a910bf2eaa10b04395703206012297e",
+      "receipt": "upstreams/scene-contract.compatibility-overlay.json",
+      "receiptSha256": "4fbdc0b75267a8523311929a0e6acd78ed2340ce13a14a251c7e368ac3ec8781",
+      "scope": "exact5-approved-scene-contract-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
