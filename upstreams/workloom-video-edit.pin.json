@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "1aa895ba7842bf2f4712dea38d954ef7e9a6724eab251887846defab3246cbfd",
+  "snapshotSha256": "10bcc2067075c33b05ae7094d2657a742084eef1c55490a312d81de659545cb1",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,7 +23,7 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 89,
+  "targetOwnedFileCount": 91,
   "sourceOverlayCount": 53,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
@@ -76,6 +76,15 @@
       "receipt": "upstreams/prd-authority.compatibility-overlay.json",
       "receiptSha256": "7d11b4c5c9fd48c72cedd350ae1ad1ded5cfcf70e590e7b3b97d0e87a3ff142c",
       "scope": "exact16-host-PRD-current-G1-authority-approved-review-advisories-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "requirement-authority",
+      "sourceCommit": "9ef6115dfdbab1d3999df4a27ffa37af3d2e89da",
+      "sourceTree": "149f6a75e226e403269897dcb5da68b8c06df91f",
+      "receipt": "upstreams/requirement-authority.compatibility-overlay.json",
+      "receiptSha256": "0530738f2aec1dc612c29dd6fc9e934954cfc92f3e34368c7c66a50faaa9cebb",
+      "scope": "exact10-host-qualified-G1-theme-and-requirement-purpose-authority-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
