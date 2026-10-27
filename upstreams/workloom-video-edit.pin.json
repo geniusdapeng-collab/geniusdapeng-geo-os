@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "b822f9ad7a8e4e236bcbb4a8d48683b229352ada774f077cd01318455f011081",
+  "snapshotSha256": "a1bf7f6ba9bd4805ffe0e6006dec3ce4e03c6dd89bae28d0ef66d65800e0b5a4",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -130,6 +130,15 @@
       "receipt": "upstreams/structured-output.compatibility-overlay.json",
       "receiptSha256": "0a0d79bbecba9a92c1ac5c8af1076392bef078f590e6bd841d6bd067fbb823dd",
       "scope": "exact3-routed-structured-output-response-contract-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "production-authority",
+      "sourceCommit": "1fe88a1754b29e45507542889f7ddae106a37d6b",
+      "sourceTree": "b841eff77ccbecfacdf032db95fcb9a3c30fb898",
+      "receipt": "upstreams/production-authority.compatibility-overlay.json",
+      "receiptSha256": "bd7b75fff07a14d9e4b85bcd6ac8497af0de3cd064a010ea05a2f0f982dacea8",
+      "scope": "exact9-approved-production-authority-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
