@@ -1,0 +1,144 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "native-handoff",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "0f43ecc1922c2f58916872cffa215dcb4c1ba406",
+  "sourceTree": "c637b3dabc03d410b0cdac17587a532cbc957635",
+  "sourceMainReadback": {
+    "commit": "0f43ecc1922c2f58916872cffa215dcb4c1ba406",
+    "tree": "c637b3dabc03d410b0cdac17587a532cbc957635",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T21:41:33.770Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "958437fe06679d336a4e5bba036ad0549bc9cda9",
+  "previousPinSha256": "107e33dc2b126e7570b4391159a32869b6d5449dbf25d56fdc2768b6e833f41b",
+  "previousSnapshotSha256": "a1bf7f6ba9bd4805ffe0e6006dec3ce4e03c6dd89bae28d0ef66d65800e0b5a4",
+  "scope": "exact8-approved-native-handoff-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "sourceSha256": "f4a29c4953ee53eb4544cbbafa0f8c90f2f01c64116c9adb04285c68ce38d84b",
+      "sourceBytes": 78055,
+      "sourceMode": "100644",
+      "sourceGitBlob": "eb94156e11712ade32bc989b09faf81625cad801",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetMode": "100644",
+      "targetSha256": "f4a29c4953ee53eb4544cbbafa0f8c90f2f01c64116c9adb04285c68ce38d84b",
+      "targetBytes": 78055,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/studio.ts",
+      "sourceSha256": "c08ff3a534ab41b79e0ffa392acde8cd4e0e48535154d9868b471e3435502d19",
+      "sourceBytes": 33809,
+      "sourceMode": "100644",
+      "sourceGitBlob": "e698f0ae8623ca78ed1acebd985091fc6a090544",
+      "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "targetMode": "100644",
+      "targetSha256": "c08ff3a534ab41b79e0ffa392acde8cd4e0e48535154d9868b471e3435502d19",
+      "targetBytes": 33809,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/studio-portrait-reuse.test.ts",
+      "sourceSha256": "5d97ef45635e59bc3be2f6f839054f39455fc17cf362588917f3f15b6c2353dd",
+      "sourceBytes": 7980,
+      "sourceMode": "100644",
+      "sourceGitBlob": "461bdede489bf05a0814eb0226984225da6ec286",
+      "targetPath": "engines/video-edit/packages/video-studio/src/studio-portrait-reuse.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "5d97ef45635e59bc3be2f6f839054f39455fc17cf362588917f3f15b6c2353dd",
+      "targetBytes": 7980,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
+      "sourceSha256": "5202183a00396dff5a19de608fc437dff1e48d392d47e9037a6031c7fc2d411d",
+      "sourceBytes": 137992,
+      "sourceMode": "100644",
+      "sourceGitBlob": "84cf9fea8146783c6026a11e292f1b50050b3b31",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "5202183a00396dff5a19de608fc437dff1e48d392d47e9037a6031c7fc2d411d",
+      "targetBytes": 137992,
+      "transform": "none"
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.ts",
+      "sourceSha256": "1c8b0e5d5eea0edce5dc6d1ba84ddd9e2d24b7fcecaa7448128e10a1df79fd0c",
+      "sourceBytes": 90217,
+      "sourceMode": "100644",
+      "sourceGitBlob": "57e33be06763c409fe173a2fb0d51487a0671ed8",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "targetMode": "100644",
+      "targetSha256": "1c8b0e5d5eea0edce5dc6d1ba84ddd9e2d24b7fcecaa7448128e10a1df79fd0c",
+      "targetBytes": 90217,
+      "transform": "none"
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.test.ts",
+      "sourceSha256": "947f0ee9f60e3b43f43b778f6639f4c27dd602c73f2dc773af8b67873668a3d7",
+      "sourceBytes": 70615,
+      "sourceMode": "100644",
+      "sourceGitBlob": "3b42bb02f768b1e1ba35f62e8ccc8985004272e8",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "947f0ee9f60e3b43f43b778f6639f4c27dd602c73f2dc773af8b67873668a3d7",
+      "targetBytes": 70615,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "90ec7c3b05260936d9ad3746547607803837a7550211c991441b8585064cb8e5",
+      "sourceBytes": 43312,
+      "sourceMode": "100644",
+      "sourceGitBlob": "34da7e94b7c2ecdf31eb735ad4cbeab22c61341f",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "90ec7c3b05260936d9ad3746547607803837a7550211c991441b8585064cb8e5",
+      "targetBytes": 43312,
+      "transform": "none"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "sourceSha256": "34f7191cd4c57a002e8a6dc91ff1e68428456862c6e61258be4c27b269de4648",
+      "sourceBytes": 14403,
+      "sourceMode": "100644",
+      "sourceGitBlob": "df2039ff1a2e52477f10a0e5a61b4a97bc94de75",
+      "targetPath": "engines/video-edit/scripts/ai-video-workbench-guide.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "34f7191cd4c57a002e8a6dc91ff1e68428456862c6e61258be4c27b269de4648",
+      "targetBytes": 14403,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "sourceAdaptationScope": {
+    "before": 55,
+    "after": 55,
+    "newPaths": [],
+    "sourcePathsUpdated": 6,
+    "ownedPathsUpdated": 2,
+    "sourceInventoryUnchanged": true,
+    "ownedInventoryUnchanged": true
+  },
+  "protectionScope": {
+    "coreBefore": 3546,
+    "coreAfter": 3547,
+    "coreProtected": 3536,
+    "auxiliaryGuardCount": 2,
+    "expandedBefore": 3548,
+    "expandedAfter": 3549,
+    "expandedProtected": 3538,
+    "auxiliaryPaths": [
+      "README.md",
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
