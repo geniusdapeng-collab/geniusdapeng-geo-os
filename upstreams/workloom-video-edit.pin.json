@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "751ad19a09ef6fb9d658f35241803a661d5580c17ad335f7768d392d8d27a892",
+  "snapshotSha256": "3cb2de473e19675e39209fd47fd0537663256fda38e1764bac0dc4d576d56d14",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -94,6 +94,15 @@
       "receipt": "upstreams/scene-contract.compatibility-overlay.json",
       "receiptSha256": "4fbdc0b75267a8523311929a0e6acd78ed2340ce13a14a251c7e368ac3ec8781",
       "scope": "exact5-approved-scene-contract-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "scene-feedback",
+      "sourceCommit": "8bbd861f0c496caca6ff7855f851b98c96f945cf",
+      "sourceTree": "0a864247a3a350624f993fe743d027478c1812a0",
+      "receipt": "upstreams/scene-feedback.compatibility-overlay.json",
+      "receiptSha256": "067b9de243a1baa22df238dd0ed60f7fdf29e06349bf7589938a09d2727113ce",
+      "scope": "exact5-scene-timing-guidance-and-bounded-retry-feedback-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]

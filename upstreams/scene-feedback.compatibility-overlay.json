@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "scene-feedback",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "8bbd861f0c496caca6ff7855f851b98c96f945cf",
+  "sourceTree": "0a864247a3a350624f993fe743d027478c1812a0",
+  "sourceMainReadback": {
+    "commit": "8bbd861f0c496caca6ff7855f851b98c96f945cf",
+    "tree": "0a864247a3a350624f993fe743d027478c1812a0",
+    "method": "root-authorized-github-main-and-commit-tree-readback",
+    "observedAt": "2026-10-27T11:10:16.979Z"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "056284a8ae67851acaf9c3a15eb19d1651034bae",
+  "previousPinSha256": "65081d8c61fbccd84066e5e3fd0042fd11e638c936bff08bf8504e0bc3f4cee5",
+  "previousSnapshotSha256": "751ad19a09ef6fb9d658f35241803a661d5580c17ad335f7768d392d8d27a892",
+  "scope": "exact5-scene-timing-guidance-and-bounded-retry-feedback-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/requirement-contract.ts",
+      "sourceSha256": "a6f631ff1afdf274139341d9eb5b0e31b76ac0b06a71795f2a8d2fd8ef4624db",
+      "sourceBytes": 36269,
+      "sourceMode": "100644",
+      "sourceGitBlob": "d9c69dedc774ffef9b00bd0611422808d6ca7023",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "targetMode": "100644",
+      "targetSha256": "a6f631ff1afdf274139341d9eb5b0e31b76ac0b06a71795f2a8d2fd8ef4624db",
+      "targetBytes": 36269,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "sourceSha256": "d40137154d6ed9508b658009686a5f4675c96789cbda22e21fe313fc12c9fd71",
+      "sourceBytes": 24344,
+      "sourceMode": "100644",
+      "sourceGitBlob": "6acc7c74b0ba6fc8289f56358ac5ab68a27c3410",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetMode": "100644",
+      "targetSha256": "d40137154d6ed9508b658009686a5f4675c96789cbda22e21fe313fc12c9fd71",
+      "targetBytes": 24344,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.test.ts",
+      "sourceSha256": "91ae3789e6cf9d362d8953d9046b31726f5e1a161d16f3c0eddbc1f18a095a8b",
+      "sourceBytes": 47250,
+      "sourceMode": "100644",
+      "sourceGitBlob": "3fb97b7c1f0d7367d704b47c827ac20d07d06c7b",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "91ae3789e6cf9d362d8953d9046b31726f5e1a161d16f3c0eddbc1f18a095a8b",
+      "targetBytes": 47250,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "sourceSha256": "33cfd9f696478225d7477cdca64e84fd48a58f1b270be6bb020cb2583a143319",
+      "sourceBytes": 40179,
+      "sourceMode": "100644",
+      "sourceGitBlob": "1deeea1e0ab3e934b3e9f4d68bf2b70623e45b14",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "33cfd9f696478225d7477cdca64e84fd48a58f1b270be6bb020cb2583a143319",
+      "targetBytes": 40179,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e",
+      "sourceBytes": 34923,
+      "sourceMode": "100644",
+      "sourceGitBlob": "fb29fc6d795c6071209bc41231030cf03e040f73",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e",
+      "targetBytes": 34923,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644
+}
