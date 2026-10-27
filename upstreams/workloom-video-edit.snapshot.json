@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-27T16:16:59.971Z",
+  "generatedAt": "2026-10-27T17:44:39.436Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -17732,11 +17732,11 @@
       "sourceMode": "100644",
       "gitBlob": "d688f52b3dda90c839eeaf36a3624bcc7ca6eebe",
       "bytes": 25719,
-      "targetBytes": 36222,
+      "targetBytes": 37220,
       "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "targetSha256": "aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6",
+      "targetSha256": "6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b",
       "evidence": "B",
-      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path docs/ai-video-workbench-guide.md; source SHA256 8d5d4b669a044e68535c1c3f81ff7a6600874b872436d531981c6e754b1869f8. Exact qualified G1 purpose authority for host theme and requirement transports compatibility overlay from Edit main 9ef6115dfdbab1d3999df4a27ffa37af3d2e89da; source path docs/ai-video-workbench-guide.md; source SHA256 c35e4a1ac03c4db5a8371c9f6b8353be02e21dde61a78799325eccfe3df7a215. Exact approved scene contract count/duration examples compatibility overlay from Edit main 6dd6785ff4cb2a41ca2104cbb227f289096fc17c; source path docs/ai-video-workbench-guide.md; source SHA256 e016a26ae719f052adafd5639831c32814a8d731d238c465ac0e5c33783dbc11. Exact schema-derived scene timing guidance and bounded original-retry feedback compatibility overlay from Edit main 8bbd861f0c496caca6ff7855f851b98c96f945cf; source path docs/ai-video-workbench-guide.md; source SHA256 93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path docs/ai-video-workbench-guide.md; source SHA256 e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path docs/ai-video-workbench-guide.md; source SHA256 aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6."
+      "adaptation": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path docs/ai-video-workbench-guide.md; source SHA256 8d5d4b669a044e68535c1c3f81ff7a6600874b872436d531981c6e754b1869f8. Exact qualified G1 purpose authority for host theme and requirement transports compatibility overlay from Edit main 9ef6115dfdbab1d3999df4a27ffa37af3d2e89da; source path docs/ai-video-workbench-guide.md; source SHA256 c35e4a1ac03c4db5a8371c9f6b8353be02e21dde61a78799325eccfe3df7a215. Exact approved scene contract count/duration examples compatibility overlay from Edit main 6dd6785ff4cb2a41ca2104cbb227f289096fc17c; source path docs/ai-video-workbench-guide.md; source SHA256 e016a26ae719f052adafd5639831c32814a8d731d238c465ac0e5c33783dbc11. Exact schema-derived scene timing guidance and bounded original-retry feedback compatibility overlay from Edit main 8bbd861f0c496caca6ff7855f851b98c96f945cf; source path docs/ai-video-workbench-guide.md; source SHA256 93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path docs/ai-video-workbench-guide.md; source SHA256 e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path docs/ai-video-workbench-guide.md; source SHA256 aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6. Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path docs/ai-video-workbench-guide.md; source SHA256 6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b."
     },
     {
       "path": "docs/audit/DEEP-AUDIT-ROUND2-2026-09-27.md",
@@ -25783,10 +25783,11 @@
       "sourceMode": "100644",
       "gitBlob": "aea7ddd0b54b514ca3ddc299988526d53f4c186f",
       "bytes": 16965,
-      "targetBytes": 16965,
+      "targetBytes": 17843,
       "sourceSha256": "9cf37ca38261aea770c713aacca8d7fd581648e7c925c071f2427634fde58d31",
-      "targetSha256": "9cf37ca38261aea770c713aacca8d7fd581648e7c925c071f2427634fde58d31",
-      "evidence": "B"
+      "targetSha256": "5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c",
+      "evidence": "B",
+      "adaptation": "Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path packages/video-studio/src/llm-adapter.ts; source SHA256 5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c."
     },
     {
       "path": "packages/video-studio/src/material-policy.test.ts",
@@ -26489,10 +26490,11 @@
       "sourceMode": "100644",
       "gitBlob": "899eb22cb643bea5cffeeecfe424433fbcd8dc23",
       "bytes": 3935,
-      "targetBytes": 3935,
+      "targetBytes": 14193,
       "sourceSha256": "ef22ce1c7222ceca502eacab2560ccefc9ee17eed73d9fbc70ea9435404ecd55",
-      "targetSha256": "ef22ce1c7222ceca502eacab2560ccefc9ee17eed73d9fbc70ea9435404ecd55",
-      "evidence": "B"
+      "targetSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb",
+      "evidence": "B",
+      "adaptation": "Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path packages/video-studio/src/routed-adapter.test.ts; source SHA256 87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb."
     },
     {
       "path": "packages/video-studio/src/routed-generation.test.ts",
@@ -38826,9 +38828,9 @@
     },
     {
       "path": "docs/ai-video-workbench-guide.md",
-      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path docs/ai-video-workbench-guide.md; source SHA256 8d5d4b669a044e68535c1c3f81ff7a6600874b872436d531981c6e754b1869f8. Exact qualified G1 purpose authority for host theme and requirement transports compatibility overlay from Edit main 9ef6115dfdbab1d3999df4a27ffa37af3d2e89da; source path docs/ai-video-workbench-guide.md; source SHA256 c35e4a1ac03c4db5a8371c9f6b8353be02e21dde61a78799325eccfe3df7a215. Exact approved scene contract count/duration examples compatibility overlay from Edit main 6dd6785ff4cb2a41ca2104cbb227f289096fc17c; source path docs/ai-video-workbench-guide.md; source SHA256 e016a26ae719f052adafd5639831c32814a8d731d238c465ac0e5c33783dbc11. Exact schema-derived scene timing guidance and bounded original-retry feedback compatibility overlay from Edit main 8bbd861f0c496caca6ff7855f851b98c96f945cf; source path docs/ai-video-workbench-guide.md; source SHA256 93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path docs/ai-video-workbench-guide.md; source SHA256 e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path docs/ai-video-workbench-guide.md; source SHA256 aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6.",
+      "reason": "Seedance2.5 official CLI compatibility overlay from Edit main 2ae81efd43caf204694d7fd7cae51e0406af26fe; exact source path docs/ai-video-workbench-guide.md; source SHA256 1cfa216597bbe1538edd2f6b118c705480964b1b90ec81231dea50150b02e751. G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path docs/ai-video-workbench-guide.md; source SHA256 bf54927e81428d69151c560c84326043da66b24ab5a2778ae8f3b80cf4be5df6. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path docs/ai-video-workbench-guide.md; source SHA256 8d5d4b669a044e68535c1c3f81ff7a6600874b872436d531981c6e754b1869f8. Exact qualified G1 purpose authority for host theme and requirement transports compatibility overlay from Edit main 9ef6115dfdbab1d3999df4a27ffa37af3d2e89da; source path docs/ai-video-workbench-guide.md; source SHA256 c35e4a1ac03c4db5a8371c9f6b8353be02e21dde61a78799325eccfe3df7a215. Exact approved scene contract count/duration examples compatibility overlay from Edit main 6dd6785ff4cb2a41ca2104cbb227f289096fc17c; source path docs/ai-video-workbench-guide.md; source SHA256 e016a26ae719f052adafd5639831c32814a8d731d238c465ac0e5c33783dbc11. Exact schema-derived scene timing guidance and bounded original-retry feedback compatibility overlay from Edit main 8bbd861f0c496caca6ff7855f851b98c96f945cf; source path docs/ai-video-workbench-guide.md; source SHA256 93c54d6fd32553a1961a6e2a7ccc62ba25cbbe388b6930b98e140b1adf729f7e. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path docs/ai-video-workbench-guide.md; source SHA256 e7f598ad7442f3e19dfb1a108247bdc7ed44eafcad79d39d3e735b7b09ae7c8b. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path docs/ai-video-workbench-guide.md; source SHA256 aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6. Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path docs/ai-video-workbench-guide.md; source SHA256 6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b.",
       "sourceSha256": "5a5b798f09d85c6f827a5831511500ac67211bd7d7b71cfd324673d9f7eb4728",
-      "targetSha256": "aee2494c35bfdd6b21ec87d51c42d9ca634c7e0375f5e274bb07eaafd878fba6"
+      "targetSha256": "6a89d525a8e7dea090675c414e18019450451d54659782f63b6f1232c288978b"
     },
     {
       "path": "scripts/ai-video-workbench-guide.test.mjs",
@@ -38931,6 +38933,18 @@
       "reason": "Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path packages/video-studio/src/gates.ts; source SHA256 204681e63e144e609328ec33ac4059497117fb82ebec095a54e9d6b1721e4f93.",
       "sourceSha256": "5c60cc86122dabc625d7ba523fcb2552d134a154bdb3345a7af021be496ea9ca",
       "targetSha256": "204681e63e144e609328ec33ac4059497117fb82ebec095a54e9d6b1721e4f93"
+    },
+    {
+      "path": "packages/video-studio/src/llm-adapter.ts",
+      "reason": "Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path packages/video-studio/src/llm-adapter.ts; source SHA256 5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c.",
+      "sourceSha256": "9cf37ca38261aea770c713aacca8d7fd581648e7c925c071f2427634fde58d31",
+      "targetSha256": "5aac6aa55b8ba080bc3d534509a701d5a678d89169eef1240339e269201e416c"
+    },
+    {
+      "path": "packages/video-studio/src/routed-adapter.test.ts",
+      "reason": "Exact routed structured-output JSON response contract compatibility overlay from Edit main 0b6414419c8641c2fc5dabc1d89ac49608fb28c7; source path packages/video-studio/src/routed-adapter.test.ts; source SHA256 87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb.",
+      "sourceSha256": "ef22ce1c7222ceca502eacab2560ccefc9ee17eed73d9fbc70ea9435404ecd55",
+      "targetSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb"
     }
   ],
   "evidence": "B",
