@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "c15af30e6466e0711fc5bef50894c8dec8af5ace8f01139c9437a236cc14d282",
+  "snapshotSha256": "c836d6a489921f8871de9822a1a235164625b76b17bd9a4ad94c2f3c615f7aba",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 91,
-  "sourceOverlayCount": 55,
+  "targetOwnedFileCount": 92,
+  "sourceOverlayCount": 59,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -166,6 +166,15 @@
       "receipt": "upstreams/risk-feedback.compatibility-overlay.json",
       "receiptSha256": "9dae0a6f2c6839860d3040dd2773e4b5ab1bac690d7b9b0fed388c2144ec96f0",
       "scope": "exact6-approved-risk-feedback-source-tests-and-documentation",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "brief-routing",
+      "sourceCommit": "32ab429d8c1483318c01b45cfe85a5b763887bfd",
+      "sourceTree": "b3c6c17b7f6c620ecf7b217bb0614b2393f2ed24",
+      "receipt": "upstreams/brief-routing.compatibility-overlay.json",
+      "receiptSha256": "5d508a3fbc99be99aaac6a417545d2e1915326edd5dc05898bd67f2be92d5d3e",
+      "scope": "exact9-approved-brief-duration-and-affirmative-scene-policy-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
