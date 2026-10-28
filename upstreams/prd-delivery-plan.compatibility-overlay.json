@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "prd-delivery-plan",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "aed12c92ab8af4295404d6dbb47981cdccad76e4",
+  "sourceTree": "609595b59449decf0f2a4a55c81766de7580189f",
+  "sourceMainReadback": {
+    "commit": "aed12c92ab8af4295404d6dbb47981cdccad76e4",
+    "tree": "609595b59449decf0f2a4a55c81766de7580189f",
+    "observedAt": "2026-10-28T05:47:50.140Z",
+    "method": "root-ordinary-merged-main-receipt-and-exact-six-file-blob-readback"
+  },
+  "sourceTask": "T-2026-1028-0020-prd-delivery-plan",
+  "sourceIssue": 91,
+  "pmIssue": 45,
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "731d275496a62ef7c0576da851ee4402eb4e0306",
+  "previousPmTree": "7035a5a38ec675c196dffdbd45492c8d2374bf32",
+  "previousPinSha256": "e35f70ce29e96bea9b1247ed990768f398362b7a519d13efa9de18491f49f253",
+  "previousSnapshotSha256": "67a658813a951b9c398711b21d3a41c024564cdbe42536cda2d60599874af2e5",
+  "scope": "exact6-approved-prd-delivery-plan-authority-source-tests-and-documentation",
+  "files": [
+    {
+      "path": "packages/video-studio/src/prd-authority.ts",
+      "sourceSha256": "aad662c6b06f8147d6401f4ba7ef789da48446f656b621a4832b46e6475174e8",
+      "sourceBytes": 29397,
+      "sourceMode": "100644",
+      "sourceGitBlob": "2677773e2ce93562e9f49960df26b1b1c1657030",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "targetMode": "100644",
+      "targetSha256": "aad662c6b06f8147d6401f4ba7ef789da48446f656b621a4832b46e6475174e8",
+      "targetBytes": 29397,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.test.ts",
+      "sourceSha256": "a409af92c8f20541577853a354a4cd6f63630c21dff97847dbc85cd32fbd19fc",
+      "sourceBytes": 32655,
+      "sourceMode": "100644",
+      "sourceGitBlob": "120974cbf50d75958a8a46f7a1ce75fff5b4d832",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "a409af92c8f20541577853a354a4cd6f63630c21dff97847dbc85cd32fbd19fc",
+      "targetBytes": 32655,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
+      "sourceBytes": 81284,
+      "sourceMode": "100644",
+      "sourceGitBlob": "86a1bf4005c23cccbbf284f6208e8ea2064fd287",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetMode": "100644",
+      "targetSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
+      "targetBytes": 81284,
+      "transform": "none"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
+      "sourceSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
+      "sourceBytes": 152458,
+      "sourceMode": "100644",
+      "sourceGitBlob": "0ab9a66dbd5045ca7a86492d2b5b59738c8cbbef",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
+      "targetBytes": 152458,
+      "transform": "none"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "f6e7b15124dbebd9759ba6d4990f6829610beaaeb09853ffa755c224d821adda",
+      "sourceBytes": 49691,
+      "sourceMode": "100644",
+      "sourceGitBlob": "b4ed1bc91b3a008d999df8ff539a866285d8dc90",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "f6e7b15124dbebd9759ba6d4990f6829610beaaeb09853ffa755c224d821adda",
+      "targetBytes": 49691,
+      "transform": "none"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "sourceSha256": "58f73f3a2ca65632eb2b87e81dac278776019a3c3d9997e6957919f597c42474",
+      "sourceBytes": 14753,
+      "sourceMode": "100644",
+      "sourceGitBlob": "442b2a820e2fe47a3ff694a3b59575e5511c149b",
+      "targetPath": "engines/video-edit/scripts/ai-video-workbench-guide.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "58f73f3a2ca65632eb2b87e81dac278776019a3c3d9997e6957919f597c42474",
+      "targetBytes": 14753,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "exact successful candidate gate/ui-contract plus ordinary merged-main and exact6 blob readback; optional sourceMainChecks, when supplied, are successful checks on actual main, never candidate CI relabeled as main",
+  "editMainReceiptSha256": "e8d64a3696d196ef949df3566230f30529104312f38962a3d2b10c3363dfbc36",
+  "previousPmMainReceiptSha256": "2cbb094d357dfb2097ce618d54ae36b3b2991f4cdd0801e83b726a493b79528a",
+  "candidateCiHead": "52e30c6eb12c6c5ccbcac81a64b045121d6b8211",
+  "sourceMainCiHead": null,
+  "sourceMainChecksSha256": null,
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": false,
+  "bundleAssetCount": 644,
+  "protectedBundleManifestSha256": "1e14264c643983da8b10a89b70dc0f759cf1dbd3ddae0829f83236465e12be7b",
+  "sourceAdaptationScope": {
+    "before": 63,
+    "after": 63,
+    "newPaths": [],
+    "sourcePathsUpdated": 2,
+    "ownedPathsUpdated": 4,
+    "ownedPathsAdded": 0,
+    "sourceInventoryUnchanged": true,
+    "ownedInventoryUnchanged": true
+  },
+  "protectionScope": {
+    "coreBefore": 3553,
+    "coreAfter": 3554,
+    "coreProtected": 3545,
+    "auxiliaryGuardCount": 2,
+    "expandedBefore": 3555,
+    "expandedAfter": 3556,
+    "expandedProtected": 3547,
+    "auxiliaryPaths": [
+      "README.md",
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
