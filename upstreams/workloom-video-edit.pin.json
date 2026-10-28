@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "67a658813a951b9c398711b21d3a41c024564cdbe42536cda2d60599874af2e5",
+  "snapshotSha256": "68a3571151257e1a4c2005b49a306b06b83f1be69d9a38409b3240e4214528bd",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -184,6 +184,15 @@
       "receipt": "upstreams/persistent-subtitle.compatibility-overlay.json",
       "receiptSha256": "a4f270c5447bfff349477694f8133465409ed827c5d5256eaad165d72d52ec36",
       "scope": "exact9-approved-persistent-subtitle-source-tests-and-documentation-with-PM-derived-manifest",
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prd-delivery-plan",
+      "sourceCommit": "aed12c92ab8af4295404d6dbb47981cdccad76e4",
+      "sourceTree": "609595b59449decf0f2a4a55c81766de7580189f",
+      "receipt": "upstreams/prd-delivery-plan.compatibility-overlay.json",
+      "receiptSha256": "178f5d2ca56040684221c9b3ce3caeefa785aaf6313fe3af12633c843f95067b",
+      "scope": "exact6-approved-prd-delivery-plan-authority-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
     }
   ]
