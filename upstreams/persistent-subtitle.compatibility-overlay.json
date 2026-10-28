@@ -1,0 +1,203 @@
+{
+  "schemaVersion": "pengmanager.compatibility-overlay/v1",
+  "id": "persistent-subtitle",
+  "sourceRepository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
+  "sourceRef": "refs/heads/main",
+  "sourceCommit": "52f2d2f6a8600eed958ec52f55fcfa7627aaa129",
+  "sourceTree": "027983ad873ee723d6e2ad7e2182154ea310be14",
+  "sourceMainReadback": {
+    "commit": "52f2d2f6a8600eed958ec52f55fcfa7627aaa129",
+    "tree": "027983ad873ee723d6e2ad7e2182154ea310be14",
+    "observedAt": "2026-10-28T02:09:14.099Z",
+    "method": "root-ordinary-merged-main-receipt-and-exact-nine-file-blob-readback"
+  },
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "previousPmMain": "279dc3c7008d3a77e9696591d7d8ceece01c08e4",
+  "previousPinSha256": "6cf07f54f06a160bc39730ea376bc1ec596e449c0b8adb84374a78ad50ebce1f",
+  "previousSnapshotSha256": "c836d6a489921f8871de9822a1a235164625b76b17bd9a4ad94c2f3c615f7aba",
+  "scope": "exact9-approved-persistent-subtitle-source-tests-and-documentation-with-PM-derived-manifest",
+  "files": [
+    {
+      "path": "scripts/tools/full-chain-film.mts",
+      "sourceSha256": "b1b1ea0d7bd4fbd5a0b9e5ac11bc47d778de8d7fb7236f7eeb11837f5167cccc",
+      "sourceBytes": 435194,
+      "sourceMode": "100644",
+      "sourceGitBlob": "b70e99dcf1449a2992438b263a9dab99df856a71",
+      "targetPath": "engines/video-edit/scripts/tools/full-chain-film.mts",
+      "targetMode": "100644",
+      "targetSha256": "b1b1ea0d7bd4fbd5a0b9e5ac11bc47d778de8d7fb7236f7eeb11837f5167cccc",
+      "targetBytes": 435194,
+      "transform": "none"
+    },
+    {
+      "path": "scripts/tools/full-chain-persistent-subtitle.test.mjs",
+      "sourceSha256": "6e43c75e2ee29c034c344112af8cc0d3b166a9e122ffd4ad18cbcc35f196e8ca",
+      "sourceBytes": 12758,
+      "sourceMode": "100644",
+      "sourceGitBlob": "783a7d6677143a885b04f131bd88d0cc65ce0c09",
+      "targetPath": "engines/video-edit/scripts/tools/full-chain-persistent-subtitle.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "6e43c75e2ee29c034c344112af8cc0d3b166a9e122ffd4ad18cbcc35f196e8ca",
+      "targetBytes": 12758,
+      "transform": "none"
+    },
+    {
+      "path": "bundles/ai-video/connectors/subtitle-bridge/cli.mjs",
+      "sourceSha256": "47e3acb64902803dd0f2b354efb384138d3faa9a1461e04033022b4a5ad9473e",
+      "sourceBytes": 22265,
+      "sourceMode": "100644",
+      "sourceGitBlob": "876a0bee47ccfb0c2370e5896ba03193e2d0ca2b",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/subtitle-bridge/cli.mjs",
+      "targetMode": "100644",
+      "targetSha256": "47e3acb64902803dd0f2b354efb384138d3faa9a1461e04033022b4a5ad9473e",
+      "targetBytes": 22265,
+      "transform": "none"
+    },
+    {
+      "path": "bundles/ai-video/connectors/subtitle-bridge/core.mjs",
+      "sourceSha256": "f852a072a85759b2ca264101ccc06c6cb5a8fdaf19ba7620bb74fd674cfbe430",
+      "sourceBytes": 165318,
+      "sourceMode": "100644",
+      "sourceGitBlob": "3268958223242bdeed65d605937f5480bbab4b09",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/subtitle-bridge/core.mjs",
+      "targetMode": "100644",
+      "targetSha256": "f852a072a85759b2ca264101ccc06c6cb5a8fdaf19ba7620bb74fd674cfbe430",
+      "targetBytes": 165318,
+      "transform": "none"
+    },
+    {
+      "path": "bundles/ai-video/connectors/subtitle-bridge/timeline.test.mjs",
+      "sourceSha256": "71e91184012519e5d57391ffcadc33c389b6ff9f0b7a4b359b75f657ae4f4699",
+      "sourceBytes": 19248,
+      "sourceMode": "100644",
+      "sourceGitBlob": "f796a95947aac5b1cbc0dddb969a22c100fc114d",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/subtitle-bridge/timeline.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "71e91184012519e5d57391ffcadc33c389b6ff9f0b7a4b359b75f657ae4f4699",
+      "targetBytes": 19248,
+      "transform": "none"
+    },
+    {
+      "path": "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
+      "sourceSha256": "181f5ac251968244ea3a1501274615285a5e8875ab2538e3ed46138c4d3f540d",
+      "sourceBytes": 27367,
+      "sourceMode": "100644",
+      "sourceGitBlob": "a3d39c479746bd86de0e3f42b9c5d44a1c8bd5f4",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
+      "targetMode": "100644",
+      "targetSha256": "181f5ac251968244ea3a1501274615285a5e8875ab2538e3ed46138c4d3f540d",
+      "targetBytes": 27367,
+      "transform": "none"
+    },
+    {
+      "path": "bundles/ai-video/bundle.json",
+      "sourceSha256": "d53c4088517685dfc96bda948b9b56bdc50e80a4d60d506b65e2d3bd20c6e005",
+      "sourceBytes": 142775,
+      "sourceMode": "100644",
+      "sourceGitBlob": "117542d2fd0e43829cba72f9e6246f315b3d9aa4",
+      "targetPath": "engines/video-edit/bundles/ai-video/bundle.json",
+      "targetMode": "100644",
+      "targetSha256": "1e14264c643983da8b10a89b70dc0f759cf1dbd3ddae0829f83236465e12be7b",
+      "targetBytes": 142775,
+      "transform": "preserve-PM-manifest-and642-assets-update-exact-two-subtitle-digests-and-canonical"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "sourceSha256": "d24302f84f17a46a220163934194bbf3571444d40d6f7ff174c2cb5cd6195262",
+      "sourceBytes": 47657,
+      "sourceMode": "100644",
+      "sourceGitBlob": "35446736d8e447807b561e3fb1c8e6a742ae7a68",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "targetMode": "100644",
+      "targetSha256": "d24302f84f17a46a220163934194bbf3571444d40d6f7ff174c2cb5cd6195262",
+      "targetBytes": 47657,
+      "transform": "none"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "sourceSha256": "3eed266bbc853332593a5507ad29637acb5d04113a64ac5fbbc6068b24ff889b",
+      "sourceBytes": 14753,
+      "sourceMode": "100644",
+      "sourceGitBlob": "f4796653fa646d2f783a88b8faca12ae891a0c08",
+      "targetPath": "engines/video-edit/scripts/ai-video-workbench-guide.test.mjs",
+      "targetMode": "100644",
+      "targetSha256": "3eed266bbc853332593a5507ad29637acb5d04113a64ac5fbbc6068b24ff889b",
+      "targetBytes": 14753,
+      "transform": "none"
+    }
+  ],
+  "sourceMembershipEvidence": "successful exact candidate CI and ordinary merged-main exact9 blob receipt; no source-main CI invented",
+  "editMainReceiptSha256": "8af798e30fa8389210ba8742c7176078edfde8520ce105218199e85d19382dc3",
+  "previousPmMainReceiptSha256": "47e6f33bc2f54af3b9043f5edbfe59d43f14aeb22007620201f284aa43c6e261",
+  "wholeEngineUpgradeClaimed": false,
+  "bundleAssetsChanged": true,
+  "bundleAssetCount": 644,
+  "bundleIntegrityTransition": {
+    "assetCount": 644,
+    "changedAssetCount": 2,
+    "protectedAssetCount": 642,
+    "changes": [
+      {
+        "path": "connectors/subtitle-bridge/cli.mjs",
+        "beforeSha256": "f3bb096663aaecf074fff012ebfe2f4b8ec00fd16ee71782475c8313cd6a4389",
+        "sha256": "47e3acb64902803dd0f2b354efb384138d3faa9a1461e04033022b4a5ad9473e"
+      },
+      {
+        "path": "connectors/subtitle-bridge/core.mjs",
+        "beforeSha256": "74fd62229839388a87b9c79988f5fa2390c2c937251dac8a23efe4f26c70b08f",
+        "sha256": "f852a072a85759b2ca264101ccc06c6cb5a8fdaf19ba7620bb74fd674cfbe430"
+      }
+    ],
+    "beforeManifestSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325",
+    "afterManifestSha256": "1e14264c643983da8b10a89b70dc0f759cf1dbd3ddae0829f83236465e12be7b",
+    "sourceManifestSha256": "d53c4088517685dfc96bda948b9b56bdc50e80a4d60d506b65e2d3bd20c6e005",
+    "beforeDigest": "110a01146c06ab137249baf93cd50d6c8bfe904f8abc88d5281bf4488b562dca",
+    "afterDigest": "0a01b20e615b7060f98de84376f34dfc26030e793ed6c088a09dd72d7acdb14a",
+    "sourceDigest": "16e06a009dfb91d5846d706a6bccff14f599adafffbc1726a860009720e002b5",
+    "canonicalMethod": "frozen-base.node_digest; Node localeCompare; fixed code and JSON stdin; no shell",
+    "protectedAssetsMapSha256": "edeb2bd18c1cd9f2f34ac08702f9d219fabb68f9dc0900b0cec6a7ae88f508eb",
+    "historicalPmDifferencesPreserved": {
+      "connectors/post-bridge/core.mjs": {
+        "pmSha256": "2db54c59f42cb01bd2b5acf4b069cde0d0522ac8bc93126f5797e3751ef16bdc",
+        "sourceSha256": "d863174e00a80a015434ae937caefce279ddaa1ab038558e48ac69a900cbdd10"
+      },
+      "library/characters/model-01-young-rider/gates.jsonl": {
+        "pmSha256": "8e5e36f1d66e60d2a1de6d7dcbcb2e74cba9c4e5363ec2e10f3eca21ad807475",
+        "sourceSha256": "8a6817477c270b7b0f29e651fd311a5d6e1f5c70bdfe16539857c60124c35da8"
+      }
+    }
+  },
+  "historicalLocalAssetsReceipt": {
+    "path": "upstreams/video-edit-local-assets.json",
+    "sha256": "dad8ebb94c7ceccf9cc8e76a8862226c66a803f55ed0df594a63905f91fbfda3",
+    "meaning": "protected pre-persistent-subtitle historical asset-integrity receipt; its digest is not the effective post-overlay bundle digest",
+    "effectiveCurrentBundle": "bundleIntegrityTransition"
+  },
+  "sourceAdaptationScope": {
+    "before": 59,
+    "after": 63,
+    "newPaths": [
+      "bundles/ai-video/connectors/subtitle-bridge/cli.mjs",
+      "bundles/ai-video/connectors/subtitle-bridge/core.mjs",
+      "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
+      "bundles/ai-video/connectors/subtitle-bridge/timeline.test.mjs"
+    ],
+    "sourcePathsUpdated": 8,
+    "ownedPathsUpdated": 0,
+    "ownedPathsAdded": 1
+  },
+  "protectionScope": {
+    "coreBefore": 3551,
+    "coreAfter": 3553,
+    "coreProtected": 3541,
+    "auxiliaryGuardCount": 2,
+    "expandedBefore": 3553,
+    "expandedAfter": 3555,
+    "expandedProtected": 3543,
+    "auxiliaryPaths": [
+      "README.md",
+      "docs/AI-AGENT-GUIDE.md"
+    ]
+  }
+}
