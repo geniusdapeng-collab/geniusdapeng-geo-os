@@ -100,6 +100,32 @@ console.log("RESULT " + JSON.stringify({ calls, valid: check.valid, actual, expe
     expect(result.selection).toBe("exact-current-index-files"); expect(result.restored).toBe(true);
   }, 90_000);
 
+  it("模型遗留的 portraits 字符串或 fields.portraits 不能覆盖宿主当前精确定妆照", () => {
+    const result = runInChild(exactPortraitFixture + `
+const card = prompt();
+card.portraits = "image://characters/stale-model/portrait.png";
+card.fields = { portraits: "image://characters/default/portrait.png" };
+await engine.render([card], { dryRun: true });
+const shot = engine._convertToShotFormat(card);
+const manifest = await engine._generateBindingManifest([card]);
+const payload = core.buildPayload(shot, manifest);
+const actual = payload.content.filter(item => item.type === "image_url").map(item => createHash("sha256").update(Buffer.from(item.image_url.url.split(",")[1], "base64")).digest("hex"));
+const expected = REQUIRED_ANGLES.map(angle => index.characters.guest.receipts[angle].output.sha256);
+uninstall();
+console.log("RESULT " + JSON.stringify({
+  actual, expected, characterRef: card.characterRef,
+  topLevelPortraitsRemoved: !Object.hasOwn(card, "portraits"),
+  nestedPortraitsRemoved: !Object.hasOwn(card.fields, "portraits"),
+  restored: RenderingEngine.prototype._generateBindingManifest === originalManifest && RenderSubmitterCore.prototype.buildPayload === originalPayload
+}));
+`);
+    expect(result.actual).toEqual(result.expected);
+    expect(String(result.characterRef)).toContain("image://characters/guest/portraits/");
+    expect(result.topLevelPortraitsRemoved).toBe(true);
+    expect(result.nestedPortraitsRemoved).toBe(true);
+    expect(result.restored).toBe(true);
+  }, 90_000);
+
   it("篡改、缺收据、symlink、越界和重复角度均不能进入vendor提交", () => {
     const result = runInChild(exactPortraitFixture + `
 const rejected = [];
@@ -305,6 +331,39 @@ console.log("RESULT " + JSON.stringify({ beforeError, afterError, afterIssues, t
     expect(result.beforeError).toContain("match is not a function");
     expect(result.afterError).toBeNull();
     expect(result.timelineIsArray).toBe(true);
+  }, 60_000);
+
+  it("字段质检使用宿主定妆照探针通过格式检查，返回后仍留给渲染桥绑定真实路径", () => {
+    const script = `
+import { createRequire } from "node:module";
+import { installVendorFieldQualityBridge } from ${JSON.stringify(resolve(here, "vendor-compat.ts"))};
+const require = createRequire(${JSON.stringify(join(repoRoot, "package.json"))});
+const { FieldQualityPipeline } = require(${JSON.stringify(join(repoRoot, "vendor/supermickey/hyperreality-system/engines/field-quality/field-quality-pipeline.js"))});
+const pipeline = new FieldQualityPipeline({ maxRounds: 1 });
+let seen = null;
+pipeline.checker.check = async shot => {
+  seen = { portraits: shot.portraits, nested: shot.fields?.portraits, marker: Boolean(shot._workloomHostPortraitProbe) };
+  return { passed: true, summary: () => "PASS" };
+};
+const uninstall = installVendorFieldQualityBridge({ log: () => undefined });
+const result = await pipeline.run({ shotId: "S1", characters: [{ id: "young-rider-01", name: "李英子" }], portraits: "", fields: { portraits: "" } }, "S1");
+uninstall();
+console.log("RESULT " + JSON.stringify({
+  seen,
+  portraits: result.finalShot.portraits,
+  nested: result.finalShot.fields?.portraits,
+  marker: Object.hasOwn(result.finalShot, "_workloomHostPortraitProbe")
+}));
+`;
+    const result = runInChild(script);
+    expect(result.seen).toEqual({
+      portraits: "/characters/young_rider_01/portrait_v1.png",
+      nested: "/characters/young_rider_01/portrait_v1.png",
+      marker: true,
+    });
+    expect(result.portraits).toBe("");
+    expect(result.nested).toBe("");
+    expect(result.marker).toBe(false);
   }, 60_000);
 
   /**
@@ -721,6 +780,37 @@ console.log("RESULT " + JSON.stringify({ beforeSuccess: before.success, beforeEr
     expect((result.stamp as Record<string, unknown>).promptHash).toMatch(/^[a-f\d]{64}$/);
     expect((result.stamp as Record<string, unknown>).semanticSkillExecution).toBe("unverified");
   }, 90_000);
+
+  it("宿主绑定定妆照时，空 portraits 不会把完整镜头误判为规则降级；其他短字段仍会降级", () => {
+    const result = runInChild(phase3Fixture(`
+const originalEnsure = PromptFusionAgent.prototype._ensureFieldCompleteness;
+const uninstall = installVendorPhase3FusionBridge();
+const fields = Object.fromEntries([
+  "director_instruction", "constraint", "baseline", "scene", "lighting", "composition",
+  "color_palette", "depth_of_field", "camera_movement", "character", "costume", "makeup",
+  "action", "props", "dialogue", "timeline", "mood", "pacing", "transition", "audio",
+  "negative", "bright_constraint", "character_constraint", "consistency"
+].map(key => [key, "完整的真实镜头字段内容。".repeat(20)]));
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+let calls = 0;
+agent._callLLM = async () => { calls++; return { result: null, degraded: true }; };
+const shot = { shotId: "SC-01", sceneType: "standard", duration: 5 };
+const selected = [{ id: "young-rider-01", name: "李英子" }];
+const portraitOnly = await agent._ensureFieldCompleteness(shot, { ...fields, portraits: "" }, "9:16", selected);
+const portraitOnlyCalls = calls;
+const otherMissing = await agent._ensureFieldCompleteness(shot, { ...fields, lighting: "", portraits: "" }, "9:16", selected);
+uninstall();
+console.log("RESULT " + JSON.stringify({
+  portraitOnly: { usedRuleFallback: portraitOnly.usedRuleFallback, portraits: portraitOnly.fields.portraits, calls: portraitOnlyCalls },
+  otherMissing: { usedRuleFallback: otherMissing.usedRuleFallback, calls },
+  restored: PromptFusionAgent.prototype._ensureFieldCompleteness === originalEnsure
+}));
+`));
+    expect(result.portraitOnly).toEqual({ usedRuleFallback: false, portraits: "", calls: 0 });
+    expect(result.otherMissing).toEqual(expect.objectContaining({ usedRuleFallback: true }));
+    expect(Number((result.otherMissing as Record<string, unknown>).calls)).toBeGreaterThan(0);
+    expect(result.restored).toBe(true);
+  }, 60_000);
 
   it("模型 picks=[] 真正不匹配，清除旧 _skillContext 后仍按原镜头融合", () => {
     const result = runInChild(phase3Fixture(`

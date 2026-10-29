@@ -3,6 +3,7 @@
  */
 export * from "./gates.js";
 export * from "./llm-adapter.js";
+export * from "./llm-config.js";
 export * from "./material-policy.js";
 export * from "./av-sync.js";
 export * from "./beat-verify.js";
@@ -27,6 +28,7 @@ export { shotIntentHash, shotText, splitShotAssertions } from "./shot-intent.js"
 export * from "./route-preflight.js";
 export * from "./real-person-asset-sync.js";
 export * from "./duration-rules.js";
+export * from "./duration-contract.js";
 export * from "./vendor-compat.js";
 export * from "./confirmation.js";
 export * from "./studio.js";

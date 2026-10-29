@@ -31,6 +31,7 @@ const doubles = vi.hoisted(() => ({
   finalize: vi.fn(),
   studioConfigs: [] as Array<Record<string, any>>,
   gateReplies: [] as Array<{ gate: string; verdict: any }>,
+  gateContracts: {} as Record<string, unknown>,
   emitGates: true,
   connect: vi.fn(),
   query: vi.fn(),
@@ -38,7 +39,8 @@ const doubles = vi.hoisted(() => ({
 }));
 
 vi.mock("@workloom/db", () => ({ getAppPool: () => ({ connect: doubles.connect }), getGatewayPool: () => ({}) }));
-vi.mock("@workloom/base/model-router", () => ({
+vi.mock("@workloom/base/model-router", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@workloom/base/model-router")>(),
   GatewayEventSink: class {}, poolFromEnv: () => new Map(),
 }));
 /**
@@ -92,7 +94,9 @@ vi.mock("@hyperreality/video-studio", async (importOriginal) => ({
     async runPreproduction(...args: unknown[]) {
       const result = await doubles.runPreproduction(...args);
       if (result.success && doubles.emitGates) for (const gate of ["G2_THEME", "G3_INSIGHT", "G4_PRD", "G6_PROMPT", "G7_FINAL"]) {
-        const verdict = await this.config.onApproval({ gate, vendorType: "test-gate", runId: "vendor-run", title: "完整确认单", contentMd: "具体场景、角色、动作与镜头交付标准。".repeat(20) });
+        const verdict = await this.config.onApproval({ gate, vendorType: "test-gate", runId: "vendor-run", title: "完整确认单",
+          contentMd: "具体场景、角色、动作与镜头交付标准。".repeat(20),
+          ...(doubles.gateContracts[gate] ? { contracts: doubles.gateContracts[gate] } : {}) });
         doubles.gateReplies.push({ gate, verdict });
       }
       return result;
@@ -125,6 +129,7 @@ beforeEach(() => {
   doubles.nextAttempt = 0;
   doubles.studioConfigs.length = 0;
   doubles.gateReplies.length = 0;
+  doubles.gateContracts = {};
   doubles.prepare.mockReset().mockImplementation(async ({ scope, root }) => {
     const raw = { A1: { identity: { name: "本次商品", specs: { 功率: "1 W" } }, images: [] }, A2: { reviews: [] }, A3: { competitors: [] } };
     const sourceId = `SRC-${renderSha256(`https://source.example.com/final\n${"a".repeat(64)}`).slice(0, 24)}`;
@@ -881,6 +886,20 @@ describe("完整原生前期到正式 CLI 草稿交接", () => {
       expect(options.artifacts).toHaveLength(1); expect(options.requiredCheckIds).toBeUndefined();
       expect(options.context.marketingFactsAuthority).toBeUndefined(); expect(options.artifacts[0].expectedSha256).toBeUndefined();
     }
+  });
+  it("G6 producer receives the exact structured prompt contract without reparsing Markdown", async () => {
+    const contracts = {
+      shots: [{
+        shotId: "SC-01", sceneType: "opening", duration: 5,
+        prompt: "01.【场景】封闭赛道围场。 02.【角色】李英子。",
+        fields: { scene: "封闭赛道围场", character: "李英子" },
+      }],
+    };
+    doubles.gateContracts.G6_PROMPT = contracts;
+    doubles.runPreproduction.mockResolvedValue(success());
+    const { entry } = await runToTerminal(); expect(entry.status).toBe("finished");
+    const g6 = doubles.review.mock.calls.map(([options]) => options).find(options => options.context.gate === "G6_PROMPT");
+    expect(g6?.contracts).toEqual(contracts);
   });
   it("vendor执行期间G1原件被换后下游即使自报成功也不能形成正式通过", async () => {
     doubles.runPreproduction.mockImplementation(async () => {

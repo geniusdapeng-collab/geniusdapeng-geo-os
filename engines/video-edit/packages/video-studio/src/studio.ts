@@ -23,9 +23,13 @@ import { installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./por
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import { assertRequirementContractBridge, installVendorRequirementContractBridge, withRequirementContractScope } from "./requirement-contract-bridge.js";
 import { preparePrdAuthority, type PrdAuthority, type PrdMarketingAuthority } from "./prd-authority.js";
-import { assertPrdAuthorityBridge, installVendorPrdAuthorityBridge, installVendorPrdProductionBridge, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import {
+  assertPrdAuthorityBridge, consumePromptReviewContracts, installVendorPrdAuthorityBridge,
+  installVendorPrdProductionBridge, withPrdAuthorityScope
+} from "./prd-authority-bridge.js";
 import { captureRequirementTheme, type RequirementApprovedTheme } from "./requirement-authority.js";
 import { requirementHash } from "./requirement-contract.js";
+import type { ProducerReviewContracts } from "./producer-gate.js";
 import {
   applyDurationPolicyToManager,
   installVendorAudioDisciplineBridge,
@@ -115,6 +119,8 @@ export type ApprovalCallback = (approval: {
   title: string;
   contentMd: string;
   runId: string | null;
+  /** Exact structured source cards for G6; never reconstructed from Markdown. */
+  contracts?: ProducerReviewContracts;
 }) => Promise<GateVerdict>;
 
 /** 宿主事件汇：流水线生命周期事件（宿主落五元事件库） */
@@ -295,12 +301,14 @@ export class VideoStudio {
         gate,
         payload: { vendorType: req.type }
       });
+      const contracts = gate === "G6_PROMPT" ? consumePromptReviewContracts(req.content) : undefined;
       const verdict = await cfg.onApproval({
         gate,
         vendorType: req.type,
         title: `预生产确认门 · ${gate}`,
         contentMd: req.content,
-        runId: req.runId ?? runId
+        runId: req.runId ?? runId,
+        ...(contracts ? { contracts } : {})
       });
       if (gate === "G2_THEME" && prdAuthority) {
         approvedRequirementTheme = captureRequirementTheme(prdAuthority, req.content, verdict);

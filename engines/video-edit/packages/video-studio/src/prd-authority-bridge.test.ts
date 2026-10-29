@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage, ChatOptions, ModelProvider } from "@workloom/base/model-router";
 import { bindRequirementContract, requirementCast, requirementHash, requirementRecord, type RequirementContract, type RequirementRecord } from "./requirement-contract.js";
 import { effectivePrdModelSchema, prdAuthorityPrompt, preparePrdAuthority } from "./prd-authority.js";
-import { assertPrdAuthorityBridge, installPrdAuthorityBridge, installPrdProductionBridge, productionModelInput, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import {
+  assertPrdAuthorityBridge, consumePromptReviewContracts, installPrdAuthorityBridge, installPrdProductionBridge,
+  productionModelInput, withPrdAuthorityScope
+} from "./prd-authority-bridge.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -1559,7 +1562,7 @@ describe("approved production authority at native technical and title seams", ()
   });
 
   it.each([...nativeStandardizer.CRITICAL_FIELDS.p0, ...nativeStandardizer.CRITICAL_FIELDS.p1,
-    ...nativeStandardizer.CRITICAL_FIELDS.p2, ...nativeStandardizer.CRITICAL_FIELDS.p3])("requires real %s content across all 25 fields without local defaults", async key => {
+    ...nativeStandardizer.CRITICAL_FIELDS.p2, ...nativeStandardizer.CRITICAL_FIELDS.p3].filter(key => key !== "portraits"))("requires real %s content across all 25 fields without local defaults", async key => {
     const value = fixture(`MISSING-${key}`), h = productionHarness(), run = h.make(value), shot = productionShot();
     delete shot[key]; delete requirementRecord(shot.fields, "fields")[key];
     const before = structuredClone(shot);
@@ -1571,6 +1574,22 @@ describe("approved production authority at native technical and title seams", ()
       try { invoke(run.fieldGuard, "normalizeAndValidate", [shot], "Final-Export"); } catch { /* must remain sticky */ }
     })).rejects.toThrow(`Production 25 fields missing: ${key}`);
     expect(shot).toEqual(before); expect(shot).not.toHaveProperty("degraded");
+  });
+
+  it("treats portraits as host-bound at final export without synthesizing a path", async () => {
+    const value = fixture("HOST-BOUND-PORTRAITS"), h = productionHarness(), run = h.make(value), shot = productionShot();
+    delete shot.portraits;
+    delete requirementRecord(shot.fields, "fields").portraits;
+    const before = structuredClone(shot);
+    await h.accepted(run, () => {
+      const result = requirementRecord(invoke(run.fieldGuard, "normalizeAndValidate", [shot], "Final-Export"), "validated");
+      expect(requirementRecord(result.report, "report")).toMatchObject({ passed: true, errors: [] });
+      const detail = (requirementRecord(result.report, "report").details as RequirementRecord[])[0]!;
+      expect(detail).toMatchObject({ passed: true, missingSpecFields: [], presentFields: 25 });
+      const portraits = (result.shots as RequirementRecord[])[0]!.portraits;
+      expect(portraits === undefined || portraits === "" || (Array.isArray(portraits) && portraits.length === 0)).toBe(true);
+      expect(shot).toEqual(before);
+    });
   });
 
   it.each(["dialogue-free", "structured-blocks"])("accepts explicit %s dialogue applicability without synthesizing a line", async mode => {
@@ -1613,6 +1632,10 @@ describe("approved production authority at native technical and title seams", ()
       expect(report).toContain("exceeds 12000 char limit"); expect(report).toContain("G6 仍须审核事实用途");
       expect(report).toContain("subtitle 指片头副标题，正式后期字幕仍按 Brief 执行");
       expect(report).not.toContain("待生成"); expect(report).not.toContain("请补充"); expect(shot).toEqual(before);
+      expect(consumePromptReviewContracts(report)?.shots[0]).toMatchObject({
+        shotId: shot.shotId, sceneType: shot.sceneType, duration: shot.duration, prompt: shot.prompt,
+      });
+      expect(consumePromptReviewContracts(report)).toBeUndefined();
     });
     expect(h.calls.some(call => call.key === "_generatePromptsReport")).toBe(false);
   });

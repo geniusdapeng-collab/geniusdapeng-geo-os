@@ -251,9 +251,10 @@ export function installVendorPortraitBindingBridge(options: PortraitBindingBridg
     boundSnapshots.set(prompt, snapshot);
     prompt._workloomBoundCharacters = keys;
     prompt.characterRef = entries.map((entry) => `${entry.id}: image://characters/${entry.portraits.front}`).join("; ");
-    // 空数组在 JS 里是真值：vendor 的 `prompt.portraits || prompt.characterRef` 会优先取空数组，
-    // 于是 refs 永远读不到（真机 2026-09-21 实测）。这里把空数组摘掉，让 characterRef 生效。
-    if (Array.isArray(prompt.portraits) && prompt.portraits.length === 0) delete prompt.portraits;
+    // vendor 优先读取 portraits / fields.portraits。宿主一旦按当前索引完成精确绑定，
+    // 融合阶段留下的空数组、默认路径或模型猜测都不能覆盖真实 characterRef。
+    delete prompt.portraits;
+    if (isPlainObject(prompt.fields)) delete prompt.fields.portraits;
     return entries;
   }
 
@@ -475,7 +476,38 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
         clone[`_raw${key.charAt(0).toUpperCase()}${key.slice(1)}`] = value;
         clone[key] = toText(value);
       }
+      const characters = Array.isArray(clone.characters) ? clone.characters : [];
+      if (characters.length > 0 && !/\/characters\/[\w_]+\/portrait_v\d+\.(png|jpg)/.test(toText(clone.portraits))) {
+        const first = characters[0];
+        const rawId = typeof first === "string" ? first
+          : first && typeof first === "object" && "id" in first ? (first as Record<string, unknown>).id
+          : first && typeof first === "object" && "characterId" in first ? (first as Record<string, unknown>).characterId
+          : "host_character";
+        const id = String(rawId).replace(/[^A-Za-z0-9_]/g, "_") || "host_character";
+        const probe = `/characters/${id}/portrait_v1.png`;
+        clone.portraits = probe;
+        clone._workloomHostPortraitProbe = probe;
+        if (isPlainObject(clone.fields)) clone.fields.portraits = probe;
+      }
       return clone;
+    };
+    const clearPortraitProbe = (value: unknown, seen = new WeakSet<object>()): unknown => {
+      if (!value || typeof value !== "object") return value;
+      if (seen.has(value)) return value;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const item of value) clearPortraitProbe(item, seen);
+        return value;
+      }
+      const record = value as Record<string, unknown>;
+      const probe = record._workloomHostPortraitProbe;
+      if (typeof probe === "string" && record.portraits === probe) {
+        record.portraits = "";
+        if (isPlainObject(record.fields) && record.fields.portraits === probe) record.fields.portraits = "";
+        delete record._workloomHostPortraitProbe;
+      }
+      for (const item of Object.values(record)) clearPortraitProbe(item, seen);
+      return value;
     };
 
     const restores: Array<() => void> = [];
@@ -501,6 +533,7 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
       pipelineProto.run = async function patchedRun(this: unknown, shot: unknown, shotId?: string) {
         try {
           const result = await originalRun.call(this, normalizeShot(shot), shotId);
+          clearPortraitProbe(result);
           return {
             finalShot: (result?.finalShot ?? shot),
             reports: Array.isArray(result?.reports) ? result.reports : [],
@@ -516,7 +549,7 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
     if (pipelineProto && typeof pipelineProto.runAll === "function") {
       const originalRunAll = pipelineProto.runAll as (shots: unknown[]) => Promise<unknown>;
       pipelineProto.runAll = async function patchedRunAll(this: unknown, shots: unknown[]) {
-        return originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot)));
+        return clearPortraitProbe(await originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot))));
       };
       restores.push(() => { pipelineProto.runAll = originalRunAll; });
     }
@@ -1752,6 +1785,7 @@ export function installVendorDurationProjectionBridge(options: DurationProjectio
 
 /** Phase3 宿主执行契约。vendor 源保持只读，失败不得退成成功的规则 prompt。 */
 export const PHASE3_FUSION_POLICY_VERSION = "workloom.phase3-fusion/v1";
+const HOST_PORTRAIT_BINDING_PROBE = "image://characters/__host_bound_at_render__";
 type FusionRecord = Record<string, unknown>;
 interface FusionAgent extends FusionRecord {
   process(shots: FusionRecord[], blueprint: FusionRecord, options: FusionRecord): Promise<FusionRecord>;
@@ -1848,6 +1882,9 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     const engineModule = vendorRequire(resolvePath(vendorRoot, "engines/production-engine/production-engine.js")) as {
       ProductionEngine: { prototype: FusionRecord };
     };
+    const fusionAgentModule = vendorRequire(resolvePath(vendorRoot, "engines/production-engine/agents/prompt-fusion-agent.js")) as {
+      PromptFusionAgent: { prototype: FusionRecord };
+    };
     const router = vendorRequire(resolvePath(vendorRoot, "skills/hollywood-cinematography/cinematography-skill-router.js")) as CinematicSkillRouter;
     const indexPath = resolvePath(vendorRoot, "skills/hollywood-cinematography/skills-compiled.json");
     const registryText = readFileSync(indexPath, "utf8");
@@ -1870,11 +1907,36 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     const registryHash = cinematicSkillHash({ compiled: registryText, sources: skillSources });
     const prototype = phaseModule.Phase3PromptFusion?.prototype;
     const enginePrototype = engineModule.ProductionEngine?.prototype;
-    if (!prototype || typeof prototype.execute !== "function" || !enginePrototype || typeof enginePrototype.produce !== "function") {
+    const fusionAgentPrototype = fusionAgentModule.PromptFusionAgent?.prototype;
+    if (!prototype || typeof prototype.execute !== "function" || !enginePrototype || typeof enginePrototype.produce !== "function"
+      || !fusionAgentPrototype || typeof fusionAgentPrototype._ensureFieldCompleteness !== "function") {
       throw new CinematicSkillError("PHASE3_BRIDGE_UNAVAILABLE", "vendor Phase3/ProductionEngine 接口不可用", "unverified");
     }
     const originalExecute = prototype.execute;
     const originalProduce = enginePrototype.produce as (blueprint: FusionRecord, ...args: unknown[]) => Promise<FusionRecord>;
+    const originalEnsureFieldCompleteness = fusionAgentPrototype._ensureFieldCompleteness as (
+      this: FusionRecord, shot: FusionRecord, fields: FusionRecord, ratio: unknown, characters: unknown, trackCall?: unknown
+    ) => Promise<FusionRecord>;
+
+    /**
+     * 定妆照由渲染桥按当前宿主索引和真实字节绑定。融合阶段只判断“宿主将在渲染前绑定”，
+     * 不让模型伪造路径或让空值把其余字段已完整的镜头误判成规则降级。
+     */
+    fusionAgentPrototype._ensureFieldCompleteness = async function ensureHostPortraitCompleteness(
+      this: FusionRecord, shot: FusionRecord, fields: FusionRecord, ratio: unknown, characters: unknown, trackCall?: unknown
+    ) {
+      const selected = Array.isArray(characters) && characters.length > 0;
+      const priorPortrait = fields.portraits;
+      if (selected) fields.portraits = HOST_PORTRAIT_BINDING_PROBE;
+      try {
+        const result = await originalEnsureFieldCompleteness.call(this, shot, fields, ratio, characters, trackCall);
+        const resultFields = fusionRecord(result.fields, "字段补齐结果");
+        if (selected && resultFields.portraits === HOST_PORTRAIT_BINDING_PROBE) resultFields.portraits = "";
+        return result;
+      } finally {
+        if (fields.portraits === HOST_PORTRAIT_BINDING_PROBE) fields.portraits = selected ? "" : priorPortrait;
+      }
+    };
 
     prototype.execute = async function executeHostPhase3(this: FusionPhase, state: FusionRecord): Promise<FusionRecord> {
       const start = Date.now();
@@ -2052,11 +2114,13 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     catch (error) {
       prototype.execute = originalExecute;
       enginePrototype.produce = originalProduce;
+      fusionAgentPrototype._ensureFieldCompleteness = originalEnsureFieldCompleteness;
       throw error;
     }
     return () => {
       prototype.execute = originalExecute;
       enginePrototype.produce = originalProduce;
+      fusionAgentPrototype._ensureFieldCompleteness = originalEnsureFieldCompleteness;
     };
   });
 }

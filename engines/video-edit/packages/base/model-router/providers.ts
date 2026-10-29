@@ -17,6 +17,29 @@ export interface ChatResult {
   completionTokens: number;
 }
 
+/**
+ * OpenAI-compatible providers disagree on message.content: most return a
+ * string, some return arrays of text blocks, and some wrap content in an
+ * object. Normalize only textual fields; unsupported payloads are empty and
+ * therefore fail closed as an empty response.
+ */
+export function normalizeModelContent(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map(item => {
+      if (typeof item === "string") return item;
+      if (!item || typeof item !== "object") return "";
+      const record = item as Record<string, unknown>;
+      return [record.text, record.content].find((entry): entry is string => typeof entry === "string") ?? "";
+    }).join("");
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return [record.text, record.content].find((entry): entry is string => typeof entry === "string") ?? "";
+  }
+  return "";
+}
+
 /** Generation controls only; model selection, credentials and accounting stay with the router. */
 export interface ChatGenerationOptions {
   temperature?: number;
@@ -107,6 +130,22 @@ export class OpenAiCompatibleProvider implements ModelProvider {
   private authHeaders(): Record<string, string> {
     return this.cfg.apiKey ? { authorization: `Bearer ${this.cfg.apiKey}` } : {};
   }
+  private static async failureDetail(response: Response): Promise<string> {
+    const raw = await response.text().catch(() => "");
+    let detail = raw.trim();
+    try {
+      const value = JSON.parse(raw) as { error?: { message?: unknown; code?: unknown } };
+      detail = [value.error?.code, value.error?.message]
+        .filter(item => typeof item === "string" && item.trim())
+        .join(": ");
+    } catch {
+      /* Non-JSON provider errors retain their bounded text. */
+    }
+    return detail
+      .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer <redacted>")
+      .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "<redacted>")
+      .slice(0, 500);
+  }
   async healthy(): Promise<boolean> {
     try {
       const res = await fetch(`${this.cfg.baseUrl}/models`, {
@@ -141,16 +180,17 @@ export class OpenAiCompatibleProvider implements ModelProvider {
         signal,
       });
       if (!res.ok) {
-        throw new ModelProviderError(`模型调用失败：HTTP ${res.status}`, "http", {
+        const detail = await OpenAiCompatibleProvider.failureDetail(res);
+        throw new ModelProviderError(`模型调用失败：HTTP ${res.status}${detail ? `（${detail}）` : ""}`, "http", {
           status: res.status,
           retryable: res.status === 429 || res.status >= 500,
         });
       }
       const data = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
+        choices?: Array<{ message?: { content?: unknown } }>;
         usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
-      const text = data.choices?.[0]?.message?.content ?? "";
+      const text = normalizeModelContent(data.choices?.[0]?.message?.content);
       if (!text.trim()) {
         throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: true });
       }
