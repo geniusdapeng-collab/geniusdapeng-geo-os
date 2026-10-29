@@ -43,6 +43,30 @@ export interface ModelProvider {
   chat(messages: ChatMessage[], opts?: ChatOptions): Promise<ChatResult>;
 }
 
+export type ModelCallErrorKind =
+  | "timeout"
+  | "network"
+  | "http"
+  | "protocol"
+  | "empty"
+  | "cancelled";
+
+/** Typed provider failure used by routing and diagnostics without exposing prompts or credentials. */
+export class ModelProviderError extends Error {
+  constructor(
+    message: string,
+    readonly kind: ModelCallErrorKind,
+    readonly options: { status?: number; retryable?: boolean; cause?: unknown } = {},
+  ) {
+    super(message, { cause: options.cause });
+    this.name = "ModelProviderError";
+  }
+
+  get retryable(): boolean {
+    return this.options.retryable !== false;
+  }
+}
+
 /** Mock 定价（演示口径：积分=token 千分位取整，旗舰 ×4） */
 export function mockCredits(modelId: string, r: ChatResult): number {
   const per1k = modelId.includes("flagship") ? 4 : 1;
@@ -116,21 +140,33 @@ export class OpenAiCompatibleProvider implements ModelProvider {
         }),
         signal,
       });
-      if (!res.ok) throw new Error(`模型调用失败：HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new ModelProviderError(`模型调用失败：HTTP ${res.status}`, "http", {
+          status: res.status,
+          retryable: res.status === 429 || res.status >= 500,
+        });
+      }
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
         usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
+      const text = data.choices?.[0]?.message?.content ?? "";
+      if (!text.trim()) {
+        throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: true });
+      }
       return {
-        text: data.choices?.[0]?.message?.content ?? "",
+        text,
         promptTokens: data.usage?.prompt_tokens ?? 0,
         completionTokens: data.usage?.completion_tokens ?? 0,
       };
     } catch (err) {
       // 超时/取消要给出可读原因（降级链据此记 model.degraded）
-      if (opts.signal?.aborted) throw new Error("模型调用已取消（调用方 abort）");
-      if (timeoutSignal.aborted) throw new Error(`模型调用超时（>${Math.round(timeoutMs / 1000)}s）`);
-      throw err instanceof Error ? err : new Error(String(err));
+      if (opts.signal?.aborted) throw new ModelProviderError("模型调用已取消（调用方 abort）", "cancelled", { retryable: false, cause: err });
+      if (timeoutSignal.aborted) throw new ModelProviderError(`模型调用超时（>${Math.round(timeoutMs / 1000)}s）`, "timeout", { retryable: true, cause: err });
+      if (err instanceof ModelProviderError) throw err;
+      if (err instanceof SyntaxError) throw new ModelProviderError("模型响应不是合法 JSON", "protocol", { retryable: true, cause: err });
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ModelProviderError(`模型网络请求失败：${message}`, "network", { retryable: true, cause: err });
     }
   }
 }

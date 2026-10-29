@@ -3,16 +3,18 @@
  * 三档体系与套餐映射 / model-policy.yml 解析校验 / 模型池与降级链 / 真实积分计量 /
  * 三池账本 / routeSmart 全链路（场景×套餐×复杂度×降级语义）/ 升级重答与配额 / 自动调表
  */
-import { describe, expect, it } from "vitest";
-import { MockProvider } from "./providers.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { ModelProviderError, MockProvider, type ModelProvider } from "./providers.js";
 import {
   DEFAULT_MODEL_POLICY, legacyTierToTier3, parseModelPolicy, resolveTier, shiftTier,
   tierDown, tierUp, type ModelPolicy,
 } from "./policy.js";
-import { MODEL_CATALOG, catalogByTier, chainFor, poolFromEnv } from "./pool.js";
+import { MODEL_CATALOG, apiKeyFor, catalogByTier, chainFor, openAiCompatibleBaseUrl, poolFromEnv } from "./pool.js";
 import { balance, computeCredits, deduct, grant, projectLedger, type CreditLedger } from "./credits.js";
 import { MemoryQuotaStore, autoTuneScenes, escalate, tierAfterEscalation } from "./feedback.js";
-import { routeSmart, type EventSink, type SmartTask } from "./router.js";
+import { resetCircuit, routeSmart, type EventSink, type SmartTask } from "./router.js";
+
+beforeEach(() => resetCircuit());
 
 function memSink() {
   const traces: any[] = [];
@@ -121,6 +123,25 @@ describe("国产三档模型池", () => {
   it("mock 模式全池确定性可跑（D4 离线保险丝）", () => {
     const pool = poolFromEnv();
     expect(pool.size).toBe(MODEL_CATALOG.length);
+  });
+
+  it("LLM_BASE_URL是OpenAI兼容根优先于DEEPSEEK_BASE_URL，Anthropic专用地址不串用", () => {
+    const deepseek = MODEL_CATALOG.find(model => model.id === "deepseek-v4-pro")!;
+    expect(openAiCompatibleBaseUrl(deepseek, {
+      LLM_BASE_URL: "https://gateway.example.com/v1/",
+      DEEPSEEK_BASE_URL: "https://api.deepseek.com/anthropic",
+    })).toBe("https://gateway.example.com/v1");
+    expect(openAiCompatibleBaseUrl(deepseek, {
+      DEEPSEEK_BASE_URL: "https://api.deepseek.com/anthropic",
+    })).toBe("https://api.deepseek.com");
+  });
+
+  it("provider key和专属OpenAI端点按模型解析，LLM_API_KEY保持最高优先级", () => {
+    const glm = MODEL_CATALOG.find(model => model.id === "glm-5.2")!;
+    expect(openAiCompatibleBaseUrl(glm, { ZHIPU_OPENAI_BASE_URL: "https://open.bigmodel.cn/api/paas/v4" }))
+      .toBe("https://open.bigmodel.cn/api/paas/v4");
+    expect(apiKeyFor(glm, { LLM_API_KEY: "generic", ZHIPU_API_KEY: "vendor" })).toBe("generic");
+    expect(apiKeyFor(glm, { ZHIPU_API_KEY: "vendor" })).toBe("vendor");
   });
 });
 
@@ -240,6 +261,79 @@ describe("routeSmart（场景 × 套餐 × 复杂度 × 真实计量）", () => 
     expect(r.modelTrace!.model_id).toBe("glm-5.3-flash");
     expect(degrades[0]).toMatchObject({ from: "deepseek-v4-flash", to: "glm-5.3-flash", reason: "unhealthy" });
     expect(traces.length).toBe(1);
+  });
+  it("空响应同样触发同链降级，并把真实原因交给上层", async () => {
+    const { sink, degrades, traces } = memSink();
+    const calls: string[] = [];
+    const provider = (modelId: string, empty: boolean): ModelProvider => ({
+      modelId, healthy: async () => true,
+      chat: async () => {
+        calls.push(modelId);
+        if (empty) throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: true });
+        return { text: "可用回答", promptTokens: 10, completionTokens: 5 };
+      },
+    });
+    const pool = new Map<string, ModelProvider>([
+      ["deepseek-v4-flash", provider("deepseek-v4-flash", true)],
+      ["glm-5.3-flash", provider("glm-5.3-flash", false)],
+    ]);
+    const r = await routeSmart(task(), pool, sink);
+    expect(r).toMatchObject({ kind: "answered", modelTrace: { model_id: "glm-5.3-flash" } });
+    expect(calls).toEqual(["deepseek-v4-flash", "glm-5.3-flash"]);
+    expect(degrades[0]).toMatchObject({ from: "deepseek-v4-flash", to: "glm-5.3-flash", reason: "模型返回 content 为空" });
+    expect(traces).toHaveLength(1);
+  });
+  it("off-peak-only在允许窗口内全链超时是unavailable，账本保留timeout而非误报queued", async () => {
+    const policy: ModelPolicy = {
+      ...DEFAULT_MODEL_POLICY,
+      scenes: { ...DEFAULT_MODEL_POLICY.scenes, preproduction: { tier: "L2", window: "off-peak-only" } },
+    };
+    const { sink } = memSink();
+    const timeoutPool = new Map<string, ModelProvider>(["deepseek-v4-pro", "glm-5.2", "minimax-m3"].map(modelId => [modelId, {
+      modelId, healthy: async () => true,
+      chat: async () => { throw new ModelProviderError("模型调用超时（>180s）", "timeout", { retryable: true }); },
+    }]));
+    const r = await routeSmart(task({ action: "preproduction", scene: "preproduction" }), timeoutPool, sink, { policy },
+      new Date("2026-10-28T23:30:00+08:00"));
+    expect(r).toMatchObject({ kind: "unavailable", failure: { kind: "timeout", retryable: true } });
+    expect(r.failure?.reason).toContain("超时");
+  });
+  it("网络失败保留network诊断，和排队、超时、供应商不可用分开", async () => {
+    const pool = new Map<string, ModelProvider>([["deepseek-v4-flash", {
+      modelId: "deepseek-v4-flash", healthy: async () => true,
+      chat: async () => { throw new Error("fetch failed: connect ECONNREFUSED"); },
+    }]]);
+    const r = await routeSmart(task(), pool, memSink().sink);
+    expect(r).toMatchObject({ kind: "unavailable", failure: { kind: "network" } });
+    expect(r.failure?.reason).toContain("fetch failed");
+  });
+  it("off-peak-only在峰时默认不调用模型；只有显式allowPeak才立即执行", async () => {
+    const policy: ModelPolicy = {
+      ...DEFAULT_MODEL_POLICY,
+      scenes: { ...DEFAULT_MODEL_POLICY.scenes, preproduction: { tier: "L2", window: "off-peak-only" } },
+    };
+    const { sink, degrades } = memSink();
+    let calls = 0;
+    const pool = new Map<string, ModelProvider>([["deepseek-v4-pro", {
+      modelId: "deepseek-v4-pro", healthy: async () => true,
+      chat: async () => { calls++; return { text: "不应调用", promptTokens: 1, completionTokens: 1 }; },
+    }]]);
+    const r = await routeSmart(task({ action: "preproduction", scene: "preproduction" }), pool, sink, { policy },
+      new Date("2026-10-28T12:00:00+08:00"));
+    expect(calls).toBe(0);
+    expect(r).toMatchObject({ kind: "queued", failure: { kind: "deferred", retryable: false } });
+    expect(r.failure?.reason).toContain("峰时");
+    expect(degrades).toHaveLength(1);
+
+    let allowedCalls = 0;
+    const allowedPool = new Map<string, ModelProvider>([["deepseek-v4-pro", {
+      modelId: "deepseek-v4-pro", healthy: async () => true,
+      chat: async () => { allowedCalls++; return { text: "显式峰时执行", promptTokens: 1, completionTokens: 1 }; },
+    }]]);
+    const allowed = await routeSmart(task({ action: "preproduction", scene: "preproduction" }), allowedPool, memSink().sink,
+      { policy, allowPeak: true }, new Date("2026-10-28T12:00:00+08:00"));
+    expect(allowed.kind).toBe("answered");
+    expect(allowedCalls).toBe(1);
   });
 });
 

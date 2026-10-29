@@ -299,6 +299,9 @@ describe("错误分类（监控聚类与 findings 归因共用口径）", () => 
     expect(classifyError(new Error("fetch failed"))).toBe("NETWORK");
     expect(classifyError(new Error("LLM timeout after 60s"))).toBe("LLM_TIMEOUT");
     expect(classifyError(new Error("rate limit exceeded (429)"))).toBe("LLM_RATE_LIMIT");
+    expect(classifyError(new Error("模型路由不可用（unavailable；http：模型调用失败：HTTP 402）"))).toBe("LLM_RATE_LIMIT");
+    expect(classifyError(new Error("模型路由不可用（unavailable；timeout：模型调用超时（>180s））"))).toBe("LLM_TIMEOUT");
+    expect(classifyError(new Error("模型路由不可用（queued；deferred：当前处于峰时）"))).toBe("LLM_UNAVAILABLE");
     expect(classifyError(new Error("Unexpected token < in JSON"))).toBe("LLM_PARSE");
     expect(classifyError(new Error("producer_rejected(G3 · score=0.4)"))).toBe("GATE_REJECTED");
     expect(classifyError(new Error("PipelineGuard: 渲染管线检查未通过: 6 错误"))).toBe("GATE_REJECTED");

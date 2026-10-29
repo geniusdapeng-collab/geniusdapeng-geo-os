@@ -1,4 +1,5 @@
 import { symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
 import {
@@ -256,6 +257,31 @@ describe("PRD private accepted current G1", () => {
     for (const text of [value.content, JSON.stringify(value.metadata.brief), "仅支持媒体报道归因", "原始年轻消费者", "非阻断的创意建议仍为建议", "完整原始意见"]) expect(prompt).toContain(text);
     value.marketing.g1Proof.model = "caller-mutated";
     expect(value.authority.marketing.g1Proof.model).toBe("synthetic-reviewed-model");
+  });
+  it("adds the exact G1 image authority to PRD prompting and fails closed without a product image", () => {
+    const value = fixture(), raw = JSON.parse(value.content);
+    raw.requestedMetadata = { brief: { product: "合成商品" } };
+    raw.facts.stages[0].facts.payload = { images: [] };
+    const missing = JSON.stringify(raw); writeFileSync(value.file, missing);
+    const marketing = { ...value.marketing, g1Artifact: { ...value.marketing.g1Artifact,
+      sha256: createHash("sha256").update(missing).digest("hex"), content: missing } };
+    marketing.g1Proof = { ...marketing.g1Proof, evidence: [{ ...marketing.g1Proof.evidence[0]!,
+      sha256: marketing.g1Artifact.sha256 }] };
+    const authority = preparePrdAuthority({ metadata: value.metadata, marketing, workDir: value.workDir, projectId: "P1" });
+    expect(() => prdAuthorityPrompt(authority, value.contract)).toThrow("PRODUCT_VISUAL_AUTHORITY_REQUIRED");
+
+    raw.facts.stages[0].facts.payload.images = [{
+      url: "https://media.example.test/product.png",
+      page_url: "https://source.example.test/product",
+      angle: "unknown",
+    }];
+    const present = JSON.stringify(raw); writeFileSync(value.file, present);
+    marketing.g1Artifact = { ...marketing.g1Artifact, content: present,
+      sha256: createHash("sha256").update(present).digest("hex") };
+    marketing.g1Proof = { ...marketing.g1Proof, evidence: [{ ...marketing.g1Proof.evidence[0]!,
+      sha256: marketing.g1Artifact.sha256 }] };
+    const checked = preparePrdAuthority({ metadata: value.metadata, marketing, workDir: value.workDir, projectId: "P1" });
+    expect(prdAuthorityPrompt(checked, value.contract)).toContain('"url":"https://media.example.test/product.png"');
   });
   it.each(["wrong-project", "old-attempt", "old-run", "degraded", "missing-evidence", "partial-evidence", "wrong-hash", "wrong-file", "file-changed"])("rejects %s", kind => {
     const value = fixture(), proof = structuredClone(value.marketing);

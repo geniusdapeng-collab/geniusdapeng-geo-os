@@ -60,6 +60,18 @@ describe("逐事实叶子的正文绑定", () => {
     }
     expect(() => validateStageFacts("A1", { payload: { identity: { name: "商品" } }, citations: [], noEvidenceReason: "无" }, [])).toThrow();
   });
+  it("A2/A3明确空证据可省略citations，由宿主只补空数组且不改其他字段", () => {
+    for (const stage of ["A2", "A3"] as const) {
+      const payload = stage === "A2" ? { reviews: [] } : { competitors: [] };
+      const facts = validateStageFacts(stage, { payload, noEvidenceReason: "本次来源没有可核实评价或竞品" }, []);
+      expect(facts).toMatchObject({ stage, status: "no_evidence", payload, claims: [] });
+      expect(() => validateStageFacts(stage, { payload, citations: [], noEvidenceReason: " " }, [])).toThrow();
+      const nonEmpty = stage === "A2"
+        ? { reviews: [{ text: "低档安静", url: source.finalUrl }] }
+        : { competitors: [{ name: "北斗", selling_points: [{ point: "5 档", source_url: source.finalUrl }] }] };
+      expect(() => validateStageFacts(stage, { payload: nonEmpty, noEvidenceReason: "本页没有可核实内容" }, [source])).toThrow();
+    }
+  });
   it("评价必须原话，评分单独引证；合法URL不能证明改写评价", () => {
     const value = { payload: { reviews: [{ text: "低档安静", rating: 4, url: source.finalUrl }] }, citations: [citation("/reviews/0/text"), citation("/reviews/0/rating")] };
     expect(validateStageFacts("A2", value, [source]).claims).toHaveLength(2);

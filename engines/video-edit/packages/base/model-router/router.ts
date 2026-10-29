@@ -13,7 +13,10 @@
  *   账单 = 事件投影，不重算（L6.3）
  */
 import { OFF_PEAK_RATE_RATIO, OFF_PEAK_WINDOW } from "@workloom/shared";
-import { mockCredits, type ChatGenerationOptions, type ChatMessage, type ChatResult, type ModelProvider } from "./providers.js";
+import {
+  ModelProviderError, mockCredits,
+  type ChatGenerationOptions, type ChatMessage, type ChatResult, type ModelProvider,
+} from "./providers.js";
 import {
   DEFAULT_MODEL_POLICY, resolveScene, resolveTier, tierUp,
   type ModelPolicy, type PlanId, type Tier3,
@@ -175,6 +178,69 @@ export interface RouteResult {
   degraded?: Array<{ from: string; to: string | null; reason: string }>;
   /** #12 修复：熔断时仍返回已产出的答案，避免白烧 token */
   budgetExceeded?: boolean;
+  /** Sanitized, machine-readable failure summary for callers that need a real diagnosis. */
+  failure?: RouteFailure;
+}
+
+export type RouteFailureKind =
+  | "timeout"
+  | "network"
+  | "http"
+  | "protocol"
+  | "empty"
+  | "unhealthy"
+  | "circuit"
+  | "cancelled"
+  | "deferred"
+  | "queue"
+  | "unknown";
+
+export interface RouteFailure {
+  kind: RouteFailureKind;
+  reason: string;
+  retryable: boolean;
+  attempted: string[];
+}
+
+function providerFailure(error: unknown): ModelProviderError {
+  if (error instanceof ModelProviderError) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  if (/abort|cancel|取消/i.test(message)) return new ModelProviderError(message, "cancelled", { retryable: false, cause: error });
+  if (/timeout|timed out|超时/i.test(message)) return new ModelProviderError(message, "timeout", { retryable: true, cause: error });
+  if (/HTTP\s+\d+/i.test(message)) return new ModelProviderError(message, "http", { retryable: true, cause: error });
+  if (/JSON|content.*空|空响应|empty/i.test(message)) {
+    return new ModelProviderError(message, /content.*空|空响应|empty/i.test(message) ? "empty" : "protocol", { retryable: true, cause: error });
+  }
+  return new ModelProviderError(message, "network", { retryable: true, cause: error });
+}
+
+function summarizeFailure(
+  degraded: Array<{ from: string; to: string | null; reason: string }>,
+  fallback: RouteFailureKind = "unknown",
+  retryable = true,
+): RouteFailure {
+  const attempted = [...new Set(degraded.map(item => item.from))];
+  const reasons = degraded.map(item => item.reason).filter(Boolean);
+  const kinds: RouteFailureKind[] = degraded.map(item => {
+    const text = item.reason;
+    if (/abort|cancel|取消/i.test(text)) return "cancelled";
+    if (/timeout|timed out|超时/i.test(text)) return "timeout";
+    if (/HTTP\s+\d+/i.test(text)) return "http";
+    if (/JSON|protocol|格式/i.test(text)) return "protocol";
+    if (/content.*空|空响应|empty/i.test(text)) return "empty";
+    if (/network|fetch|网络|连接/i.test(text)) return "network";
+    if (/unhealthy/i.test(text)) return "unhealthy";
+    if (/circuit|熔断/i.test(text)) return "circuit";
+    return "unknown";
+  });
+  const precedence: RouteFailureKind[] = ["cancelled", "timeout", "network", "http", "protocol", "empty", "unhealthy", "circuit", "unknown"];
+  const kind = precedence.find(candidate => kinds.includes(candidate)) ?? fallback;
+  return {
+    kind,
+    reason: reasons.length ? reasons.join("；").slice(0, 2_000) : "全部候选模型不可用",
+    retryable,
+    attempted,
+  };
 }
 
 export async function route(
@@ -219,6 +285,7 @@ export async function route(
     }
     try {
       const result: ChatResult = await provider.chat(task.messages);
+      if (!result.text.trim()) throw new ModelProviderError("模型返回空响应", "empty", { retryable: true });
       const credits = window === "off-peak" && tier === "flagship"
         ? Math.max(1, Math.round(mockCredits(modelId, result) * OFF_PEAK_RATE_RATIO)) // G9/L6.5
         : mockCredits(modelId, result);
@@ -232,15 +299,16 @@ export async function route(
       return { kind: "answered", text: result.text, modelTrace: trace, degraded };
     } catch (err) {
       const to = chain[i + 1] ?? null;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = providerFailure(err).message;
       degraded.push({ from: modelId, to, reason });
       await sink.recordDegradation({ from: modelId, to, reason, action: task.action }); // L6.1
     }
   }
 
   // E6.1：全链不可用 → 非紧急深度任务排队等谷时；否则转需介入
-  if (task.queueable) return { kind: "queued", degraded };
-  return { kind: "unavailable", degraded };
+  const failure = summarizeFailure(degraded);
+  if (task.queueable) return { kind: "queued", degraded, failure: { ...failure, kind: "queue", retryable: false } };
+  return { kind: "unavailable", degraded, failure };
 }
 
 /* ================= 账单投影（L6.3：只从事件投影，不重算） ================= */
@@ -331,7 +399,7 @@ export async function routeSmart(
   task: SmartTask,
   providers: Map<string, ModelProvider>,
   sink: EventSink,
-  opts: { policy?: ModelPolicy; taskCreditLimit?: number } = {},
+  opts: { policy?: ModelPolicy; taskCreditLimit?: number; allowPeak?: boolean } = {},
   now = new Date(),
 ): Promise<SmartRouteResult> {
   const policy = opts.policy ?? DEFAULT_MODEL_POLICY;
@@ -350,7 +418,8 @@ export async function routeSmart(
     const cancellation = { from, to: null, reason: "模型调用已取消（调用方 abort）" };
     await sink.recordDegradation({ ...cancellation, action: task.action });
     return { kind: "unavailable", degraded: [...previous, cancellation], tier, scene,
-      passthrough: sp.fallback === "passthrough-disclose" };
+      passthrough: sp.fallback === "passthrough-disclose",
+      failure: summarizeFailure([...previous, cancellation], "cancelled", false) };
   };
   if (task.signal?.aborted) return cancelled();
 
@@ -368,6 +437,10 @@ export async function routeSmart(
     return {
       kind: "unavailable", degraded: [{ from: scene, to: null, reason: "circuit-open" }],
       tier, scene, passthrough: sp.fallback === "passthrough-disclose",
+      failure: {
+        kind: "circuit", reason: `全链熔断冷却中（${Math.max(0, Math.ceil((circuit.openUntil - now.getTime()) / 1000))}s 后半开）`,
+        retryable: true, attempted: [],
+      },
     };
   }
 
@@ -409,6 +482,20 @@ export async function routeSmart(
   }
 
   const window = currentWindow(now);
+  if (sp.window === "off-peak-only" && window === "peak" && opts.allowPeak !== true) {
+    const failure: RouteFailure = {
+      kind: "deferred",
+      reason: "场景仅允许谷时调用，当前处于峰时；未发起模型请求",
+      retryable: false,
+      attempted: [],
+    };
+    await sink.recordDegradation({
+      from: `${scene}:off-peak-window`, to: null,
+      reason: failure.reason, action: task.action,
+    });
+    return { kind: "queued", degraded: [{ from: `${scene}:off-peak-window`, to: null, reason: failure.reason }],
+      tier, scene, failure, passthrough: false };
+  }
   // 降级链：noDowngrade（金融/体检等质量红线）截断跨档段，只允许同档互备
   const chain = chainFor(tier, { longContext, allowCrossTier: !sp.noDowngrade });
   const degraded: Array<{ from: string; to: string | null; reason: string }> = [];
@@ -430,6 +517,7 @@ export async function routeSmart(
       const result: ChatResult = await provider.chat(task.messages, {
         ...task.generation, signal: task.signal, timeoutMs: callTimeoutMs,
       });
+      if (!result.text.trim()) throw new ModelProviderError("模型返回空响应", "empty", { retryable: true });
       // 成功即清零该场景的连续失败计数（半开恢复）
       sceneCircuits.delete(scene);
       const credits = computeCredits({
@@ -449,7 +537,7 @@ export async function routeSmart(
       // Caller cancellation is not a provider outage and must not poison the shared scene circuit.
       if (task.signal?.aborted) return cancelled(degraded, modelId);
       const to = chain[i + 1] ?? null;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = providerFailure(err).message;
       degraded.push({ from: modelId, to, reason });
       await sink.recordDegradation({ from: modelId, to, reason, action: task.action }); // L6.1
       // GR-05：累计连续失败，达阈值即开启熔断冷却窗口（本轮剩余链路也不再逐家试）
@@ -467,10 +555,15 @@ export async function routeSmart(
   // 全链不可用：按行业降级语义收口
   if (sp.fallback === "passthrough-disclose") {
     // 金融铁律：宁可不答不可错答——透传披露，不降档、不猜测
-    return { kind: "unavailable", degraded, tier, scene, passthrough: true };
+    return { kind: "unavailable", degraded, tier, scene, passthrough: true,
+      failure: summarizeFailure(degraded, "unknown", true) };
   }
-  if (sp.fallback === "queue" || sp.window === "off-peak-only" || task.queueable) {
-    return { kind: "queued", degraded, tier, scene };
+  if (sp.fallback === "queue" || task.queueable) {
+    const failure = summarizeFailure(degraded, "unknown", false);
+    return { kind: "queued", degraded, tier, scene, failure: { ...failure, kind: "queue", retryable: false } };
   }
-  return { kind: "unavailable", degraded, tier, scene };
+  // off-peak-only is a scheduling window, not an outage classifier. During the
+  // permitted window a failed chain is genuinely unavailable and must not be
+  // reported as queued merely because the scene prefers off-peak execution.
+  return { kind: "unavailable", degraded, tier, scene, failure: summarizeFailure(degraded) };
 }

@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, realpathSync, statS
 import { createHash } from "node:crypto";
 import { join, resolve, relative, sep } from "node:path";
 import type { ProducerArtifact, DeterministicCheck, PortraitIndex } from "@hyperreality/video-studio";
+import { extractProductVisualAuthority } from "@hyperreality/video-studio";
 
 /**
  * 自动放行的「内部准备门」。默认包含 G1–G4 / G6 / G7；**G5 定妆照默认人审**（T-2026-1001-0007）。
@@ -79,13 +80,30 @@ export function gateDeterministicChecks(gate: GateKey, content: string): Array<{
   const trimmed = text.trim();
   if (gate === "G1_DOSSIER") {
     let valid = false;
+    let visualPass = false;
+    let visualDetail = "G1 原件不可解析，无法核对商品视觉授权";
     try {
       const value = JSON.parse(trimmed) as { facts?: { schemaVersion?: string; stages?: unknown[]; sources?: unknown[] } };
       valid = value.facts?.schemaVersion === "workloom.marketing-facts/v1" && value.facts.stages?.length === 3
         && Array.isArray(value.facts.sources) && value.facts.sources.length > 0;
     } catch { valid = false; }
-    return [{ id: "marketing-facts-present", pass: valid, hard: true,
-      detail: valid ? "完整本次来源/三站事实包可解析；null等JSON值不会当作占位词误杀" : "G1必须读取宿主本次完整来源事实包" }];
+    // Keep the two assertions separate so a missing image is not mislabeled as a
+    // missing facts bundle.
+    try {
+      const visual = extractProductVisualAuthority(trimmed);
+      visualPass = true;
+      visualDetail = visual.required
+        ? `明确商品已绑定 ${visual.images.length} 张本次 G1 已接受图片；外观只能引用这些图片`
+        : "本次未声明需要视觉呈现的商品，商品图片前置不适用";
+    } catch (error) {
+      visualPass = false;
+      visualDetail = error instanceof Error ? error.message : String(error);
+    }
+    return [
+      { id: "marketing-facts-present", pass: valid, hard: true,
+        detail: valid ? "完整本次来源/三站事实包可解析；null等JSON值不会当作占位词误杀" : "G1必须读取宿主本次完整来源事实包" },
+      { id: "product-visual-authority", pass: visualPass, hard: true, detail: visualDetail },
+    ];
   }
   const checks = [
     { id: "content-present", pass: trimmed.length > 0, hard: true, detail: trimmed.length > 0 ? `门内容 ${trimmed.length} 字` : "门内容为空（vendor 未产出该环节产物）" },

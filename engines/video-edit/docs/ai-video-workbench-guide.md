@@ -1,6 +1,6 @@
 # WorkLoom Video Edit 视频调用指南：AI 工作台先读，再执行
 
-> guideVersion: 2026-10-28.7
+> guideVersion: 2026-10-28.8
 > 适用仓库：`workloom-ai/WorkLoom-video-edit`；本版范围：成功原片默认接受、正式后期、G3 结构化需求、本次 G1 事实与用途限定、PRD 制作与交接计划、显式封面与字幕交付声明、模型响应结构、需求与制作的权威上下文、明确无标题卡的生成适用性、原始拒绝保留、风险分析有限反馈、完整评审文本分配、完整 CLI 草稿归档、启动时长与片型选型输入及显式全片持续字幕；实际源码 SHA 以本次冻结交付记录为准。
 > 读者：Codex、DeepSeek Harness 及能调用本仓 CLI / stdio MCP 的 AI 工作台。
 
@@ -209,6 +209,16 @@ PRD 门文档中的已审场景合同使用独立显示副本：只有场景的�
 真实成功的预生产从 vendor 顶层完整 `result.shots` 保存当前轮次的原始镜头，不从阶段摘要重建 prompt 或 fields。普通无片型作业也归档 `attempt-N.shotlist.json`，通过输出中的 `cliShotlistRef` 与 `cliShotlistSha256` 引用；有片型作业继续保留原有 `shotlistRef`、审计报告与渲染硬闸。CLI 草稿保留 `draft:true`，不补造镜号、时长、台词、必备标签或人物出镜范围，不把草稿标成已获供应商渲染资格。
 
 工作台先用 `growth.video.production.shots` 读取当前已核实服务来源，再按当前档案输出中的实际 CLI 或片型片单引用读取原件并核对 SHA-256，交给正式 `full-chain-film.mts`。该只读查询给出的缩减镜头列表不能代替包含完整元数据的片单。逐镜人物参考、用途授权、来源、当前生成参数和渲染前检查仍须成立；没有真实当前产物或只有失败轮次时停止，不能从日志摘要或工作台自行拼卡继续付费。
+
+## 5.9 模型端点、空证据和商品视觉授权
+
+`LLM_BASE_URL` 是所有模型条目的通用 OpenAI 兼容协议入口，优先于厂商地址；`DEEPSEEK_BASE_URL` 在本仓还可能指向 DSH 使用的 Anthropic 兼容 `/anthropic` 根，不能直接拼接 `/chat/completions`。模型池只在没有通用入口时使用厂商专属 OpenAI 地址，并将已知 `/anthropic` 后缀还原为 OpenAI 根。API key 先取 `LLM_API_KEY`，缺省时按模型读取对应厂商 key。端点、协议和 key 不匹配时应保留真实 HTTP/网络诊断，不能靠更换模型名掩盖。
+
+`routeSmart` 的 `queued` 只表示策略明确要求排队，或 `off-peak-only` 场景当前处于峰时且尚未发起请求。允许窗口内全链超时、网络失败、HTTP/协议错误、空响应或健康检查失败必须返回 `unavailable` 并携带脱敏的 `failure.kind/reason/attempted/retryable`；不能因模型政策文件写着谷时偏好，就把真实故障改写成 `queued`。调用方取消是 `cancelled`，不污染共享场景熔断。用户明确要求即时完成、不能等待谷时且授权承担当前成本时，Studio 宿主可显式设置 `WORKLOOM_ALLOW_PEAK=1` 覆盖成本窗口；默认关闭，不改变普通调用的排队语义。
+
+A2/A3 可以明确无证据。若 `reviews` 或 `competitors` 是空数组且提供非空 `noEvidenceReason`，模型省略空的 `citations` 时，宿主只补 `citations: []`；原始响应仍按原字节保留。非空评价/竞品仍必须逐项引用，A1 也不能省略引用。该规范化只处理结构，不把空证据变成通过结论。
+
+营销项目的商品外观另有结构化视觉授权。宿主从本次 G1 A1 已接受 `images` 建立 `productVisualAuthority`，要求明确商品至少绑定一张 HTTP(S) 真实商品图；缺图在 G2/G3/PRD 之前失败。下游场景、道具、动作和 PRD 只能对照这些图片描述颜色、涂装、比例、部件和形态，文字 claims、人物档案、影视参考或模型常识都不能补写未见细节。G1 的原文支持门只审文字 claim 与来源正文，不因缺少图片像素审而自行否决已绑定 URL 的文字事实；图片像素、商用授权和最终商品一致性由后续独立阶段核验。
 
 ## 6. 从用户指令到交付的耗时怎么记录
 

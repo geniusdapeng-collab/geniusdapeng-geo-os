@@ -108,14 +108,32 @@ describe("AI producer evidence gate", () => {
     }
   );
   it("wrong-shaped review is repaired into the schema instead of failing the stage", async () => {
-    let calls = 0;
-    const fetchImpl = (async () => {
+    let calls = 0; const bodies: string[] = [];
+    const fetchImpl = (async (_url, init) => {
       calls += 1;
+      bodies.push(String(init?.body));
       const content = calls === 1 ? JSON.stringify({ ...good, suggestions: [false] }) : JSON.stringify(good);
       return new Response(JSON.stringify({ choices: [{ message: { content } }] }));
     }) as typeof fetch;
     const v = await reviewStage(textOptions({ fetchImpl }));
     expect(calls).toBe(2);
+    const retryContent = JSON.parse(bodies[1]!).messages[0].content as Array<{ type: string; text?: string }>;
+    expect(JSON.stringify(retryContent)).toContain("剧本与镜头约束");
+    expect(retryContent.at(-1)?.text).toContain("五个键缺一不可");
+    expect(v.approved).toBe(true);
+  });
+  it("malformed review JSON is re-reviewed with the same complete evidence, not repaired from a truncated fragment", async () => {
+    let calls = 0; const bodies: string[] = [];
+    const fetchImpl = (async (_url, init) => {
+      calls += 1; bodies.push(String(init?.body));
+      const content = calls === 1 ? "not-json review fragment" : JSON.stringify(good);
+      return new Response(JSON.stringify({ choices: [{ message: { content } }] }));
+    }) as typeof fetch;
+    const v = await reviewStage(textOptions({ fetchImpl }));
+    expect(calls).toBe(2);
+    expect(bodies[1]).toContain("剧本与镜头约束");
+    const retryContent = JSON.parse(bodies[1]!).messages[0].content as Array<{ type: string; text?: string }>;
+    expect(retryContent.at(-1)?.text).toContain("五个键缺一不可");
     expect(v.approved).toBe(true);
   });
   it.each([{ ...good, score: 101 }, { ...good, score: null }, { ...good, suggestions: [false] }, [], null])("invalid response is unverified %j", async (answer) => {

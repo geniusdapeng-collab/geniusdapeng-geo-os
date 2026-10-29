@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v1",
+  "id": "marketing-runtime-diagnostics",
+  "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
+  "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
+  "generatedAt": "2026-10-29T00:59:50.905Z",
+  "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, and marketing support review scope",
+  "upstreamUpgradeClaimed": false,
+  "wholeEngineUpgradeClaimed": false,
+  "files": [
+    {
+      "path": ".env.example",
+      "targetPath": "engines/video-edit/.env.example",
+      "previousTargetSha256": "60de238c1a1c3ce445402dc44c40a8d640bcbded1ff012e17d021380756a1f7f",
+      "targetSha256": "d7850f1b439ecde6ae94bc71597604796eb0d87e67a52655680564317c7e79d7",
+      "targetBytes": 12749,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/service/llm.ts",
+      "targetPath": "engines/video-edit/apps/server/src/service/llm.ts",
+      "previousTargetSha256": "b75381f358b7b6e7d2b4cb0c0ab85006c9fbcae2a8ddd22922d93ca06fe6b9ef",
+      "targetSha256": "b57b10c6466ef9500c096359c89b3a220d3cf48f2b9ec67a3b261f217f5f1765",
+      "targetBytes": 5128,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/gate-policy.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.test.ts",
+      "previousTargetSha256": "b1645d72c9990cd758892684cb2f6f6d30f6e9ae9c31450955ef32d25ff3fcd3",
+      "targetSha256": "506205ee754f50718b7ca4fdcef128d4ec4cf58490a69b0ce308f9aaf8220224",
+      "targetBytes": 6620,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/gate-policy.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.ts",
+      "previousTargetSha256": "eab9513a95830cb23472792957f6d6002277254360ef6d75464ac93b591c4d0c",
+      "targetSha256": "61dc403dbf1ad3986fdf1b38c7f25afaf6e0f568e4c4afa692639f4cc252335b",
+      "targetBytes": 16291,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "previousTargetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
+      "targetSha256": "b4e4f622e367534e4be688cb860ed3c822cb616a931da20a0bb2b804d3016d23",
+      "targetBytes": 35356,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
+      "previousTargetSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
+      "targetSha256": "368d212754de58773009d27b679fe201bf61e234beada490dca810cd8080fd52",
+      "targetBytes": 38500,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-facts.test.ts",
+      "previousTargetSha256": "3a5d7590d24ef14d71ca17fd95ad489b037ed9bb4b093459e7b88f86ab4100a8",
+      "targetSha256": "4bc28a162849b418d110f0f3b3ba814470331b2e86a4170c38ed8cf225452ff0",
+      "targetBytes": 9966,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-facts.ts",
+      "previousTargetSha256": "1365253356d3ab14c8d7e411a13b19b21b5ea9371bbf0cd2f083b073fc6c883b",
+      "targetSha256": "3d27c46d88a8efb5a9b3b151485f08ee8d9149e392b558ce570f32640a3daa82",
+      "targetBytes": 10854,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-gate-evidence.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-gate-evidence.test.ts",
+      "previousTargetSha256": "7969af87410331faaea0517ae5c7fda1b4cc7ae657b26341373e58c3c795140f",
+      "targetSha256": "e7981338ad3cb68e3053fd34be69faf289e2670fa1c4bfed89319db79790ec7a",
+      "targetBytes": 19982,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/marketing-gate-evidence.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-gate-evidence.ts",
+      "previousTargetSha256": "562aac782279c145445238000b7e82f30af713fd7ee3bed7dc64dcf06c6138c0",
+      "targetSha256": "92d562f259faf369ad0f539bc1ee18e36c522589067fac16e2c0c76bfc018043",
+      "targetBytes": 12212,
+      "targetMode": "100644"
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "previousTargetSha256": "1c8b0e5d5eea0edce5dc6d1ba84ddd9e2d24b7fcecaa7448128e10a1df79fd0c",
+      "targetSha256": "143fe50fcc5a57fd8b517a2b0e8d6547c5fc39447d02db3f013e5cbe6427384d",
+      "targetBytes": 90273,
+      "targetMode": "100644"
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "previousTargetSha256": "f6e7b15124dbebd9759ba6d4990f6829610beaaeb09853ffa755c224d821adda",
+      "targetSha256": "021499a1ecc25f1f038fcbcf7421cd6913b960300541ac26b4c9f8195e5d9859",
+      "targetBytes": 51963,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/base/model-router/pool.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/pool.ts",
+      "previousTargetSha256": "b174dc06387fffdd3612a927ff5075bd822a9ef997dce20e0bd057f722a14d1f",
+      "targetSha256": "8f7697b000560cbe5657c7b0389ad53ee2fd9a72d236d2f43050a584f2788a44",
+      "targetBytes": 6261,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/base/model-router/providers-options.test.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/providers-options.test.ts",
+      "previousTargetSha256": "eff64128f298149f5fa937aac1e027b9754702b3f87c9d0e01f55dee3d646d49",
+      "targetSha256": "3c6822cd1b142b2815a0f69f10157a93eb4f6600da767e5487fea90c0b2b940e",
+      "targetBytes": 4742,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/base/model-router/providers.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/providers.ts",
+      "previousTargetSha256": "15c1d4152c041e634421731f411bcdbb2edf002900306b74fbe7c44091740c0b",
+      "targetSha256": "a327e033dc790f7896f473e26041ffae305d6b1b4d66a063372cfaee2e63e378",
+      "targetBytes": 7744,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/base/model-router/router-v3.test.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/router-v3.test.ts",
+      "previousTargetSha256": "b419493a4ba225a72095a62bf4eee132554ab481d6a6680ada2548649173328b",
+      "targetSha256": "971d334543ffaad01c3e67d9730e3081a47b7f77c08e765a45975f1d468af459",
+      "targetBytes": 21264,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/base/model-router/router.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/router.ts",
+      "previousTargetSha256": "bbbc6fe180fd13ddf309267d23733545a716bcf061efe186cf82dc2c6f3d00a5",
+      "targetSha256": "952e8120a385158a3c05d28ffbd8f29ba9383e25cbe003419002e3e11a9b166b",
+      "targetBytes": 26699,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/archive/stage-runner.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/archive/stage-runner.test.ts",
+      "previousTargetSha256": "9593451732355ae263cc3a73cfafac4e2b722e23f577332e388a10364b456bbc",
+      "targetSha256": "c2df5e739e32f2ce492569d607888d3c31b6b2bb9eec3e146661e6d33406d39e",
+      "targetBytes": 16432,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/archive/stage-runner.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/archive/stage-runner.ts",
+      "previousTargetSha256": "0eb64a0ecffde9f967da552f30506f7ee8042467335ee704ac9a55d4819d60e0",
+      "targetSha256": "6ce1577725a27f96345503ce5940ba358fe1795d36e8d61d75801cee27b207e7",
+      "targetBytes": 15648,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/index.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
+      "previousTargetSha256": "f30e09fc7d1d112a18e08b45046bb558cd2f1d154e764eb4e87fa244a5821b64",
+      "targetSha256": "f1dba3e3006abaa975cbcdf2b4baf2ad417a63e76f9d2cea15ac5886db2d31c9",
+      "targetBytes": 3265,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/llm-adapter.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
+      "previousTargetSha256": "edaa0e337c611b329acf8b78779442d52a395b05d0415b75f335ec2a71412116",
+      "targetSha256": "9329e9a8fd416793bcabd9c0be1983c739ba547ef8e3a5cf1de7286d64aa5d9a",
+      "targetBytes": 19525,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
+      "previousTargetSha256": "a409af92c8f20541577853a354a4cd6f63630c21dff97847dbc85cd32fbd19fc",
+      "targetSha256": "94b70353c9199c48202f57291b614285ae68a15c0fbb1c61e7233a5a0cdfe0d3",
+      "targetBytes": 34422,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "previousTargetSha256": "aad662c6b06f8147d6401f4ba7ef789da48446f656b621a4832b46e6475174e8",
+      "targetSha256": "8c186e6bb30347b989a17b0a133d02b71b3025e5c96caf1a31ac13ff2fd9a0ca",
+      "targetBytes": 29982,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
+      "previousTargetSha256": "7443fda2afd39916644f08314eb7f0e4cd7b2b707a29c58e448b5fc7215f228d",
+      "targetSha256": "8cddbde6f12e40bd7d5488f430b28267a9824b056b5b9ea78838b8479a9a842c",
+      "targetBytes": 34232,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
+      "previousTargetSha256": "d5812d44e2b1344639c6c465e786283442c97ae53edd2476689ad4a233a1f6a0",
+      "targetSha256": "6453b2b10ec3ae3ff3d17b10ac5643335a52c5e6ad48a613177fc659b2b3f1fc",
+      "targetBytes": 36452,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.test.ts",
+      "previousTargetSha256": null,
+      "targetSha256": "3d57ded3dd5850ff8a52ae8e99bf56810cfb815e8ff6a1a4f7412dae05a29421",
+      "targetBytes": 1639,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "previousTargetSha256": null,
+      "targetSha256": "3a97a99d0bef51c7bd07ceb5655dbb1b231b50fca6c9d2d1e1106e984b4e4168",
+      "targetBytes": 3960,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/requirement-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
+      "previousTargetSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
+      "targetSha256": "54011dcde8040277660fa8adcbe20e38100c47953d53aad3ea3834c2bdf6f375",
+      "targetBytes": 12868,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/routed-adapter.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/routed-adapter.test.ts",
+      "previousTargetSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb",
+      "targetSha256": "e20e7048b03941d20d0deacc1cc83a196967c79a3acd23aa9994b60cecd19785",
+      "targetBytes": 15169,
+      "targetMode": "100644"
+    },
+    {
+      "path": "packages/video-studio/src/routed-generation.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/routed-generation.test.ts",
+      "previousTargetSha256": "99ac218f43c5ecdaec62b757a9463feef8c23c4b214a0427ca29a473fc9c50e7",
+      "targetSha256": "e1a31c4286db69f1ec20467fa58e6f174d064782530896b673c58b9305ee4963",
+      "targetBytes": 9934,
+      "targetMode": "100644"
+    },
+    {
+      "path": "scripts/ai-video-workbench-guide.test.mjs",
+      "targetPath": "engines/video-edit/scripts/ai-video-workbench-guide.test.mjs",
+      "previousTargetSha256": "58f73f3a2ca65632eb2b87e81dac278776019a3c3d9997e6957919f597c42474",
+      "targetSha256": "f57851f73d3394eea24c96cfe7826b11896ceea4bbef206855ad122e0c3dd7c1",
+      "targetBytes": 14753,
+      "targetMode": "100644"
+    }
+  ]
+}

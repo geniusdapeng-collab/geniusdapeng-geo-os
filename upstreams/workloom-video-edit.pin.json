@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "68a3571151257e1a4c2005b49a306b06b83f1be69d9a38409b3240e4214528bd",
+  "snapshotSha256": "4fc83661c84e18f3b1022ad1195c964d553adf741a722e7c6f4888a464689e19",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 93,
-  "sourceOverlayCount": 63,
+  "targetOwnedFileCount": 95,
+  "sourceOverlayCount": 74,
   "pendingAfterV1": [
     "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
     "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
@@ -194,6 +194,15 @@
       "receiptSha256": "178f5d2ca56040684221c9b3ce3caeefa785aaf6313fe3af12633c843f95067b",
       "scope": "exact6-approved-prd-delivery-plan-authority-source-tests-and-documentation",
       "wholeEngineUpgradeClaimed": false
+    }
+  ],
+  "targetAdaptationOverlays": [
+    {
+      "id": "marketing-runtime-diagnostics",
+      "receipt": "upstreams/marketing-runtime-diagnostics.target-overlay.json",
+      "receiptSha256": "49485614366ac1a3f9aa4f5807a7ca9cf01bbeec048bae2a7fb3ef32fc68f5b7",
+      "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, and marketing support review scope",
+      "upstreamUpgradeClaimed": false
     }
   ]
 }
