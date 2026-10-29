@@ -1,13 +1,13 @@
 {
   "schemaVersion": "pengmanager.target-adaptation/v2",
   "id": "pengmanager-host-integration",
-  "engineBaselineCommit": "fdb28c333c82019f1e753cc34fdfedf488af73c1",
-  "engineBaselineTree": "142dbf28505404e6e2d5ffcc3e7800d3b3481d47",
-  "generatedAt": "2026-10-29T09:27:21.657Z",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-29T13:08:49.297Z",
   "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
   "upstreamUpgradeClaimed": true,
   "wholeEngineUpgradeClaimed": true,
-  "sourceOverlayCount": 67,
+  "sourceOverlayCount": 69,
   "targetOwnedFileCount": 48,
   "targetOwnedByTop": {
     "apps": 7,
@@ -130,18 +130,18 @@
     {
       "path": "apps/server/src/video/studio-worker.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
-      "sourceSha256": "947f0ee9f60e3b43f43b778f6639f4c27dd602c73f2dc773af8b67873668a3d7",
-      "targetSha256": "465df110403de205a43daf07cc36810a409425cb282c587b5f0a06fd934b04ba",
-      "sourceBytes": 70615,
-      "targetBytes": 71546
+      "sourceSha256": "e1c773ba82f946fb5d96b01a849add09690f9bec2c784e0fb22090f68b11c563",
+      "targetSha256": "c07f8e8156306b4cf8eea43baf20c62341f7e5dcc95a691a3a3b38c0247e2c5a",
+      "sourceBytes": 70710,
+      "targetBytes": 71641
     },
     {
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
-      "sourceSha256": "1c8b0e5d5eea0edce5dc6d1ba84ddd9e2d24b7fcecaa7448128e10a1df79fd0c",
-      "targetSha256": "e98188a311307d3c400c2b58225b94f4f6854c885e26793c4de70005b1866cfb",
-      "sourceBytes": 90217,
-      "targetBytes": 90462
+      "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
+      "targetSha256": "6d5048f1aab753cb01a0b2e2b795d3346be21767e4c15cce3f2204902841ab75",
+      "sourceBytes": 90435,
+      "targetBytes": 90559
     },
     {
       "path": "apps/server/src/voice/station.test.ts",
@@ -190,6 +190,22 @@
       "targetSha256": "2db54c59f42cb01bd2b5acf4b069cde0d0522ac8bc93126f5797e3751ef16bdc",
       "sourceBytes": 293792,
       "targetBytes": 294896
+    },
+    {
+      "path": "bundles/ai-video/connectors/post-bridge/post-cli-media.test.ts",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/post-bridge/post-cli-media.test.ts",
+      "sourceSha256": "f44eb9a1acf1cfa5c718fe9c89a2457ac89de9a47792ab214ab138b94f578ad1",
+      "targetSha256": "cec3e3bee261ff166862577181e9bc03fad1f46dd0247f75fff1fdaf325095c5",
+      "sourceBytes": 23375,
+      "targetBytes": 23319
+    },
+    {
+      "path": "bundles/ai-video/connectors/post-bridge/quality-gate.mjs",
+      "targetPath": "engines/video-edit/bundles/ai-video/connectors/post-bridge/quality-gate.mjs",
+      "sourceSha256": "607ab07f064ed8f412ca8037555afcb64051c995f99a991b6670f4affaf1d310",
+      "targetSha256": "ecca53aa3fbd99c8fa86e43493d3e851cc0d56456102b902bb7e7235632ae607",
+      "sourceBytes": 45673,
+      "targetBytes": 45868
     },
     {
       "path": "bundles/ai-video/library/characters/model-01-chen-zhuo/gates.jsonl",
@@ -242,10 +258,10 @@
     {
       "path": "docs/ai-video-workbench-guide.md",
       "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
-      "sourceSha256": "4cea6e682f8697fc22f0f19e6874f9d0e3575343d02e5e89353fc0fce716871a",
-      "targetSha256": "373ff6336be22b8e5e6abcec63f2148cbc835e5083880645557f3374d2c13c15",
-      "sourceBytes": 50406,
-      "targetBytes": 52678
+      "sourceSha256": "6effdf4eba7dc4192c157d555b6d615a3b74e09026aeb1a5f883bce22608284c",
+      "targetSha256": "767a13c62c1980949094c186f0f19ee659f6e9f686c45f66535136154a5306e6",
+      "sourceBytes": 50616,
+      "targetBytes": 52888
     },
     {
       "path": "packages/base/bundles/assembly.ts",
@@ -258,42 +274,42 @@
     {
       "path": "packages/base/model-router/pool.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/pool.ts",
-      "sourceSha256": "b174dc06387fffdd3612a927ff5075bd822a9ef997dce20e0bd057f722a14d1f",
-      "targetSha256": "4f8f0556eccd3b02cc12059549f3cb2b54d62c28005f1b1a1febd14b72c85879",
-      "sourceBytes": 4094,
-      "targetBytes": 6698
+      "sourceSha256": "eeb063c22c69a19e9372f2cce7f23a5bcbaeaac999694c8030e93394500594a6",
+      "targetSha256": "40424d1cb3764752a4430424c45aac39be57c49367cedcc24e3f2da3e38c9bf2",
+      "sourceBytes": 5575,
+      "targetBytes": 7450
     },
     {
       "path": "packages/base/model-router/providers-options.test.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers-options.test.ts",
       "sourceSha256": "eff64128f298149f5fa937aac1e027b9754702b3f87c9d0e01f55dee3d646d49",
-      "targetSha256": "1d899bcdfd5d06bfdf6ddc0815cd9e2a5a74bc2a7342bdda55ae504ed1dc05b1",
+      "targetSha256": "eeee0f51c8e3451092f6bc4a8e9150a8f38585481553fe1867f64e567677de79",
       "sourceBytes": 4413,
-      "targetBytes": 5928
+      "targetBytes": 6021
     },
     {
       "path": "packages/base/model-router/providers.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers.ts",
-      "sourceSha256": "15c1d4152c041e634421731f411bcdbb2edf002900306b74fbe7c44091740c0b",
+      "sourceSha256": "8e36abcac47cd856b5ff7b72df36f970237ae4b8534867fddc17928f47025f34",
       "targetSha256": "5a57f4df08785843283e4fa32a3cb396373f731975f467ec0192fc811be362c5",
-      "sourceBytes": 6396,
+      "sourceBytes": 7183,
       "targetBytes": 9498
     },
     {
       "path": "packages/base/model-router/router-v3.test.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/router-v3.test.ts",
-      "sourceSha256": "b419493a4ba225a72095a62bf4eee132554ab481d6a6680ada2548649173328b",
-      "targetSha256": "63040203e63816194f377220cc5335e0e13873556306b7c1d055f281953f5772",
-      "sourceBytes": 15891,
-      "targetBytes": 22683
+      "sourceSha256": "d5b5f11e8e38c76780754ecc2197ea310967fe2a40ebe6408477c53b88e77811",
+      "targetSha256": "e0de83009268c0c33976ba6c32265c0c185a57f43d0b7785501c6db1f8549241",
+      "sourceBytes": 18405,
+      "targetBytes": 25159
     },
     {
       "path": "packages/base/model-router/router.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/router.ts",
-      "sourceSha256": "bbbc6fe180fd13ddf309267d23733545a716bcf061efe186cf82dc2c6f3d00a5",
-      "targetSha256": "3560255937af73c9f3104ec85325d271c28a5d4554599325a95e3277aade4340",
-      "sourceBytes": 22418,
-      "targetBytes": 27432
+      "sourceSha256": "ea2ca5f52a035f18071bf918f3e188f4330567cf50e10bbd966fc5d2a7f16ddf",
+      "targetSha256": "a80b0640f702799516af5c059aea38baa0555400cae258347acfdd7ffa0bd613",
+      "sourceBytes": 23504,
+      "targetBytes": 27800
     },
     {
       "path": "packages/runtime/src/assembly.ts",
@@ -338,18 +354,18 @@
     {
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
-      "sourceSha256": "f30e09fc7d1d112a18e08b45046bb558cd2f1d154e764eb4e87fa244a5821b64",
-      "targetSha256": "f1dba3e3006abaa975cbcdf2b4baf2ad417a63e76f9d2cea15ac5886db2d31c9",
-      "sourceBytes": 3218,
-      "targetBytes": 3265
+      "sourceSha256": "f0eda1fc928506ea98308bb23e5b83ca2cce7e0bc305742c8134da55b99f7924",
+      "targetSha256": "958abf0690791a03b653bb1985aded92b80aa1680a7fd479f6ab7c57157a2016",
+      "sourceBytes": 3291,
+      "targetBytes": 3338
     },
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
-      "sourceSha256": "edaa0e337c611b329acf8b78779442d52a395b05d0415b75f335ec2a71412116",
-      "targetSha256": "d3eb5c1d127d2d2caf955930ff6ce7eb7f2de8c0ef021f64d06a57908ddc0c39",
-      "sourceBytes": 18153,
-      "targetBytes": 20425
+      "sourceSha256": "36fe2821fb973c76222061c965a026a12c710c488aa962e8f64c6c48f005bac5",
+      "targetSha256": "8d4321744897edaf37b9713e569623ba854d80b30c06c5cde7788837e1cc0eb7",
+      "sourceBytes": 20113,
+      "targetBytes": 21528
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
@@ -370,41 +386,41 @@
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
-      "sourceSha256": "43d83da1afc2fbb980561b7e40d84e58c12fdda15a6ccc75f1b97e31b7a49f81",
-      "targetSha256": "cafc512c6c4817939156baf4878aa33dacb740bdbbecd4153cfacfb19203e0b4",
-      "sourceBytes": 33223,
-      "targetBytes": 34994
+      "sourceSha256": "2f6096496b72de90fe558e592b5716ad04355d2a59a1cc1c9da6560f644a0e08",
+      "targetSha256": "71f246f65fb9d636cb19295c4132f815c5b2e69d33de5d303de6c9274b4a86ff",
+      "sourceBytes": 33825,
+      "targetBytes": 35596
     },
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "sourceSha256": "d2461e0a70b494bbbe2ed82bf751778123922e17d9ee79f953d750a825d506d0",
-      "targetSha256": "b078796f140cdeb109cdea7012b7d1b7ece8285f74f7b321361bdca9146cff59",
-      "sourceBytes": 29849,
-      "targetBytes": 30434
+      "sourceSha256": "fa0c7713e61a6dff8106579b0d07e6c2049f3cca43466efb1f4703d0044c6fb4",
+      "targetSha256": "a851d83d367ed61ff61cb3a50fcc336c81833de386eb595c74ce5a07b48524bc",
+      "sourceBytes": 30063,
+      "targetBytes": 30648
     },
     {
       "path": "packages/video-studio/src/producer-gate.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
-      "sourceSha256": "7443fda2afd39916644f08314eb7f0e4cd7b2b707a29c58e448b5fc7215f228d",
-      "targetSha256": "f46bf729534cd83b4c9d9af319674ee788725b8ad14ba7110d030b22fd0b020b",
-      "sourceBytes": 33048,
-      "targetBytes": 34516
+      "sourceSha256": "c40418fdd4a132866034945ac7425bac4f22ca3fceb02dec3e1aca360538b6ee",
+      "targetSha256": "0fc24e7d075c776a452b5977264c9b4c9cda6211f21dbb3cbeac72212df034e4",
+      "sourceBytes": 33373,
+      "targetBytes": 34841
     },
     {
       "path": "packages/video-studio/src/producer-gate.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
-      "sourceSha256": "d5812d44e2b1344639c6c465e786283442c97ae53edd2476689ad4a233a1f6a0",
-      "targetSha256": "04b6987fb7023209a6ce1f529e8c9a1b7cdfe2e291986e6342e5c82771d06edc",
-      "sourceBytes": 35428,
-      "targetBytes": 36808
+      "sourceSha256": "b04b1cc09b7fb44f13568c589aa5a0e9e3d562b30544adb0c00f923a30784a41",
+      "targetSha256": "1810d3a5dafe265c4560302f87aab498a476372650485f0aeaad11dec72089ed",
+      "sourceBytes": 36535,
+      "targetBytes": 37559
     },
     {
       "path": "packages/video-studio/src/requirement-authority.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.test.ts",
-      "sourceSha256": "4acf2df932878a4923dfb28ed277453ddadc3f16e7e6d324cdf617175969d715",
-      "targetSha256": "61be04bab3f95254372153f23869abacdcafcbd081f2b7bf2361f47af26a1645",
-      "sourceBytes": 30322,
+      "sourceSha256": "b9ddfbb7f48277976df7ce1fc2b6227321126ea965cbcaab0749202ad71b7719",
+      "targetSha256": "c01c0ead1c8c059bee791cd440b6c446c0cf680f96df5e99f1c113204400b3f7",
+      "sourceBytes": 30605,
       "targetBytes": 30598
     },
     {
@@ -418,10 +434,18 @@
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
-      "sourceSha256": "d90b50c06d3a3767b9022617a3d974485cf88f162c03610fab6f77ea74433a78",
-      "targetSha256": "bf72df27f868c44b15d7de710036c4b45479edbc45d48112b99ebb07dc30dc65",
-      "sourceBytes": 59002,
-      "targetBytes": 59070
+      "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
+      "targetSha256": "1ddae7d01239914fdc699adb3bc95a197724adefe9e432299178d5f1d40586d4",
+      "sourceBytes": 59825,
+      "targetBytes": 59791
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
+      "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
+      "targetSha256": "d9f0babbc6cb7473ccb34246d11220facb55863f121d700032481d65c98a9b2b",
+      "sourceBytes": 52098,
+      "targetBytes": 52473
     },
     {
       "path": "packages/video-studio/src/routed-adapter.test.ts",
@@ -442,10 +466,10 @@
     {
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "sourceSha256": "f9528fb5783df3c4c8c880c36c98d19b804774f4d9a1c684f0c7c8bbdaf9b979",
-      "targetSha256": "0d77cbf347e84c79a4eb77749c7ed3385ec1a4ff7dbd49582831702942ec7e61",
-      "sourceBytes": 35420,
-      "targetBytes": 36508
+      "sourceSha256": "2dcfc91a14f3214cae909896d76fdab8469ccd0281ea6be996f18d940751f7b5",
+      "targetSha256": "9937914c8dceee499855eb436f19b839f0f26df837932f2bcace1a0e606385c9",
+      "sourceBytes": 35942,
+      "targetBytes": 37030
     },
     {
       "path": "packages/video-studio/src/studio.ts",
@@ -546,18 +570,10 @@
     {
       "path": "vendor/supermickey/hyperreality-system/engines/requirement-discovery-engine.js",
       "targetPath": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/requirement-discovery-engine.js",
-      "sourceSha256": "d658bd5033ff671061b0e31414d4578838496a22b19d204674abc34c7c7a5fdb",
-      "targetSha256": "709c451350e37a6e111c725cb220a5d51cc73dbff5312ffa6fbdba90ef64eb64",
-      "sourceBytes": 39284,
-      "targetBytes": 39511
-    },
-    {
-      "path": "vendor/supermickey/hyperreality-system/skills/creative-theme-generator/index.js",
-      "targetPath": "engines/video-edit/vendor/supermickey/hyperreality-system/skills/creative-theme-generator/index.js",
-      "sourceSha256": "7221bdbc2b2858c8bffb8b4eec640eb78c835c39668d247bb9177e2a1ef31f1e",
-      "targetSha256": "e79065e6bb87b0aa1418c9a509deabb575750635ef22f4b162148e6456fbeaae",
-      "sourceBytes": 77968,
-      "targetBytes": 78885
+      "sourceSha256": "d372d61aa6c851e8f4c5976ab2bb97604722d101054aabe3fae9b31c835697b6",
+      "targetSha256": "371dfa9b526d8e241b49495b9d1f879a6ad275dd8017721938848142e8d1d003",
+      "sourceBytes": 39359,
+      "targetBytes": 39623
     }
   ],
   "targetOwnedFiles": [
@@ -821,7 +837,7 @@
       "path": "pengmanager-toolchain.lock.json",
       "mode": "100644",
       "bytes": 6606,
-      "targetSha256": "423f715b38c9b8fd10dedfa74e380f5b933096048a6e8d44ccedfaa5ff342978",
+      "targetSha256": "837a3e17436dfe98573ee48791f045609dbd37ee8caa62a764c2ec5b28879ec7",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },

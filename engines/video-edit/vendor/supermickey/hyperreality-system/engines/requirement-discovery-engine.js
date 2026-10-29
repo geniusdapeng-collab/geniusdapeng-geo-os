@@ -243,10 +243,8 @@ class BaseDiscoveryAgent {
         const useSchema = this.name === 'SceneArchitect' ? null : schema;
         console.log(`[DEBUG] Agent=${this.name}, useSchema=${useSchema === null ? 'null' : 'provided'}, schemaSize=${useSchema ? JSON.stringify(useSchema).length : 0}`);
         
-        // Current OpenAI-compatible thinking models can consume the entire
-        // completion budget as reasoning before emitting content. Use the
-        // provider's JSON mode and disable thinking for this structured scene
-        // contract; the caller still validates every field at the host boundary.
+        // Require structured JSON and disable reasoning for the large scene
+        // contract so completion tokens are spent on content, not hidden thought.
         if (this.name === 'SceneArchitect') {
           const result = await Promise.race([
             this.llmEngine.reason(fullPrompt, { 

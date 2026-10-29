@@ -23,6 +23,13 @@ import {
 } from "./policy.js";
 import { catalogByTier, chainFor } from "./pool.js";
 import { computeCredits } from "./credits.js";
+import {
+  DEEPSEEK_FLASH_CONTEXT_TOKENS,
+  DEFAULT_JSON_OUTPUT_TOKENS,
+  LONG_CONTEXT_TOKENS,
+  deepSeekInputTokenBudget,
+  estimateDeepSeekTokens,
+} from "./token-budget.js";
 
 /* ================= 峰谷窗口（F6.3，Asia/Shanghai） ================= */
 
@@ -338,10 +345,15 @@ export function projectBill(events: Array<{ model_trace?: { model_id: string; ti
 
 /* ================= v3.0 通用调度：routeSmart（场景 × 套餐 × 复杂度 × 真实计量） ================= */
 
-/** 长文路由条件：输入字符超阈值 → 档内长文款前置（≈32K tokens 粗估） */
-export const LONG_CONTEXT_CHARS = 24_000;
-/** 档内 token 天花板：估算超限 → 自动升一档（复杂度信号，规则引擎零成本） */
-export const TIER_TOKEN_CEILING: Record<Tier3, number> = { L1: 4000, L2: 24_000, L3: Number.POSITIVE_INFINITY };
+/**
+ * System limits use tokens, not characters. The final per-call input budget is
+ * recalculated as official context tokens minus that call's output ceiling.
+ */
+export const TIER_TOKEN_CEILING: Record<Tier3, number> = {
+  L1: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEFAULT_JSON_OUTPUT_TOKENS,
+  L2: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEFAULT_JSON_OUTPUT_TOKENS,
+  L3: Number.POSITIVE_INFINITY,
+};
 
 export interface SmartTask extends RouteTask {
   /** OpenAI-compatible generation controls, without model/auth/accounting overrides. */
@@ -462,14 +474,16 @@ export async function routeSmart(
     // medium：保持场景表/套餐映射结果（默认 L2）
   }
 
-  // 复杂度信号（确定性规则，零模型成本）：输入超档内天花板 → 升一档
-  const inputChars = task.messages.reduce((n, m) => n + m.content.length, 0);
-  const longContext = inputChars > LONG_CONTEXT_CHARS;
-  // 当前档已有长上下文款时，保持本档并让 chainFor 将其前置。否则长输入
-  // 从 L2 升到 L3 会绕开 deepseek-v4-pro，转而调用一些统一网关并不支持的 L3 模型。
-  const hasLongContextModel = catalogByTier(tier).some(model => model.longContext === true);
-  if (!forcedModel && inputChars > TIER_TOKEN_CEILING[tier] && !(longContext && hasLongContextModel)) {
-    tier = tierUp(tier) ?? tier;
+  // One shared token unit for context routing, escalation and failure checks.
+  const inputTokens = estimateDeepSeekTokens(task.messages.map((message) => message.content).join("\n"));
+  const longContext = inputTokens > LONG_CONTEXT_TOKENS;
+  if (!forcedModel && inputTokens > TIER_TOKEN_CEILING[tier]) tier = tierUp(tier) ?? tier;
+  const outputTokens = task.generation?.maxTokens ?? DEFAULT_JSON_OUTPUT_TOKENS;
+  if (inputTokens > deepSeekInputTokenBudget(outputTokens)) {
+    const reason = `DEEPSEEK_CONTEXT_EXCEEDED: estimated ${inputTokens} input tokens + ${outputTokens} output tokens > ${DEEPSEEK_FLASH_CONTEXT_TOKENS}`;
+    const from = forcedModel ?? tier;
+    await sink.recordDegradation({ from, to: null, reason, action: task.action });
+    return { kind: "unavailable", degraded: [{ from, to: null, reason }], tier, scene };
   }
 
   // F6.1 记忆复用：命中零消耗直返（留痕）

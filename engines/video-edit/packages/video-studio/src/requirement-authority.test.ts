@@ -140,7 +140,7 @@ describe("current requirement authority and original transport", () => {
   it("pins the exact native source bodies used by the offline fixtures", () => {
     for (const [relative, hash] of [
       ["index.js", "489171f35ce7cf5fc2cc4387e07380337ea1a574df638533f2b90ed6bd1f86fd"],
-      ["engines/requirement-discovery-engine.js", "709c451350e37a6e111c725cb220a5d51cc73dbff5312ffa6fbdba90ef64eb64"],
+      ["engines/requirement-discovery-engine.js", "371dfa9b526d8e241b49495b9d1f879a6ad275dd8017721938848142e8d1d003"],
       ["skills/creative-theme-generator/index.js", "e79065e6bb87b0aa1418c9a509deabb575750635ef22f4b162148e6456fbeaae"],
       ["skills/creative-theme-generator/dynamic-type-resolver.js", "65bf2ea16a8871c65c21bea0621af92b98ff5f924b753be4dc96223561c61368"]
     ]) expect(digest(readFileSync(path.join(vendor, relative!), "utf8"))).toBe(hash);

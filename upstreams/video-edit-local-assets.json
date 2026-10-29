@@ -1,11 +1,11 @@
 {
   "schemaVersion": "pengmanager.video-local-assets/v1",
   "sourceRepository": "geniusdapeng-collab/WorkLoom-video-edit",
-  "sourceCommit": "fdb28c333c82019f1e753cc34fdfedf488af73c1",
+  "sourceCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "scope": "complete-local-embedded-asset-integrity-only",
   "workloomActivationGranted": false,
   "assetCount": 644,
-  "digest": "110a01146c06ab137249baf93cd50d6c8bfe904f8abc88d5281bf4488b562dca",
+  "digest": "b3c76f43a38099da6c41cfbc9ee3c2a3c22b1dcd363ba5f6bc171b99a1b7da12",
   "omittedUpstreamAssets": [],
   "bundles": [
     {
@@ -13,8 +13,8 @@
       "version": "1.0.0",
       "status": "candidate",
       "assets": 644,
-      "digest": "110a01146c06ab137249baf93cd50d6c8bfe904f8abc88d5281bf4488b562dca",
-      "manifestSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325"
+      "digest": "b3c76f43a38099da6c41cfbc9ee3c2a3c22b1dcd363ba5f6bc171b99a1b7da12",
+      "manifestSha256": "b29aad45586af8e7e382f51adb8f5ca0a721b64d1667a6825cae72100a95ab93"
     },
     {
       "bundle": "geo-growth",

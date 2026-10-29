@@ -4,8 +4,8 @@ import os from 'node:os';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createRequire } from 'node:module';
 
-export const SOURCE_MAIN = 'fdb28c333c82019f1e753cc34fdfedf488af73c1';
-export const SOURCE_FILE_COUNT = 3555;
+export const SOURCE_MAIN = 'c0aca4a62a1d53fd4eccab7865668b7250c22ebc';
+export const SOURCE_FILE_COUNT = 3561;
 export const SCOPE = Object.freeze({ tenantId: 'tenant-pengmanager-video', workspaceId: 'ws-pengmanager-video', slug: 'pengmanager-video', memberNo: 'MEM-001', memberId: 'mem-pengmanager-video-owner' });
 export class VideoRuntimeError extends Error {
   constructor(code, message, options) { super(message, options); this.name = 'VideoRuntimeError'; this.code = code; }

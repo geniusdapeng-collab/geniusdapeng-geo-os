@@ -59,7 +59,10 @@ describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
   });
   it("retains HTTP errors instead of reporting an answer", async () => {
     mode = "error";
-    const failure = await provider().chat(messages).catch(error => error as Error);
+    const failure: Error = await provider().chat(messages).then(
+      () => { throw new Error("expected provider failure"); },
+      (error: unknown) => error as Error,
+    );
     expect(failure.message).toContain("模型调用失败：HTTP 400");
     expect(failure.message).toContain("invalid_request_error");
     expect(failure.message).toContain("maximum context length exceeded");
