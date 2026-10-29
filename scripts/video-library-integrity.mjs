@@ -6,6 +6,7 @@ import { localBundleDigest, loadVerifiedBundleManifest } from "../engines/video-
 
 const root = resolve(import.meta.dirname, ".."), bundles = join(root, "engines/video-edit/bundles"), dir = join(bundles, "ai-video");
 const file = join(dir, "bundle.json");
+const pin = JSON.parse(readFileSync(join(root, "upstreams", "workloom-video-edit.pin.json"), "utf8"));
 const args = process.argv.slice(2);
 if (args.some(arg => arg !== "--write") || args.length > 1) throw new Error("Use --write to refresh local asset bytes, or no arguments to verify.");
 if (args.includes("--write")) {
@@ -41,7 +42,7 @@ if (args.includes("--write")) {
   document.integrity.digest = localBundleDigest(document);
   writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`);
   writeFileSync(join(root, "upstreams/video-edit-local-assets.json"), `${JSON.stringify({ schemaVersion: "pengmanager.video-local-assets/v1",
-    sourceRepository: "geniusdapeng-collab/WorkLoom-video-edit", sourceCommit: "f5fed51e419e954a2204684e8a1914be91201114",
+    sourceRepository: "geniusdapeng-collab/WorkLoom-video-edit", sourceCommit: pin.commit,
     scope: "local-embedded-asset-integrity-only", workloomActivationGranted: false,
     assetCount: paths.length, digest: document.integrity.digest, omittedUpstreamAssets: removed.sort() }, null, 2)}\n`);
 }

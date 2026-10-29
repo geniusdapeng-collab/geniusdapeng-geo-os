@@ -142,6 +142,31 @@ describe("商品情报档案引擎回归", () => {
     expect(text).toContain("提及次数不参与定级");
   });
 
+  it("单源媒体公开卖点保留在 Brief 摘要卡，并如实标为 reported", () => {
+    const root = tempRoot();
+    const engine = new JennyLoomEngine({ storeRoot: root });
+    const input = { name: "星野空气循环扇", brand: "星野", category: "小家电" };
+    const plan = engine.plan(input);
+    const raw = rawFixture();
+    raw.A1.identity.official_selling_points = [{
+      point: "媒体实测九档风量",
+      source_url: "https://news.example.com/xingye-f3",
+      channel: "媒体报道",
+    }];
+    raw.A2.reviews = [];
+    const result = engine.assemble(plan.trace_id, input, raw);
+    expect(result.ok).toBe(true);
+
+    const brief = (result.cards!.brief_card as {
+      sellingPoints: string[];
+      evidence_note: string;
+    });
+    expect(brief.sellingPoints).toContain("媒体实测九档风量");
+    expect(brief.evidence_note).toContain("1 条单源公开主张");
+    expect(brief.evidence_note).not.toContain("1 条官方确认");
+    expect(brief.evidence_note).not.toContain("0 条单源公开主张");
+  });
+
   it("信封链：逐环 prev_checksum 连续且链校验通过；篡改即判断裂", () => {
     const root = tempRoot();
     const engine = new JennyLoomEngine({ storeRoot: root });

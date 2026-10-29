@@ -111,7 +111,7 @@ test("explicit color-map shots are recorded as taken over and do not receive sha
   expect(summary.colorMap.applied).toBe(1);
 }, 120_000);
 test("actual cover CLI without a timeline publishes declared intro forms and preserves every soft subtitle stream", async () => {
-  const result = await command("scripts/tools/edit-cover.mts", ["--input", path.join(out, "master/master-clean.mp4"), "--out-dir", out, "--variants", "warm-story,clean-tech", "--title", "看山吃饺子", "--hook", "吃饺子", "--burn-intro", "0.2", "--renderer", "ffmpeg"]);
+  const result = await command("scripts/tools/edit-cover.mts", ["--input", path.join(out, "master/master-clean.mp4"), "--out-dir", out, "--variants", "warm-story,clean-tech", "--title", "吃饺子", "--burn-intro", "0.2", "--renderer", "ffmpeg"]);
   expect(result.code, result.text).toBe(0);
   const manifest = json(path.join(out, "delivery-manifest.json")); expect(manifest.coverIntro.forms.length).toBeGreaterThan(0);
   const project = json(path.join(out, "film-project.json"));
@@ -119,13 +119,13 @@ test("actual cover CLI without a timeline publishes declared intro forms and pre
     const saved = project.layers.variants.find((row: any) => row.id === variant.id);
     expect(saved.artifacts.cover.path).toBe(variant.cover.path);
     expect(saved.artifacts.cover.sha256).toBe(sha(path.join(out, variant.cover.path)));
-    expect(saved.style.cover).toMatchObject({ title: "看山吃饺子", hook: "吃饺子" });
+    expect(saved.style.cover).toMatchObject({ title: "吃饺子", hook: "" });
   }
   for (const form of manifest.coverIntro.forms.filter((row: any) => row.form === "softsub" || row.form === ".softsub")) expect(media(path.join(out, form.output ?? form.path)).streams.some((stream: any) => stream.codec_type === "subtitle")).toBe(true);
   expect((await inspectDeliveryManifest({ root: out, manifest, bins })).passed).toBe(true);
 }, 120_000);
 test("actual Chinese package selects declared burned/danmaku/intro assets and repairs an owned stale file", async () => {
-  const args = ["--delivery", out, "--title", "看山吃饺子", "--version", "V1"];
+  const args = ["--delivery", out, "--title", "吃饺子", "--version", "V1"];
   let result = await command("scripts/tools/edit-package.mts", args); expect(result.code, result.text).toBe(0);
   let manifest = json(path.join(out, "delivery-manifest.json")); expect(manifest.displaySet.artifacts.some((row: any) => row.role === "danmaku")).toBe(true);
   for (const row of manifest.displaySet.artifacts) { expect(sha(row.path)).toBe(row.sha256); expect(sha(row.source)).toBe(row.sha256); }
@@ -135,7 +135,7 @@ test("actual Chinese package selects declared burned/danmaku/intro assets and re
   manifest = json(path.join(out, "delivery-manifest.json")); expect(sha(owned.path)).toBe(sha(owned.source)); expect((await inspectDeliveryManifest({ root: out, manifest, bins })).passed).toBe(true);
 }, 90_000);
 test("Chinese package refuses unknown collisions and unregistered publish-shaped files", async () => {
-  const args = ["--delivery", out, "--title", "看山吃饺子", "--version", "V1"];
+  const args = ["--delivery", out, "--title", "吃饺子", "--version", "V1"];
   const manifest = json(path.join(out, "delivery-manifest.json")), row = manifest.displaySet.artifacts[0];
   fs.unlinkSync(row.path); fs.writeFileSync(row.path, "unowned collision"); fs.unlinkSync(path.join(out, "交付/交付清单.json"));
   const result = await command("scripts/tools/edit-package.mts", args); expect(result.code).not.toBe(0); expect(result.text).toMatch(/其他文件占用/); expect(fs.readFileSync(row.path, "utf8")).toBe("unowned collision");

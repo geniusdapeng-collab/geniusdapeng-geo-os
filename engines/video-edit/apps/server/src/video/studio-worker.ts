@@ -31,6 +31,8 @@ import {
   installVendorEngineBridge,
   installVendorPortraitBindingBridge,
   installVendorRenderCompatBridge,
+  resolveVideoModel,
+  resolveVideoNonThinking,
   reviewStage,
   updateContextBundle,
   type ApprovalCallback,
@@ -601,12 +603,15 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
   }
   // v3.0 收口：注入路由配置——预生产全部 LLM 调用经 routeSmart
   // （preproduction 场景 × 降级链 × 真实计量 × model.call 事件留痕，fastModel 快速调用强制 L1）
+  const forceModel = resolveVideoModel(process.env) || undefined;
   llm.attachRouter({
     providers: poolFromEnv(),
     sink: new GatewayEventSink(getGatewayPool(), scope, { id: "video-studio" }),
     policy: modelPolicyFor("ai-video"),
     scene: "preproduction",
     allowPeak: process.env.WORKLOOM_ALLOW_PEAK === "1",
+    forceModel,
+    nonThinking: forceModel ? resolveVideoNonThinking(forceModel, process.env) : false,
   });
 
   /**
@@ -804,6 +809,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             ],
             context: { gate, vendorType: req.vendorType, runId: entry.runId, contentChars: (req.contentMd ?? "").length,
               ...(marketingReview ? { marketingFactsAuthority: marketingReview.context } : {}) },
+            ...(req.contracts ? { contracts: req.contracts } : {}),
             // 内部准备门默认 fail-closed：评审模型不可用即打回，不静默放行
             allowFallbackApprove: (process.env.HR_PRODUCER_FALLBACK_APPROVE ?? "0") === "1",
             log: (line) => console.log(line)

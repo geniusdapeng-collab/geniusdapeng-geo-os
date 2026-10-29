@@ -92,6 +92,15 @@ describe("PRD explicit separate cover and subtitle composition declarations", ()
     }
     expect(input).toEqual(before);
   });
+  it("allows persistent content text with a separate silent cover intro and records its duration", () => {
+    const profile = normalizePrdProductionProfile(metadata({
+      subtitleMode: "burned", persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6,
+    }));
+    expect(profile).toMatchObject({ persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6 });
+  });
+  it.each([-0.1, 5.1, "0.6", null, Number.NaN])("rejects invalid cover intro duration %j", coverIntroSeconds => {
+    expect(() => normalizePrdProductionProfile(metadata({ coverIntroSeconds }))).toThrow("PRD_PROFILE_INVALID");
+  });
   it.each(required)("still requires the original %s when optional atoms are present", key => {
     const input = metadata({ coverDelivery: "none" });
     delete requirementRecord(requirementRecord(input.brief, "brief").productionRequirements, "production requirements")[key];
@@ -132,7 +141,6 @@ describe("PRD explicit separate cover and subtitle composition declarations", ()
     { subtitleMode: "burned", sidecarPolicy: "dialogue-only" }, { subtitleMode: "none", sidecarPolicy: "dialogue-and-composite-ass" },
     { subtitleMode: "none", persistentSubtitleText: "完整持续警示" },
     { subtitleMode: "burned", persistentSubtitleText: "完整持续警示", titleCard: true },
-    { subtitleMode: "burned", persistentSubtitleText: "完整持续警示", openWithCover: true },
     { subtitleMode: "both", persistentSubtitleText: "完整持续警示" },
     { subtitleMode: "sidecar", persistentSubtitleText: "完整持续警示" },
     { subtitleMode: "both", persistentSubtitleText: "完整持续警示", sidecarPolicy: "dialogue-only" },
@@ -165,7 +173,7 @@ describe("PRD rule-owned delivery projection and legacy byte compatibility", () 
     const item = requirementRecord(requirementRecord(requirementRecord(deliverables.items, "deliverable item").properties, "item fields").item, "item enum");
     return { properties, deliverables, item, output: requirementRecord(properties.outputFormat, "output schema") };
   }
-  it("keeps the exact former normalized profile and delivery bytes when the three new keys are omitted", () => {
+  it("keeps the exact former normalized profile and delivery bytes when optional delivery keys are omitted", () => {
     const value = fixture(), profile = normalizePrdProductionProfile(value.metadata), original = standard(), before = structuredClone(original);
     const expectedProfile = { targetDuration: 30, aspectRatio: "9:16", targetPlatform: "抖音", resolution: "1080p", frameRate: 30,
       subtitleMode: "both", nativeAudio: true, openWithCover: false, titleCard: false, durationToleranceFrames: 1 };
@@ -381,6 +389,15 @@ describe("PRD real model response and provenance", () => {
     model.scenePlan.scenes[0]!.duration += 1 / 30;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).not.toThrow();
     model.scenePlan.scenes[0]!.duration += 1 / 30;
+    expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
+  });
+  it("accepts a 34-second scene total for a 30-second target while preserving each approved node", () => {
+    const value = fixture(), model = structuredClone(value.production);
+    value.contract.scenes[0]!.duration += 4;
+    model.scenePlan.scenes[0]!.duration += 4;
+    expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).not.toThrow();
+    model.scenePlan.scenes[0]!.duration += 1.1;
+    value.contract.scenes[0]!.duration += 1.1;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
   });
   it("preserves ten approved nodes and a long purpose without the obsolete PRD 8-node/200-character ceilings", () => {

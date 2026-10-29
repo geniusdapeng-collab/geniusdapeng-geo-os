@@ -56,6 +56,14 @@ describe("video adapter → routeSmart → provider → serialized HTTP", () => 
     expect(bodies[0]).toMatchObject({ model: "deepseek-v4-pro", temperature: 0, top_p: 0.7, max_tokens: 7000, response_format: { type: "json_object" }, thinking: { type: "disabled" } });
     expect(traces).toHaveLength(1); expect(traces[0]).toMatchObject({ model_id: "deepseek-v4-pro", scene: "preproduction", bill_to: "tenant", tier: "L2", credits: expect.any(Number) });
   });
+  it("deployment non-thinking mode overrides an explicit thinking request", async () => {
+    const sink: EventSink = { recordModelTrace: async () => undefined, recordDegradation: async () => undefined, recordCircuitBreak: async () => undefined };
+    const provider = new OpenAiCompatibleProvider("deepseek-flash", { baseUrl: origin });
+    const engine = new WorkloomLLMEngine({ baseUrl: origin, apiKey: "local-test-only", model: "deepseek-flash",
+      router: { providers: new Map([[provider.modelId, provider]]), sink, forceModel: "deepseek-flash", nonThinking: true } });
+    expect(await engine.reason("text", { thinking: { type: "enabled", budget: 10_000 } })).toMatchObject({ success: true });
+    expect(bodies[0]).toMatchObject({ model: "deepseek-flash", thinking: { type: "disabled" } });
+  });
   it("matches direct adapter defaults while leaving thinking and JSON absent", async () => {
     expect(await setup().engine.reason("text")).toMatchObject({ success: true });
     const routed = bodies[0]!;

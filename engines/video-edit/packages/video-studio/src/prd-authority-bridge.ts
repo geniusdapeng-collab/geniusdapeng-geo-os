@@ -10,6 +10,7 @@ import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdModelSchema, prdAuthorityPrompt, prdFail,
   validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
 } from "./prd-authority.js";
+import type { ProducerReviewContracts } from "./producer-gate.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
@@ -53,6 +54,38 @@ interface Scope {
 const scopes = new AsyncLocalStorage<Scope | undefined>();
 const systems = new WeakMap<object, Scope>();
 const generators = new WeakMap<object, Scope>();
+const promptReviewContracts = new Map<string, { createdAt: number; contracts: ProducerReviewContracts }>();
+const PROMPT_REVIEW_CONTRACT_TTL_MS = 10 * 60 * 1000;
+const PROMPT_REVIEW_CONTRACT_LIMIT = 32;
+
+/**
+ * The vendor creates the G6 review text and the structured prompt cards in the
+ * same call. Keep the exact cards in memory by report hash so the host can pass
+ * both to the producer gate without reparsing Markdown.
+ */
+function rememberPromptReviewContracts(prompts: RequirementRecord[], report: string): void {
+  const now = Date.now();
+  for (const [key, value] of promptReviewContracts) {
+    if (now - value.createdAt > PROMPT_REVIEW_CONTRACT_TTL_MS) promptReviewContracts.delete(key);
+  }
+  const contracts: ProducerReviewContracts = { shots: structuredClone(prompts) as RequirementRecord[] };
+  const key = createHash("sha256").update(report).digest("hex");
+  promptReviewContracts.set(key, { createdAt: now, contracts });
+  while (promptReviewContracts.size > PROMPT_REVIEW_CONTRACT_LIMIT) {
+    const oldest = promptReviewContracts.keys().next().value;
+    if (typeof oldest !== "string") break;
+    promptReviewContracts.delete(oldest);
+  }
+}
+
+/** One-shot retrieval by the exact G6 report bytes; absence is explicit, never guessed. */
+export function consumePromptReviewContracts(report: string): ProducerReviewContracts | undefined {
+  const key = createHash("sha256").update(report).digest("hex");
+  const found = promptReviewContracts.get(key);
+  promptReviewContracts.delete(key);
+  if (!found || Date.now() - found.createdAt > PROMPT_REVIEW_CONTRACT_TTL_MS) return undefined;
+  return structuredClone(found.contracts);
+}
 
 function fatal(scope: Scope, error: unknown): never {
   scope.fatal ??= { error };
@@ -1099,7 +1132,9 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
       lines.push("## 全部校验明细", "", ...report.errors.map(error => `- 错误：${error}`), ...report.warnings.map(warning => `- 警告：${warning}`));
       if (!report.errors.length && !report.warnings.length) lines.push("- 当前结构校验无错误或警告；不代表 G6/G7 已批准。");
       lines.push("", "G6 仍须审核事实用途、完整 Brief、具体动作与颜色连贯、人物和服装、台词与现场声音、字幕要求及技术规格；G7 继续真实执行。完整来源在本次模型调用中提供，本报告不代替真实审核。");
-      return lines.join("\n");
+      const rendered = lines.join("\n");
+      rememberPromptReviewContracts(prompts, rendered);
+      return rendered;
     });
   });
   const applied: typeof changes = [];

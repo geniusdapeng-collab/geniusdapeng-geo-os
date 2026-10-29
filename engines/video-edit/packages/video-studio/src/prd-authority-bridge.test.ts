@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage, ChatOptions, ModelProvider } from "@workloom/base/model-router";
 import { bindRequirementContract, requirementCast, requirementHash, requirementRecord, type RequirementContract, type RequirementRecord } from "./requirement-contract.js";
 import { effectivePrdModelSchema, prdAuthorityPrompt, preparePrdAuthority } from "./prd-authority.js";
-import { assertPrdAuthorityBridge, installPrdAuthorityBridge, installPrdProductionBridge, productionModelInput, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import {
+  assertPrdAuthorityBridge, consumePromptReviewContracts, installPrdAuthorityBridge, installPrdProductionBridge,
+  productionModelInput, withPrdAuthorityScope
+} from "./prd-authority-bridge.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -1629,6 +1632,10 @@ describe("approved production authority at native technical and title seams", ()
       expect(report).toContain("exceeds 12000 char limit"); expect(report).toContain("G6 仍须审核事实用途");
       expect(report).toContain("subtitle 指片头副标题，正式后期字幕仍按 Brief 执行");
       expect(report).not.toContain("待生成"); expect(report).not.toContain("请补充"); expect(shot).toEqual(before);
+      expect(consumePromptReviewContracts(report)?.shots[0]).toMatchObject({
+        shotId: shot.shotId, sceneType: shot.sceneType, duration: shot.duration, prompt: shot.prompt,
+      });
+      expect(consumePromptReviewContracts(report)).toBeUndefined();
     });
     expect(h.calls.some(call => call.key === "_generatePromptsReport")).toBe(false);
   });

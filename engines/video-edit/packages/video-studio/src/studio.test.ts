@@ -28,6 +28,7 @@ const studioMocks = vi.hoisted(() => ({
   disposed: [] as string[],
   requirementScopes: [] as Array<{ metadata: unknown; options: ObservedRequirementAuthority | undefined }>,
   prdScopes: [] as ObservedPrdScope[],
+  promptContracts: {} as Record<string, unknown>,
   failInstall: "",
   failDispose: ""
 }));
@@ -63,6 +64,7 @@ vi.mock("./requirement-contract-bridge.js", () => ({
 // behavior are exercised with the real generator/agents in prd-authority-bridge.test.ts.
 vi.mock("./prd-authority-bridge.js", () => ({
   assertPrdAuthorityBridge: () => undefined,
+  consumePromptReviewContracts: (report: string) => studioMocks.promptContracts[report],
   withPrdAuthorityScope: (authority: PrdAuthority | undefined, operation: () => unknown,
     validateAuthority?: () => void, approvedTheme?: () => RequirementApprovedTheme | undefined) => {
     studioMocks.prdScopes.push({ authority, validateAuthority, approvedTheme });
@@ -117,6 +119,7 @@ beforeEach(() => {
   studioMocks.disposed.length = 0;
   studioMocks.requirementScopes.length = 0;
   studioMocks.prdScopes.length = 0;
+  studioMocks.promptContracts = {};
   studioMocks.failInstall = "";
   studioMocks.failDispose = "";
 });
@@ -161,6 +164,18 @@ function deferred() {
 }
 
 describe("VideoStudio 确认作用域与装配清理", () => {
+  it("passes the exact structured G6 contract captured beside the report", async () => {
+    const contracts = { shots: [{ shotId: "SC-01", sceneType: "opening", duration: 5, prompt: "exact prompt" }] };
+    studioMocks.promptContracts["exact report"] = contracts;
+    const onApproval = vi.fn(async () => ({ approved: true }));
+    studioMocks.create.mockImplementation(async () => {
+      const verdict = await globalThis.__HR_CONFIRMATION_HANDLER__!({ type: "prompt", content: "exact report", runId: "g6" });
+      return { success: verdict.approved, verdict, stages: {} };
+    });
+    const result = await studio(onApproval).runPreproduction({ projectId: "project-G6", intent: "intent" });
+    expect(result).toMatchObject({ success: true, verdict: { approved: true } });
+    expect(onApproval).toHaveBeenCalledWith(expect.objectContaining({ gate: "G6_PROMPT", contentMd: "exact report", contracts }));
+  });
   it("两条真实 studio 运行交错确认，项目与事件不串线", async () => {
     const ready = [deferred(), deferred()];
     const release = [deferred(), deferred()];
@@ -270,6 +285,18 @@ describe("LLM 适配器", () => {
     });
     expect(engine).not.toBeNull();
     expect(engine?.model).toBe("m");
+  });
+
+  it("DeepSeek 部署从 DEEPSEEK_* 与 OpenAI 端点构建，合法别名规范到官方模型名", () => {
+    const engine = WorkloomLLMEngine.fromEnv({
+      DEEPSEEK_BASE_URL: "https://api.deepseek.com/anthropic",
+      LLM_BASE_URL: "https://api.deepseek.com",
+      DEEPSEEK_API_KEY: "test-only",
+      DEEPSEEK_MODEL: "deepseek-v4-flash",
+    });
+    expect(engine).not.toBeNull();
+    expect(engine?.model).toBe("deepseek-flash");
+    expect(engine?.getStats()).toMatchObject({ model: "deepseek-flash" });
   });
 
   it("JSON 提取容错：围栏/前后噪声", () => {

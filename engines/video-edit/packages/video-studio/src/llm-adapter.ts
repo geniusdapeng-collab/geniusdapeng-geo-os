@@ -13,6 +13,10 @@
  * 真实计量 + model.call 事件留痕 + 降级链），vendor 只读纪律不破。
  */
 import {
+  normalizeModelContent,
+  deepSeekInputTokenBudget,
+  estimateDeepSeekTokens,
+  isDeepSeekFlashModel,
   routeSmart, type EventSink, type ModelPolicy, type ModelProvider, type PlanId,
 } from "@workloom/base/model-router";
 import { existsSync } from "node:fs";
@@ -20,6 +24,12 @@ import { createRequire } from "node:module";
 import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productionModelInput } from "./prd-authority-bridge.js";
+import {
+  resolveOpenAiCompatibleBaseUrl,
+  resolveVideoApiKey,
+  resolveVideoModel,
+  resolveVideoNonThinking,
+} from "./llm-config.js";
 
 export interface LLMReasonOptions {
   model?: string;
@@ -50,6 +60,8 @@ export interface WorkloomLLMEngineConfig {
   fastModel?: string;
   timeoutMs?: number;
   maxTokens?: number;
+  /** Video-pipeline reasoning policy; Flash defaults to non-thinking. */
+  nonThinking?: boolean;
   /**
    * v3.0 收口：注入路由配置后，全部 LLM 调用经 routeSmart
    * （场景 preproduction；opts.model===fastModel 的快速调用强制 L1 轻量档）——
@@ -64,11 +76,15 @@ export interface WorkloomLLMEngineConfig {
     scene?: string;
     /** Explicit caller override for off-peak-only scenes; never enabled implicitly. */
     allowPeak?: boolean;
+    /** Deployment-level model pin. It bypasses tier substitution and fallback. */
+    forceModel?: string;
+    /** Deployment policy for OpenAI-compatible reasoning models. */
+    nonThinking?: boolean;
   };
 }
 
 interface ChatCompletionResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{ message?: { content?: unknown } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
   error?: { message?: string };
 }
@@ -90,6 +106,7 @@ export class WorkloomLLMEngine {
       fastModel: config.model,
       timeoutMs: 180_000,
       maxTokens: 8192,
+      nonThinking: config.nonThinking ?? resolveVideoNonThinking(config.model),
       ...config
     };
   }
@@ -99,13 +116,18 @@ export class WorkloomLLMEngine {
     this.cfg.router = router;
   }
 
-  /** 从底座四环境变量构建（LLM_BASE_URL/LLM_API_KEY/LLM_MODEL，LLM_PROVIDER 仅作记录） */
+  /** 从底座变量构建；DEEPSEEK_* is accepted for OpenAI-compatible CLI/server deployments. */
   static fromEnv(env: NodeJS.ProcessEnv = process.env): WorkloomLLMEngine | null {
-    const baseUrl = env.LLM_BASE_URL;
-    const apiKey = env.LLM_API_KEY;
-    const model = env.LLM_MODEL;
+    const baseUrl = resolveOpenAiCompatibleBaseUrl(env);
+    const apiKey = resolveVideoApiKey(env);
+    const model = resolveVideoModel(env);
     if (!baseUrl || !apiKey || !model) return null;
-    return new WorkloomLLMEngine({ baseUrl, apiKey, model });
+    return new WorkloomLLMEngine({
+      baseUrl,
+      apiKey,
+      model,
+      nonThinking: resolveVideoNonThinking(model, env),
+    });
   }
 
   private async callChat(prompt: string, opts: LLMReasonOptions): Promise<LLMReasonResult> {
@@ -115,6 +137,22 @@ export class WorkloomLLMEngine {
   }
 
   private async requestChat(prompt: string, opts: LLMReasonOptions): Promise<LLMReasonResult> {
+    const activeModel = opts.model ?? this.cfg.model;
+    if (isDeepSeekFlashModel(activeModel)) {
+      const outputTokens = opts.maxTokens ?? this.cfg.maxTokens;
+      const inputTokens = estimateDeepSeekTokens([opts.systemPrompt ?? "", prompt].join("\n"));
+      try {
+        if (inputTokens > deepSeekInputTokenBudget(outputTokens)) {
+          return {
+            success: false,
+            error: `DEEPSEEK_CONTEXT_EXCEEDED: estimated ${inputTokens} input tokens + ${outputTokens} output tokens`,
+            retryable: false,
+          };
+        }
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error), retryable: false };
+      }
+    }
     // v3.0 收口：router 注入 → 经 routeSmart（场景 preproduction；fastModel 快速调用强制 L1）
     if (this.cfg.router) {
       const scene = this.cfg.router.scene ?? "preproduction";
@@ -124,6 +162,7 @@ export class WorkloomLLMEngine {
           {
             action: scene, scene, plan: this.cfg.router.plan,
             forceTier: isFast ? "L1" : undefined,
+            ...(this.cfg.router.forceModel ? { forceModel: this.cfg.router.forceModel } : {}),
             timeoutMs: this.cfg.timeoutMs,
             signal: opts.signal,
             generation: {
@@ -131,7 +170,9 @@ export class WorkloomLLMEngine {
               topP: opts.topP ?? 0.95,
               maxTokens: opts.maxTokens ?? this.cfg.maxTokens,
               responseFormat: opts.forceJson ? { type: "json_object" } : opts.responseFormat,
-              thinking: opts.thinking && typeof opts.thinking === "object" ? opts.thinking : undefined,
+              thinking: (this.cfg.router.nonThinking ?? this.cfg.nonThinking)
+                ? { type: "disabled" }
+                : opts.thinking && typeof opts.thinking === "object" ? opts.thinking : undefined,
             },
             messages: [
               {
@@ -192,6 +233,7 @@ export class WorkloomLLMEngine {
     if (opts.forceJson) body.response_format = { type: "json_object" };
     else if (opts.responseFormat) body.response_format = opts.responseFormat;
     if (opts.thinking && typeof opts.thinking === "object") body.thinking = opts.thinking;
+    else if (this.cfg.nonThinking) body.thinking = { type: "disabled" };
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs);
@@ -213,7 +255,7 @@ export class WorkloomLLMEngine {
         };
       }
       const json = (await resp.json()) as ChatCompletionResponse;
-      const content = json.choices?.[0]?.message?.content ?? "";
+      const content = normalizeModelContent(json.choices?.[0]?.message?.content);
       if (!content) return { success: false, error: "LLM 返回 content 为空", retryable: true };
       return {
         success: true,
@@ -258,6 +300,7 @@ export class WorkloomLLMEngine {
       } catch (err) {
         this.stats.totalFailures++;
         return {
+          ...result,
           success: false,
           error: `JSON 解析失败: ${err instanceof Error ? err.message : String(err)}`,
           retryable: true
@@ -276,7 +319,8 @@ export class WorkloomLLMEngine {
   }
 
   async chat(systemPrompt: string, userPrompt: string, temperature = 1): Promise<string> {
-    const result = await this.reason(userPrompt, { systemPrompt, temperature });
+    const forceJson = /(?:只输出|严格输出|严格返回|仅返回|结构化).{0,32}(?:JSON|json)|(?:JSON|json).{0,32}(?:只输出|不要解释|不得解释|结构化)/u.test(systemPrompt);
+    const result = await this.reason(userPrompt, { systemPrompt, temperature, ...(forceJson ? { forceJson: true } : {}) });
     if (!result.success || !result.content) {
       throw new Error(result.error ?? "LLM chat 调用失败");
     }

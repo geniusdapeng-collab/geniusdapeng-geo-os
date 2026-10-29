@@ -119,7 +119,9 @@ class CrossVerifier {
     });
 
     // ===== 4. 优缺点签发 =====
-    // 优点 = 已验证称赞点 + confirmed 级官方卖点（去重：官方卖点与称赞点同方面时合并提及量）
+    // 优点 = 已验证称赞点 + confirmed/reported 级公开卖点。
+    // reported 是单源但已绑定可核实原文的事实，必须保留并标注证据强度；
+    // 只有 inferred 或无源条目才能被排除，不能把“非官方”误当成“无事实”。
     const pros = verifiedPraise.map(p => ({
       point: p.point,
       aspect: p.aspect,
@@ -130,7 +132,7 @@ class CrossVerifier {
       source_refs: p.source_refs
     }));
     for (const osp of identity.official_selling_points) {
-      if (osp.confidence !== 'confirmed') continue;
+      if (osp.confidence !== 'confirmed' && osp.confidence !== 'reported') continue;
       const already = pros.some(p => osp.point.includes(p.aspect) || p.point.includes(osp.point.slice(0, 4)));
       if (!already) {
         const refs = ledger.forClaim(`identity.official_selling_points:${osp.point}`).map(e => e.id);
@@ -139,7 +141,7 @@ class CrossVerifier {
           aspect: 'official_claim',
           mentions: 0,
           quote: '',
-          confidence: 'confirmed',
+          confidence: osp.confidence,
           evidence_strength: refs.length >= 2 ? 'strong' : 'single',
           source_refs: refs,
           claim_nature: 'official' // 标记：这是官方宣称，不等于用户共识

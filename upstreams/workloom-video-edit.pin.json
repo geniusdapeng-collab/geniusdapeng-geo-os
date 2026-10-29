@@ -1,16 +1,16 @@
 {
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
-  "commit": "8707ac5fb7503e48c698a5029bef860e52d93342",
-  "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
-  "verifiedAt": "2026-10-24T13:07:14.178567+00:00",
+  "commit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "verifiedAt": "2026-10-29T13:27:44.020Z",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
   "engineRoot": "engines/video-edit",
-  "sourceFileCount": 3438,
-  "sourceBytes": 289671284,
+  "sourceFileCount": 3561,
+  "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "ecd928bb8598463ffaeee07461114c8567bc5e81bf4c8bd17cf7a8f6d3a82d1f",
+  "snapshotSha256": "aff88bc58c6aaffef2d2b8f619c9e3d724cfaaa4719afbc0e8eef0c55d8e8fa6",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -22,187 +22,20 @@
     "model-routing-authorization-budget-recovery",
     "post-production-delivery"
   ],
-  "validationStatus": "v1-complete-byte-inventory-with-scoped-real-runtime-evidence",
-  "targetOwnedFileCount": 95,
-  "sourceOverlayCount": 75,
-  "pendingAfterV1": [
-    "Source T0008 and T0009 pending ordinary approved main; not included in this pin.",
-    "Deeper audit and repeated complete tool-production suite deferred by latest explicit v1 priority."
-  ],
-  "assetOverlays": [
-    {
-      "characterId": "young-rider-01",
-      "portraitVersion": 2,
-      "sourceCommit": "529c5f56c4d640bbd8607cab54f6a06e54fbc77a",
-      "sourceTree": "74ca31b451e882a1ee31325e3d50552420f40d43",
-      "receipt": "upstreams/liyingzi-seedream-v2.asset-overlay.json",
-      "receiptSha256": "4bc3fe64b93aa4b39df77d6a2602c0791d42a612d1ca48518d638a75fbed58c8",
-      "scope": "LiYingzi-v2-original-assets-and-exact-supporting-metadata-only",
-      "wholeEngineUpgradeClaimed": false
-    }
-  ],
-  "compatibilityOverlays": [
-    {
-      "id": "seedance25-official-cli",
-      "sourceCommit": "2ae81efd43caf204694d7fd7cae51e0406af26fe",
-      "sourceTree": "4b111c361e5073b14e0a7dba084364639726bbf5",
-      "receipt": "upstreams/seedance25-cli.compatibility-overlay.json",
-      "receiptSha256": "63e7436916b2c5a34941e349e62fa98e6071675763ca87f0c4d5a01c2016c938",
-      "scope": "exact14-official-CLI-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "g3-requirement-and-marketing-evidence",
-      "sourceCommit": "4258b584064372abc9ab73f89e80f2e9c9e9f68f",
-      "sourceTree": "8eb9919f09410efdb3f28c78ef5bdaa5cc253b15",
-      "receipt": "upstreams/g3-requirement-and-marketing-evidence.compatibility-overlay.json",
-      "receiptSha256": "9a1972bfad70b88877cd47738ebe8325a0b5c80b78c2c7c8b7fb13c99a96934a",
-      "scope": "exact19-G3-requirement-and-original-G1-evidence-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "marketing-extraction-output",
-      "sourceCommit": "c284dd9b9d1a0acaee4834a340618f9da3027763",
-      "sourceTree": "93a934cd66d318f91dfbbdc7c80a5778def6098c",
-      "receipt": "upstreams/marketing-extraction-output.compatibility-overlay.json",
-      "receiptSha256": "2b3224093ac37bcded59a33b103cd879cbd527651b297897240c8aa154b3c16d",
-      "scope": "exact4-marketing-extraction-output-strict-facts-runtime-and-tests",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "prd-authority",
-      "sourceCommit": "eab5c724a6f665e34f59025acf9b3430fd60c293",
-      "sourceTree": "9ee7c4851d95e902ad936c086b8d999b8b9c0789",
-      "receipt": "upstreams/prd-authority.compatibility-overlay.json",
-      "receiptSha256": "7d11b4c5c9fd48c72cedd350ae1ad1ded5cfcf70e590e7b3b97d0e87a3ff142c",
-      "scope": "exact16-host-PRD-current-G1-authority-approved-review-advisories-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "requirement-authority",
-      "sourceCommit": "9ef6115dfdbab1d3999df4a27ffa37af3d2e89da",
-      "sourceTree": "149f6a75e226e403269897dcb5da68b8c06df91f",
-      "receipt": "upstreams/requirement-authority.compatibility-overlay.json",
-      "receiptSha256": "0530738f2aec1dc612c29dd6fc9e934954cfc92f3e34368c7c66a50faaa9cebb",
-      "scope": "exact10-host-qualified-G1-theme-and-requirement-purpose-authority-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "scene-contract",
-      "sourceCommit": "6dd6785ff4cb2a41ca2104cbb227f289096fc17c",
-      "sourceTree": "81d05c995a910bf2eaa10b04395703206012297e",
-      "receipt": "upstreams/scene-contract.compatibility-overlay.json",
-      "receiptSha256": "4fbdc0b75267a8523311929a0e6acd78ed2340ce13a14a251c7e368ac3ec8781",
-      "scope": "exact5-approved-scene-contract-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "scene-feedback",
-      "sourceCommit": "8bbd861f0c496caca6ff7855f851b98c96f945cf",
-      "sourceTree": "0a864247a3a350624f993fe743d027478c1812a0",
-      "receipt": "upstreams/scene-feedback.compatibility-overlay.json",
-      "receiptSha256": "067b9de243a1baa22df238dd0ed60f7fdf29e06349bf7589938a09d2727113ce",
-      "scope": "exact5-scene-timing-guidance-and-bounded-retry-feedback-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "prd-schema",
-      "sourceCommit": "8e96169f19e711cd7014e728a14eda6922917156",
-      "sourceTree": "211bd22663f70238f26b1b733ed7e30422745923",
-      "receipt": "upstreams/prd-schema.compatibility-overlay.json",
-      "receiptSha256": "36dcc5b0183b28f17ed5cde92cea4b7425410f9e64e5e30480534d47d91df375",
-      "scope": "exact5-private-PRD-model-schema-disclosure-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "prd-display",
-      "sourceCommit": "6c72a1351432994055c38ecbb67696d702f98c2a",
-      "sourceTree": "cadfb17072966f1dc50490a8cd5be7db17115e05",
-      "receipt": "upstreams/prd-display.compatibility-overlay.json",
-      "receiptSha256": "5819f8fdad01169f8e957b9308053dea5d77190db1a6016ca5acbade1f78c9a4",
-      "scope": "exact3-private-PRD-display-normalization-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "structured-output",
-      "sourceCommit": "0b6414419c8641c2fc5dabc1d89ac49608fb28c7",
-      "sourceTree": "a4c6a9f1cd302dbbe422ce738b3c75e0312588fe",
-      "receipt": "upstreams/structured-output.compatibility-overlay.json",
-      "receiptSha256": "0a0d79bbecba9a92c1ac5c8af1076392bef078f590e6bd841d6bd067fbb823dd",
-      "scope": "exact3-routed-structured-output-response-contract-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "production-authority",
-      "sourceCommit": "1fe88a1754b29e45507542889f7ddae106a37d6b",
-      "sourceTree": "b841eff77ccbecfacdf032db95fcb9a3c30fb898",
-      "receipt": "upstreams/production-authority.compatibility-overlay.json",
-      "receiptSha256": "bd7b75fff07a14d9e4b85bcd6ac8497af0de3cd064a010ea05a2f0f982dacea8",
-      "scope": "exact9-approved-production-authority-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "native-handoff",
-      "sourceCommit": "0f43ecc1922c2f58916872cffa215dcb4c1ba406",
-      "sourceTree": "c637b3dabc03d410b0cdac17587a532cbc957635",
-      "receipt": "upstreams/native-handoff.compatibility-overlay.json",
-      "receiptSha256": "4301945b44d28b29978a97cd2839ac4f91a9caed886d7853b7714349a8d4fdaa",
-      "scope": "exact8-approved-native-handoff-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "review-text-budget",
-      "sourceCommit": "4ae607906886d619da6f6d2f59d75b64c3abc713",
-      "sourceTree": "fb8778a383477750b125742746428985664e65ea",
-      "receipt": "upstreams/review-text-budget.compatibility-overlay.json",
-      "receiptSha256": "1d04921cd946e5e7f54688c511a7dfb32a737940830ba608fb0634ff10635fda",
-      "scope": "exact4-approved-review-text-budget-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "risk-feedback",
-      "sourceCommit": "b0969a6536906fd02b258669602808e7a93557cb",
-      "sourceTree": "a0b671cad54280c9a91bdf639b90fb6019308286",
-      "receipt": "upstreams/risk-feedback.compatibility-overlay.json",
-      "receiptSha256": "9dae0a6f2c6839860d3040dd2773e4b5ab1bac690d7b9b0fed388c2144ec96f0",
-      "scope": "exact6-approved-risk-feedback-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "brief-routing",
-      "sourceCommit": "32ab429d8c1483318c01b45cfe85a5b763887bfd",
-      "sourceTree": "b3c6c17b7f6c620ecf7b217bb0614b2393f2ed24",
-      "receipt": "upstreams/brief-routing.compatibility-overlay.json",
-      "receiptSha256": "5d508a3fbc99be99aaac6a417545d2e1915326edd5dc05898bd67f2be92d5d3e",
-      "scope": "exact9-approved-brief-duration-and-affirmative-scene-policy-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "persistent-subtitle",
-      "sourceCommit": "52f2d2f6a8600eed958ec52f55fcfa7627aaa129",
-      "sourceTree": "027983ad873ee723d6e2ad7e2182154ea310be14",
-      "receipt": "upstreams/persistent-subtitle.compatibility-overlay.json",
-      "receiptSha256": "a4f270c5447bfff349477694f8133465409ed827c5d5256eaad165d72d52ec36",
-      "scope": "exact9-approved-persistent-subtitle-source-tests-and-documentation-with-PM-derived-manifest",
-      "wholeEngineUpgradeClaimed": false
-    },
-    {
-      "id": "prd-delivery-plan",
-      "sourceCommit": "aed12c92ab8af4295404d6dbb47981cdccad76e4",
-      "sourceTree": "609595b59449decf0f2a4a55c81766de7580189f",
-      "receipt": "upstreams/prd-delivery-plan.compatibility-overlay.json",
-      "receiptSha256": "178f5d2ca56040684221c9b3ce3caeefa785aaf6313fe3af12633c843f95067b",
-      "scope": "exact6-approved-prd-delivery-plan-authority-source-tests-and-documentation",
-      "wholeEngineUpgradeClaimed": false
-    }
-  ],
+  "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
+  "targetOwnedFileCount": 48,
+  "sourceOverlayCount": 69,
+  "pendingAfterV1": [],
+  "assetOverlays": [],
+  "compatibilityOverlays": [],
   "targetAdaptationOverlays": [
     {
-      "id": "marketing-runtime-diagnostics",
-      "receipt": "upstreams/marketing-runtime-diagnostics.target-overlay.json",
-      "receiptSha256": "5807995433275d9a55cc5bd763cf06abca9e96474e61ef68496d0b38c9e256d3",
-      "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, phase-3 fusion diagnostics, and host-bound portrait handling",
-      "upstreamUpgradeClaimed": false
+      "id": "pengmanager-host-integration",
+      "receipt": "upstreams/pengmanager-host-integration.target-overlay.json",
+      "receiptSha256": "533aef436c9f04224bb5e808a0c4cabb453466a76eb0ec1d3e655273ffa32bd3",
+      "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
+      "upstreamUpgradeClaimed": true,
+      "wholeEngineUpgradeClaimed": true
     }
   ]
 }
