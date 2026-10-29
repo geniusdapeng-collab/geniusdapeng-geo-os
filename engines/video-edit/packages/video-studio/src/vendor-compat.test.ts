@@ -887,16 +887,17 @@ const cases = [
 ];
 for (const candidate of cases) {
  const state = makeState();
- try { await makePhase(candidate).execute(state); } catch (e) { failures.push({ code: e.code, status: state.result.stages.phase3Fusion.status }); }
+ try { await makePhase(candidate).execute(state); } catch (e) { failures.push({ code: e.code, status: state.result.stages.phase3Fusion.status, message: e.message }); }
 }
 const state = makeState();
 try { await makePhase({}, { saveCheckpoint: async () => { throw new Error("disk unavailable"); } }).execute(state); }
-catch (e) { failures.push({ code: e.code, status: state.result.stages.phase3Fusion.status }); }
+catch (e) { failures.push({ code: e.code, status: state.result.stages.phase3Fusion.status, message: e.message }); }
 uninstall();
 console.log("RESULT " + JSON.stringify({ failures, counters }));
 `));
     expect(result.failures).toHaveLength(5);
     for (const failure of result.failures as Array<{ status: string }>) expect(failure.status).toBe("unverified");
+    expect((result.failures as Array<{ message: string }>)[2]!.message).toContain('"promptChars":0');
     expect((result.counters as Record<string, unknown>).checkpoints).toBe(0);
   }, 90_000);
 
