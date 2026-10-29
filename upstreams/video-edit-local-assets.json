@@ -2,44 +2,9 @@
   "schemaVersion": "pengmanager.video-local-assets/v1",
   "sourceRepository": "geniusdapeng-collab/WorkLoom-video-edit",
   "sourceCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
-  "scope": "complete-local-embedded-asset-integrity-only",
+  "scope": "local-embedded-asset-integrity-only",
   "workloomActivationGranted": false,
-  "assetCount": 644,
-  "digest": "b3c76f43a38099da6c41cfbc9ee3c2a3c22b1dcd363ba5f6bc171b99a1b7da12",
-  "omittedUpstreamAssets": [],
-  "bundles": [
-    {
-      "bundle": "ai-video",
-      "version": "1.0.0",
-      "status": "candidate",
-      "assets": 644,
-      "digest": "b3c76f43a38099da6c41cfbc9ee3c2a3c22b1dcd363ba5f6bc171b99a1b7da12",
-      "manifestSha256": "b29aad45586af8e7e382f51adb8f5ca0a721b64d1667a6825cae72100a95ab93"
-    },
-    {
-      "bundle": "geo-growth",
-      "version": "1.0.0",
-      "status": "candidate",
-      "assets": 69,
-      "digest": "be4181a738cf9bd63e39f2d231ac64a933514aee01c6641ea14f17a67da0611e",
-      "manifestSha256": "d13538cec70df9198ca89f441377441e891d615995cef3c12fc7557db1d1a1f4"
-    },
-    {
-      "bundle": "hotel",
-      "version": "3.4.0",
-      "status": "candidate",
-      "assets": 60,
-      "digest": "b890e94306cc0745f82f05afec9002f82c7050ee80699c922c4ba1dc1ff9e9e1",
-      "manifestSha256": "e19db5119406a934f025d4b389614b1778b62ec36a8daa0a1f6d2be37ac2606c"
-    },
-    {
-      "bundle": "video-edit",
-      "version": "0.3.0",
-      "status": "candidate",
-      "assets": 46,
-      "digest": "447228dadd3888d58093e9a88d01d2a7c552cb9488a4a351cf62e55c4161e089",
-      "manifestSha256": "98a0f0c09ab8f2295dcdc45db4589c151873eaa0ff9dacee801f254cef4ee96e"
-    }
-  ],
-  "evidence": "B"
+  "assetCount": 676,
+  "digest": "77977462e3dc001d708656d14963d74f00ff15d038d5d7c254d211b59e42a7f7",
+  "omittedUpstreamAssets": []
 }
