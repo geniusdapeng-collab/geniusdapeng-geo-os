@@ -3,8 +3,8 @@
   "id": "marketing-runtime-diagnostics",
   "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
   "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
-  "generatedAt": "2026-10-29T01:11:26.950Z",
-  "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, and phase-3 fusion diagnostics",
+  "generatedAt": "2026-10-29T02:06:28Z",
+  "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, phase-3 fusion diagnostics, and host-bound portrait handling",
   "upstreamUpgradeClaimed": false,
   "wholeEngineUpgradeClaimed": false,
   "files": [
@@ -251,17 +251,17 @@
     {
       "path": "packages/video-studio/src/vendor-compat.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
-      "previousTargetSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6",
-      "targetSha256": "340ecb7b314240221cf15fbefa0cc64b488264cb4f5e585fe7441cba82651ae6",
-      "targetBytes": 59125,
+      "previousTargetSha256": "340ecb7b314240221cf15fbefa0cc64b488264cb4f5e585fe7441cba82651ae6",
+      "targetSha256": "09b8848ca823cc16db6812c5b845f31d64062b421c1f456d70d66cdcbd600795",
+      "targetBytes": 62678,
       "targetMode": "100644"
     },
     {
       "path": "packages/video-studio/src/vendor-compat.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
-      "previousTargetSha256": "c76a74494514c1d59e169a5e7f29a723691c401fcdf20f7404a32ee5ff79cec3",
-      "targetSha256": "5570f1b18cb533cda887f1f0b70f261de18e623c0ebfd27a889c819dd67f3932",
-      "targetBytes": 111275,
+      "previousTargetSha256": "5570f1b18cb533cda887f1f0b70f261de18e623c0ebfd27a889c819dd67f3932",
+      "targetSha256": "b1c8939652caf18902852b7c167d7a2d8592a3225ead90ee3e742d9c7300ab50",
+      "targetBytes": 113292,
       "targetMode": "100644"
     },
     {
