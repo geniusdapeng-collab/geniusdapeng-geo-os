@@ -1946,11 +1946,20 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
         }
         const expectedIds = new Set(shots.map((shot) => String(shot.shotId ?? shot.shot_id)));
         const outputIds = new Set<string>();
-        for (const row of updated) {
+        for (const [index, row] of updated.entries()) {
           const shot = fusionRecord(row, "融合镜头");
           const id = String(shot.shotId ?? shot.shot_id ?? "");
           if (!expectedIds.has(id) || outputIds.has(id) || shot.degraded === true || typeof shot.prompt !== "string" || !shot.prompt.trim()) {
-            throw new CinematicSkillError("PHASE3_FUSION_UNVERIFIED", "融合镜头 id、提示词或降级状态无效", "unverified");
+            const diagnostic = {
+              index,
+              id: id || null,
+              unexpectedId: !expectedIds.has(id),
+              duplicateId: outputIds.has(id),
+              degraded: shot.degraded === true,
+              promptType: typeof shot.prompt,
+              promptChars: typeof shot.prompt === "string" ? shot.prompt.length : null,
+            };
+            throw new CinematicSkillError("PHASE3_FUSION_UNVERIFIED", `融合镜头 id、提示词或降级状态无效；${JSON.stringify(diagnostic)}`, "unverified");
           }
           outputIds.add(id);
         }
