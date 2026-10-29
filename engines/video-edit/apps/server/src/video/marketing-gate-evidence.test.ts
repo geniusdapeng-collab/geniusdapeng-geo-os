@@ -146,6 +146,8 @@ describe("current-attempt host-owned G1 evidence", () => {
     expect(readFileSync(f.g1Path, "utf8")).toBe(f.content);
     expect(binding.rubric.join("\n")).toContain("不在已接受 claims 内或超出限定的主张必须拒绝");
     expect(binding.rubric.join("\n")).toContain("人物、场景、动作及镜头合同分别核对");
+    expect(binding.rubric.join("\n")).toContain("客户禁令列表、来源引文或人物设定中的词，不是当前门新增的事实主张");
+    expect(binding.rubric.join("\n")).toContain("持续字幕与原生声音保留是交付义务");
   });
 
   it.each(["G1_DOSSIER", "G8_RENDER", "UNKNOWN"])("does not add a downstream marketing requirement to %s", gate => {

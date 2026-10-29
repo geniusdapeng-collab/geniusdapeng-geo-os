@@ -137,6 +137,7 @@ export function createMarketingGateEvidenceGuard(input: { workDir: string; scope
           "逐项核对本门新增或改写的型号、数字、单位、部件、外观细节、性能、评价与竞品主张；G1 通过不自动批准本门，不在已接受 claims 内或超出限定的主张必须拒绝。",
           "G1 商品事实与人物、场景、动作及镜头合同分别核对：已核实商品参数不等于摄影设备、年代、人数、空间或产物质量已核实；缺少镜头合同也不否定附件中实际已接受的商品 claims。",
           "商品外观、颜色、涂装、比例、部件和形态只能对照结构化 productVisualAuthority.images 中本次 G1 已接受的真实图片；文字 claims、常识、影视参考或角色档案不能补写未见细节。",
+          "当前门附件会原样携带客户 Brief、G1 来源原文和人物档案。出现在“禁止售价/功率/冠军”等客户禁令列表、来源引文或人物设定中的词，不是当前门新增的事实主张；只评审本门生成场景、合同和执行计划。客户明确要求的持续字幕与原生声音保留是交付义务，不得误判为违规或擅自改成 TTS、声音克隆或口型驱动方案。",
         ],
         context: { schemaVersion: "workloom.marketing-gate-evidence/v1", authorityStatus: "unverified" },
       };

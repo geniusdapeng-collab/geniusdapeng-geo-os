@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-29T00:54:45.277Z",
+  "generatedAt": "2026-10-29T00:59:43.422Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -38506,19 +38506,19 @@
       "path": "apps/server/src/video/marketing-gate-evidence.ts",
       "mode": "100644",
       "bytes": 11184,
-      "targetSha256": "1e0277cb052ae85a2638b53f211a103152f7819dc6a3baa0304deb8f65b1ce5c",
+      "targetSha256": "92d562f259faf369ad0f539bc1ee18e36c522589067fac16e2c0c76bfc018043",
       "evidence": "B",
       "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/marketing-gate-evidence.ts; source SHA256 f28d54908d87753a3ff01144ff0ce95c8a36eaade348d8a17121c2be93cfe015. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path apps/server/src/video/marketing-gate-evidence.ts; source SHA256 562aac782279c145445238000b7e82f30af713fd7ee3bed7dc64dcf06c6138c0.",
-      "targetBytes": 11772
+      "targetBytes": 12212
     },
     {
       "path": "apps/server/src/video/marketing-gate-evidence.test.ts",
       "mode": "100644",
       "bytes": 18370,
-      "targetSha256": "97264fffef199ed06e134956b8a4aada0edc75d2f5c283d1404787446e46e258",
+      "targetSha256": "e7981338ad3cb68e3053fd34be69faf289e2670fa1c4bfed89319db79790ec7a",
       "evidence": "B",
       "reason": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path apps/server/src/video/marketing-gate-evidence.test.ts; source SHA256 c3a06a71c5d548ea138d075f25585f2e4db9b73834d90f475af18001446dc9be. Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path apps/server/src/video/marketing-gate-evidence.test.ts; source SHA256 7969af87410331faaea0517ae5c7fda1b4cc7ae657b26341373e58c3c795140f.",
-      "targetBytes": 19732
+      "targetBytes": 19982
     },
     {
       "path": "packages/video-studio/src/requirement-contract.ts",
