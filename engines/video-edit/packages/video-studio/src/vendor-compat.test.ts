@@ -333,6 +333,39 @@ console.log("RESULT " + JSON.stringify({ beforeError, afterError, afterIssues, t
     expect(result.timelineIsArray).toBe(true);
   }, 60_000);
 
+  it("字段质检使用宿主定妆照探针通过格式检查，返回后仍留给渲染桥绑定真实路径", () => {
+    const script = `
+import { createRequire } from "node:module";
+import { installVendorFieldQualityBridge } from ${JSON.stringify(resolve(here, "vendor-compat.ts"))};
+const require = createRequire(${JSON.stringify(join(repoRoot, "package.json"))});
+const { FieldQualityPipeline } = require(${JSON.stringify(join(repoRoot, "vendor/supermickey/hyperreality-system/engines/field-quality/field-quality-pipeline.js"))});
+const pipeline = new FieldQualityPipeline({ maxRounds: 1 });
+let seen = null;
+pipeline.checker.check = async shot => {
+  seen = { portraits: shot.portraits, nested: shot.fields?.portraits, marker: Boolean(shot._workloomHostPortraitProbe) };
+  return { passed: true, summary: () => "PASS" };
+};
+const uninstall = installVendorFieldQualityBridge({ log: () => undefined });
+const result = await pipeline.run({ shotId: "S1", characters: [{ id: "young-rider-01", name: "李英子" }], portraits: "", fields: { portraits: "" } }, "S1");
+uninstall();
+console.log("RESULT " + JSON.stringify({
+  seen,
+  portraits: result.finalShot.portraits,
+  nested: result.finalShot.fields?.portraits,
+  marker: Object.hasOwn(result.finalShot, "_workloomHostPortraitProbe")
+}));
+`;
+    const result = runInChild(script);
+    expect(result.seen).toEqual({
+      portraits: "/characters/young_rider_01/portrait_v1.png",
+      nested: "/characters/young_rider_01/portrait_v1.png",
+      marker: true,
+    });
+    expect(result.portraits).toBe("");
+    expect(result.nested).toBe("");
+    expect(result.marker).toBe(false);
+  }, 60_000);
+
   /**
    * 真机回归（2026-09-22）：微动作环节两次 run 都是 0/6——
    * 字段名不匹配（camera vs camera_movement）+ 模板缺 neutral。

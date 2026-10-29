@@ -476,7 +476,38 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
         clone[`_raw${key.charAt(0).toUpperCase()}${key.slice(1)}`] = value;
         clone[key] = toText(value);
       }
+      const characters = Array.isArray(clone.characters) ? clone.characters : [];
+      if (characters.length > 0 && !/\/characters\/[\w_]+\/portrait_v\d+\.(png|jpg)/.test(toText(clone.portraits))) {
+        const first = characters[0];
+        const rawId = typeof first === "string" ? first
+          : first && typeof first === "object" && "id" in first ? (first as Record<string, unknown>).id
+          : first && typeof first === "object" && "characterId" in first ? (first as Record<string, unknown>).characterId
+          : "host_character";
+        const id = String(rawId).replace(/[^A-Za-z0-9_]/g, "_") || "host_character";
+        const probe = `/characters/${id}/portrait_v1.png`;
+        clone.portraits = probe;
+        clone._workloomHostPortraitProbe = probe;
+        if (isPlainObject(clone.fields)) clone.fields.portraits = probe;
+      }
       return clone;
+    };
+    const clearPortraitProbe = (value: unknown, seen = new WeakSet<object>()): unknown => {
+      if (!value || typeof value !== "object") return value;
+      if (seen.has(value)) return value;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const item of value) clearPortraitProbe(item, seen);
+        return value;
+      }
+      const record = value as Record<string, unknown>;
+      const probe = record._workloomHostPortraitProbe;
+      if (typeof probe === "string" && record.portraits === probe) {
+        record.portraits = "";
+        if (isPlainObject(record.fields) && record.fields.portraits === probe) record.fields.portraits = "";
+        delete record._workloomHostPortraitProbe;
+      }
+      for (const item of Object.values(record)) clearPortraitProbe(item, seen);
+      return value;
     };
 
     const restores: Array<() => void> = [];
@@ -502,6 +533,7 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
       pipelineProto.run = async function patchedRun(this: unknown, shot: unknown, shotId?: string) {
         try {
           const result = await originalRun.call(this, normalizeShot(shot), shotId);
+          clearPortraitProbe(result);
           return {
             finalShot: (result?.finalShot ?? shot),
             reports: Array.isArray(result?.reports) ? result.reports : [],
@@ -517,7 +549,7 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
     if (pipelineProto && typeof pipelineProto.runAll === "function") {
       const originalRunAll = pipelineProto.runAll as (shots: unknown[]) => Promise<unknown>;
       pipelineProto.runAll = async function patchedRunAll(this: unknown, shots: unknown[]) {
-        return originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot)));
+        return clearPortraitProbe(await originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot))));
       };
       restores.push(() => { pipelineProto.runAll = originalRunAll; });
     }

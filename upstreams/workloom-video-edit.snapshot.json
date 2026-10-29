@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-29T02:06:28Z",
+  "generatedAt": "2026-10-29T02:21:32Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -26733,9 +26733,9 @@
       "sourceMode": "100644",
       "gitBlob": "ed3302b517f4139b71bbaa3147fd7ba9e9088bd7",
       "bytes": 55827,
-      "targetBytes": 62678,
+      "targetBytes": 64330,
       "sourceSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
-      "targetSha256": "09b8848ca823cc16db6812c5b845f31d64062b421c1f456d70d66cdcbd600795",
+      "targetSha256": "2c5f19f8f663f3236a8021d57d0bf7cd002965fdf429dcb9611fafce3580176d",
       "evidence": "B",
       "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-compat.test.ts; source SHA256 a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6."
     },
@@ -26745,9 +26745,9 @@
       "sourceMode": "100644",
       "gitBlob": "df2d6b30f522202c2493f70bee5dee90fa1d88c5",
       "bytes": 110847,
-      "targetBytes": 113292,
+      "targetBytes": 115044,
       "sourceSha256": "c76a74494514c1d59e169a5e7f29a723691c401fcdf20f7404a32ee5ff79cec3",
-      "targetSha256": "b1c8939652caf18902852b7c167d7a2d8592a3225ead90ee3e742d9c7300ab50",
+      "targetSha256": "605393bf42d94f47505eb0caed0181fe6132aa048a06ffa054459591caf15ca3",
       "evidence": "B"
     },
     {

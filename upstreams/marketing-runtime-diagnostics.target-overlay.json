@@ -3,7 +3,7 @@
   "id": "marketing-runtime-diagnostics",
   "engineBaselineCommit": "8707ac5fb7503e48c698a5029bef860e52d93342",
   "engineBaselineTree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c",
-  "generatedAt": "2026-10-29T02:06:28Z",
+  "generatedAt": "2026-10-29T02:21:32Z",
   "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, phase-3 fusion diagnostics, and host-bound portrait handling",
   "upstreamUpgradeClaimed": false,
   "wholeEngineUpgradeClaimed": false,
@@ -251,17 +251,17 @@
     {
       "path": "packages/video-studio/src/vendor-compat.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
-      "previousTargetSha256": "340ecb7b314240221cf15fbefa0cc64b488264cb4f5e585fe7441cba82651ae6",
-      "targetSha256": "09b8848ca823cc16db6812c5b845f31d64062b421c1f456d70d66cdcbd600795",
-      "targetBytes": 62678,
+      "previousTargetSha256": "09b8848ca823cc16db6812c5b845f31d64062b421c1f456d70d66cdcbd600795",
+      "targetSha256": "2c5f19f8f663f3236a8021d57d0bf7cd002965fdf429dcb9611fafce3580176d",
+      "targetBytes": 64330,
       "targetMode": "100644"
     },
     {
       "path": "packages/video-studio/src/vendor-compat.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
-      "previousTargetSha256": "5570f1b18cb533cda887f1f0b70f261de18e623c0ebfd27a889c819dd67f3932",
-      "targetSha256": "b1c8939652caf18902852b7c167d7a2d8592a3225ead90ee3e742d9c7300ab50",
-      "targetBytes": 113292,
+      "previousTargetSha256": "b1c8939652caf18902852b7c167d7a2d8592a3225ead90ee3e742d9c7300ab50",
+      "targetSha256": "605393bf42d94f47505eb0caed0181fe6132aa048a06ffa054459591caf15ca3",
+      "targetBytes": 115044,
       "targetMode": "100644"
     },
     {
