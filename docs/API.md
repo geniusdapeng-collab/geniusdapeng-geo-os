@@ -43,6 +43,7 @@ development listener keeps the dashboard at `/` as well.
 | GET | `/api/auth/status` | `enabled`, `authenticated`; an authenticated session also identifies its server-derived actor and expiry |
 | POST | `/api/auth/login` | JSON `{ "password": "…" }`; returns authentication status and sets an HttpOnly, SameSite=Strict session cookie |
 | POST | `/api/auth/logout` | Revokes the current browser session and expires its cookie |
+| POST | `/api/workloom/launch` | Administrator session only; returns a 60-second one-time Ed25519 launch URL for the WorkLoom PM assistant |
 
 Public/production configurations require a valid `ADMIN_PASSWORD_HASH`, an HTTPS
 `PUBLIC_ORIGIN`, and its matching allowed Host. Startup fails closed if the
@@ -72,6 +73,14 @@ operation approval uses that administrator identity. For Agent completion,
 `capturedBy` and `verifiedBy` are set to the Agent identity and
 `verificationMethod` is forced to `browser_readback`, even if the request tries
 to name a human reviewer.
+
+`POST /api/workloom/launch` never accepts an Agent bearer as authority. It signs
+`iss=pengmanager`, `aud=workloom-pm`, the configured tenant/workspace/member,
+and a random `jti` using the service-only `WORKLOOM_LAUNCH_PRIVATE_KEY`. The
+response contains a `launchUrl` whose fragment carries the one-time code; the
+code is not written to the data store, logs, operation ledger or public page.
+WorkLoom consumes it once and rejects expiry or replay. The target must be
+`WORKLOOM_PM_ORIGIN`, configured as an HTTPS origin in production.
 
 `/public-api/profile` does not return aliases, account records, private facts,
 content, operations, interaction text, media paths or operational counts. Claims

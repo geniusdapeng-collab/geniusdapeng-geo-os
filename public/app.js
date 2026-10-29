@@ -603,6 +603,49 @@ document.querySelector("#logout").addEventListener("click", async (event) => {
   }
 });
 
+document.querySelector("#workloom-launch").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  if (button.disabled) return;
+  clearError();
+  // Open synchronously so the browser associates the page with this click;
+  // the one-time launch code is fetched only after the new tab exists.
+  const launched = window.open("about:blank", "_blank");
+  if (!launched) {
+    showError(new Error("浏览器阻止了新标签页，请允许 pop-up 后重试。"));
+    return;
+  }
+  try { launched.opener = null; } catch { /* Some browsers make opener read-only. */ }
+  button.disabled = true;
+  button.textContent = "正在打开…";
+  try {
+    const response = await fetch("/api/workloom/launch", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: "{}",
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      launched.close();
+      window.location.replace("/login");
+      return;
+    }
+    if (!response.ok || typeof payload.launchUrl !== "string") {
+      const error = new Error(payload.error?.message || "AI 研发中心入口暂不可用。");
+      error.status = response.status;
+      error.code = payload.error?.code;
+      throw error;
+    }
+    launched.location.replace(payload.launchUrl);
+  } catch (error) {
+    launched.close();
+    showError(error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "AI 研发中心 ↗";
+  }
+});
+
 document.querySelector("#open-content-form").addEventListener("click", () => {
   document.querySelector("#content-form").hidden = false;
   document.querySelector('#content-form input[name="title"]').focus();

@@ -11,6 +11,7 @@ import { PersonalGeoEngine } from "./engines/geo-evidence.mjs";
 import { VideoMediaEngine } from "./engines/video-media.mjs";
 import { createVideoRuntime } from "./video-runtime/index.mjs";
 import { createAdminAuth } from "./security/admin-auth.mjs";
+import { createWorkloomLaunch } from "./security/workloom-launch.mjs";
 import { AccountOperationsService } from "./services/account-operations.mjs";
 import { createMacFinalContentBackup } from "./services/final-content-backup.mjs";
 import { EditorialService } from "./services/editorial-service.mjs";
@@ -43,6 +44,7 @@ export async function createPengManagerApplication({
   const configuredHosts = env.ALLOWED_HOSTS?.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
   const allowedHosts = configuredHosts?.length ? configuredHosts : ["127.0.0.1", "localhost", "::1", "[::1]"];
   const auth = createAdminAuth({ env, host, allowedHosts });
+  const workloomLaunch = createWorkloomLaunch({ env });
   const store = new JsonStore({ filePath: dataFile, writerLock: true });
   await store.open(() => loadSeedState(dataDir));
   let constructedGeo = null;
@@ -96,6 +98,7 @@ export async function createPengManagerApplication({
   });
   const server = createGeoOsServer({ service, livePipeline, geoEngine, videoRuntime: runtime,
     publicDir: join(rootDir, "public"), allowedHosts, auth, accountOperations, editorial, mediaAssets, contentOps, productionArtifacts,
+    workloomLaunch,
     publicWebsite: env.PUBLIC_WEBSITE === "1", mediaRenderEnabled: env.ENABLE_MEDIA_RENDER !== "false" });
   let stopPromise = null;
   let videoStart = null;
@@ -104,7 +107,7 @@ export async function createPengManagerApplication({
   let stopping = false;
   return {
     server, service, store, geoEngine, mediaEngine, auth, accountOperations, editorial, mediaAssets, editorialBackup, contentOps, productionArtifacts,
-    videoRuntime: runtime, finalContentBackup,
+    videoRuntime: runtime, finalContentBackup, workloomLaunch,
     get videoStart() { return videoStart; },
     async listen(options = {}) {
       if (stopping) throw new Error("APPLICATION_STOPPED");
