@@ -819,8 +819,9 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const base: Method = original?.value ?? function () { return true; };
     changes.push({ owner, key, original, patched: wrap(base) });
   };
-  const inspect = (shotsValue: unknown, context: unknown, noTitle: boolean) => {
+  const inspect = (scope: Scope, shotsValue: unknown, context: unknown, noTitle: boolean) => {
     if (!Array.isArray(shotsValue) || shotsValue.length === 0) prdFail("PRD_PRODUCTION_INVALID", "制作镜头必须为非空数组");
+    const hostBoundPortraits = (scope.contract?.cast.characters.length ?? 0) > 0;
     const shots = (shotsValue as unknown[]).map(value => {
       const raw = requirementRecord(value, "当前制作镜头"), normalized = standardizeShot(raw);
       // Standardization may omit fields/unknown attributes or lose a textual timeline.
@@ -844,20 +845,24 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const details = shots.map(shot => {
       const native = validateShot(shot);
       const missing = fields.filter(key => !(key === "dialogue" && (shot.dialogueFree === true
-        || (Array.isArray(shot.dialogueBlocks) && shot.dialogueBlocks.length > 0))) && !hasValue(shot[key]));
+        || (Array.isArray(shot.dialogueBlocks) && shot.dialogueBlocks.length > 0)))
+        && !(key === "portraits" && hostBoundPortraits) && !hasValue(shot[key]));
       const explicitDialogue = !missing.includes("dialogue") && !hasValue(shot.dialogue);
       const filter = (values: unknown): string[] => {
         if (!Array.isArray(values) || values.some(value => typeof value !== "string")) prdFail("PRD_VENDOR_UNAVAILABLE", "原生字段校验结果结构已变化");
         return (values as string[]).filter(value => !(noTitle && retiredTitleIssue(value))
-          && !(explicitDialogue && value === "P0 Missing: dialogue"));
+          && !(explicitDialogue && value === "P0 Missing: dialogue")
+          && !(hostBoundPortraits && value === "P0 Missing: portraits")
+          && !(hostBoundPortraits && value === "Final-Export strict: 1 fields empty: portraits"));
       };
       const errors = filter(native.errors), warnings = filter(native.warnings);
       // The native final-export summary can include an explicitly inapplicable dialogue.
       // Recompute this exact summary without changing any other native validation result.
       for (let index = errors.length - 1; index >= 0; index--) {
         const match = /^Final-Export strict: \d+ fields empty: (.+)$/.exec(errors[index]!);
-        if (match && explicitDialogue) {
-          const remaining = match[1]!.split(", ").filter(key => key !== "dialogue");
+        if (match && (explicitDialogue || hostBoundPortraits)) {
+          const remaining = match[1]!.split(", ").filter(key => !(explicitDialogue && key === "dialogue")
+            && !(hostBoundPortraits && key === "portraits"));
           if (remaining.length) errors[index] = `Final-Export strict: ${remaining.length} fields empty: ${remaining.join(", ")}`;
           else errors.splice(index, 1);
         }
@@ -1063,7 +1068,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     if (!scope || scope.authority.profile.titleCard !== false) return Reflect.apply(original, this, [shots, context, ...args]);
     return guard(scope, () => {
       check(scope);
-      const result = inspect(shots, context, true);
+      const result = inspect(scope, shots, context, true);
       if (key !== "check" && !result.report.passed) {
         const error = new Error(`PRD_PRODUCTION_FIELDS_INVALID: ${result.report.errors.join("; ")}`);
         Object.assign(error, { report: result.report });
@@ -1077,7 +1082,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     if (!scope || scope.authority.profile.titleCard !== false) return Reflect.apply(original, this, [promptsValue, ...args]);
     return guard(scope, () => {
       check(scope);
-      const { shots, report } = inspect(promptsValue, "G6-Prompt-Review", true);
+      const { shots, report } = inspect(scope, promptsValue, "G6-Prompt-Review", true);
       const prompts = promptsValue as RequirementRecord[];
       const lines = ["# 提示词审核报告", "", `镜头数：${shots.length}；字段合同：25 = P0 ${fieldGroups.p0.length} + P1 ${fieldGroups.p1.length} + P2 ${fieldGroups.p2.length} + P3 ${fieldGroups.p3.length}。`,
         `本次 titleCard=false；以下生成侧标题项 not_applicable：${RETIRED_TITLES.join("、")}。subtitle 指片头副标题，正式后期字幕仍按 Brief 执行。`,

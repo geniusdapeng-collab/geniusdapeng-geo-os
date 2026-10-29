@@ -6,7 +6,7 @@
     "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-29T01:11:26.950Z",
+  "generatedAt": "2026-10-29T03:02:07Z",
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -26733,9 +26733,9 @@
       "sourceMode": "100644",
       "gitBlob": "ed3302b517f4139b71bbaa3147fd7ba9e9088bd7",
       "bytes": 55827,
-      "targetBytes": 59125,
+      "targetBytes": 64330,
       "sourceSha256": "ac0bc88a815656c73e09eff6b590f600f4e8b9cf24bb0e9b8cce7ec4bc425ad8",
-      "targetSha256": "340ecb7b314240221cf15fbefa0cc64b488264cb4f5e585fe7441cba82651ae6",
+      "targetSha256": "2c5f19f8f663f3236a8021d57d0bf7cd002965fdf429dcb9611fafce3580176d",
       "evidence": "B",
       "adaptation": "G3 resolved requirement and scoped original-G1 evidence compatibility overlay from Edit main 4258b584064372abc9ab73f89e80f2e9c9e9f68f; exact source path packages/video-studio/src/vendor-compat.test.ts; source SHA256 a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6."
     },
@@ -26745,9 +26745,9 @@
       "sourceMode": "100644",
       "gitBlob": "df2d6b30f522202c2493f70bee5dee90fa1d88c5",
       "bytes": 110847,
-      "targetBytes": 111275,
+      "targetBytes": 115044,
       "sourceSha256": "c76a74494514c1d59e169a5e7f29a723691c401fcdf20f7404a32ee5ff79cec3",
-      "targetSha256": "5570f1b18cb533cda887f1f0b70f261de18e623c0ebfd27a889c819dd67f3932",
+      "targetSha256": "605393bf42d94f47505eb0caed0181fe6132aa048a06ffa054459591caf15ca3",
       "evidence": "B"
     },
     {
@@ -38589,18 +38589,18 @@
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "mode": "100644",
-      "bytes": 81284,
-      "targetSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
+      "bytes": 81726,
+      "targetSha256": "e4e183f09d1c4387bf9a1947e4f26bc5dc78dd9a8f753ec7d28ee5f7e91ebfbe",
       "evidence": "B",
-      "reason": "Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 3f8899d0897600fb292e8e359af243b47dfe72be452989a665f4878b8f8666ed. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 e11b0d75881b1c72358dfa87802830f52827a00b8168aac3f6eb4e11090a1d5a. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 bdd3eb8ebb92a871cb612901148ef818579074108172b40193251e18855ba480. Exact approved production-authority compatibility overlay from Edit main 1fe88a1754b29e45507542889f7ddae106a37d6b; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 3e4be0f93b37108957a34470c94dcb97fa9fed5be7a5f761e12af7273d564a68. Exact approved native-handoff compatibility overlay from Edit main 0f43ecc1922c2f58916872cffa215dcb4c1ba406; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 f4a29c4953ee53eb4544cbbafa0f8c90f2f01c64116c9adb04285c68ce38d84b. Exact approved PRD delivery-plan compatibility overlay from Edit main aed12c92ab8af4295404d6dbb47981cdccad76e4; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a."
+      "reason": "Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 3f8899d0897600fb292e8e359af243b47dfe72be452989a665f4878b8f8666ed. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 e11b0d75881b1c72358dfa87802830f52827a00b8168aac3f6eb4e11090a1d5a. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 bdd3eb8ebb92a871cb612901148ef818579074108172b40193251e18855ba480. Exact approved production-authority compatibility overlay from Edit main 1fe88a1754b29e45507542889f7ddae106a37d6b; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 3e4be0f93b37108957a34470c94dcb97fa9fed5be7a5f761e12af7273d564a68. Exact approved native-handoff compatibility overlay from Edit main 0f43ecc1922c2f58916872cffa215dcb4c1ba406; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 f4a29c4953ee53eb4544cbbafa0f8c90f2f01c64116c9adb04285c68ce38d84b. Exact approved PRD delivery-plan compatibility overlay from Edit main aed12c92ab8af4295404d6dbb47981cdccad76e4; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a. Exact host-bound portrait applicability compatibility overlay at the final-export field gate; source path packages/video-studio/src/prd-authority-bridge.ts; source SHA256 47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a."
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
       "mode": "100644",
-      "bytes": 152458,
-      "targetSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
+      "bytes": 153557,
+      "targetSha256": "33ecad68872f750930cec94e18c96e1dca213af6fbb8e0d2e9154ea0921034e9",
       "evidence": "B",
-      "reason": "Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 fc165ccc020288379bddcf171c8a14f1434262dbbb5bee5b7d299923ef454c24. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 d6521706998cf3f6af099b2b2ecea79f3e00f0ab5ecc6fc694726b1716172730. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 dbe28b040e291b54c38f6b75a9bcd6de913651f1edd6843192741a5db6af34c5. Exact approved production-authority compatibility overlay from Edit main 1fe88a1754b29e45507542889f7ddae106a37d6b; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 3d5bd2b95375a0fc06f72f948d3286949ae426e9efcedfbd5d851d16291a9425. Exact approved native-handoff compatibility overlay from Edit main 0f43ecc1922c2f58916872cffa215dcb4c1ba406; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 5202183a00396dff5a19de608fc437dff1e48d392d47e9037a6031c7fc2d411d. Exact approved PRD delivery-plan compatibility overlay from Edit main aed12c92ab8af4295404d6dbb47981cdccad76e4; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f."
+      "reason": "Exact host PRD authority and approved-review advisory compatibility overlay from Edit main eab5c724a6f665e34f59025acf9b3430fd60c293; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 fc165ccc020288379bddcf171c8a14f1434262dbbb5bee5b7d299923ef454c24. Exact effective PRD model-response schema disclosure within the existing private two-call authority scope compatibility overlay from Edit main 8e96169f19e711cd7014e728a14eda6922917156; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 d6521706998cf3f6af099b2b2ecea79f3e00f0ab5ecc6fc694726b1716172730. Exact PRD human-display normalization of semantically inapplicable optional fields within the existing private two-call authority scope compatibility overlay from Edit main 6c72a1351432994055c38ecbb67696d702f98c2a; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 dbe28b040e291b54c38f6b75a9bcd6de913651f1edd6843192741a5db6af34c5. Exact approved production-authority compatibility overlay from Edit main 1fe88a1754b29e45507542889f7ddae106a37d6b; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 3d5bd2b95375a0fc06f72f948d3286949ae426e9efcedfbd5d851d16291a9425. Exact approved native-handoff compatibility overlay from Edit main 0f43ecc1922c2f58916872cffa215dcb4c1ba406; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 5202183a00396dff5a19de608fc437dff1e48d392d47e9037a6031c7fc2d411d. Exact approved PRD delivery-plan compatibility overlay from Edit main aed12c92ab8af4295404d6dbb47981cdccad76e4; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f. Exact host-bound portrait applicability compatibility overlay at the final-export field gate; source path packages/video-studio/src/prd-authority-bridge.test.ts; source SHA256 d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f."
     },
     {
       "path": "packages/video-studio/src/prd-authority.test-support.ts",

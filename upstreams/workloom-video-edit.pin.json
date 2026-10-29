@@ -10,7 +10,7 @@
   "sourceFileCount": 3438,
   "sourceBytes": 289671284,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "596d37ab9b0565508da1bc708326fba40508b1d352880233e8e73e04594532d8",
+  "snapshotSha256": "ecd928bb8598463ffaeee07461114c8567bc5e81bf4c8bd17cf7a8f6d3a82d1f",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -200,8 +200,8 @@
     {
       "id": "marketing-runtime-diagnostics",
       "receipt": "upstreams/marketing-runtime-diagnostics.target-overlay.json",
-      "receiptSha256": "b2997b6f55b7eb2c379de160bf74fe91d8d21e6f83f5dd93ccca0070c0bef7ce",
-      "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, and phase-3 fusion diagnostics",
+      "receiptSha256": "5807995433275d9a55cc5bd763cf06abca9e96474e61ef68496d0b38c9e256d3",
+      "scope": "model endpoint and failure classification, explicit off-peak override, explicit empty-evidence normalization, product visual authority, producer structured-response re-review, marketing support review scope, phase-3 fusion diagnostics, and host-bound portrait handling",
       "upstreamUpgradeClaimed": false
     }
   ]
