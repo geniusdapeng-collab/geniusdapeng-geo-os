@@ -1,15 +1,17 @@
 import { readFile } from "node:fs/promises";
+import { createModelDispatcher } from "../../../src/model-routing/dispatcher.mjs";
+import { cleanBaseUrl, normalizeTextModelId } from "../../../src/model-routing/registry.mjs";
 
 function deepseekConfig(overrides = {}) {
   const rawBase = overrides.baseUrl
     ?? process.env.DEEPSEEK_BASE_URL
     ?? process.env.LLM_BASE_URL
     ?? "https://api.deepseek.com";
-  const baseUrl = rawBase.replace(/\/anthropic\/?$/, "").replace(/\/$/, "");
+  const baseUrl = cleanBaseUrl(rawBase);
   return {
     apiKey: overrides.apiKey ?? process.env.DEEPSEEK_API_KEY ?? process.env.LLM_API_KEY ?? "",
     baseUrl,
-    model: overrides.model ?? process.env.DEEPSEEK_MODEL ?? process.env.LLM_MODEL ?? "deepseek-flash",
+    model: normalizeTextModelId(overrides.model ?? process.env.DEEPSEEK_MODEL ?? process.env.LLM_MODEL),
     timeoutMs: Number(overrides.timeoutMs ?? process.env.DEEPSEEK_TIMEOUT_MS ?? 60_000),
   };
 }
@@ -18,6 +20,15 @@ function ensureKey(config) {
   if (!config.apiKey.trim()) {
     throw new Error("缺少 DEEPSEEK_API_KEY。真实采集必须显式配置凭据；fixture 模式无需凭据。");
   }
+}
+
+function endpoint(baseUrl, path) {
+  const base = new URL(`${baseUrl.replace(/\/+$/, "")}/`);
+  let relative = path.replace(/^\/+/, "");
+  if (base.pathname.replace(/\/+$/, "").endsWith("/v1") && relative.startsWith("v1/")) {
+    relative = relative.slice(3);
+  }
+  return new URL(relative, base).toString();
 }
 
 function fixtureAnswer(query) {
@@ -73,8 +84,8 @@ function normalizeSearchResults(body) {
   }).filter(Boolean);
 }
 
-async function requestJson(url, init, timeoutMs) {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+async function requestJson(url, init, timeoutMs, fetchImpl = fetch) {
+  const response = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   const text = await response.text();
   let body = null;
   try {
@@ -153,6 +164,14 @@ export function createProvider(name = "fixture", options = {}) {
   if (name === "deepseek" || name === "deepseek-search") {
     const config = deepseekConfig(options);
     ensureKey(config);
+    const dispatcher = createModelDispatcher({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
+      model: config.model,
+      timeoutMs: config.timeoutMs,
+      fetchImpl: options.fetchImpl ?? fetch,
+      maxRetries: 1,
+    });
     return {
       name,
       platform: options.platform ?? "deepseek",
@@ -162,14 +181,14 @@ export function createProvider(name = "fixture", options = {}) {
         let searchResults = [];
         let searchRaw = null;
         if (name === "deepseek-search") {
-          const searchBody = await requestJson(`${config.baseUrl}/v1/tools/search`, {
+          const searchBody = await requestJson(endpoint(config.baseUrl, "v1/tools/search"), {
             method: "POST",
             headers: {
               authorization: `Bearer ${config.apiKey}`,
               "content-type": "application/json",
             },
             body: JSON.stringify({ query: query.text, count: 5, need_content: true }),
-          }, config.timeoutMs);
+          }, config.timeoutMs, options.fetchImpl ?? fetch);
           searchRaw = searchBody;
           searchResults = normalizeSearchResults(searchBody);
         }
@@ -179,72 +198,31 @@ export function createProvider(name = "fixture", options = {}) {
               `${index + 1}. ${item.title}\nURL: ${item.url}\n摘要: ${item.content.slice(0, 1800)}`).join("\n\n")}`
           : "";
         const prompt = `${chatPrompt(query)}${context}`;
-        const callChat = (maxTokens) => requestJson(`${config.baseUrl}/chat/completions`, {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${config.apiKey}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [
-              {
-                role: "system",
-                content: "你是独立消费者问题回答助手。事实不清楚时必须说明，不得编造。最终答案直接输出给用户。",
-              },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.2,
-            max_tokens: maxTokens,
-            stream: false,
-          }),
-        }, config.timeoutMs);
-        const responsesText = (body) => (body?.output ?? [])
-          .filter((item) => item?.type === "message")
-          .flatMap((item) => item?.content ?? [])
-          .filter((part) => ["output_text", "text"].includes(part?.type))
-          .map((part) => part.text)
-          .join("\n")
-          .trim();
-        const callResponses = () => requestJson(`${config.baseUrl}/responses`, {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${config.apiKey}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: config.model,
-            input: prompt,
-            max_output_tokens: 4000,
-            stream: false,
-          }),
-        }, config.timeoutMs);
-        let body = await callChat(2200);
-        let answer = String(body?.choices?.[0]?.message?.content ?? "").trim();
-        if (!answer) {
-          body = await callChat(3200);
-          answer = String(body?.choices?.[0]?.message?.content ?? "").trim();
-        }
-        if (!answer) {
-          const finishReason = body?.choices?.[0]?.finish_reason ?? "unknown";
-          const reasoningLength = String(body?.choices?.[0]?.message?.reasoning_content ?? "").length;
-          const fallback = await callResponses();
-          answer = responsesText(fallback);
-          if (answer) {
-            body = fallback;
-          } else {
-            throw new Error(`DeepSeek 返回了空答案（finish_reason=${finishReason}, reasoning_chars=${reasoningLength}）`);
-          }
-        }
+        const completion = await dispatcher.completeTask({
+          scene: "geo.visibility.answer",
+          messages: [
+            {
+              role: "system",
+              content: "你是独立消费者问题回答助手。事实不清楚时必须说明，不得编造。最终答案直接输出给用户。",
+            },
+            { role: "user", content: prompt },
+          ],
+        });
+        const answer = completion.text.trim();
+        if (!answer) throw new Error("DeepSeek 返回空答案。");
         return {
           answer,
           prompt,
           raw: {
-            completion: body,
+            completion: completion.raw,
             search: searchRaw,
             searchResults,
           },
-          model: String(body?.model ?? config.model),
+          model: completion.model,
+          usage: completion.usage,
+          requestHash: completion.requestHash,
+          responseHash: completion.responseHash,
+          policy: completion.receipt.policy,
           citations: searchResults.map(({ title, url }) => ({ title, url, kind: "provider-search" })),
         };
       },

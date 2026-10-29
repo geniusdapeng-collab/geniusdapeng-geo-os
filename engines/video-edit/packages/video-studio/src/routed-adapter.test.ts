@@ -171,7 +171,7 @@ describe("结构化调用保留调用方真实输出合同", () => {
     expect(traces).toHaveLength(1);
   });
 
-  it("保持调用方采样、预算、system prompt、thinking 与取消信号，不增加调用", async () => {
+  it("保持调用方 top_p、system prompt 与取消信号，同时使用场景策略和完整输出窗口", async () => {
     const { adapter, requests } = structuredEngine('{"ok":true}');
     const controller = new AbortController();
     await adapter.reasonStructured("原文", { ok: true }, {
@@ -181,9 +181,10 @@ describe("结构化调用保留调用方真实输出合同", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]!.messages[0]).toEqual({ role: "system", content: "调用方 system" });
     expect(requests[0]!.options).toMatchObject({
-      temperature: 0.37, topP: 0.83, maxTokens: 12288,
-      thinking: { type: "disabled" }, responseFormat: { type: "json_object" },
+      topP: 0.83, maxTokens: 393_216,
+      thinking: { type: "enabled" }, reasoningEffort: "high", responseFormat: { type: "json_object" },
     });
+    expect(requests[0]!.options).not.toHaveProperty("temperature");
     expect(requests[0]!.options.signal?.aborted).toBe(false);
     controller.abort();
     expect(requests[0]!.options.signal?.aborted).toBe(true);
@@ -194,15 +195,20 @@ describe("结构化调用保留调用方真实输出合同", () => {
     const raw = '{"shots":[{"shotId":"镜-02","fields":{"scene":"光线"}}]}';
     vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
       calls.push(JSON.parse(String(init?.body)));
-      return new Response(JSON.stringify({ choices: [{ message: { content: raw } }],
-        usage: { prompt_tokens: 7, completion_tokens: 5 } }), { status: 200 });
+      return new Response(JSON.stringify({
+        id: "direct-fixture",
+        model: "caller-model",
+        choices: [{ finish_reason: "stop", message: { content: raw } }],
+        usage: { prompt_tokens: 7, completion_tokens: 5, total_tokens: 12 },
+      }), { status: 200 });
     });
     const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "caller-model" });
     const schema = { shots: [{ shotId: "镜-02", fields: { scene: "", quote: '空值与"引号"\n换行' } }] };
     const result = await adapter.reasonStructured("原始需求", schema, { maxTokens: 4096, temperature: 0.4 });
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ model: "caller-model", max_tokens: 4096, temperature: 0.4,
-      response_format: { type: "json_object" } });
+    expect(calls[0]).toMatchObject({ model: "caller-model", max_tokens: 393_216,
+      thinking: { type: "enabled" }, reasoning_effort: "high", response_format: { type: "json_object" } });
+    expect(calls[0]).not.toHaveProperty("temperature");
     expect(schemaFromMessages(calls[0]!.messages)).toEqual(schema);
     expect(result).toMatchObject({ success: true, content: raw,
       usage: { promptTokens: 7, completionTokens: 5 } });
@@ -296,7 +302,7 @@ describe("真实 PromptFusion 消费宿主结构化接口", () => {
     expect(result.degraded).toBe(false);
     expect(result.degradeReason).toBeNull();
     expect(result.fields.scene).toContain("离线结构接口用例");
-    expect(requests[0]!.options.maxTokens).toBe(12288);
+    expect(requests[0]!.options.maxTokens).toBe(393_216);
   });
 
   it.each([

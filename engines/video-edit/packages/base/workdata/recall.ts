@@ -11,6 +11,9 @@
  */
 import type pg from "pg";
 import type { BusinessEvent } from "@workloom/shared";
+import { isDeepSeekFlashModel, planDeepSeekWindow } from "../model-router/token-budget.js";
+import { videoThinkingBody } from "../model-router/deepseek-policy.js";
+import { OpenAiCompatibleProvider } from "../model-router/providers.js";
 
 /* ================= 结构化过滤器（白名单 schema） ================= */
 
@@ -184,29 +187,32 @@ export class OpenAiNlTranslator implements NlTranslator {
   ) {}
 
   async translate(query: string): Promise<EventFilter> {
-    const res = await fetch(`${this.cfg.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.cfg.apiKey}` },
-      body: JSON.stringify({
-        model: this.cfg.model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "你是检索翻译器。把用户自然语言翻译成事件检索过滤器 JSON，只允许这些键：" +
-              "objectType, objectId, action, actor, actorType(human|agent|system), " +
-              "ruleId, ruleResult(pass|review|blocked|conflict), from, to(ISO 时间), sessionId, text。" +
-              "不确定的键不要产出。只输出 JSON。",
-          },
-          { role: "user", content: query },
-        ],
-      }),
+    if (!isDeepSeekFlashModel(this.cfg.model)) throw new Error("VIDEO_TEXT_MODEL_NOT_REGISTERED");
+    const messages: Array<{ role: "system" | "user"; content: string }> = [
+      {
+        role: "system",
+        content:
+          "你是检索翻译器。把用户自然语言翻译成事件检索过滤器 JSON，只允许这些键：" +
+          "objectType, objectId, action, actor, actorType(human|agent|system), " +
+          "ruleId, ruleResult(pass|review|blocked|conflict), from, to(ISO 时间), sessionId, text。" +
+          "不确定的键不要产出。只输出 JSON。",
+      },
+      { role: "user", content: query },
+    ];
+    const budget = await planDeepSeekWindow({
+      messages,
+      responseFormat: { type: "json_object" },
     });
-    if (!res.ok) throw new Error(`LLM 翻译失败：HTTP ${res.status}`);
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const raw = data.choices?.[0]?.message?.content ?? "{}";
+    const raw = (await new OpenAiCompatibleProvider(this.cfg.model, {
+      baseUrl: this.cfg.baseUrl,
+      apiKey: this.cfg.apiKey,
+    }).chat(messages, {
+      temperature: 0,
+      responseFormat: { type: "json_object" },
+      maxTokens: budget.outputCeiling,
+      timeoutMs: 3_000,
+      ...videoThinkingBody("video.deterministic"),
+    })).text;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     // 白名单收敛：只认 EventFilter 键，值类型强校验（LLM 输出不可信）
     const allowed = ["objectType", "objectId", "action", "actor", "actorType", "ruleId", "ruleResult", "from", "to", "sessionId", "text"];

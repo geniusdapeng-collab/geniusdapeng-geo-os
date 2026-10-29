@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { PRODUCER_RUBRICS, buildProducerReviewContract, resolveProducerLlm, reviewStage, type ProducerGateOptions } from "./producer-gate.js";
-const env = { LLM_BASE_URL: "https://api.example.com", LLM_API_KEY: "k", LLM_MODEL: "judge-1" };
+const env = { LLM_BASE_URL: "https://api.deepseek.com", LLM_API_KEY: "k", LLM_MODEL: "deepseek-flash" };
 const dirs: string[] = [];
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=", "base64");
 function file(name: string, bytes: string | Buffer): string {
@@ -16,12 +16,36 @@ afterEach(() => { for (const path of dirs.splice(0)) rmSync(path, { recursive: t
 const good = { approved: true, score: 85, issues: [], suggestions: [], reason: "ok" };
 function judge(answer: unknown = good, bodies: string[] = []): typeof fetch {
   return (async (_url, init) => {
-    bodies.push(String(init?.body));
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }] }));
+    const body = String(init?.body);
+    bodies.push(body);
+    return new Response(JSON.stringify({
+      id: `judge-${bodies.length}`,
+      model: "deepseek-flash",
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    }));
+  }) as typeof fetch;
+}
+function normalizedFetch(fetchImpl: typeof fetch): typeof fetch {
+  return (async (input: string | URL | Request, init?: RequestInit) => {
+    const response = await fetchImpl(input, init);
+    if (!response.ok) return response;
+    const raw = await response.text();
+    const envelope = JSON.parse(raw) as Record<string, any>;
+    const request = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
+    envelope.id ??= "fixture-review";
+    envelope.model ??= request.model;
+    for (const choice of envelope.choices ?? []) choice.finish_reason ??= "stop";
+    envelope.usage ??= { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 };
+    return new Response(JSON.stringify(envelope), {
+      status: response.status,
+      headers: response.headers,
+    });
   }) as typeof fetch;
 }
 function textOptions(extra: Partial<ProducerGateOptions> = {}): ProducerGateOptions {
-  return { stage: "prompt", projectId: "VID-中文", artifacts: [{ path: file("prompt.txt", "剧本与镜头约束"), kind: "text" }], deterministic: [], env, fetchImpl: judge(), ...extra };
+  return { stage: "prompt", projectId: "VID-中文", artifacts: [{ path: file("prompt.txt", "剧本与镜头约束"), kind: "text" }], deterministic: [], env, ...extra,
+    fetchImpl: normalizedFetch(extra.fetchImpl ?? judge()) };
 }
 describe("AI producer evidence gate", () => {
   it("every supported stage has review criteria", () => {
@@ -74,17 +98,30 @@ describe("AI producer evidence gate", () => {
     expect(v.evidence?.[0]?.sha256).toBe(createHash("sha256").update(readFileSync(path)).digest("hex"));
     expect(v.evidence?.[0]?.scope).toBe("complete-text");
   });
-  it("oversize full text or context cannot be truncated into a pass", async () => {
-    expect((await reviewStage(textOptions({ artifacts: [{ path: file("large.txt", "a".repeat(100001)), kind: "text" }] }))).status).toBe("unverified");
-    expect((await reviewStage(textOptions({ context: { large: "a".repeat(30001) } }))).status).toBe("unverified");
+  it("full text and context above the former character caps remain complete", async () => {
+    const bodies: string[] = [];
+    const large = `${"a".repeat(100001)}完整尾部事实`;
+    expect((await reviewStage(textOptions({
+      artifacts: [{ path: file("large.txt", large), kind: "text" }],
+      context: { large: `${"b".repeat(30001)}上下文尾部事实` },
+      fetchImpl: judge(good, bodies),
+    }))).status).toBe("passed");
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain("完整尾部事实");
+    expect(bodies[0]).toContain("上下文尾部事实");
   });
-  it("all seven images are reviewed in batches and a later reject wins", async () => {
+  it("all seven images are reviewed together in one complete call", async () => {
     const images = Array.from({ length: 7 }, (_, i) => ({ path: file(`image-${i}.png`, png), kind: "image" as const }));
     const bodies: string[] = [];
-    const fetchImpl = (async (_url, init) => { bodies.push(String(init?.body)); return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(bodies.length === 1 ? good : { ...good, approved: false, reason: "last image bad" }) } }] })); }) as typeof fetch;
+    const fetchImpl = (async (_url, init) => {
+      bodies.push(String(init?.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ ...good, approved: false, reason: "one image bad" }) } }] }));
+    }) as typeof fetch;
     const v = await reviewStage(textOptions({ stage: "keyframe", artifacts: images, fetchImpl }));
-    expect(bodies).toHaveLength(2); expect(bodies.reduce((n, b) => n + (b.match(/image_url/g)?.length ?? 0), 0)).toBe(14);
-    expect(v.approved).toBe(false); expect(v.reason).toContain("last image bad"); expect(v.evidence).toHaveLength(7);
+    expect(bodies).toHaveLength(1);
+    expect((JSON.parse(bodies[0]!).messages[0].content as Array<{ type: string }>)
+      .filter(part => part.type === "image_url")).toHaveLength(7);
+    expect(v.approved).toBe(false); expect(v.reason).toContain("one image bad"); expect(v.evidence).toHaveLength(7);
   });
   it("oversize images must compress successfully without losing evidence", async () => {
     const big = file("big.png", Buffer.concat([png, Buffer.alloc(1_000_000)]));
@@ -155,19 +192,19 @@ describe("AI producer evidence gate", () => {
   });
   it("credentials need all three fields", () => {
     expect(resolveProducerLlm({})).toBeNull(); expect(resolveProducerLlm({ LLM_BASE_URL: "x", LLM_API_KEY: "y" })).toBeNull();
-    expect(resolveProducerLlm({ DEEPSEEK_BASE_URL: "https://api.example.com", DEEPSEEK_API_KEY: "k", DEEPSEEK_MODEL: "test" })?.model).toBe("test");
+    expect(() => resolveProducerLlm({ DEEPSEEK_BASE_URL: "https://api.example.com", DEEPSEEK_API_KEY: "k", DEEPSEEK_MODEL: "test" }))
+      .toThrow("VIDEO_TEXT_MODEL_NOT_REGISTERED");
     expect(resolveProducerLlm({
       LLM_BASE_URL: "https://api.deepseek.com/v1",
       LLM_API_KEY: "k",
       LLM_MODEL: "deepseek-v4-pro",
       LLM_FORCE_MODEL: "deepseek-flash",
-      LLM_NON_THINKING: "1",
-    })).toMatchObject({ model: "deepseek-flash", nonThinking: true });
+    })).toMatchObject({ model: "deepseek-flash" });
     expect(resolveProducerLlm({
       LLM_BASE_URL: "https://api.deepseek.com",
       DEEPSEEK_API_KEY: "k",
       DEEPSEEK_MODEL: "deepseek-flash",
-    })).toMatchObject({ model: "deepseek-flash", nonThinking: true });
+    })).toMatchObject({ model: "deepseek-flash" });
   });
 });
 
@@ -238,7 +275,7 @@ describe("producer binds the expected artifact bytes before review", () => {
     expect(result.evidence).toContainEqual({ path, sha256: expectedSha256, scope: kind === "image" ? "image" : "complete-text" });
   });
 
-  it.each([100_000, 100_001])("accounts for every text artifact in the %i-character full-text budget", async total => {
+  it.each([100_000, 100_001])("preserves every text artifact above the former %i-character cap", async total => {
     const accepted = "G1全文起点" + "a".repeat(60_000 - "G1全文起点".length - "G1全文尾部".length) + "G1全文尾部";
     const current = "当前门全文起点" + "b".repeat(total - accepted.length - "当前门全文起点".length - "当前门全文尾部".length) + "当前门全文尾部";
     expect(accepted.length + current.length).toBe(total);
@@ -248,19 +285,14 @@ describe("producer binds the expected artifact bytes before review", () => {
       { path: currentPath, kind: "text" as const, expectedSha256: sha256(current) },
     ];
     const result = await reviewStage(textOptions({ artifacts, fetchImpl: judge(good, bodies) }));
-    if (total === 100_000) {
-      expect(result.approved, result.reason).toBe(true); expect(bodies).toHaveLength(1);
-      const content = JSON.parse(bodies[0]!).messages[0].content;
-      expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${acceptedPath}\n${accepted}` });
-      expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${currentPath}\n${current}` });
-      expect(result.evidence).toHaveLength(2);
-    } else {
-      expect(result).toMatchObject({ approved: false, status: "unverified", degraded: true });
-      expect(result.reason).toContain("完整评审预算"); expect(bodies).toHaveLength(0);
-    }
+    expect(result.approved, result.reason).toBe(true); expect(bodies).toHaveLength(1);
+    const content = JSON.parse(bodies[0]!).messages[0].content;
+    expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${acceptedPath}\n${accepted}` });
+    expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${currentPath}\n${current}` });
+    expect(result.evidence).toHaveLength(2);
   });
 
-  it.each([0, 1, 2])("sends complete G1 and current-gate text in every image batch; rejected batch %i controls the result", async rejectedBatch => {
+  it("sends complete G1, current-gate text and all seven images in one judgment", async () => {
     const accepted = JSON.stringify({ facts: { model: "820RR-RC", source: "source-accepted-only", full: "G1事实正文".repeat(3500), tail: "G1末尾事实约束" } });
     const current = "本次G3需求正文".repeat(2500) + "当前门末尾约束";
     const acceptedPath = file("G1_DOSSIER.json", accepted); const currentPath = file("G3_INSIGHT.md", current);
@@ -268,27 +300,25 @@ describe("producer binds the expected artifact bytes before review", () => {
     const bodies: string[] = [];
     const fetchImpl = (async (_url, init) => {
       bodies.push(String(init?.body));
-      const answer = bodies.length === rejectedBatch ? { ...good, approved: false, reason: `batch-${rejectedBatch}-rejected` } : good;
+      const answer = { ...good, approved: false, reason: "one image set rejected" };
       return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }] }));
     }) as typeof fetch;
     const result = await reviewStage(textOptions({ stage: "keyframe", artifacts: [
       { path: acceptedPath, kind: "json", expectedSha256: sha256(accepted) },
       { path: currentPath, kind: "text", expectedSha256: sha256(current) }, ...images,
     ], fetchImpl }));
-    expect(bodies).toHaveLength(2);
-    for (const [index, body] of bodies.entries()) {
-      const content = JSON.parse(body).messages[0].content as Array<{ type: string; text?: string }>;
-      expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${acceptedPath}\n${accepted}` });
-      expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${currentPath}\n${current}` });
-      expect(content.filter(item => item.type === "image_url")).toHaveLength(index === 0 ? 6 : 1);
-    }
+    expect(bodies).toHaveLength(1);
+    const content = JSON.parse(bodies[0]!).messages[0].content as Array<{ type: string; text?: string }>;
+    expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${acceptedPath}\n${accepted}` });
+    expect(content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${currentPath}\n${current}` });
+    expect(content.filter(item => item.type === "image_url")).toHaveLength(7);
     expect(result.evidence).toEqual([
       { path: acceptedPath, sha256: sha256(accepted), scope: "complete-text" },
       { path: currentPath, sha256: sha256(current), scope: "complete-text" },
       ...images.map(image => ({ path: image.path, sha256: image.expectedSha256, scope: "image" })),
     ]);
-    expect(result.approved).toBe(rejectedBatch === 0); expect(result.status).toBe(rejectedBatch === 0 ? "passed" : "failed");
-    if (rejectedBatch) expect(result.reason).toContain(`batch-${rejectedBatch}-rejected`);
+    expect(result.approved).toBe(false); expect(result.status).toBe("failed");
+    expect(result.reason).toContain("one image set rejected");
   });
 });
 
@@ -325,10 +355,11 @@ describe("producer uses explicit source contracts", () => {
     const result = await reviewStage(textOptions({ contracts, fetchImpl }));
     expect(result.approved).toBe(false); expect(result.reason).toContain("合同发生变化");
   });
-  it("oversize contract stays unverified without truncating its final facts", async () => {
+  it("large contract stays complete without a character-based truncation", async () => {
     const bodies: string[] = [];
-    const result = await reviewStage(textOptions({ contracts: { shots: [{ ...shots[0], description: "a".repeat(30001) }] }, fetchImpl: judge(good, bodies) }));
-    expect(result.status).toBe("unverified"); expect(result.reason).toContain("超预算"); expect(bodies).toHaveLength(0);
+    const tail = "合同末尾事实仍须评审";
+    const result = await reviewStage(textOptions({ contracts: { shots: [{ ...shots[0], description: `${"a".repeat(30001)}${tail}` }] }, fetchImpl: judge(good, bodies) }));
+    expect(result.status).toBe("passed"); expect(bodies).toHaveLength(1); expect(bodies[0]).toContain(tail);
   });
   it("legacy no-contract caller explicitly declares the unverified fact boundary", async () => {
     const bodies: string[] = [];
@@ -362,7 +393,7 @@ describe("model-aware complete text evidence allocation", () => {
     expect(request.messages[0].content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${value.acceptedPath}\n${value.accepted}` });
   }
 
-  it.each(["deepseek-flash"])("sends all104441 UTF-16 units once to exact %s with original request settings and both hashes", async model => {
+  it.each(["deepseek-flash"])("sends all 104441 UTF-16 units once to exact %s with the full scene window and both hashes", async model => {
     const value = payload(model), bodies: string[] = [];
     expect(value.accepted).toHaveLength(51_977); expect(value.current).toHaveLength(52_464);
     expect(Buffer.byteLength(value.accepted + value.current, "utf8")).toBeGreaterThan(200_000);
@@ -372,51 +403,43 @@ describe("model-aware complete text evidence allocation", () => {
     expect(JSON.parse(bodies[0]!)).toEqual({
       model,
       messages: expect.any(Array),
-      temperature: 0.2,
       response_format: { type: "json_object" },
-      max_tokens: 16_384,
-      ...(model === "deepseek-flash" ? { thinking: { type: "disabled" } } : {}),
+      max_tokens: 393_216,
+      thinking: { type: "enabled" },
+      reasoning_effort: "high",
+      stream: false,
     });
     expect(verdict.evidence).toEqual(value.options.artifacts.map(artifact => ({ path: artifact.path, sha256: artifact.expectedSha256, scope: "complete-text" })));
   });
 
   it.each([
-    { model: "deepseek-flash", total: 1_700_000, allowed: true },
+    { model: "deepseek-flash", total: 400_000, allowed: true },
     { model: "deepseek-flash", total: 1_720_321, allowed: false },
-    { model: "deepseek-v4-pro", total: 100_000, allowed: true },
-    { model: "deepseek-v4-pro", total: 100_001, allowed: false },
   ])("enforces the exact aggregate boundary for $model at$total", async ({ model, total, allowed }) => {
     const value = payload(model, total), bodies: string[] = [];
     expect(value.accepted.length + value.current.length).toBe(total);
     const verdict = await reviewStage(textOptions({ ...value.options, fetchImpl: judge(good, bodies) }));
     expect(verdict.approved).toBe(allowed); expect(bodies).toHaveLength(allowed ? 1 : 0);
     if (allowed) expectFullText(bodies[0]!, value);
-    else expect(verdict).toMatchObject({ status: "unverified", degraded: true, reason: expect.stringContaining("完整评审预算") });
+    else expect(verdict).toMatchObject({ status: "unverified", degraded: true, reason: expect.stringContaining("DEEPSEEK_CONTEXT_EXCEEDED") });
   });
 
   it.each(["judge-unknown", "deepseek-chat", "deepseek-reasoner", "deepseek-flash-latest", "deepseek-v4-pro-preview", "provider/deepseek-flash", "DEEPSEEK-FLASH", "deepseek-v4-pro"])(
-    "retains100k for unknown, legacy or noncanonical %j without wildcard matching", async model => {
-      for (const total of [100_000, 100_001]) {
-        const value = payload(model, total), bodies: string[] = [];
-        const verdict = await reviewStage(textOptions({ ...value.options, fetchImpl: judge(good, bodies) }));
-        expect(verdict.approved).toBe(total === 100_000); expect(bodies).toHaveLength(total === 100_000 ? 1 : 0);
-        if (total === 100_000) expectFullText(bodies[0]!, value);
-        else expect(verdict.reason).toContain("完整评审预算");
-      }
+    "rejects unregistered or legacy model %j before dispatch", async model => {
+      const bodies: string[] = [];
+      await expect(reviewStage(textOptions({ env: { ...env, LLM_MODEL: model }, fetchImpl: judge(good, bodies) })))
+        .rejects.toThrow("VIDEO_TEXT_MODEL_NOT_REGISTERED");
+      expect(bodies).toHaveLength(0);
     },
   );
 
-  it.each([
-    { model: "deepseek-flash", units: 2_064_384, extra: "", allowed: true },
-    { model: "deepseek-flash", units: 2_064_384, extra: "a", allowed: false },
-    { model: "deepseek-chat", units: 100_000, extra: "", allowed: true },
-    { model: "deepseek-chat", units: 100_000, extra: "a", allowed: false },
-  ])("counts surrogate pairs as UTF-16 units for$model/$units/$extra", async ({ model, units, extra, allowed }) => {
-    const text = "😀".repeat(units / 2) + extra, bodies: string[] = [], path = file("unicode.txt", text);
-    expect(text.length).toBe(units + extra.length); expect([...text]).toHaveLength(units / 2 + extra.length);
-    const verdict = await reviewStage(textOptions({ env: { ...env, LLM_MODEL: model }, artifacts: [{ path, kind: "text", expectedSha256: sha256(text) }], fetchImpl: judge(good, bodies) }));
-    expect(verdict.approved).toBe(allowed); expect(bodies).toHaveLength(allowed ? 1 : 0);
-    if (allowed) expect(JSON.parse(bodies[0]!).messages[0].content).toContainEqual({ type: "text", text: `以下是产物正文（完整）：${path}\n${text}` });
+  it("counts full Unicode content with the official tokenizer instead of UTF-16 units", async () => {
+    const text = "😀".repeat(1_032_192), bodies: string[] = [], path = file("unicode.txt", text);
+    expect(text.length).toBe(2_064_384); expect([...text]).toHaveLength(1_032_192);
+    const verdict = await reviewStage(textOptions({ env, artifacts: [{ path, kind: "text", expectedSha256: sha256(text) }], fetchImpl: judge(good, bodies) }));
+    expect(verdict).toMatchObject({ approved: false, status: "unverified" });
+    expect(verdict.reason).toContain("DEEPSEEK_CONTEXT_EXCEEDED");
+    expect(bodies).toHaveLength(0);
   });
 
   it.each([
@@ -453,25 +476,26 @@ describe("model-aware complete text evidence allocation", () => {
     expect(verdict.reason).toContain(when === "before" ? "摘要" : "评审期间产物发生变化");
   });
 
-  it.each([0, 1])("retains the original30000 context-plus-contract boundary with expanded text, delta%i", async delta => {
+  it.each([0, 1])("does not impose the old 30000 context-plus-contract character cap, delta%i", async delta => {
     const value = payload("deepseek-flash"), bodies: string[] = [];
     const contracts = { shots: [{ shotId: "WHOLE", scene: "无人产品全景", lighting: "自然日光", action: "商品静置" }] };
     const contractLength = JSON.stringify(buildProducerReviewContract(contracts)).length;
     const context = { note: "a".repeat(30_000 - contractLength - JSON.stringify({ note: "" }).length + delta) };
     expect(JSON.stringify(context).length + contractLength).toBe(30_000 + delta);
     const verdict = await reviewStage(textOptions({ ...value.options, contracts, context, fetchImpl: judge(good, bodies) }));
-    expect(verdict.approved).toBe(delta === 0); expect(bodies).toHaveLength(delta === 0 ? 1 : 0);
-    if (delta) expect(verdict.reason).toContain("评审上下文超预算");
+    expect(verdict.approved).toBe(true); expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain("aaaa");
   });
 
-  it.each(["artifact-images", "reference-images"])("keeps the existing%s cap with expanded text", async mode => {
+  it.each(["artifact-images", "reference-images"])("enforces DeepSeek's 600-image %s ceiling", async mode => {
     const value = payload("deepseek-flash"), bodies: string[] = [];
-    const images = Array.from({ length: mode === "artifact-images" ? 61 : 7 }, (_, i) => file(`cap-${i}.png`, png));
+    const imagePath = file("cap.png", png);
+    const images = Array.from({ length: 601 }, () => imagePath);
     const verdict = await reviewStage(textOptions({ ...value.options,
       ...(mode === "artifact-images" ? { artifacts: [...value.options.artifacts, ...images.map(path => ({ path, kind: "image" as const }))] } : { referenceImages: images }),
       fetchImpl: judge(good, bodies) }));
     expect(verdict).toMatchObject({ approved: false, status: "unverified", degraded: true });
-    expect(verdict.reason).toContain(mode === "artifact-images" ? "图像证据超过" : "基准图超过"); expect(bodies).toHaveLength(0);
+    expect(verdict.reason).toContain("图像证据超过"); expect(bodies).toHaveLength(0);
   });
 
   it("keeps an expanded-text HTTP failure unverified with no additional request", async () => {

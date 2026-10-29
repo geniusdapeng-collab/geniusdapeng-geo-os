@@ -23,8 +23,8 @@ effectivePolicy: { allowedAiActions: ['research', 'outline', 'draft', 'copyedit'
 budget: { currency: 'USD' }, sourceEditions: [{ ...modelOutput, id: 'ED-1' }], claims: [], authorContributions: [], priorResults: [] });
 function localModel(respond, requests) {
   return new SingleRequestModel({ endpoint: 'https://fixture.invalid/chat', apiKey: 'private-test-model-credential', provider: 'fixture', model: 'fixture-model',
-    contextTokenLimit: 500, contextProof: { kind: 'provider_documented_context', sourceUrl: 'https://fixture.invalid/docs', sha256: HASH, verifiedAt: new Date(TIME).toISOString() },
-    pricingSnapshotHash: HASH, currency: 'USD', maxOutputTokens: 200,
+    contextTokenLimit: 8192, contextProof: { kind: 'provider_documented_context', sourceUrl: 'https://fixture.invalid/docs', sha256: HASH, verifiedAt: new Date(TIME).toISOString() },
+    pricingSnapshotHash: HASH, currency: 'USD', maxOutputTokens: 200, allowUnregisteredModel: true,
     async fetchImpl(url, init) { const request = JSON.parse(init.body); requests.push(request); const result = respond(request);
       return new Response(JSON.stringify({ id: `fixture-request-${requests.length}`, model: 'fixture-model', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(result) } }], usage: { prompt_tokens: 100, completion_tokens: 100 } })); } });
 }
@@ -46,6 +46,7 @@ test('a running ESM worker cannot advertise a new disk fingerprint while still h
     const destination = path.join(copy, entry.path); fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
     fs.copyFileSync(path.join(ROOT, entry.path), destination, fs.constants.COPYFILE_EXCL);
   }
+  fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(copy, "node_modules"), "dir");
   const imported = await import(pathToFileURL(path.join(copy, 'src/content-ops-worker/adapters.mjs')).href);
   assert.equal((await imported.contentOpsAdapterBindings({ rootDir: copy })).length, 17);
   fs.appendFileSync(path.join(copy, 'src/content-ops-worker/model.mjs'), '\n// Deliberate isolated source drift.\n');

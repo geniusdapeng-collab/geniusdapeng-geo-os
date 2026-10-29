@@ -3,18 +3,18 @@
   "id": "pengmanager-host-integration",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-29T13:27:44.020Z",
+  "generatedAt": "2026-10-29T17:23:43.856Z",
   "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
   "upstreamUpgradeClaimed": true,
   "wholeEngineUpgradeClaimed": true,
-  "sourceOverlayCount": 69,
-  "targetOwnedFileCount": 48,
+  "sourceOverlayCount": 88,
+  "targetOwnedFileCount": 53,
   "targetOwnedByTop": {
     "apps": 7,
     "bundles": 8,
     "docs": 1,
     "NOTICE": 1,
-    "packages": 13,
+    "packages": 18,
     "PENGMANAGER_RUNTIME.md": 1,
     "pengmanager-capabilities.json": 1,
     "pengmanager-toolchain.lock.json": 1,
@@ -27,9 +27,9 @@
       "path": ".env.example",
       "targetPath": "engines/video-edit/.env.example",
       "sourceSha256": "60de238c1a1c3ce445402dc44c40a8d640bcbded1ff012e17d021380756a1f7f",
-      "targetSha256": "d7850f1b439ecde6ae94bc71597604796eb0d87e67a52655680564317c7e79d7",
+      "targetSha256": "773b3d1bcd3b6af077e8a09c96259108d1898b3a61c2a61365d43da48155ba31",
       "sourceBytes": 12560,
-      "targetBytes": 12749
+      "targetBytes": 13100
     },
     {
       "path": "apps/server/src/index.ts",
@@ -62,6 +62,22 @@
       "targetSha256": "4ed2e83c8f4572e4242333a66b8df5e98d4dc2e2e3f59078a52abf6e79b735a4",
       "sourceBytes": 206606,
       "targetBytes": 206953
+    },
+    {
+      "path": "apps/server/src/video/film-worker.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/film-worker.test.ts",
+      "sourceSha256": "f081163d01434dc9ebc9b89723ea23982ddada13e0be286cfb60e5330ae03987",
+      "targetSha256": "0ba34668b60fad5486c20969f52934c890dea8454846bb6850472c1debee33c8",
+      "sourceBytes": 8054,
+      "targetBytes": 8084
+    },
+    {
+      "path": "apps/server/src/video/film-worker.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/film-worker.ts",
+      "sourceSha256": "ab4daab2e8a7ac0d046cf82cc4a5b596cd428316c0c2e45b1787bf1e1a2b0b1b",
+      "targetSha256": "e78dfd2bf13e7ccee48f808bcf09b7334f88a557447b4573c3133a19835e8dfd",
+      "sourceBytes": 57863,
+      "targetBytes": 57884
     },
     {
       "path": "apps/server/src/video/gate-policy.test.ts",
@@ -272,6 +288,14 @@
       "targetBytes": 89158
     },
     {
+      "path": "packages/base/model-router/index.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/index.ts",
+      "sourceSha256": "50d387ef5479e9bebfc2125236d201006e539fc2c2bdda488ac939699b559ade",
+      "targetSha256": "71464ee5c55a02651ca8cf0ea401c60474bc84e4f1a16fe0bffeae29f88c6047",
+      "sourceBytes": 815,
+      "targetBytes": 853
+    },
+    {
       "path": "packages/base/model-router/pool.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/pool.ts",
       "sourceSha256": "eeb063c22c69a19e9372f2cce7f23a5bcbaeaac999694c8030e93394500594a6",
@@ -283,17 +307,17 @@
       "path": "packages/base/model-router/providers-options.test.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers-options.test.ts",
       "sourceSha256": "eff64128f298149f5fa937aac1e027b9754702b3f87c9d0e01f55dee3d646d49",
-      "targetSha256": "eeee0f51c8e3451092f6bc4a8e9150a8f38585481553fe1867f64e567677de79",
+      "targetSha256": "8e1fca65c1e4f5d19848d7e7b2b98701a9a6353678f8d6887b6e68af91c92345",
       "sourceBytes": 4413,
-      "targetBytes": 6021
+      "targetBytes": 6268
     },
     {
       "path": "packages/base/model-router/providers.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers.ts",
       "sourceSha256": "8e36abcac47cd856b5ff7b72df36f970237ae4b8534867fddc17928f47025f34",
-      "targetSha256": "5a57f4df08785843283e4fa32a3cb396373f731975f467ec0192fc811be362c5",
+      "targetSha256": "6b97b8ec42a4256cc6fad9fa4b4d07c2b6d7156ede60e28d1f3c1843e6bc2be1",
       "sourceBytes": 7183,
-      "targetBytes": 9498
+      "targetBytes": 12802
     },
     {
       "path": "packages/base/model-router/router-v3.test.ts",
@@ -307,9 +331,33 @@
       "path": "packages/base/model-router/router.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/router.ts",
       "sourceSha256": "ea2ca5f52a035f18071bf918f3e188f4330567cf50e10bbd966fc5d2a7f16ddf",
-      "targetSha256": "a80b0640f702799516af5c059aea38baa0555400cae258347acfdd7ffa0bd613",
+      "targetSha256": "d7bb6725a3b5ae2a9636d59eeddd0a539281ed1fa756b0a8d79bba7104e2c7e5",
       "sourceBytes": 23504,
-      "targetBytes": 27800
+      "targetBytes": 29072
+    },
+    {
+      "path": "packages/base/model-router/token-budget.ts",
+      "targetPath": "engines/video-edit/packages/base/model-router/token-budget.ts",
+      "sourceSha256": "2ba45a8fec1bccee763541e30d7a28a131a8c34e8f87897da522222999dda372",
+      "targetSha256": "9966c037940b8dfaae96d5f785872abff9986b833e060f52c28d69c4690b6515",
+      "sourceBytes": 1354,
+      "targetBytes": 4657
+    },
+    {
+      "path": "packages/base/package.json",
+      "targetPath": "engines/video-edit/packages/base/package.json",
+      "sourceSha256": "d6b309b67a0a23b7465b758210e3647194c44489ad2b9a3e19d68af8ebfe6e2a",
+      "targetSha256": "28e8e733a0308cf1221e4dafb294c55e8b92dd01c0061fb317d3ea18cbcda7d8",
+      "sourceBytes": 2039,
+      "targetBytes": 2067
+    },
+    {
+      "path": "packages/base/workdata/recall.ts",
+      "targetPath": "engines/video-edit/packages/base/workdata/recall.ts",
+      "sourceSha256": "6c7a88607aca9ef3b3d9949e5a9e8d46d0f4182b42643169dbed3062ed54859e",
+      "targetSha256": "5a88d9248ec252cb4900243d4d94fd88af97726305504924e36b718790287581",
+      "sourceBytes": 11425,
+      "targetBytes": 11674
     },
     {
       "path": "packages/runtime/src/assembly.ts",
@@ -352,20 +400,76 @@
       "targetBytes": 11766
     },
     {
+      "path": "packages/video-studio/src/film-contracts.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/film-contracts.test.ts",
+      "sourceSha256": "f06311b3134a1ce1361e91484182e01e982c58d1cf3d23a1fa293858000a06a5",
+      "targetSha256": "f63ca05f63e2571414c0f4a971a43f6d359f5609cd5f86d6df7c9566361192d4",
+      "sourceBytes": 13258,
+      "targetBytes": 13004
+    },
+    {
+      "path": "packages/video-studio/src/film-contracts.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/film-contracts.ts",
+      "sourceSha256": "637fe1edac5c355925e16ea661baf065d0a49717adbee24116361236a19fb3f8",
+      "targetSha256": "8cddbe02059ea5f845ca59aaee33591655d20f6bdad2e1215532c2e5d516e2a7",
+      "sourceBytes": 11184,
+      "targetBytes": 10277
+    },
+    {
+      "path": "packages/video-studio/src/film-worker-channel.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/film-worker-channel.ts",
+      "sourceSha256": "e927e41b52a840b8f82dcc5a3390c6e2ab07e073b9347ef5dff17189a247c8b2",
+      "targetSha256": "32f0e3a4556bc02e2bca48faab0f8121df234874873a5278f13f12070bd2488a",
+      "sourceBytes": 16682,
+      "targetBytes": 16705
+    },
+    {
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
       "sourceSha256": "f0eda1fc928506ea98308bb23e5b83ca2cce7e0bc305742c8134da55b99f7924",
-      "targetSha256": "958abf0690791a03b653bb1985aded92b80aa1680a7fd479f6ab7c57157a2016",
+      "targetSha256": "eda613da6329ec0c3fe040c5a4a3c50a0998663b76a429e818c4497b382637cd",
       "sourceBytes": 3291,
-      "targetBytes": 3338
+      "targetBytes": 3378
     },
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "sourceSha256": "36fe2821fb973c76222061c965a026a12c710c488aa962e8f64c6c48f005bac5",
-      "targetSha256": "8d4321744897edaf37b9713e569623ba854d80b30c06c5cde7788837e1cc0eb7",
+      "targetSha256": "2017be7472f4a9b7c9f73011e07287502b11bb1cde767cfe8406a0514ad35f7a",
       "sourceBytes": 20113,
-      "targetBytes": 21528
+      "targetBytes": 25700
+    },
+    {
+      "path": "packages/video-studio/src/llm-config.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/llm-config.test.ts",
+      "sourceSha256": "e2129f599042f003380d01e6a0bf1bf41e0ff1494d59f8024263aebf547a245d",
+      "targetSha256": "d8cd326c50822fd1ff29a72fb9da05080ed5704e590d2c13618b05a40988bec5",
+      "sourceBytes": 2479,
+      "targetBytes": 3626
+    },
+    {
+      "path": "packages/video-studio/src/llm-config.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/llm-config.ts",
+      "sourceSha256": "db39e68179b0ed10fa631496accc9953f09006d975f3f8573090fb8ec4699ab0",
+      "targetSha256": "40ddafc4e0419966a250bcf0f4814afeace80cf7688135b3946617e62dd1a877",
+      "sourceBytes": 2878,
+      "targetBytes": 3983
+    },
+    {
+      "path": "packages/video-studio/src/plausibility-review.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/plausibility-review.test.ts",
+      "sourceSha256": "7cf21d4b868ee70ec7f9eb9a402ed8bcb67808fd6186af36f1a3666485ab01a5",
+      "targetSha256": "e3ba059e620e34a48a1e64fd3793793e65e55d845a7d06272155febb2f318569",
+      "sourceBytes": 7137,
+      "targetBytes": 8111
+    },
+    {
+      "path": "packages/video-studio/src/plausibility-review.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/plausibility-review.ts",
+      "sourceSha256": "37243f85ce9f852df6a2ff572796aeac6c23f120acef5947f6b74b6579629644",
+      "targetSha256": "1e74b8770e444800b3d21cae924048b3c208f1a4f82e9e933988031988f642c9",
+      "sourceBytes": 18381,
+      "targetBytes": 18904
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
@@ -403,17 +507,17 @@
       "path": "packages/video-studio/src/producer-gate.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "sourceSha256": "c40418fdd4a132866034945ac7425bac4f22ca3fceb02dec3e1aca360538b6ee",
-      "targetSha256": "0fc24e7d075c776a452b5977264c9b4c9cda6211f21dbb3cbeac72212df034e4",
+      "targetSha256": "a0ac10c187f17746614b39f87b4b63e69dee019e90839e9b26bc6dd9a7f4c3dd",
       "sourceBytes": 33373,
-      "targetBytes": 34841
+      "targetBytes": 34688
     },
     {
       "path": "packages/video-studio/src/producer-gate.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
       "sourceSha256": "b04b1cc09b7fb44f13568c589aa5a0e9e3d562b30544adb0c00f923a30784a41",
-      "targetSha256": "1810d3a5dafe265c4560302f87aab498a476372650485f0aeaad11dec72089ed",
+      "targetSha256": "4a4e10378f1a7d89315f7c864a1fcabe7a289c196c99cf1a937624b5692ccf82",
       "sourceBytes": 36535,
-      "targetBytes": 37559
+      "targetBytes": 33985
     },
     {
       "path": "packages/video-studio/src/requirement-authority.test.ts",
@@ -451,17 +555,17 @@
       "path": "packages/video-studio/src/routed-adapter.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/routed-adapter.test.ts",
       "sourceSha256": "87641ebcbc52738094d39080b98e77dcd8424d6ceff228e7be1777b1f47a78cb",
-      "targetSha256": "a23674cee03777f90fade80759d5de0dadd8d893782ae947efcbd77488824478",
+      "targetSha256": "0b7a20bf5ae7a8de1cba5c8717152b6037d046f3fe0af8c909dce2fafc9bf227",
       "sourceBytes": 14193,
-      "targetBytes": 15217
+      "targetBytes": 15519
     },
     {
       "path": "packages/video-studio/src/routed-generation.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/routed-generation.test.ts",
       "sourceSha256": "99ac218f43c5ecdaec62b757a9463feef8c23c4b214a0427ca29a473fc9c50e7",
-      "targetSha256": "c5ae4873af6dd3b0f7a4b2b3e8be5b0f44c3b3b82239e84ba90aba137986738e",
+      "targetSha256": "2ef8857b58aa30f9960cbe7ff166667fbe01c65a5932045cb561906e9d428993",
       "sourceBytes": 9623,
-      "targetBytes": 10741
+      "targetBytes": 12529
     },
     {
       "path": "packages/video-studio/src/studio.test.ts",
@@ -496,6 +600,14 @@
       "targetBytes": 115044
     },
     {
+      "path": "pnpm-lock.yaml",
+      "targetPath": "engines/video-edit/pnpm-lock.yaml",
+      "sourceSha256": "834833a61b50ff153fd0ed456a306d5fe0a3d2bffb51b8665fc0cf8b85d684e8",
+      "targetSha256": "6c13d3b6da9c3658653af2887fd872a2f37a4d57b58bcacb1dbb682fbcdc0b8f",
+      "sourceBytes": 273793,
+      "targetBytes": 274062
+    },
+    {
       "path": "README.md",
       "targetPath": "engines/video-edit/README.md",
       "sourceSha256": "f64edcfa652171195a52bd76bba5be664d9f9b7359e715a1dbbbc10409b7b51c",
@@ -528,6 +640,14 @@
       "targetBytes": 30593
     },
     {
+      "path": "scripts/doctor.sh",
+      "targetPath": "engines/video-edit/scripts/doctor.sh",
+      "sourceSha256": "8cf4d362d7ca25e26eb5c996e0be2f9984067b86e4774007c8bf8579254108bd",
+      "targetSha256": "6616257ddb6b5ddf3f859f11973eb2afa320c2f324eb707fc08299df2720340d",
+      "sourceBytes": 8432,
+      "targetBytes": 8767
+    },
+    {
       "path": "scripts/tools/edit-post.mts",
       "targetPath": "engines/video-edit/scripts/tools/edit-post.mts",
       "sourceSha256": "c0d8c6a6a4d78080bdaebed98b3c3c20d02a10b6a3e29ae93e66ba5c17cb1b74",
@@ -542,6 +662,38 @@
       "targetSha256": "48e532e4a4d0b989feee1cda1f15976630b661a698c2135cdefee2bcce21abd6",
       "sourceBytes": 20051,
       "targetBytes": 20113
+    },
+    {
+      "path": "scripts/tools/explainer-run.mts",
+      "targetPath": "engines/video-edit/scripts/tools/explainer-run.mts",
+      "sourceSha256": "76a4a5d05f797f870161a310b097774d975b393c400542b4d0fba32622886ea2",
+      "targetSha256": "b59d7b691ea7be3dcfbbfecdc041f85d6ff6f1f8e14b831465a118e487b6d6e4",
+      "sourceBytes": 12369,
+      "targetBytes": 12151
+    },
+    {
+      "path": "scripts/tools/portrait-agent.mts",
+      "targetPath": "engines/video-edit/scripts/tools/portrait-agent.mts",
+      "sourceSha256": "a932fad838df885ccad279d32969336f5e4f5281cd5d642171a15c85e57fef53",
+      "targetSha256": "baa4214c5a496268f8cff9f34b76fb6479336585570044ed22599a1d7aa0be03",
+      "sourceBytes": 32934,
+      "targetBytes": 32507
+    },
+    {
+      "path": "scripts/tools/portrait-set-from-asset.mts",
+      "targetPath": "engines/video-edit/scripts/tools/portrait-set-from-asset.mts",
+      "sourceSha256": "3796e6384269acd8305a80020a14377cc76130c12a93cf31c4e7725542f4743d",
+      "targetSha256": "858d2b1bfe01f418c039923b7201c26076e6311c1bd54dbe672761c22fa48285",
+      "sourceBytes": 35301,
+      "targetBytes": 35221
+    },
+    {
+      "path": "scripts/tools/route-video.mts",
+      "targetPath": "engines/video-edit/scripts/tools/route-video.mts",
+      "sourceSha256": "7963bf2446f365e5ef6d65f9c4645bb341142834075066aaea0e6466df89751f",
+      "targetSha256": "034be9cd67ac0a48b5d3caf47b8dd78a4dc0adebd19a30487ca1e5484cb8d431",
+      "sourceBytes": 8961,
+      "targetBytes": 8496
     },
     {
       "path": "scripts/tools/talkcraft-asr-words.py",
@@ -597,9 +749,10 @@
       "path": "apps/server/src/service/llm-environment.test.ts",
       "mode": "100644",
       "bytes": 6301,
-      "targetSha256": "e2bf2cb73760ba4fcd947d5d13c78668a9f44ec7a9998a8cbfa007f215ecb6fc",
+      "targetSha256": "db24a32139bc574ba19ceb1ee5cce375614676c4d977d5fe369391b50b1d0b4e",
       "evidence": "B",
-      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind.",
+      "targetBytes": 6671
     },
     {
       "path": "apps/server/src/service/llm-environment.ts",
@@ -722,6 +875,30 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
     {
+      "path": "packages/base/model-router/assets/deepseek-v4-tokenizer.json",
+      "mode": "100644",
+      "bytes": 6367096,
+      "targetSha256": "89085f12ef79460ac5f66d1119325ddfc694b4ab209d80bbd81d35f081dc9614",
+      "evidence": "B",
+      "reason": "PengManager model-routing integration added after the complete upstream rebind."
+    },
+    {
+      "path": "packages/base/model-router/assets/README.md",
+      "mode": "100644",
+      "bytes": 547,
+      "targetSha256": "f678388b4bfa476957bd4526d20e66c2f56cba0c75ddac455ab48a780408e9de",
+      "evidence": "B",
+      "reason": "PengManager model-routing integration added after the complete upstream rebind."
+    },
+    {
+      "path": "packages/base/model-router/deepseek-policy.ts",
+      "mode": "100644",
+      "bytes": 2620,
+      "targetSha256": "a844bfef61f1e543f030862d69b26f9ce46cd01ad84290da40d9872c8c368543",
+      "evidence": "B",
+      "reason": "PengManager model-routing integration added after the complete upstream rebind."
+    },
+    {
       "path": "packages/runtime/src/declared-skill-context.test.ts",
       "mode": "100644",
       "bytes": 4262,
@@ -816,6 +993,22 @@
       "targetSha256": "3e20040a68e42fb76507b1a32488e0229d08a4ddcfc2927de9d84d8c477d61bd",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.test.ts",
+      "mode": "100644",
+      "bytes": 3126,
+      "targetSha256": "2e8efc56276622e3de03f1069041e2e2ea785f8e54660f6281f1797e20537626",
+      "evidence": "B",
+      "reason": "PengManager model-routing integration added after the complete upstream rebind."
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.ts",
+      "mode": "100644",
+      "bytes": 11392,
+      "targetSha256": "ef1af9315c69eb217cb71881b93a2ff4d2fdc7d53497d0b9e5de5e89200c21db",
+      "evidence": "B",
+      "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },
     {
       "path": "PENGMANAGER_RUNTIME.md",

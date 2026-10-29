@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      tokenizers:
+        specifier: 0.23.2
+        version: 0.23.2
     devDependencies:
       tsx:
         specifier: 4.23.12
@@ -498,6 +502,10 @@ packages:
     resolution: {integrity: sha512-u8KszXvGfU68hVcZpRHKG28T0krMuv2G5nDhiHaMLen/gIuFEgIJhaJuO69qjnXg5paSrbPMFfx3brNuN8eVSg==}
     engines: {node: '>=14.0.0'}
 
+  tokenizers@0.23.2:
+    resolution: {integrity: sha512-OS99VXTXuGuyUncICcS0hEawgKQlrFVKNU+UlzRsTN03RpOeJiCmcai5nKg3JrdIvUDo7/RC5puVEjlJd2e5oA==}
+    engines: {node: '>= 10'}
+
   tsx@4.23.12:
     resolution: {integrity: sha512-FDf4L4sYzKtzWYhU/Xm0AQFdTjdIxNo9ElTf2mxXM6k8YMHXzYUe4yODVaXP4V9uMFbVg8c0qyBccK2OOxb45Q==}
     engines: {node: '>=18.0.0'}
@@ -945,6 +953,8 @@ snapshots:
   tinyrainbow@2.0.0: {}
 
   tinyspy@4.0.6: {}
+
+  tokenizers@0.23.2: {}
 
   tsx@4.23.12:
     dependencies:

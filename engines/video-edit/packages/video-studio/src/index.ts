@@ -4,6 +4,7 @@
 export * from "./gates.js";
 export * from "./llm-adapter.js";
 export * from "./llm-config.js";
+export * from "./video-text-client.js";
 export * from "./material-policy.js";
 export * from "./av-sync.js";
 export * from "./beat-verify.js";

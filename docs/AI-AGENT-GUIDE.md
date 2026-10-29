@@ -518,7 +518,7 @@ API 错误统一读取 `error.code`、`message`、可能存在的 `details.findi
 | 管理员会话、bearer 格式、路由白名单、哈希 CLI | [src/security/admin-auth.mjs](../src/security/admin-auth.mjs) |
 | Claim、内容、手工发布、观察与指标 | [src/services/geo-os-service.mjs](../src/services/geo-os-service.mjs) |
 | 账号快照、审批、执行、回执与重试 | [src/services/account-operations.mjs](../src/services/account-operations.mjs) |
-| 模型草稿、DeepSeek 双账本采集、GitHub 外发 | [src/services/live-pipeline.mjs](../src/services/live-pipeline.mjs)、[GitHub 适配器](../src/adapters/github.mjs) |
+| 模型草稿、DeepSeek 统一 Chat 调度与计量、GitHub 外发 | [src/services/live-pipeline.mjs](../src/services/live-pipeline.mjs)、[模型调度器](../src/model-routing/dispatcher.mjs)、[GitHub 适配器](../src/adapters/github.mjs) |
 | 事实／敏感信息／发布闸门与状态 | [policy.mjs](../src/domain/policy.mjs)、[state-machine.mjs](../src/domain/state-machine.mjs)、[public-url.mjs](../src/domain/public-url.mjs) |
 | JSON 单进程序列化与事件链 | [json-store.mjs](../src/storage/json-store.mjs) |
 | GEO 引擎与文章草案 | [根引擎包装](../src/engines/geo-evidence.mjs)、[引擎 service](../engines/geo-evidence/lib/service.mjs) |

@@ -24,9 +24,24 @@ const baseContext = {
 };
 
 const jsonResponse = (payload: unknown, ok = true, status = 200) =>
-  new Response(JSON.stringify(ok ? { choices: [{ message: { content: JSON.stringify(payload) } }] } : payload), { status });
+  new Response(JSON.stringify(ok ? {
+    id: "plausibility-test",
+    model: "deepseek-flash",
+    choices: [{ finish_reason: "stop", message: { content: JSON.stringify(payload) } }],
+    usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+  } : payload), { status });
 
-const llmEnv = { LLM_PROVIDER: "deepseek", LLM_API_KEY: "test-key", LLM_BASE_URL: "https://api.example.com/v1", LLM_MODEL: "test-model" };
+const llmEnv = { LLM_PROVIDER: "deepseek", LLM_API_KEY: "test-key", LLM_BASE_URL: "https://api.deepseek.com", LLM_MODEL: "deepseek-flash" };
+const modelAware = (fetchImpl: typeof fetch): typeof fetch => (async (input, init) => {
+  const response = await fetchImpl(input, init);
+  if (!response.ok) return response;
+  const envelope = JSON.parse(await response.text()) as Record<string, any>;
+  envelope.id ??= "plausibility-test";
+  envelope.model ??= "deepseek-flash";
+  envelope.choices?.[0] && (envelope.choices[0].finish_reason ??= "stop");
+  envelope.usage ??= { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 };
+  return new Response(JSON.stringify(envelope), { status: response.status });
+}) as typeof fetch;
 
 /**
  * 通用性验收（T-2026-1011-0001）：
@@ -43,17 +58,18 @@ describe("实体与物理常识审核 agent", () => {
     expect(rubric).not.toMatch(/头盔|安全带|饺子|相机/);
   });
 
-  it("送审上下文携带事实（商品档案尺寸/角度、角色、逐镜卡片与提示词），且超预算即拒绝", () => {
+  it("送审上下文携带完整事实（商品档案尺寸/角度、角色、逐镜卡片与提示词），不按字符数偷偷截断", () => {
     const context = buildPlausibilityContext(baseContext);
     const serialized = JSON.stringify(context);
     expect(serialized).toContain("lengthMm");
     expect(serialized).toContain("three-quarter");
     expect(serialized).toContain("Track only.");
     expect(serialized).toContain("身高约 166cm");
-    expect(() => buildPlausibilityContext({
+    const long = buildPlausibilityContext({
       ...baseContext,
       shots: Array.from({ length: 40 }, (_, index) => ({ shotId: `S-${index}`, scene: "长".repeat(2000) })),
-    })).toThrow(/PLAUSIBILITY_CONTEXT_TOO_LARGE/);
+    });
+    expect((long.shots as Array<{ scene: string }>).at(-1)?.scene).toHaveLength(2000);
   });
 
   it("解析模型输出：blocker/warning 与提示词补丁；结构非法即抛错（上层 fail-closed）", () => {
@@ -73,29 +89,29 @@ describe("实体与物理常识审核 agent", () => {
   it("模型给出 blocker → block；给出 pass → pass（同一条代码路径适配任意品类）", async () => {
     const blocked = await reviewPlausibility(baseContext, {
       env: llmEnv,
-      fetchImpl: (async () => jsonResponse({
+      fetchImpl: modelAware((async () => jsonResponse({
         verdict: "block",
         findings: [{ id: "plausibility-x", severity: "blocker", shotId: "SC-01", issue: "无人驾驶", why: "无操作者", fix: "补骑手" }],
         promptPatches: [], reason: "逻辑不成立",
-      })) as unknown as typeof fetch,
+      })) as unknown as typeof fetch),
     });
     expect(blocked.verdict).toBe("block");
     expect(blocked.findings.filter((finding) => finding.severity === "blocker")).toHaveLength(1);
-    expect(blocked.model).toBe("test-model");
+    expect(blocked.model).toBe("deepseek-flash");
 
     const passed = await reviewPlausibility(baseContext, {
       env: llmEnv,
-      fetchImpl: (async () => jsonResponse({
+      fetchImpl: modelAware((async () => jsonResponse({
         verdict: "pass",
         findings: [{ id: "plausibility-w", severity: "warning", shotId: "SC-02", issue: "建议补一个使用动作", why: "当前是静态展示但未写明", fix: "写明静置展示" }],
         promptPatches: [], reason: "仅提示项",
-      })) as unknown as typeof fetch,
+      })) as unknown as typeof fetch),
     });
     expect(passed.verdict).toBe("pass");
     expect(passed.findings).toHaveLength(1);
   });
 
-  it("Flash 文本评审锁定官方模型、JSON 输出与非思考模式", async () => {
+  it("Flash 文本评审锁定官方模型、JSON 输出与场景思考策略", async () => {
     let body: Record<string, unknown> | null = null;
     const result = await reviewPlausibility(baseContext, {
       env: {
@@ -104,28 +120,30 @@ describe("实体与物理常识审核 agent", () => {
         DEEPSEEK_API_KEY: "test-only",
         DEEPSEEK_MODEL: "deepseek-flash",
       },
-      fetchImpl: (async (_input: string | URL | Request, init?: RequestInit) => {
+      fetchImpl: modelAware((async (_input: string | URL | Request, init?: RequestInit) => {
         body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
         return jsonResponse({ verdict: "pass", findings: [], promptPatches: [], reason: "通过" });
-      }) as typeof fetch,
+      }) as typeof fetch),
     });
     expect(result.verdict).toBe("pass");
     expect(body).toMatchObject({
       model: "deepseek-flash",
       response_format: { type: "json_object" },
-      thinking: { type: "disabled" },
+      thinking: { type: "enabled" },
+      reasoning_effort: "high",
     });
+    expect(body).not.toHaveProperty("temperature");
   });
 
   it("无模型 / HTTP 失败 / 输出不可解析 → unverified（调用方 fail-closed）", async () => {
-    const noModel = await reviewPlausibility(baseContext, { env: {}, fetchImpl: (async () => jsonResponse({})) as unknown as typeof fetch });
+    const noModel = await reviewPlausibility(baseContext, { env: {}, fetchImpl: modelAware((async () => jsonResponse({})) as unknown as typeof fetch) });
     expect(noModel.verdict).toBe("unverified");
     const httpFail = await reviewPlausibility(baseContext, {
-      env: llmEnv, fetchImpl: (async () => new Response("boom", { status: 500 })) as unknown as typeof fetch,
+      env: llmEnv, fetchImpl: modelAware((async () => new Response("boom", { status: 500 })) as unknown as typeof fetch),
     });
     expect(httpFail.verdict).toBe("unverified");
     const badJson = await reviewPlausibility(baseContext, {
-      env: llmEnv, fetchImpl: (async () => jsonResponse({ verdict: "也许吧" })) as unknown as typeof fetch,
+      env: llmEnv, fetchImpl: modelAware((async () => jsonResponse({ verdict: "也许吧" })) as unknown as typeof fetch),
     });
     expect(badJson.verdict).toBe("unverified");
   });

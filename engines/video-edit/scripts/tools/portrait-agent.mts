@@ -37,6 +37,7 @@ import {
   reviewStage, runPortraitAgent
 } from "../../packages/video-studio/src/index.js";
 import { assertPortraitOwnerWritePaths, buildPortraitOwnerAuthorization, EXPLICIT_PORTRAIT_AUTHORIZATION } from "../../packages/video-studio/src/portrait-owner-authorization.js";
+import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const LIBRARY_ROOT = resolve(REPO_ROOT, process.env.HR_CHARACTER_LIBRARY ?? "var/media/characters");
@@ -379,29 +380,23 @@ async function main(): Promise<void> {
         for (const [angle, file] of Object.entries(selected!.files)) {
         const jpeg = toJudgeJpeg(file, tmpDir, angle);
         if (!jpeg) throw new Error(`送审图压缩失败：${file}`);
-        const response = await fetch(`${llm.baseUrl}/chat/completions`, {
-          method: "POST",
-          headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
-          body: JSON.stringify({
-            model: llm.model, temperature: 0,
-            response_format: { type: "json_object" },
-            messages: [{
-              role: "user",
-              content: [
-                { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 定妆照候选。" +
-                  "只判\"是不是同一个人\"：看面孔五官比例、脸型、年龄段；服装/背景/光线差异不影响判定。" +
-                  `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
-                { type: "image_url", image_url: { url: anchorDataUrl } },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${readFileSync(jpeg).toString("base64")}` } }
-              ]
-            }]
-          }),
-          signal: AbortSignal.timeout(180_000)
+        const content = [
+          { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 定妆照候选。" +
+            "只判\"是不是同一个人\"：看面孔五官比例、脸型、年龄段；服装/背景/光线差异不影响判定。" +
+            `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
+          { type: "image_url", image_url: { url: anchorDataUrl } },
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${readFileSync(jpeg).toString("base64")}` } }
+        ];
+        const reviewed = await completeVideoTextTask({
+          endpoint: llm,
+          scene: "video.quality.plausibility-review",
+          messages: [{ role: "user", content }],
+          tokenMessages: [{ role: "user", content: [content[0]!] }],
+          imageTokens: 2 * 1_024,
+          timeoutMs: 180_000,
+          requireJson: true,
         });
-        const body = await response.text();
-        if (!response.ok) throw new Error(`像不像校验调用失败 HTTP ${response.status}：${body.slice(0, 160)}`);
-        const content = (JSON.parse(body) as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content ?? "";
-        const parsed = JSON.parse(content.replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim()) as { same?: boolean; score?: number; reason?: string };
+        const parsed = reviewed.value as { same?: boolean; score?: number; reason?: string };
         const score = Number.isFinite(Number(parsed.score)) ? Number(parsed.score) : null;
         const same = parsed.same === true;
         const ok = same && (score === null || score >= minLikeness);

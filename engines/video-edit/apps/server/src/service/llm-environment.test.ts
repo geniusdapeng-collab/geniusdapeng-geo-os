@@ -77,10 +77,18 @@ describe("explicit process-only model configuration", () => {
 
   it("clearing model assembly replaces a cached compatibility provider and a cached mock result", async () => {
     const endpoint = async (reply: string): Promise<string> => {
-      const server = createServer((request, response) => {
+      const server = createServer(async (request, response) => {
+        const chunks: Buffer[] = [];
+        for await (const chunk of request) chunks.push(Buffer.from(chunk));
+        const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
         response.setHeader("content-type", "application/json");
         response.end(request.url?.endsWith("/models") ? JSON.stringify({ data: [] })
-          : JSON.stringify({ choices: [{ message: { content: reply } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+          : JSON.stringify({
+              id: `fixture-${body.model}`,
+              model: body.model,
+              choices: [{ finish_reason: "stop", message: { content: reply } }],
+              usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+            }));
       });
       servers.push(server);
       await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

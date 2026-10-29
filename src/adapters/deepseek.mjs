@@ -1,36 +1,20 @@
 import { hashObject, hashText } from "../domain/hash.mjs";
 import { scanSensitiveText } from "../domain/policy.mjs";
-import { resolveDeepSeekApiKey } from "./auth.mjs";
 import { MAIN_PROFILE } from "../domain/identity.mjs";
+import { resolveDeepSeekApiKey } from "./auth.mjs";
+import { createModelDispatcher } from "../model-routing/dispatcher.mjs";
+import {
+  cleanBaseUrl,
+  normalizeTextModelId,
+} from "../model-routing/registry.mjs";
 
 function endpoint(baseUrl, path) {
-  return new URL(path.replace(/^\/+/, ""), `${baseUrl.replace(/\/+$/, "")}/`).toString();
-}
-
-function textFromResponses(body) {
-  const parts = [];
-  for (const item of body?.output ?? []) {
-    if (item?.type !== "message") {
-      continue;
-    }
-    for (const content of item?.content ?? []) {
-      if (
-        ["output_text", "text"].includes(content?.type) &&
-        typeof content?.text === "string"
-      ) {
-        parts.push(content.text);
-      }
-    }
+  const base = new URL(`${baseUrl.replace(/\/+$/, "")}/`);
+  let relative = path.replace(/^\/+/, "");
+  if (base.pathname.replace(/\/+$/, "").endsWith("/v1") && relative.startsWith("v1/")) {
+    relative = relative.slice(3);
   }
-  return parts.join("\n").trim();
-}
-
-function parseJsonText(text) {
-  const trimmed = String(text ?? "").trim();
-  const unfenced = trimmed.startsWith("```")
-    ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
-    : trimmed;
-  return JSON.parse(unfenced);
+  return new URL(relative, base).toString();
 }
 
 function normalizeSearchResults(body) {
@@ -48,16 +32,10 @@ function normalizeSearchResults(body) {
       } catch {
         return null;
       }
-      let domain = "";
-      try {
-        domain = parsedUrl.hostname;
-      } catch {
-        domain = "";
-      }
       return {
         title: String(entry.title ?? entry.name ?? ""),
         url: parsedUrl.toString(),
-        domain,
+        domain: parsedUrl.hostname,
         snippet: String(entry.content ?? entry.snippet ?? entry.summary ?? "").slice(0, 2_000),
       };
     })
@@ -85,56 +63,98 @@ async function requestJson(fetchImpl, url, init, timeoutMs) {
   return body;
 }
 
+function validateGeneratedContent(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("模型没有返回 JSON 对象。");
+  }
+  const allowed = new Set(["title", "body", "hook", "cta", "hashtags"]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) throw new Error(`模型返回未声明字段：${key}`);
+  }
+  if (typeof value.title !== "string" || !value.title.trim()) {
+    throw new Error("模型没有返回有效的 title。");
+  }
+  if (typeof value.body !== "string" || !value.body.trim()) {
+    throw new Error("模型没有返回有效的 body。");
+  }
+  if (value.hook !== undefined && typeof value.hook !== "string") {
+    throw new Error("模型返回的 hook 无效。");
+  }
+  if (value.cta !== undefined && typeof value.cta !== "string") {
+    throw new Error("模型返回的 cta 无效。");
+  }
+  if (value.hashtags !== undefined
+    && (!Array.isArray(value.hashtags) || value.hashtags.some((item) => typeof item !== "string"))) {
+    throw new Error("模型返回的 hashtags 无效。");
+  }
+  return value;
+}
+
 export class DeepSeekAdapter {
   constructor({
-    baseUrl = process.env.DEEPSEEK_BASE_URL || "http://127.0.0.1:8788",
-    model = process.env.DEEPSEEK_MODEL || "deepseek-flash",
+    baseUrl = process.env.LLM_BASE_URL || process.env.DEEPSEEK_BASE_URL || "http://127.0.0.1:8788",
+    model = process.env.LLM_MODEL || process.env.DEEPSEEK_MODEL || "deepseek-flash",
     apiKey,
-    timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS || 120_000),
+    timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS || 600_000),
     fetchImpl = fetch,
+    dispatcher,
+    maxRetries = 1,
   } = {}) {
-    this.baseUrl = baseUrl;
-    this.model = model;
+    this.baseUrl = cleanBaseUrl(baseUrl);
+    this.model = normalizeTextModelId(model);
     this.apiKey = apiKey;
     this.timeoutMs = timeoutMs;
     this.fetchImpl = fetchImpl;
+    this.maxRetries = maxRetries;
+    this.dispatcher = dispatcher ?? null;
   }
 
   #auth() {
-    if (!this.apiKey) {
-      this.apiKey = resolveDeepSeekApiKey();
-    }
+    if (!this.apiKey) this.apiKey = resolveDeepSeekApiKey();
     return this.apiKey;
   }
 
-  async health() {
-    let configured = Boolean(this.apiKey);
-    if (!configured) {
-      try {
-        this.#auth();
-        configured = true;
-      } catch {
-        configured = false;
-      }
+  #dispatcher() {
+    if (!this.dispatcher) {
+      this.dispatcher = createModelDispatcher({
+        apiKey: this.#auth(),
+        model: this.model,
+        baseUrl: this.baseUrl,
+        fetchImpl: this.fetchImpl,
+        timeoutMs: this.timeoutMs,
+        maxRetries: this.maxRetries,
+      });
     }
+    return this.dispatcher;
+  }
+
+  async health() {
+    const configured = Boolean(this.apiKey || process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY);
+    const url = new URL(this.baseUrl);
+    const healthUrl = url.hostname === "api.deepseek.com"
+      ? endpoint(this.baseUrl, "/models")
+      : endpoint(this.baseUrl, "/health");
     try {
-      const response = await this.fetchImpl(endpoint(this.baseUrl, "/health"), {
+      const headers = this.apiKey || process.env.DEEPSEEK_API_KEY || process.env.LLM_API_KEY
+        ? { Authorization: `Bearer ${this.#auth()}` }
+        : {};
+      const response = await this.fetchImpl(healthUrl, {
+        headers,
         signal: AbortSignal.timeout(5_000),
       });
-      const body = await response.json();
       return {
         configured,
-        ok: response.ok && body.status === "ok",
-        mode: "direct-deepseek-api",
+        ok: response.ok || (url.hostname === "api.deepseek.com" && response.status === 404),
+        mode: "unified-deepseek-dispatcher",
         baseUrl: this.baseUrl,
         model: this.model,
-        upstream: body.upstream,
+        policyVersion: this.#dispatcher().health().policyVersion,
       };
     } catch (error) {
       return {
         configured,
         ok: false,
-        mode: "direct-deepseek-api",
+        mode: "unified-deepseek-dispatcher",
         baseUrl: this.baseUrl,
         model: this.model,
         error: error.message,
@@ -166,76 +186,38 @@ export class DeepSeekAdapter {
     };
   }
 
-  async chat(prompt, { maxTokens = 1_500, temperature = 0.2 } = {}) {
-    const body = await requestJson(
-      this.fetchImpl,
-      endpoint(this.baseUrl, "/chat/completions"),
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.#auth()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            {
-              role: "system",
-              content:
-                "你是独立的 AI 产品与 GEO 研究助手。只能依据给定事实和搜索结果回答；证据不足时明确说明，不得编造。",
-            },
-            { role: "user", content: prompt },
-          ],
-          temperature,
-          max_tokens: maxTokens,
-          stream: false,
-        }),
-      },
-      this.timeoutMs,
-    );
-    const answer = String(body?.choices?.[0]?.message?.content ?? "").trim();
-    if (!answer) {
-      throw new Error("DeepSeek Chat 返回空答案。");
-    }
+  async chat(prompt, {
+    scene = "geo.answer.synthesize",
+    systemPrompt = "你是独立的 AI 产品与 GEO 研究助手。只能依据给定事实和搜索结果回答；证据不足时明确说明，不得编造。",
+    signal,
+  } = {}) {
+    const result = await this.#dispatcher().completeTask({
+      scene,
+      signal,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
+    });
     return {
-      answer,
-      model: String(body?.model ?? this.model),
-      completionId: body?.id ?? null,
-      usage: body?.usage ?? null,
-      responseHash: hashObject(body),
+      answer: result.text,
+      model: result.model,
+      completionId: result.responseId,
+      usage: result.usage,
+      responseHash: result.responseHash,
+      requestHash: result.requestHash,
+      mode: result.mode,
+      effort: result.effort,
+      outputCeiling: result.outputCeiling,
+      policyHash: result.policyHash,
+      registryVersion: result.registryVersion,
+      attempts: result.attempts,
+      receipt: result.receipt,
     };
   }
 
-  async respond(prompt, { maxOutputTokens = 4_000 } = {}) {
-    const body = await requestJson(
-      this.fetchImpl,
-      endpoint(this.baseUrl, "/responses"),
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.#auth()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: this.model,
-          input: prompt,
-          max_output_tokens: maxOutputTokens,
-          stream: false,
-        }),
-      },
-      this.timeoutMs,
-    );
-    const answer = textFromResponses(body);
-    if (!answer) {
-      throw new Error("DeepSeek Responses 返回空答案。");
-    }
-    return {
-      answer,
-      model: String(body.model ?? this.model),
-      completionId: body.id ?? null,
-      usage: body.usage ?? null,
-      responseHash: hashObject(body),
-    };
+  async respond(prompt, options = {}) {
+    return this.chat(prompt, options);
   }
 
   async answerQuery(query) {
@@ -253,35 +235,21 @@ export class DeepSeekAdapter {
       "",
       sources || "未返回搜索结果。",
     ].join("\n");
-    let completion;
-    let completionSurface = "deepseek-chat-completions";
-    try {
-      completion = await this.chat(prompt, { maxTokens: 1_200 });
-    } catch (error) {
-      if (!/空答案/.test(error.message)) {
-        throw error;
-      }
-      try {
-        completion = await this.chat(prompt, { maxTokens: 3_200 });
-      } catch (retryError) {
-        if (!/空答案/.test(retryError.message)) {
-          throw retryError;
-        }
-        completion = await this.respond(prompt, { maxOutputTokens: 4_000 });
-        completionSurface = "deepseek-responses";
-      }
-    }
+    const completion = await this.chat(prompt, { scene: "geo.answer.synthesize" });
     const evidence = {
-      schemaVersion: "pengstack.deepseek-answer/v1",
+      schemaVersion: "pengstack.deepseek-answer/v2",
       queryId: query.id,
       query: query.text,
       queryLocale: query.locale,
-      surface: `DeepSeek Search + ${completionSurface === "deepseek-responses" ? "Responses API" : "Chat API"}`,
-      completionSurface,
+      surface: "DeepSeek Search + unified Chat API",
+      transport: "openai-chat",
       model: completion.model,
       completionId: completion.completionId,
       searchResponseHash: search.responseHash,
       completionResponseHash: completion.responseHash,
+      completionRequestHash: completion.requestHash,
+      policy: completion.receipt.policy,
+      usage: completion.usage,
       answer: completion.answer,
       answerHash: hashText(completion.answer),
       citations: search.results.map(({ title, url, domain }) => ({ title, url, domain })),
@@ -314,46 +282,17 @@ export class DeepSeekAdapter {
       "严格只输出一个 JSON 对象，字段为 title、body、hook、cta、hashtags。",
       "body 使用自然中文，控制在 300 至 800 字。",
     ].join("\n");
-    let body;
-    let generated;
-    let parseError;
-    for (const maxOutputTokens of [1_400, 4_000]) {
-      body = await requestJson(
-        this.fetchImpl,
-        endpoint(this.baseUrl, "/responses"),
+    const result = await this.#dispatcher().completeTask({
+      scene: "content.draft",
+      messages: [
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.#auth()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: this.model,
-            input: prompt,
-            max_output_tokens: maxOutputTokens,
-            stream: false,
-          }),
+          role: "system",
+          content: "你是有事实边界的 GEO 内容编辑。只输出合法 JSON，不得输出 Markdown 围栏或解释。",
         },
-        this.timeoutMs,
-      );
-      const text = textFromResponses(body);
-      if (!text) {
-        parseError = new Error("模型未返回 message/output_text。");
-        continue;
-      }
-      try {
-        generated = parseJsonText(text);
-        break;
-      } catch (error) {
-        parseError = error;
-      }
-    }
-    if (!generated) {
-      throw parseError ?? new Error("模型没有返回可解析的内容 JSON。");
-    }
-    if (!generated.title?.trim() || !generated.body?.trim()) {
-      throw new Error("模型没有返回有效的 title/body。");
-    }
+        { role: "user", content: prompt },
+      ],
+    });
+    const generated = validateGeneratedContent(result.value);
     const sensitive = scanSensitiveText(
       `${generated.title}\n${generated.body}\n${generated.cta ?? ""}`,
     );
@@ -362,10 +301,20 @@ export class DeepSeekAdapter {
     }
     return {
       ...generated,
-      model: String(body.model ?? this.model),
-      responseId: body.id ?? null,
-      usage: body.usage ?? null,
-      responseHash: hashObject(body),
+      model: result.model,
+      responseId: result.responseId,
+      usage: result.usage,
+      responseHash: result.responseHash,
+      requestHash: result.requestHash,
+      policy: result.receipt.policy,
+      finishReason: result.finishReason,
+      mode: result.mode,
+      effort: result.effort,
+      outputCeiling: result.outputCeiling,
+      policyHash: result.policyHash,
+      registryVersion: result.registryVersion,
+      attempts: result.attempts,
+      receipt: result.receipt,
     };
   }
 }

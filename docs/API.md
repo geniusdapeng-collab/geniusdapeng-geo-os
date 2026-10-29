@@ -188,7 +188,7 @@ display name. Existing data is upgraded at server startup as described in
 | POST | `/api/geo/queries` | Add a stable query |
 | POST | `/api/geo/observations` | Record an AI answer sample |
 | POST | `/api/live/generate-content` | Generate content with the current model |
-| POST | `/api/live/deepseek/collect` | Run real DeepSeek Search + Chat/Responses queries |
+| POST | `/api/live/deepseek/collect` | Run real DeepSeek Search through the unified Chat dispatcher |
 | POST | `/api/live/geoevidence/run` | Run the in-process personal GEO engine |
 | POST | `/api/live/video-edit/cover` | Get cover knowledge and trace hints |
 | POST | `/api/live/media/render` | Build timeline, run post/cover/package, and write output receipts |

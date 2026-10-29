@@ -4,6 +4,7 @@
  *  - OpenAiCompatibleProvider：deepseek/moonshot/zhipu/openai 可切（.env LLM_*）
  *  - F6.6/L6.2：出站内容必经脱敏网关——所有提供方只由 router.execute 调用（模块外不暴露直连）
  */
+import { createHash } from "node:crypto";
 import { maskDeep } from "../workdata/pii.js";
 
 export interface ChatMessage {
@@ -15,6 +16,11 @@ export interface ChatResult {
   text: string;
   promptTokens: number;
   completionTokens: number;
+  modelId?: string;
+  finishReason?: string;
+  reasoningTokens?: number;
+  requestHash?: string;
+  responseHash?: string;
 }
 
 /**
@@ -47,6 +53,7 @@ export interface ChatGenerationOptions {
   maxTokens?: number;
   responseFormat?: { type: string };
   thinking?: Record<string, unknown>;
+  reasoningEffort?: "low" | "high" | "max";
 }
 
 export interface ChatOptions extends ChatGenerationOptions {
@@ -166,17 +173,33 @@ export class OpenAiCompatibleProvider implements ModelProvider {
     const timeoutMs = opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : 120_000;
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const signal = opts.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
+    const thinkingEnabled = opts.thinking?.type === "enabled";
+    const topP = thinkingEnabled && opts.topP !== undefined
+      ? Math.min(1, Math.max(0.95, opts.topP))
+      : opts.topP;
+    const requestBody: Record<string, unknown> = {
+      model: this.modelId,
+      messages: masked,
+      ...(opts.maxTokens === undefined ? {} : { max_tokens: opts.maxTokens }),
+      ...(opts.responseFormat === undefined ? {} : { response_format: opts.responseFormat }),
+      ...(opts.thinking === undefined ? {} : { thinking: opts.thinking }),
+      ...(thinkingEnabled
+        ? {
+            ...(opts.reasoningEffort === undefined ? {} : { reasoning_effort: opts.reasoningEffort }),
+            ...(topP === undefined ? {} : { top_p: topP }),
+          }
+        : {
+            temperature: opts.temperature ?? 0.2,
+            ...(topP === undefined ? {} : { top_p: topP }),
+          }),
+    };
+    const body = JSON.stringify(requestBody);
+    const requestHash = createHash("sha256").update(body).digest("hex");
     try {
       const res = await fetch(`${this.cfg.baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "content-type": "application/json", ...this.authHeaders() },
-        body: JSON.stringify({
-          model: this.modelId, messages: masked, temperature: opts.temperature ?? 0.2,
-          ...(opts.topP === undefined ? {} : { top_p: opts.topP }),
-          ...(opts.maxTokens === undefined ? {} : { max_tokens: opts.maxTokens }),
-          ...(opts.responseFormat === undefined ? {} : { response_format: opts.responseFormat }),
-          ...(opts.thinking === undefined ? {} : { thinking: opts.thinking }),
-        }),
+        body,
         signal,
       });
       if (!res.ok) {
@@ -186,18 +209,74 @@ export class OpenAiCompatibleProvider implements ModelProvider {
           retryable: res.status === 429 || res.status >= 500,
         });
       }
-      const data = (await res.json()) as {
-        choices?: Array<{ message?: { content?: unknown } }>;
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
+      const rawBody = await res.text();
+      const responseHash = createHash("sha256").update(rawBody).digest("hex");
+      let data: {
+        model?: string;
+        choices?: Array<{
+          finish_reason?: string;
+          message?: { content?: unknown; reasoning_content?: string | null };
+        }>;
+        usage?: {
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          completion_tokens_details?: { reasoning_tokens?: number };
+        };
       };
+      try {
+        data = JSON.parse(rawBody) as typeof data;
+      } catch (error) {
+        throw new ModelProviderError("模型响应不是合法 JSON", "protocol", {
+          retryable: false,
+          cause: error,
+        });
+      }
+      if (typeof data.model === "string" && data.model !== this.modelId) {
+        throw new ModelProviderError(
+          `模型响应身份 ${data.model || "<missing>"} 与请求 ${this.modelId} 不一致`,
+          "protocol",
+          { retryable: false },
+        );
+      }
+      if (data.choices?.length !== 1) {
+        throw new ModelProviderError("模型响应必须包含唯一 choice", "protocol", { retryable: false });
+      }
+      const choice = data.choices[0]!;
+      if (choice.finish_reason !== "stop") {
+        throw new ModelProviderError(`模型未完整结束：${choice.finish_reason ?? "missing"}`, "protocol", {
+          retryable: false,
+        });
+      }
+      if (!thinkingEnabled && String(choice.message?.reasoning_content ?? "").trim()) {
+        throw new ModelProviderError("非思考场景返回了 reasoning_content", "protocol", { retryable: false });
+      }
       const text = normalizeModelContent(data.choices?.[0]?.message?.content);
       if (!text.trim()) {
         throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: true });
       }
+      const promptTokens = data.usage?.prompt_tokens;
+      const completionTokens = data.usage?.completion_tokens;
+      const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
+      if (!Number.isSafeInteger(promptTokens) || promptTokens! < 0
+        || !Number.isSafeInteger(completionTokens) || completionTokens! < 0) {
+        throw new ModelProviderError("模型 usage 缺失或无效", "protocol", { retryable: false });
+      }
+      if (reasoningTokens !== undefined
+        && (!Number.isSafeInteger(reasoningTokens) || reasoningTokens < 0 || reasoningTokens > completionTokens!)) {
+        throw new ModelProviderError("模型 reasoning_tokens 无效", "protocol", { retryable: false });
+      }
+      if (!thinkingEnabled && reasoningTokens !== undefined && reasoningTokens !== 0) {
+        throw new ModelProviderError("非思考场景返回了 reasoning tokens", "protocol", { retryable: false });
+      }
       return {
         text,
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0,
+        promptTokens: promptTokens!,
+        completionTokens: completionTokens!,
+        modelId: data.model,
+        finishReason: choice.finish_reason,
+        reasoningTokens: reasoningTokens ?? 0,
+        requestHash,
+        responseHash,
       };
     } catch (err) {
       // 超时/取消要给出可读原因（降级链据此记 model.degraded）
