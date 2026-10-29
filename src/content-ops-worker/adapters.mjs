@@ -13,7 +13,11 @@ const DETERMINISTIC_KINDS = ['image.compose', 'document.render', 'caption.align'
 const ALL_KINDS = Object.freeze([...MODEL_TASK_KINDS, ...DETERMINISTIC_KINDS, 'voice.speak']);
 const CLOSURE = Object.freeze([...new Set(['src/content-ops-worker/adapters.mjs', 'src/content-ops-worker/model.mjs',
   'src/content-ops-worker/worker.mjs', 'src/content-ops-worker/local-store.mjs', 'src/content-ops-worker/transport.mjs',
-  'src/content-ops-worker/protocol.mjs', 'scripts/content-ops-worker.mjs', 'src/domain/content-ops-coverage.mjs', ...mediaSourceClosureFiles, ...rendererSourceFiles])].sort());
+  'src/content-ops-worker/protocol.mjs', 'scripts/content-ops-worker.mjs', 'src/domain/content-ops-coverage.mjs',
+  'src/domain/hash.mjs', 'src/domain/strict-json.mjs', 'src/domain/errors.mjs',
+  'src/model-routing/budget.mjs', 'src/model-routing/dispatcher.mjs', 'src/model-routing/errors.mjs',
+  'src/model-routing/policy.mjs', 'src/model-routing/registry.mjs', 'src/model-routing/tokenizer.mjs',
+  ...mediaSourceClosureFiles, ...rendererSourceFiles])].sort());
 
 export async function contentOpsSourceClosure({ rootDir = ROOT } = {}) {
   const root = fs.realpathSync(rootDir), files = [];
@@ -190,7 +194,7 @@ export async function createContentOpsAdapters({ rootDir = ROOT, model, modelCon
         // never merely their names or a statement that the files exist.
         source = { ...source, attachmentTexts: inputs.filter(row => /^(?:text\/|application\/(?:json|x-ipynb\+json))/.test(row.mime))
           .map(row => ({ id: row.id, sha256: bytesHash(row.bytes), mime: row.mime, text: new TextDecoder('utf-8', { fatal: true }).decode(row.bytes) })) };
-        const result = await runCall('model.1', modelAdapter.prepare(kind, source));
+        const result = await runCall('model.1', await modelAdapter.prepare(kind, source));
         const data = kind === 'quality.final' ? finalReport(result, source, lease, inputs) : result.value;
         // A backend-declared text output always contains the actual complete text.
         const outputs = (lease.task.outputSpec ?? []).map(spec => {

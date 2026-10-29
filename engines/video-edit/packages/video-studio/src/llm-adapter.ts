@@ -14,10 +14,10 @@
  */
 import {
   normalizeModelContent,
-  deepSeekInputTokenBudget,
-  estimateDeepSeekTokens,
-  isDeepSeekFlashModel,
+  DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
+  planDeepSeekWindow,
   routeSmart, type EventSink, type ModelPolicy, type ModelProvider, type PlanId,
+  type VideoScene,
 } from "@workloom/base/model-router";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -25,11 +25,15 @@ import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productionModelInput } from "./prd-authority-bridge.js";
 import {
+  DEEPSEEK_FLASH_MODEL,
+  VIDEO_SCENE_POLICY_VERSION,
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
   resolveVideoModel,
   resolveVideoNonThinking,
+  resolveVideoScene,
 } from "./llm-config.js";
+import { createHash } from "node:crypto";
 
 export interface LLMReasonOptions {
   model?: string;
@@ -41,6 +45,7 @@ export interface LLMReasonOptions {
   responseFormat?: { type: string };
   thinking?: Record<string, unknown>;
   signal?: AbortSignal;
+  policyScene?: VideoScene;
 }
 
 export interface LLMReasonResult {
@@ -50,6 +55,14 @@ export interface LLMReasonResult {
   error?: string;
   retryable?: boolean;
   usage?: { promptTokens?: number; completionTokens?: number };
+  requestedModel?: string;
+  resolvedModel?: string;
+  mode?: "enabled" | "disabled";
+  effort?: "low" | "high" | "max" | null;
+  finishReason?: string;
+  requestHash?: string;
+  responseHash?: string;
+  policyVersion?: string;
 }
 
 export interface WorkloomLLMEngineConfig {
@@ -84,8 +97,16 @@ export interface WorkloomLLMEngineConfig {
 }
 
 interface ChatCompletionResponse {
-  choices?: Array<{ message?: { content?: unknown } }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
+  model?: string;
+  choices?: Array<{
+    finish_reason?: string;
+    message?: { content?: unknown; reasoning_content?: string | null };
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number };
+  };
   error?: { message?: string };
 }
 
@@ -105,14 +126,24 @@ export class WorkloomLLMEngine {
     this.cfg = {
       fastModel: config.model,
       timeoutMs: 180_000,
-      maxTokens: 8192,
+      maxTokens: DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
       nonThinking: config.nonThinking ?? resolveVideoNonThinking(config.model),
       ...config
     };
+    if (this.cfg.router && this.cfg.model === DEEPSEEK_FLASH_MODEL) {
+      this.attachRouter(this.cfg.router);
+    }
   }
 
   /** v3.0 收口：装配后注入路由配置（宿主侧 seam；vendor 无感） */
   attachRouter(router: NonNullable<WorkloomLLMEngineConfig["router"]>): void {
+    if (this.cfg.model === DEEPSEEK_FLASH_MODEL) {
+      if (router.forceModel !== undefined && router.forceModel !== DEEPSEEK_FLASH_MODEL) {
+        throw new Error("VIDEO_TEXT_MODEL_NOT_REGISTERED");
+      }
+      this.cfg.router = { ...router, forceModel: DEEPSEEK_FLASH_MODEL };
+      return;
+    }
     this.cfg.router = router;
   }
 
@@ -137,21 +168,37 @@ export class WorkloomLLMEngine {
   }
 
   private async requestChat(prompt: string, opts: LLMReasonOptions): Promise<LLMReasonResult> {
-    const activeModel = opts.model ?? this.cfg.model;
-    if (isDeepSeekFlashModel(activeModel)) {
-      const outputTokens = opts.maxTokens ?? this.cfg.maxTokens;
-      const inputTokens = estimateDeepSeekTokens([opts.systemPrompt ?? "", prompt].join("\n"));
-      try {
-        if (inputTokens > deepSeekInputTokenBudget(outputTokens)) {
-          return {
-            success: false,
-            error: `DEEPSEEK_CONTEXT_EXCEEDED: estimated ${inputTokens} input tokens + ${outputTokens} output tokens`,
-            retryable: false,
-          };
-        }
-      } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : String(error), retryable: false };
-      }
+    const policyScene: VideoScene = opts.policyScene
+      ?? (opts.forceJson || opts.responseFormat?.type === "json_object"
+        ? "video.preproduction.structured"
+        : "video.preproduction.plan");
+    const scenePolicy = resolveVideoScene(policyScene);
+    const responseFormat = opts.forceJson
+      ? { type: "json_object" as const }
+      : opts.responseFormat;
+    const messages = [
+      {
+        role: "system" as const,
+        content: opts.systemPrompt
+          ?? (opts.forceJson
+            ? "你是一个严格输出 JSON 的助手。除合法 JSON 外不要输出任何额外文字。"
+            : "你是一个可靠的助手。"),
+      },
+      { role: "user" as const, content: prompt },
+    ];
+    let budget;
+    try {
+      budget = await planDeepSeekWindow({
+        messages,
+        responseFormat,
+        maxOutputTokens: Math.max(this.cfg.maxTokens, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS),
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        retryable: false,
+      };
     }
     // v3.0 收口：router 注入 → 经 routeSmart（场景 preproduction；fastModel 快速调用强制 L1）
     if (this.cfg.router) {
@@ -166,24 +213,20 @@ export class WorkloomLLMEngine {
             timeoutMs: this.cfg.timeoutMs,
             signal: opts.signal,
             generation: {
-              temperature: opts.temperature ?? 1,
-              topP: opts.topP ?? 0.95,
-              maxTokens: opts.maxTokens ?? this.cfg.maxTokens,
-              responseFormat: opts.forceJson ? { type: "json_object" } : opts.responseFormat,
-              thinking: (this.cfg.router.nonThinking ?? this.cfg.nonThinking)
-                ? { type: "disabled" }
-                : opts.thinking && typeof opts.thinking === "object" ? opts.thinking : undefined,
+              ...(scenePolicy.thinking.type === "disabled"
+                ? { temperature: opts.temperature ?? 0.2 }
+                : {}),
+              ...(opts.topP === undefined ? {} : { topP: opts.topP }),
+              maxTokens: budget.outputCeiling,
+              responseFormat,
+              thinking: scenePolicy.thinking.type === "enabled"
+                ? { type: "enabled" }
+                : { type: "disabled" },
+              ...(scenePolicy.thinking.type === "enabled"
+                ? { reasoningEffort: scenePolicy.thinking.effort ?? "high" }
+                : {}),
             },
-            messages: [
-              {
-                role: "system",
-                content: opts.systemPrompt
-                  ?? (opts.forceJson
-                    ? "你是一个严格输出 JSON 的助手。除合法 JSON 外不要输出任何额外文字。"
-                    : "你是一个可靠的助手。"),
-              },
-              { role: "user", content: prompt },
-            ],
+            messages,
           },
           this.cfg.router.providers,
           this.cfg.router.sink,
@@ -193,9 +236,17 @@ export class WorkloomLLMEngine {
           return {
             success: true,
             content: r.text,
-            usage: r.modelTrace
-              ? { promptTokens: undefined, completionTokens: undefined }
+            usage: r.providerResult
+              ? { promptTokens: r.providerResult.promptTokens, completionTokens: r.providerResult.completionTokens }
               : undefined,
+            requestedModel: r.providerResult?.modelId ?? this.cfg.model,
+            resolvedModel: r.providerResult?.modelId ?? r.modelTrace?.model_id ?? this.cfg.model,
+            mode: scenePolicy.thinking.type,
+            effort: scenePolicy.thinking.type === "enabled" ? scenePolicy.thinking.effort ?? "high" : null,
+            finishReason: r.providerResult?.finishReason,
+            requestHash: r.providerResult?.requestHash,
+            responseHash: r.providerResult?.responseHash,
+            policyVersion: VIDEO_SCENE_POLICY_VERSION,
           };
         }
         const failure = r.failure
@@ -215,28 +266,25 @@ export class WorkloomLLMEngine {
     }
     const body: Record<string, unknown> = {
       model: opts.model ?? this.cfg.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            opts.systemPrompt ??
-            (opts.forceJson
-              ? "你是一个严格输出 JSON 的助手。除合法 JSON 外不要输出任何额外文字。"
-              : "你是一个可靠的助手。")
-        },
-        { role: "user", content: prompt }
-      ],
-      temperature: opts.temperature ?? 1,
-      top_p: opts.topP ?? 0.95,
-      max_tokens: opts.maxTokens ?? this.cfg.maxTokens
+      messages,
+      max_tokens: budget.outputCeiling,
+      thinking: scenePolicy.thinking.type === "enabled"
+        ? { type: "enabled" }
+        : { type: "disabled" },
     };
-    if (opts.forceJson) body.response_format = { type: "json_object" };
-    else if (opts.responseFormat) body.response_format = opts.responseFormat;
-    if (opts.thinking && typeof opts.thinking === "object") body.thinking = opts.thinking;
-    else if (this.cfg.nonThinking) body.thinking = { type: "disabled" };
+    if (scenePolicy.thinking.type === "enabled") {
+      body.reasoning_effort = scenePolicy.thinking.effort ?? "high";
+      if (opts.topP !== undefined) body.top_p = Math.min(1, Math.max(0.95, opts.topP));
+    } else {
+      body.temperature = opts.temperature ?? 0.2;
+      body.top_p = opts.topP ?? 1;
+    }
+    if (responseFormat) body.response_format = responseFormat;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs);
+    const serializedBody = JSON.stringify(body);
+    const requestHash = createHash("sha256").update(serializedBody).digest("hex");
     try {
       const resp = await fetch(`${this.cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
@@ -244,7 +292,7 @@ export class WorkloomLLMEngine {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.cfg.apiKey}`
         },
-        body: JSON.stringify(body),
+        body: serializedBody,
         signal: opts.signal ? AbortSignal.any([opts.signal, controller.signal]) : controller.signal
       });
       if (!resp.ok) {
@@ -254,18 +302,71 @@ export class WorkloomLLMEngine {
           retryable: resp.status >= 500 || resp.status === 429
         };
       }
-      const json = (await resp.json()) as ChatCompletionResponse;
+      const rawBody = await resp.text();
+      const responseHash = createHash("sha256").update(rawBody).digest("hex");
+      let json: ChatCompletionResponse;
+      try {
+        json = JSON.parse(rawBody) as ChatCompletionResponse;
+      } catch {
+        return { success: false, error: "LLM 响应不是合法 JSON", retryable: false };
+      }
+      if (typeof json.model === "string" && json.model !== (opts.model ?? this.cfg.model)) {
+        return {
+          success: false,
+          error: `LLM 模型身份 ${json.model || "<missing>"} 与请求 ${opts.model ?? this.cfg.model} 不一致`,
+          retryable: false,
+        };
+      }
+      if (json.choices?.length !== 1) {
+        return { success: false, error: "LLM 响应必须包含唯一 choice", retryable: false };
+      }
+      const choice = json.choices[0]!;
+      if (choice.finish_reason !== "stop") {
+        return {
+          success: false,
+          error: `LLM 未完整结束：${choice.finish_reason ?? "missing"}`,
+          retryable: false,
+        };
+      }
+      if (scenePolicy.thinking.type === "disabled" && String(choice.message?.reasoning_content ?? "").trim()) {
+        return { success: false, error: "非思考场景返回了 reasoning_content", retryable: false };
+      }
       const content = normalizeModelContent(json.choices?.[0]?.message?.content);
       if (!content) return { success: false, error: "LLM 返回 content 为空", retryable: true };
+      const promptTokens = json.usage?.prompt_tokens;
+      const completionTokens = json.usage?.completion_tokens;
+      const reasoningTokens = json.usage?.completion_tokens_details?.reasoning_tokens;
+      if (!Number.isSafeInteger(promptTokens) || promptTokens! < 0
+        || !Number.isSafeInteger(completionTokens) || completionTokens! < 0) {
+        return { success: false, error: "LLM usage 缺失或无效", retryable: false };
+      }
+      if (reasoningTokens !== undefined
+        && (!Number.isSafeInteger(reasoningTokens) || reasoningTokens < 0 || reasoningTokens > completionTokens!)) {
+        return { success: false, error: "LLM reasoning_tokens 无效", retryable: false };
+      }
+      if (scenePolicy.thinking.type === "disabled" && reasoningTokens !== undefined && reasoningTokens !== 0) {
+        return { success: false, error: "非思考场景返回了 reasoning tokens", retryable: false };
+      }
       return {
         success: true,
         content,
         usage: {
-          promptTokens: json.usage?.prompt_tokens,
-          completionTokens: json.usage?.completion_tokens
-        }
+          promptTokens,
+          completionTokens
+        },
+        requestedModel: opts.model ?? this.cfg.model,
+        resolvedModel: json.model,
+        mode: scenePolicy.thinking.type,
+        effort: scenePolicy.thinking.type === "enabled" ? scenePolicy.thinking.effort ?? "high" : null,
+        finishReason: choice.finish_reason,
+        requestHash,
+        responseHash,
+        policyVersion: VIDEO_SCENE_POLICY_VERSION,
       };
     } catch (err) {
+      if (opts.signal?.aborted) {
+        return { success: false, error: "LLM 调用已取消", retryable: false };
+      }
       const msg = err instanceof Error ? err.message : String(err);
       return { success: false, error: msg, retryable: true };
     } finally {

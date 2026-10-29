@@ -109,6 +109,15 @@ RGB／RGBA PNG，源文件入口可保存 JPEG／WebP 并不表示该适配器�
   pricingSnapshotHash、currency、maxOutputTokens、timeoutMs。contextProof 包含
   kind:`provider_documented_context`、sourceUrl、sha256、verifiedAt；来源与上下文上界须实际核实。
   模型密钥不在 JSON 中。
+- 文本模型必须登记为 `deepseek-flash`。当前官方窗口为 1,048,576 输入/输出总
+  tokens，最大输出 393,216；`maxOutputTokens` 只在确有产品合同上限时填写，不能
+  用 4K/8K/16K 之类的自设成本上限替代完整任务预算。每次派遣先用官方 tokenizer
+  计算完整序列化输入，再取 `min(393216, 1048576 - inputTokens)` 作为本次
+  `max_tokens`。上下文不足时明确失败或执行已声明、无损的分段与最终合成，不许静默截断。
+- 思考模式由场景决定：`strategy.plan`、`text.adapt`、`text.revise`、`text.polish`、
+  `quality.check` 与 `quality.final` 从 `high` 开始；`format.transform` 与严格
+  schema/字段变换使用非思考；`translation.localize` 先以 `low` 评测。生成与评审
+  始终解析到同一 `text.primary`，不允许跨供应商或 mock 伪降级。
 - 授权 schema 为 `pengmanager.worker-local-grant/v1`；包含准确范围、adapterBindings、scopeHash、
   budgetAuthorizationHash、expiresAt、limits、roles、ownerConfirmed 与 localGrantHash。
 - `ownerConfirmed` 必须由本机真实授权核对，不能由云端计划或模型自行改成 true。

@@ -34,11 +34,13 @@ test("DeepSeek adapter combines provider search with Chat Completions", async ()
         model: "deepseek-flash",
         choices: [
           {
+            finish_reason: "stop",
             message: {
               content: "DeepSeek Harness 提供插件化 Agent 能力。[官方页面](https://www.deepseek.com/harness/)",
             },
           },
         ],
+        usage: { prompt_tokens: 30, completion_tokens: 20, total_tokens: 50 },
       });
     },
   });
@@ -53,49 +55,39 @@ test("DeepSeek adapter combines provider search with Chat Completions", async ()
   assert.equal(result.evidence.completionId, "chat-1");
   assert.equal(requests.length, 2);
   assert.match(requests[1].body.messages[1].content, /Official Harness/);
+  assert.deepEqual(requests[1].body.thinking, { type: "enabled" });
+  assert.equal(requests[1].body.reasoning_effort, "high");
+  assert.equal(requests[1].body.max_tokens, 393216);
+  assert.equal(result.evidence.policy.scene, "geo.answer.synthesize");
 });
 
-test("DeepSeek adapter falls back to Responses when chat reasoning exhausts the answer budget", async () => {
-  let chatCalls = 0;
+test("DeepSeek adapter fails closed on empty content without Responses or model fallback", async () => {
+  const paths = [];
   const adapter = new DeepSeekAdapter({
     apiKey: "test-key",
     baseUrl: "http://deepseek.test",
     fetchImpl: async (url) => {
+      paths.push(new URL(String(url)).pathname);
       if (String(url).endsWith("/v1/tools/search")) {
         return jsonResponse({ results: [] });
       }
-      if (String(url).endsWith("/chat/completions")) {
-        chatCalls += 1;
-        return jsonResponse({
-          id: `empty-${chatCalls}`,
-          model: "deepseek-flash",
-          choices: [{ message: { content: "" } }],
-        });
-      }
       return jsonResponse({
-        id: "response-fallback",
+        id: "empty-1",
         model: "deepseek-flash",
-        output: [
-          {
-            type: "reasoning",
-            content: [{ type: "reasoning_text", text: "internal reasoning" }],
-          },
-          {
-            type: "message",
-            content: [{ type: "output_text", text: "Responses fallback answer." }],
-          },
-        ],
+        choices: [{ finish_reason: "stop", message: { content: "" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
       });
     },
   });
-  const result = await adapter.answerQuery({
-    id: "Q008",
-    text: "fallback query",
-    locale: "zh-CN",
-  });
-  assert.equal(chatCalls, 2);
-  assert.equal(result.answer, "Responses fallback answer.");
-  assert.equal(result.evidence.completionSurface, "deepseek-responses");
+  await assert.rejects(
+    adapter.answerQuery({
+      id: "Q008",
+      text: "no fallback query",
+      locale: "zh-CN",
+    }),
+    /content 为空/,
+  );
+  assert.deepEqual(paths, ["/v1/tools/search", "/chat/completions"]);
 });
 
 test("DeepSeek search citations reject non-HTTP schemes", async () => {
@@ -115,7 +107,8 @@ test("DeepSeek search citations reject non-HTTP schemes", async () => {
       return jsonResponse({
         id: "chat-safe",
         model: "deepseek-flash",
-        choices: [{ message: { content: "Safe answer." } }],
+        choices: [{ finish_reason: "stop", message: { content: "Safe answer." } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       });
     },
   });
@@ -129,6 +122,29 @@ test("DeepSeek search citations reject non-HTTP schemes", async () => {
   ]);
 });
 
+test("DeepSeek adapter does not duplicate a configured /v1 API prefix", async () => {
+  const paths = [];
+  const adapter = new DeepSeekAdapter({
+    apiKey: "test-key",
+    baseUrl: "http://deepseek.test/v1",
+    fetchImpl: async (url) => {
+      const parsed = new URL(String(url));
+      paths.push(parsed.pathname);
+      if (parsed.pathname === "/v1/tools/search") {
+        return jsonResponse({ results: [] });
+      }
+      return jsonResponse({
+        id: "chat-v1",
+        model: "deepseek-flash",
+        choices: [{ finish_reason: "stop", message: { content: "ok" } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    },
+  });
+  await adapter.answerQuery({ id: "Q-V1", text: "prefix", locale: "en" });
+  assert.deepEqual(paths, ["/v1/tools/search", "/v1/chat/completions"]);
+});
+
 test("DeepSeek adapter parses model-generated content and rejects sensitive output", async () => {
   const adapter = new DeepSeekAdapter({
     apiKey: "test-key",
@@ -137,23 +153,24 @@ test("DeepSeek adapter parses model-generated content and rejects sensitive outp
       jsonResponse({
         id: "resp-1",
         model: "deepseek-flash",
-        output: [
-          {
-            type: "message",
-            content: [
-              {
-                type: "output_text",
-                text: JSON.stringify({
-                  title: "证据优先的 GEO",
-                  body: "先确认 Claim，再生成内容和发布回执。",
-                  hook: "没有回执就不算发布",
-                  cta: "查看公开项目",
-                  hashtags: ["#GEO"],
-                }),
-              },
-            ],
+        choices: [{
+          finish_reason: "stop",
+          message: {
+            content: JSON.stringify({
+              title: "证据优先的 GEO",
+              body: "先确认 Claim，再生成内容和发布回执。",
+              hook: "没有回执就不算发布",
+              cta: "查看公开项目",
+              hashtags: ["#GEO"],
+            }),
           },
-        ],
+        }],
+        usage: {
+          prompt_tokens: 20,
+          completion_tokens: 80,
+          total_tokens: 100,
+          completion_tokens_details: { reasoning_tokens: 30 },
+        },
       }),
   });
   const generated = await adapter.generateContent({
@@ -169,20 +186,18 @@ test("DeepSeek adapter parses model-generated content and rejects sensitive outp
     baseUrl: "http://deepseek.test",
     fetchImpl: async () =>
       jsonResponse({
-        output: [
-          {
-            type: "message",
-            content: [
-              {
-                type: "output_text",
-                text: JSON.stringify({
-                  title: "Bad",
-                  body: "联系 test@example.com",
-                }),
-              },
-            ],
+        id: "resp-sensitive",
+        model: "deepseek-flash",
+        choices: [{
+          finish_reason: "stop",
+          message: {
+            content: JSON.stringify({
+              title: "Bad",
+              body: "联系 test@example.com",
+            }),
           },
-        ],
+        }],
+        usage: { prompt_tokens: 20, completion_tokens: 20, total_tokens: 40 },
       }),
   });
   await assert.rejects(

@@ -36,21 +36,25 @@ ok "仓库根：$(pwd)"
 [ -d node_modules ] && ok "依赖已安装（node_modules 在位）" || warn "依赖未安装 → pnpm install"
 [ -d vendor/dsh ] && ok "vendor/dsh 锁版 fork 在位（rc.6 只读基线，D12）" || bad "vendor/dsh 缺失（仓库不完整，重新克隆）"
 
-# ---------- 模型（dsh-TUI /doctor：模型配置；D4 口径 mock 离线可跑） ----------
+# ---------- 模型（生产文本模型固定为 DeepSeek Flash） ----------
 sec "模型（LLM）"
 if [ -f .env ]; then
   LLM_PROVIDER=$(grep -E '^LLM_PROVIDER=' .env | cut -d= -f2- || true)
   LLM_API_KEY=$(grep -E '^LLM_API_KEY=' .env | cut -d= -f2- || true)
-  LLM_PROVIDER=${LLM_PROVIDER:-mock}
+  LLM_MODEL=$(grep -E '^LLM_MODEL=' .env | cut -d= -f2- || true)
+  LLM_PROVIDER=${LLM_PROVIDER:-deepseek}
+  LLM_MODEL=${LLM_MODEL:-deepseek-flash}
   if [ "$LLM_PROVIDER" = "mock" ]; then
-    ok "LLM_PROVIDER=mock（确定性 Mock，无 Key 全流程可跑，D4）"
+    warn "LLM_PROVIDER=mock 只允许隔离测试，真实运行不会把它当作模型结果"
+  elif [ "$LLM_PROVIDER" != "deepseek" ] || [ "$LLM_MODEL" != "deepseek-flash" ]; then
+    bad "真实文本模型必须为 LLM_PROVIDER=deepseek · LLM_MODEL=deepseek-flash"
   elif [ -n "$LLM_API_KEY" ]; then
-    ok "LLM_PROVIDER=$LLM_PROVIDER · Key 已配置（尾号 …${LLM_API_KEY: -4}）"
+    ok "LLM_PROVIDER=deepseek · model=deepseek-flash · Key 已在当前配置中"
   else
-    warn "LLM_PROVIDER=$LLM_PROVIDER 但 LLM_API_KEY 为空 → 将回退 mock 或调用失败"
+    warn "LLM_API_KEY 为空 → 真实模型调用会失败关闭，不会回退 mock"
   fi
 else
-  warn "无 .env，LLM 默认 mock"
+  warn "无 .env；真实运行需要 DeepSeek 进程配置，测试夹具不代表真实模型"
 fi
 
 # ---------- 凭据状态（dsh-TUI /doctor：凭据；L7.3 凭据引用不出提示词） ----------

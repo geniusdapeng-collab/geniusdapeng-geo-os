@@ -33,6 +33,8 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assessLikenessBatch } from "../../packages/video-studio/src/likeness-policy.js";
+import { resolveOpenAiCompatibleBaseUrl } from "../../packages/video-studio/src/llm-config.js";
+import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
 
 function arg(name: string, fallback = ""): string {
   const index = process.argv.indexOf(name);
@@ -231,8 +233,9 @@ const minLikeness = Number(arg("--min-likeness", "88"));
  * 校验全判"失败"，看起来像"生成的图不像"，其实是校验通道写错了。
  */
 const judgeKey = process.env.LLM_API_KEY || env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || env.DEEPSEEK_API_KEY || "";
-const judgeBase = (process.env.LLM_BASE_URL || env.LLM_BASE_URL || "https://api.deepseek.com").replace(/\/$/, "");
-const judgeModel = process.env.LLM_MODEL || env.LLM_MODEL || process.env.DEEPSEEK_MODEL || env.DEEPSEEK_MODEL || "deepseek-flash";
+const judgeBase = resolveOpenAiCompatibleBaseUrl({ ...env, ...process.env }) || "https://api.deepseek.com";
+const configuredJudgeModel = process.env.LLM_MODEL || env.LLM_MODEL || process.env.DEEPSEEK_MODEL || env.DEEPSEEK_MODEL || "deepseek-flash";
+const judgeModel = configuredJudgeModel === "deepseek-v4-flash" ? "deepseek-flash" : configuredJudgeModel;
 const verifyAnchorDataUrl = verifyAgainst && existsSync(resolve(verifyAgainst))
   ? `data:image/jpeg;base64,${readFileSync((() => {
     const prepared = join(outDir, ".verify-anchor.jpg");
@@ -252,35 +255,29 @@ if (verifyAnchorDataUrl && !judgeKey) {
 async function likenessCheck(png: Buffer, angle: string): Promise<{ ok: boolean; same: boolean; score: number | null; reason: string }> {
   if (!verifyAnchorDataUrl) return { ok: true, same: true, score: null, reason: "未启用自动校验（--verify-against 未提供）" };
   const imageDataUrl = `data:image/png;base64,${png.toString("base64")}`;
-  const response = await fetch(`${judgeBase}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${judgeKey}` },
-    body: JSON.stringify({
-      model: judgeModel, temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 新生成的定妆照。"
-            + "只判\"是不是同一个人\"：看面孔五官比例、脸型、发型与年龄段；**服装/背景/光线差异不影响判定**。"
-            + `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
-          { type: "image_url", image_url: { url: verifyAnchorDataUrl } },
-          { type: "image_url", image_url: { url: imageDataUrl } },
-        ],
-      }],
-    }),
-    signal: AbortSignal.timeout(180_000),
-  });
-  const text = await response.text();
-  if (!response.ok) return { ok: false, same: false, score: null, reason: `校验模型调用失败 HTTP ${response.status}：${text.slice(0, 160)}` };
+  const content = [
+    { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 新生成的定妆照。"
+      + "只判\"是不是同一个人\"：看面孔五官比例、脸型、发型与年龄段；**服装/背景/光线差异不影响判定**。"
+      + `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
+    { type: "image_url", image_url: { url: verifyAnchorDataUrl } },
+    { type: "image_url", image_url: { url: imageDataUrl } },
+  ];
   try {
-    const raw = (JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content ?? "";
-    const parsed = JSON.parse(raw.replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim()) as { same?: boolean; score?: number; reason?: string };
+    const reviewed = await completeVideoTextTask({
+      endpoint: { baseUrl: judgeBase, apiKey: judgeKey, model: judgeModel },
+      scene: "video.quality.plausibility-review",
+      messages: [{ role: "user", content }],
+      tokenMessages: [{ role: "user", content: [content[0]!] }],
+      imageTokens: 2 * 1_024,
+      timeoutMs: 180_000,
+      requireJson: true,
+    });
+    const parsed = reviewed.value as { same?: boolean; score?: number; reason?: string };
     const score = Number.isFinite(Number(parsed.score)) ? Number(parsed.score) : null;
     const same = parsed.same === true && (score === null || score >= (Number.isFinite(minLikeness) ? minLikeness : 88));
     return { ok: same, same: parsed.same === true, score, reason: String(parsed.reason ?? "").slice(0, 200) };
-  } catch {
-    return { ok: false, same: false, score: null, reason: `校验结论结构非法：${text.slice(0, 160)}` };
+  } catch (error) {
+    return { ok: false, same: false, score: null, reason: `校验调用或结论失败：${error instanceof Error ? error.message.slice(0, 180) : String(error)}` };
   }
 }
 const perAngle: Array<{ angle: string; file: string; sha256: string; bytes: number; refs: string[]; likeness: { ok: boolean; same: boolean; score: number | null; reason: string } }> = [];

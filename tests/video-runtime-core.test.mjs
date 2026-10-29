@@ -49,7 +49,9 @@ test('redaction removes dynamic credentials, database URLs and authorization val
 test('text readiness follows the native provider contract rather than vendor-only keys',()=>{
   assert.equal(textModelReadiness({DEEPSEEK_API_KEY:'present'}).configured,false);
   assert.equal(textModelReadiness({LLM_PROVIDER:'mock',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'fixture'}).configured,false);
-  assert.equal(textModelReadiness({LLM_PROVIDER:'openai',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'fixture'}).configured,true);
+  assert.equal(textModelReadiness({LLM_PROVIDER:'openai',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'deepseek-flash'}).configured,false);
+  assert.equal(textModelReadiness({LLM_PROVIDER:'deepseek',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'deepseek-chat'}).configured,false);
+  assert.equal(textModelReadiness({LLM_PROVIDER:'deepseek',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'deepseek-flash'}).configured,true);
 });
 test('Codex CLI and MCP mode is headless by default with an explicit future workbench opt-in',t=>{
   const f=fixture(t);assert.equal(f.config({env:{PENGMANAGER_VIDEO_WORKBENCH:'0'}}).serveWorkbench,false);

@@ -30,8 +30,8 @@ import {
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
   resolveVideoModel,
-  resolveVideoNonThinking,
 } from "../../packages/video-studio/src/llm-config.js";
+import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
 
 function arg(name: string, fallback = ""): string {
   const index = process.argv.indexOf(name);
@@ -91,27 +91,18 @@ if (flag("--llm")) {
   const key = resolveVideoApiKey(combined);
   const baseUrl = resolveOpenAiCompatibleBaseUrl(combined) || "https://api.deepseek.com";
   const model = resolveVideoModel(combined) || "deepseek-flash";
-  const nonThinking = resolveVideoNonThinking(model, combined);
   if (!key) {
     llmNote = `未启用（${envFile} 里没有 DEEPSEEK_API_KEY → 降级为纯规则）`;
   } else {
     llmNote = `已启用（${model}）`;
     llmCall = async (prompt: string): Promise<string> => {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0,
-          response_format: { type: "json_object" },
-          ...(nonThinking ? { thinking: { type: "disabled" } } : {}),
-        }),
-        signal: AbortSignal.timeout(20_000),
+      const result = await completeVideoTextTask({
+        endpoint: { baseUrl, apiKey: key, model },
+        scene: "video.deterministic",
+        messages: [{ role: "user", content: prompt }],
+        timeoutMs: 20_000,
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const body = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return body.choices?.[0]?.message?.content ?? "";
+      return result.text;
     };
   }
 }

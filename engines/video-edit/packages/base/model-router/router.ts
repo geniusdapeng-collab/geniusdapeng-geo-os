@@ -25,10 +25,10 @@ import { catalogByTier, chainFor } from "./pool.js";
 import { computeCredits } from "./credits.js";
 import {
   DEEPSEEK_FLASH_CONTEXT_TOKENS,
-  DEFAULT_JSON_OUTPUT_TOKENS,
+  DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
   LONG_CONTEXT_TOKENS,
+  countDeepSeekTokens,
   deepSeekInputTokenBudget,
-  estimateDeepSeekTokens,
 } from "./token-budget.js";
 
 /* ================= 峰谷窗口（F6.3，Asia/Shanghai） ================= */
@@ -101,6 +101,14 @@ export interface EventSink {
     model_id: string; tier: Tier | string; window: Window; credits: number; action: string; reused?: boolean;
     /** v3.0：场景标识 + 计费归属（platform=售前体检等平台成本，不扣客户积分） */
     scene?: string; bill_to?: "tenant" | "platform";
+    mode?: "enabled" | "disabled";
+    effort?: "low" | "high" | "max";
+    finishReason?: string;
+    requestHash?: string;
+    responseHash?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    reasoningTokens?: number;
   }): Promise<void>;
   recordDegradation(d: { from: string; to: string | null; reason: string; action: string }): Promise<void>;
   /** 熔断挂起告警（F6.5/L6.4） */
@@ -187,6 +195,8 @@ export interface RouteResult {
   budgetExceeded?: boolean;
   /** Sanitized, machine-readable failure summary for callers that need a real diagnosis. */
   failure?: RouteFailure;
+  /** Complete provider result controls and evidence retained by the caller. */
+  providerResult?: ChatResult;
 }
 
 export type RouteFailureKind =
@@ -350,8 +360,8 @@ export function projectBill(events: Array<{ model_trace?: { model_id: string; ti
  * recalculated as official context tokens minus that call's output ceiling.
  */
 export const TIER_TOKEN_CEILING: Record<Tier3, number> = {
-  L1: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEFAULT_JSON_OUTPUT_TOKENS,
-  L2: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEFAULT_JSON_OUTPUT_TOKENS,
+  L1: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
+  L2: DEEPSEEK_FLASH_CONTEXT_TOKENS - DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
   L3: Number.POSITIVE_INFINITY,
 };
 
@@ -392,6 +402,14 @@ export function heuristicComplexity(text: string): "simple" | "medium" | "comple
 export interface SmartModelTrace {
   model_id: string; tier: Tier3; window: Window; credits: number;
   action?: string; scene?: string; bill_to?: "tenant" | "platform";
+  mode?: "enabled" | "disabled";
+  effort?: "low" | "high" | "max";
+  finishReason?: string;
+  requestHash?: string;
+  responseHash?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
 }
 
 export interface SmartRouteResult extends Omit<RouteResult, "modelTrace"> {
@@ -475,10 +493,10 @@ export async function routeSmart(
   }
 
   // One shared token unit for context routing, escalation and failure checks.
-  const inputTokens = estimateDeepSeekTokens(task.messages.map((message) => message.content).join("\n"));
+  const inputTokens = await countDeepSeekTokens(JSON.stringify(task.messages)) + 64;
   const longContext = inputTokens > LONG_CONTEXT_TOKENS;
   if (!forcedModel && inputTokens > TIER_TOKEN_CEILING[tier]) tier = tierUp(tier) ?? tier;
-  const outputTokens = task.generation?.maxTokens ?? DEFAULT_JSON_OUTPUT_TOKENS;
+  const outputTokens = task.generation?.maxTokens ?? DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS;
   if (inputTokens > deepSeekInputTokenBudget(outputTokens)) {
     const reason = `DEEPSEEK_CONTEXT_EXCEEDED: estimated ${inputTokens} input tokens + ${outputTokens} output tokens > ${DEEPSEEK_FLASH_CONTEXT_TOKENS}`;
     const from = forcedModel ?? tier;
@@ -523,6 +541,7 @@ export async function routeSmart(
   // 降级链：noDowngrade（金融/体检等质量红线）截断跨档段，只允许同档互备
   const chain = forcedModel ? [forcedModel] : chainFor(tier, { longContext, allowCrossTier: !sp.noDowngrade });
   const degraded: Array<{ from: string; to: string | null; reason: string }> = [];
+  let retryableFailure = false;
 
   for (let i = 0; i < chain.length; i++) {
     const modelId = chain[i]!;
@@ -532,6 +551,7 @@ export async function routeSmart(
     if (task.signal?.aborted) return cancelled(degraded, modelId);
     if (!provider || !healthy) {
       const to = chain[i + 1] ?? null;
+      retryableFailure = true;
       degraded.push({ from: modelId, to, reason: "unhealthy" });
       await sink.recordDegradation({ from: modelId, to, reason: "unhealthy", action: task.action }); // L6.1
       continue;
@@ -550,18 +570,29 @@ export async function routeSmart(
       const trace = {
         model_id: modelId, tier, window, credits, action: task.action,
         scene, bill_to: sp.billTo ?? "tenant" as "tenant" | "platform",
+        mode: task.generation?.thinking?.type === "enabled" ? "enabled" as const
+          : task.generation?.thinking?.type === "disabled" ? "disabled" as const : undefined,
+        effort: task.generation?.reasoningEffort,
+        finishReason: result.finishReason,
+        requestHash: result.requestHash,
+        responseHash: result.responseHash,
+        inputTokens: result.promptTokens,
+        outputTokens: result.completionTokens,
+        reasoningTokens: result.reasoningTokens,
       };
       await sink.recordModelTrace(trace); // F6.5 逐事件真实计量
       if (used + credits >= limit) {
         await sink.recordCircuitBreak({ action: task.action, creditsUsed: used + credits, limit });
-        return { kind: "circuit_broken", text: result.text, modelTrace: trace, degraded, budgetExceeded: true, tier, scene, billTo: sp.billTo ?? "tenant" };
+        return { kind: "circuit_broken", text: result.text, modelTrace: trace, providerResult: result, degraded, budgetExceeded: true, tier, scene, billTo: sp.billTo ?? "tenant" };
       }
-      return { kind: "answered", text: result.text, modelTrace: trace, degraded, tier, scene, billTo: sp.billTo ?? "tenant" };
+      return { kind: "answered", text: result.text, modelTrace: trace, providerResult: result, degraded, tier, scene, billTo: sp.billTo ?? "tenant" };
     } catch (err) {
       // Caller cancellation is not a provider outage and must not poison the shared scene circuit.
       if (task.signal?.aborted) return cancelled(degraded, modelId);
       const to = chain[i + 1] ?? null;
-      const reason = providerFailure(err).message;
+      const failure = providerFailure(err);
+      retryableFailure ||= failure.retryable;
+      const reason = failure.message;
       degraded.push({ from: modelId, to, reason });
       await sink.recordDegradation({ from: modelId, to, reason, action: task.action }); // L6.1
       // GR-05：累计连续失败，达阈值即开启熔断冷却窗口（本轮剩余链路也不再逐家试）
@@ -589,5 +620,5 @@ export async function routeSmart(
   // off-peak-only is a scheduling window, not an outage classifier. During the
   // permitted window a failed chain is genuinely unavailable and must not be
   // reported as queued merely because the scene prefers off-peak execution.
-  return { kind: "unavailable", degraded, tier, scene, failure: summarizeFailure(degraded) };
+  return { kind: "unavailable", degraded, tier, scene, failure: summarizeFailure(degraded, "unknown", retryableFailure) };
 }

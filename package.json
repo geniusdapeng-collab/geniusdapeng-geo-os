@@ -38,5 +38,8 @@
     "yaml": "2.9.0",
     "zod": "4.6.5"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "tokenizers": "0.23.2"
+  }
 }

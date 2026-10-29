@@ -69,6 +69,16 @@ export class LivePipelineService {
       owner: "PengManager + DeepSeek",
       opinion: false,
     });
+    const generationEvidence = {
+      requestedModel: generated.receipt?.requestedModel ?? generated.requestedModel ?? generated.model,
+      resolvedModel: generated.receipt?.resolvedModel ?? generated.resolvedModel ?? generated.model,
+      mode: generated.mode ?? generated.receipt?.mode ?? null,
+      effort: generated.effort ?? generated.receipt?.effort ?? null,
+      outputCeiling: generated.outputCeiling ?? generated.receipt?.outputCeiling ?? null,
+      policyHash: generated.policyHash ?? generated.receipt?.policyHash ?? null,
+      registryVersion: generated.registryVersion ?? generated.receipt?.registryVersion ?? null,
+      attempts: generated.attempts ?? generated.receipt?.attempts ?? [],
+    };
 
     await this.service.store.mutate(
       {
@@ -77,7 +87,13 @@ export class LivePipelineService {
         payload: {
           contentId: content.id,
           model: generated.model,
+          ...generationEvidence,
           responseId: generated.responseId,
+          requestHash: generated.requestHash,
+          responseHash: generated.responseHash,
+          finishReason: generated.finishReason,
+          policy: generated.policy,
+          usage: generated.usage,
         },
       },
       (next) => {
@@ -85,8 +101,13 @@ export class LivePipelineService {
         row.generation = {
           provider: "deepseek",
           model: generated.model,
+          ...generationEvidence,
           responseId: generated.responseId,
+          requestHash: generated.requestHash,
           responseHash: generated.responseHash,
+          finishReason: generated.finishReason,
+          policy: generated.policy,
+          usage: generated.usage,
           hook: generated.hook ?? null,
           cta: generated.cta ?? null,
           hashtags: Array.isArray(generated.hashtags) ? generated.hashtags : [],
@@ -102,9 +123,13 @@ export class LivePipelineService {
         .content.find((item) => item.id === content.id),
       model: {
         name: generated.model,
+        ...generationEvidence,
         responseId: generated.responseId,
         usage: generated.usage,
+        requestHash: generated.requestHash,
         responseHash: generated.responseHash,
+        finishReason: generated.finishReason,
+        policy: generated.policy,
       },
     };
   }

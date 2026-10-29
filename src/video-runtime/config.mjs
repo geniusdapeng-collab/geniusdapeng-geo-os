@@ -3,6 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { MODEL_POLICY } from '../model-routing/policy.mjs';
+import { DEEPSEEK_FLASH_MODEL_ID, normalizeTextModelId } from '../model-routing/registry.mjs';
 
 export const SOURCE_MAIN = 'c0aca4a62a1d53fd4eccab7865668b7250c22ebc';
 export const SOURCE_FILE_COUNT = 3561;
@@ -168,10 +170,24 @@ export function acquireLock(config) {
   };
 }
 export function textModelReadiness(env) {
-  const provider = String(env.LLM_PROVIDER || (env.LLM_API_KEY ? 'openai' : 'mock')).trim();
-  const missing = ['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL'].filter(name => !String(env[name] || '').trim());
-  if (provider === 'mock') missing.unshift('real-text-model-provider');
-  return { provider, configured: missing.length === 0, missing };
+  const provider = String(env.LLM_PROVIDER || (env.LLM_API_KEY || env.DEEPSEEK_API_KEY ? 'deepseek' : 'mock')).trim();
+  const baseUrl = env.LLM_BASE_URL || env.DEEPSEEK_BASE_URL;
+  const apiKey = env.LLM_API_KEY || env.DEEPSEEK_API_KEY;
+  const configuredModel = env.LLM_MODEL || env.DEEPSEEK_MODEL || DEEPSEEK_FLASH_MODEL_ID;
+  const missing = [];
+  if (provider !== 'deepseek') missing.push('real-deepseek-text-model-provider');
+  if (!String(baseUrl || '').trim()) missing.push('LLM_BASE_URL');
+  if (!String(apiKey || '').trim()) missing.push('LLM_API_KEY');
+  let model = null;
+  try { model = normalizeTextModelId(configuredModel); }
+  catch { missing.push('registered-text-model'); }
+  return {
+    provider,
+    model,
+    configured: missing.length === 0,
+    missing,
+    policyVersion: MODEL_POLICY.policyVersion,
+  };
 }
 export function equalSecret(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;

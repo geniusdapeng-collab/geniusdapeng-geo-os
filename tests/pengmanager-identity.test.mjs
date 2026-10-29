@@ -132,8 +132,16 @@ test("health and bootstrap expose current system and bilingual profile", async (
 test("content generation uses bilingual PengManager profile in the provider prompt", async () => {
   let prompt;
   const adapter = new DeepSeekAdapter({ apiKey: "test-only", fetchImpl: async (_url, init) => {
-    prompt = JSON.parse(init.body).input;
-    return new Response(JSON.stringify({ id: "response-fixture", output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ title: "可审核草稿", body: "依据给定事实生成的内容。" }) }] }] }));
+    prompt = JSON.parse(init.body).messages[1].content;
+    return new Response(JSON.stringify({
+      id: "response-fixture",
+      model: "deepseek-flash",
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify({ title: "可审核草稿", body: "依据给定事实生成的内容。" }) },
+      }],
+      usage: { prompt_tokens: 100, completion_tokens: 100, total_tokens: 200 },
+    }));
   } });
   await adapter.generateContent({ brief: "测试", claims: [{ id: "C001", text: MAIN_PROFILE.headline }], platform: "GitHub" });
   assert.ok(prompt.includes(MAIN_PROFILE.displayNameZh));

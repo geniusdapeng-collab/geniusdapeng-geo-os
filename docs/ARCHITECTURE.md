@@ -63,7 +63,7 @@ The event chain is tamper-evident. It is not a trusted timestamp, platform signa
 
 ## Integrated engines and external adapters
 
-- `DeepSeekAdapter` uses the local Responses-compatible gateway and system keychain. It performs real provider search, Chat/Responses completion, evidence hashing and model-driven JSON content generation.
+- `DeepSeekAdapter` uses the unified `text.primary` Chat dispatcher and the process-scoped credential resolver. The canonical model is `deepseek-flash`; every call records the scene policy, full-window token plan, usage, model identity, finish reason and request/response hashes. Search remains the provider's separate tools endpoint.
 - `PersonalGeoEngine` runs the adapted GeoEvidence SQLite store, providers, analysis, incidents, article generation and publication receipts in-process. Its default case keeps the stable ID `pengstack-personal-geo` for database compatibility while its current display identity is PengManager. Stable `ps-*` query IDs continue to link historical samples to their queries.
 - `VideoMediaEngine` retains the existing local quick-post workflow: it clips inputs to at most four seconds each, creates synthetic ambient audio and runs FFmpeg post-production, cover and packaging. Its UI states these limits. The complete native workbench owns AI generation, editing and presenter workflows.
 - `VideoEditAdapter` exposes cover knowledge hints and feedback triage from the same vendored engine.

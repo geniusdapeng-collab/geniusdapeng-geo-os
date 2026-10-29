@@ -62,9 +62,9 @@ async function actualWorker(t, f, job, { checker = false, onProvider, tamperLeas
   };
   const calls = [];
   const model = new SingleRequestModel({ endpoint: 'https://isolated-fixture.invalid/chat', apiKey: 'nonsecret-isolated-fixture-key',
-    provider: FIXTURE_PRICING.provider, model: FIXTURE_PRICING.model, contextTokenLimit: 500,
+    provider: FIXTURE_PRICING.provider, model: FIXTURE_PRICING.model, contextTokenLimit: 131_072,
     contextProof: { kind: 'provider_documented_context', sourceUrl: FIXTURE_PRICING.sourceUrl, sha256: dataHash({ fixtureOnly: true }), verifiedAt: f.clock().toISOString() },
-    pricingSnapshotHash: f.budget.pricingSnapshotHash, currency: 'USD', maxOutputTokens: 200,
+    pricingSnapshotHash: f.budget.pricingSnapshotHash, currency: 'USD', maxOutputTokens: 200, allowUnregisteredModel: true,
     async fetchImpl(url, init) {
       const request = JSON.parse(init.body), input = JSON.parse(request.messages[1].content); calls.push(input);
       if (onProvider) await onProvider(input);

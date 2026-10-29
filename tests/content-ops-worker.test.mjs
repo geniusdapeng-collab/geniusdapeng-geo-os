@@ -23,7 +23,8 @@ function directory(t) {
 function modelConfig(extra = {}) {
   return { endpoint: 'https://supplier.invalid/chat/completions', apiKey: 'isolated-fixture-credential', provider: 'fixture', model: 'fixture-model',
     contextTokenLimit: 8192, contextProof: { kind: 'provider_documented_context', sourceUrl: 'https://supplier.invalid/docs', sha256: HASH,
-      verifiedAt: new Date(TIME).toISOString() }, pricingSnapshotHash: OTHER, currency: 'USD', maxOutputTokens: 512, ...extra };
+      verifiedAt: new Date(TIME).toISOString() }, pricingSnapshotHash: OTHER, currency: 'USD', maxOutputTokens: 512,
+    allowUnregisteredModel: true, ...extra };
 }
 const textResult = { title: '真实完整测试稿', summary: '只在隔离测试内使用', body: '隔离事实正文。',
   blocks: [{ type: 'paragraph', text: '隔离事实正文。' }], claimMappings: [{ claimId: 'C1', quote: '隔离事实正文。', location: 'body' }], disclosure: { aiUse: 'copyedit' } };
@@ -32,11 +33,34 @@ function envelope(value = textResult, extra = {}) {
     usage: { prompt_tokens: 25, completion_tokens: 30, total_tokens: 55 }, ...extra };
 }
 
-test('single-request model requires verified token/pricing bounds before any provider dispatch', () => {
+test('single-request model requires verified token/pricing bounds before any provider dispatch', async () => {
   let calls = 0; const adapter = new SingleRequestModel(modelConfig({ contextProof: null, fetchImpl: () => { calls++; } }));
   assert.equal(adapter.readiness().ready, false);
-  assert.throws(() => adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] })); assert.equal(calls, 0);
+  await assert.rejects(adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] })); assert.equal(calls, 0);
   assert.equal(new SingleRequestModel(modelConfig({ endpoint: 'http://supplier.invalid/chat' })).readiness().ready, false);
+});
+
+test('canonical content worker pins the documented DeepSeek window and official proof host', () => {
+  const canonical = {
+    ...modelConfig(),
+    provider: 'deepseek',
+    model: 'deepseek-flash',
+    contextTokenLimit: 1_048_576,
+    maxOutputTokens: 393_216,
+    contextProof: {
+      kind: 'provider_documented_context',
+      sourceUrl: 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/',
+      sha256: HASH,
+      verifiedAt: new Date(TIME).toISOString(),
+    },
+    allowUnregisteredModel: false,
+  };
+  assert.equal(new SingleRequestModel(canonical).readiness().ready, true);
+  assert.equal(new SingleRequestModel({ ...canonical, contextTokenLimit: 8192 }).readiness().ready, false);
+  assert.equal(new SingleRequestModel({ ...canonical, maxOutputTokens: 16_384 }).readiness().ready, false);
+  assert.equal(new SingleRequestModel({ ...canonical, contextProof: {
+    ...canonical.contextProof, sourceUrl: 'https://example.com/docs',
+  } }).readiness().ready, false);
 });
 
 test('actual loopback HTTP performs one JSON POST with full prompt and an entire documented context reserve', async t => {
@@ -49,8 +73,8 @@ test('actual loopback HTTP performs one JSON POST with full prompt and an entire
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => new Promise(resolve => server.close(resolve)));
   const adapter = new SingleRequestModel(modelConfig({ endpoint: `http://127.0.0.1:${server.address().port}/chat`, allowLoopbackHttp: true }));
   assert.doesNotMatch(JSON.stringify(adapter), /isolated-fixture-credential/);
-  const call = adapter.prepare('text.adapt', { claims: [{ id: 'C1' }], source: '完整来源资料' });
-  assert.equal(call.upperBound.inputTokens, 8192); assert.equal(call.upperBound.outputTokens, 512);
+  const call = await adapter.prepare('text.adapt', { claims: [{ id: 'C1' }], source: '完整来源资料' });
+  assert.ok(call.upperBound.inputTokens > 0); assert.equal(call.upperBound.outputTokens, 512);
   const result = await call.execute(); assert.equal(result.value.body, textResult.body); assert.equal(result.usage.costMicros, null);
   assert.equal(result.usageUnknown, false); assert.equal(requests.length, 1); assert.equal(requests[0].method, 'POST');
   assert.equal(requests[0].body.stream, false); assert.equal(requests[0].body.tools, undefined);
@@ -64,7 +88,7 @@ test('ambiguous supplier timeout and HTTP failure never retry or fail over', asy
       calls++; if (mode === 'network') throw new Error('private-cookie-and-provider-body');
       return new Response('{"error":"private-supplier-message"}', { status: 503 });
     } }));
-    await assert.rejects(adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] }).execute(), error => {
+    await assert.rejects((await adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] })).execute(), error => {
       assert.equal(error.code, 'MODEL_RESULT_UNKNOWN'); assert.equal(error.unknown, true);
       assert.doesNotMatch(error.message, /private-/); return true;
     }); assert.equal(calls, 1);
@@ -76,7 +100,7 @@ test('invalid, duplicate, truncated or unsupported model outputs retain real usa
     envelope(undefined, { choices: [{ finish_reason: 'stop', message: { content: '{"title":"a","title":"b"}' } }] }),
     envelope({ ...textResult, claimMappings: [{ claimId: 'UNAPPROVED', quote: '隔离事实正文。', location: 'body' }] })]) {
     let calls = 0; const adapter = new SingleRequestModel(modelConfig({ fetchImpl: async () => { calls++; return new Response(JSON.stringify(value)); } }));
-    await assert.rejects(adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] }).execute(), error => {
+    await assert.rejects((await adapter.prepare('text.adapt', { claims: [{ id: 'C1' }] })).execute(), error => {
       assert.equal(error.metering.inputTokens, 25); assert.equal(error.metering.costMicros, null);
       assert.equal(error.usageReceipt.providerRequestId, 'fixture-request-1'); return true;
     }); assert.equal(calls, 1);
@@ -93,27 +117,31 @@ test('multiple thread/card/document outputs require distinct closed native conte
     [[first, { ...second, outputKey: 'UNDECLARED' }], 'NATIVE_CONTENT_INVALID'], [[first, { ...second, argv: ['unsafe'] }], 'UNKNOWN_FIELD']]) {
     const value = { ...textResult, ...(nativeContent === undefined ? {} : { nativeContent }) };
     const adapter = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope(value))) }));
-    await assert.rejects(adapter.prepare('text.adapt', input).execute(), { code });
+    await assert.rejects((await adapter.prepare('text.adapt', input)).execute(), { code });
   }
   const adapter = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope({ ...textResult, nativeContent: [first, second] }))) }));
-  const result = await adapter.prepare('text.polish', input).execute(); assert.deepEqual(result.value.nativeContent, [first, second]);
+  const result = await (await adapter.prepare('text.polish', input)).execute(); assert.deepEqual(result.value.nativeContent, [first, second]);
 });
 
 test('unverified usage stays unknown and a text checker cannot attest image/video inspection', async () => {
   const check = { checkedPackageHash: HASH, findings: [], coverage: { deterministic: 'checked', semantic: 'checked', media: 'checked', artistic: 'checked' }, assessment: 'Full text was checked.' };
   const adapter = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope(check, { usage: null }))) }));
-  const result = await adapter.prepare('quality.final', { packageHash: HASH, package: { artifactRefs: [{ mime: 'image/png' }] } }).execute();
-  assert.equal(result.usageUnknown, true); assert.equal(result.usage, null); assert.equal(result.value.coverage.media, 'unverified');
-  const text = await adapter.prepare('quality.final', { packageHash: HASH, package: { artifactRefs: [{ mime: 'text/markdown' }] } }).execute();
+  await assert.rejects(
+    (await adapter.prepare('quality.final', { packageHash: HASH, package: { artifactRefs: [{ mime: 'image/png' }] } })).execute(),
+    (error) => error.code === 'MODEL_USAGE_MISSING',
+  );
+  const validAdapter = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope(check))) }));
+  const text = await (await validAdapter.prepare('quality.final', { packageHash: HASH, package: { artifactRefs: [{ mime: 'text/markdown' }] } })).execute();
   assert.equal(text.value.coverage.media, 'checked');
 });
 test('a provider cannot silently replace the configured model or omit its request identity', async () => {
   const changed = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope(textResult, { model: 'different-unapproved-model' }))) }));
-  await assert.rejects(changed.prepare('text.adapt', { claims: [{ id: 'C1' }] }).execute(), error => {
+  await assert.rejects((await changed.prepare('text.adapt', { claims: [{ id: 'C1' }] })).execute(), error => {
     assert.equal(error.code, 'MODEL_IDENTITY_CHANGED'); assert.equal(error.unknown, true); return true;
   });
   const missing = new SingleRequestModel(modelConfig({ fetchImpl: async () => new Response(JSON.stringify(envelope(textResult, { id: null }))) }));
-  assert.equal((await missing.prepare('text.adapt', { claims: [{ id: 'C1' }] }).execute()).usageUnknown, true);
+  await assert.rejects((await missing.prepare('text.adapt', { claims: [{ id: 'C1' }] })).execute(),
+    (error) => error.code === 'MODEL_IDENTITY_MISSING');
 });
 
 test('private journal excludes checkout aliases, enforces single owner and preserves exact source bytes', t => {

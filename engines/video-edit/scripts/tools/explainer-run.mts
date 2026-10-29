@@ -30,6 +30,7 @@ import { engineStatus, jobsDirOf } from "../../apps/server/src/video/explainer/e
 import type { LlmCall } from "../../apps/server/src/video/explainer/semantics.js";
 import type { ExplainerShotbook } from "../../apps/server/src/video/explainer/types.js";
 import type { ShotPlan } from "../../apps/server/src/video/explainer/shotbook.js";
+import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const args = process.argv.slice(2);
@@ -75,31 +76,24 @@ function llmFromEnv(): LlmCall | undefined {
     ?? "";
   const baseUrl = rawBase.trim().replace(/\/+$/, "").replace(/\/anthropic$/, "");
   const apiKey = process.env.DEEPSEEK_API_KEY ?? process.env.LLM_API_KEY ?? "";
-  const model = opt("llm-model") ?? process.env.TALKCRAFT_LLM_MODEL ?? process.env.DEEPSEEK_MODEL ?? process.env.LLM_MODEL ?? "deepseek-chat";
+  const configuredModel = opt("llm-model") ?? process.env.TALKCRAFT_LLM_MODEL ?? process.env.DEEPSEEK_MODEL ?? process.env.LLM_MODEL ?? "deepseek-flash";
+  const model = configuredModel === "deepseek-v4-flash" ? "deepseek-flash" : configuredModel;
   if (!baseUrl || !apiKey) {
     if (mode === "deepseek") throw new Error("--llm deepseek 要求 DEEPSEEK_BASE_URL/DEEPSEEK_API_KEY（或 LLM_BASE_URL/LLM_API_KEY）");
     log("[cli] 未配置 LLM → 分镜走规则兜底（allowRuleShotbook=true）");
     return undefined;
   }
   return async (prompt: string, opts?: { system?: string }) => {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [
+    const result = await completeVideoTextTask({
+      endpoint: { baseUrl, apiKey, model },
+      scene: "video.preproduction.structured",
+      messages: [
           ...(opts?.system ? [{ role: "system", content: opts.system }] : []),
           { role: "user", content: prompt },
         ],
-        temperature: 0.4,
-        max_tokens: 8000,
-      }),
+      timeoutMs: 600_000,
     });
-    if (!res.ok) throw new Error(`LLM HTTP ${res.status}：${(await res.text()).slice(0, 200)}`);
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("LLM 返回为空");
-    return content;
+    return result.text;
   };
 }
 

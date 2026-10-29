@@ -23,7 +23,13 @@ beforeAll(async () => {
     const content = mode === "empty" ? ""
       : mode === "blocks" ? [{ type: "text", text: "provider " }, { type: "output_text", content: "answer" }, { unrelated: true }]
         : "provider answer";
-    res.end(JSON.stringify({ choices: [{ message: { content } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }));
+    const request = bodies.at(-1)!;
+    res.end(JSON.stringify({
+      id: "provider-fixture",
+      model: request.model,
+      choices: [{ finish_reason: "stop", message: { content } }],
+      usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+    }));
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -44,7 +50,8 @@ describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
     expect(bodies[0]).toEqual({ model: "local-model", messages: [{ role: "user", content: expect.stringMatching(/\[PII:PHONE:/) }],
       temperature: 0, top_p: 0, max_tokens: 8192, response_format: { type: "json_object" }, thinking: { type: "disabled" } });
     expect(JSON.stringify(bodies)).not.toContain("13812345678");
-    expect(result).toEqual({ text: "provider answer", promptTokens: 20, completionTokens: 5 });
+    expect(result).toMatchObject({ text: "provider answer", promptTokens: 20, completionTokens: 5,
+      modelId: "local-model", finishReason: "stop", reasoningTokens: 0 });
   });
   it("keeps the standalone provider default and omits unspecified controls", async () => {
     await provider().chat([{ role: "user", content: "hello" }]);
@@ -52,7 +59,9 @@ describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
   });
   it("normalizes OpenAI-compatible text blocks without stringifying objects", async () => {
     mode = "blocks";
-    await expect(provider().chat(messages)).resolves.toEqual({ text: "provider answer", promptTokens: 20, completionTokens: 5 });
+    await expect(provider().chat(messages)).resolves.toMatchObject({
+      text: "provider answer", promptTokens: 20, completionTokens: 5,
+    });
     expect(normalizeModelContent([{ type: "text", text: "甲" }, { content: "乙" }, { value: "ignored" }])).toBe("甲乙");
     expect(normalizeModelContent({ text: "丙" })).toBe("丙");
     expect(normalizeModelContent(null)).toBe("");

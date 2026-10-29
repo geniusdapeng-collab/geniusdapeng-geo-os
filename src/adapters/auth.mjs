@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
 
 export function resolveDeepSeekApiKey(env = process.env) {
-  const direct = env.DEEPSEEK_API_KEY?.trim();
+  const direct = env.LLM_API_KEY?.trim() || env.DEEPSEEK_API_KEY?.trim();
   if (direct) {
     return direct;
   }
@@ -41,6 +41,6 @@ export function resolveDeepSeekApiKey(env = process.env) {
   }
 
   throw new Error(
-    "缺少 DeepSeek 凭据。设置 DEEPSEEK_API_KEY、DEEPSEEK_AUTH_COMMAND，或 macOS 钥匙串条目。",
+    "缺少 DeepSeek 凭据。设置 LLM_API_KEY、DEEPSEEK_API_KEY、DEEPSEEK_AUTH_COMMAND，或 macOS 钥匙串条目。",
   );
 }
