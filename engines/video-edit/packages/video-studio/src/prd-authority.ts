@@ -5,6 +5,7 @@ import {
   requirementHash, requirementRecord, validateRequirementSchema,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
+import { extractProductVisualAuthority } from "./product-visual-authority.js";
 
 export interface PrdMarketingScope {
   tenantId: string;
@@ -206,6 +207,7 @@ export function preparePrdAuthority(input: {
 
 /** Both existing real LLM agents receive the same complete authority; this grants no new approval. */
 export function prdAuthorityPrompt(authority: PrdAuthority, contract: RequirementContract): string {
+  const productVisualAuthority = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
@@ -220,6 +222,9 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
     + `保持原始层级：非阻断的创意建议仍为建议，不能升级为 G1 硬条件或新审批，G1 通过也不批准这些新创作。`
     + `媒体报道只能归因给该媒体和日期，没有直接厂家引语不能改称厂家官方确认；未知外观、使用场地限定、赛事型号与零售型号边界不得扩写。`
     + `不确定时不使用该主张，不能把“通过G1”解释为每个创作句子已获批准。\n`
+    + `本次结构化商品视觉授权（由 G1 A1 已接受图片产生，不是模型自述）：\n${JSON.stringify(productVisualAuthority)}\n`
+    + `若 required=true，任何商品外观、颜色、涂装、比例、部件或形态描述只能对照上述 images 的可见内容；`
+    + `无法从这些图片确认的细节必须省略。文字 claims 不得扩张成新的外观事实。\n`
     + `G1 完整原始裁决（包括所有意见和建议）：\n${JSON.stringify(authority.marketing.g1Proof)}\n`
     + `G1 原件 ${authority.marketing.g1Artifact.path} / SHA256 ${authority.marketing.g1Artifact.sha256}：\n${authority.marketing.g1Artifact.content}\n`;
 }

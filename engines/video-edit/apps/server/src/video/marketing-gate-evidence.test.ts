@@ -13,7 +13,7 @@ const env = { LLM_BASE_URL: "https://judge.invalid/v1", LLM_API_KEY: "isolated-f
 const good = { approved: true, score: 95, issues: [], suggestions: [], reason: "只按完整已接受 claims 与当前门合同通过" };
 const nextGates = ["G2_THEME", "G3_INSIGHT", "G4_PRD", "G5_PORTRAIT", "G6_PROMPT", "G7_FINAL"];
 
-function fixture(attempt = 1) {
+function fixture(attempt = 1, visual: "none" | "missing" | "present" = "none") {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "marketing-gate-evidence-"))); roots.push(root);
   const guard = createMarketingGateEvidenceGuard({ workDir: root, scope });
   const currentScope = { ...scope, attempt };
@@ -22,11 +22,19 @@ function fixture(attempt = 1) {
     const target = path.join(root, "gates", scope.projectId, `attempt-${n}`, `${gate}.md`);
     mkdirSync(path.dirname(target), { recursive: true }); writeFileSync(target, content); return target;
   };
+  const images = visual === "present" ? [{ url: "https://media.example.test/product.png", page_url: "https://source.example.test/product", angle: "unknown" }] : [];
   const content = JSON.stringify({ facts: { schemaVersion: "workloom.marketing-facts/v1", issuer: "workloom.marketing-authority",
-    scope: currentScope, stages: [{ stage: "A1", facts: { claims: [{ value: "818.8 cc", sourceId: "SRC-1" }] },
+    scope: currentScope, stages: [
+      { stage: "A1", facts: { claims: [{ value: "818.8 cc", sourceId: "SRC-1" }], payload: { identity: { name: "820RR-RC" }, images } },
       review: { score: 88, issues: ["来源是媒体报道，发布日期不等于厂家确认日期", "SBK 赛事型号不等于零售型号"],
-        suggestions: ["赛道性能须保留封闭赛道用途限定", "未知外观不能补写为已核实事实"] } }],
-    restrictions: ["竞品未提供证据，不能推断市场缺失；鱼鳞焊缝没有已接受 claim"] }, requestedIntent: "李英子与820RR-RC" });
+        suggestions: ["赛道性能须保留封闭赛道用途限定", "未知外观不能补写为已核实事实"] } },
+      { stage: "A2", facts: { status: "no_evidence", claims: [], payload: { reviews: [] } } },
+      { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
+    ],
+    restrictions: ["竞品未提供证据，不能推断市场缺失；鱼鳞焊缝没有已接受 claim"] },
+    requestedIntent: "李英子与820RR-RC",
+    ...(visual === "none" ? {} : { requestedMetadata: { brief: { product: "820RR-RC" } } }),
+  });
   const g1Path = file("G1_DOSSIER", content);
   const proof = { gate: "G1_DOSSIER", approved: true, status: "passed", via: "llm", model: "fixture-judge", degraded: false,
     evidence: [{ path: g1Path, sha256: sha(content), scope: "complete-text", bytes: Buffer.byteLength(content) }],
@@ -77,6 +85,22 @@ describe("current-attempt host-owned G1 evidence", () => {
       g1Artifact: { content: f.content, sha256: sha(f.content) },
       g1Proof: { model: "fixture-judge", suggestions: ["保留完整 A1 support review 限定"],
         evidence: [{ path: f.g1Path, sha256: sha(f.content), scope: "complete-text" }] } });
+  });
+
+  it("明确商品缺A1真实图时拒绝G1，商品外观引用图清单进入后续门结构化上下文", () => {
+    const missing = fixture(1, "missing");
+    expect(() => missing.accept()).toThrow("PRODUCT_VISUAL_AUTHORITY_REQUIRED");
+    expect(() => missing.guard.forPrd()).toThrow();
+
+    const present = fixture(1, "present");
+    present.accept();
+    const binding = present.guard.forReview("G3_INSIGHT", present.current())!;
+    expect(binding.context.productVisualAuthority).toMatchObject({
+      required: true,
+      product: "820RR-RC",
+      images: [{ url: "https://media.example.test/product.png", pageUrl: "https://source.example.test/product" }],
+    });
+    expect(binding.rubric.join("\n")).toContain("只能对照结构化 productVisualAuthority.images");
   });
 
   it.each(["unaccepted", "reset", "invalid-reset", "failed-replacement"])("does not export PRD authority after %s", kind => {

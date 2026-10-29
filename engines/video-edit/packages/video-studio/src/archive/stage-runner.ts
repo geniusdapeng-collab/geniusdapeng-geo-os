@@ -85,8 +85,9 @@ export interface StageContext {
 export function classifyError(err: unknown): string {
   const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err);
   if (/ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|fetch failed|socket hang up|network error/i.test(msg)) return "NETWORK";
-  if (/rate.?limit|429|too many requests|quota exceeded|insufficient_quota/i.test(msg)) return "LLM_RATE_LIMIT";
-  if (/LLM[^\n]{0,40}(timeout|超时)|(timeout|超时)[^\n]{0,40}LLM|模型路由不可用/i.test(msg)) return "LLM_TIMEOUT";
+  if (/rate.?limit|429|402|payment required|too many requests|quota exceeded|insufficient[ _](?:quota|balance)|余额不足/i.test(msg)) return "LLM_RATE_LIMIT";
+  if (/LLM[^\n]{0,40}(timeout|超时)|(timeout|超时)[^\n]{0,40}LLM|模型路由不可用[^\n]{0,200}(timeout|超时)/i.test(msg)) return "LLM_TIMEOUT";
+  if (/模型路由不可用/i.test(msg)) return "LLM_UNAVAILABLE";
   if (/JSON\.parse|Unexpected token|不是合法 ?JSON|invalid json|提取有效JSON|JSON ?解析失败|未找到 ?JSON/i.test(msg)) return "LLM_PARSE";
   // 管线自检闸（PromptDeliveryGuard/PipelineGuard 等）拒绝产物：是"门拦下"而不是"代码崩了"，
   // 归 BUG 会把已知的降级路径升级成 P0 代码缺陷（真机 VID-1004 复盘）。

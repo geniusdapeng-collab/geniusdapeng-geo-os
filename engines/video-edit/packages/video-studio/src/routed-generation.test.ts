@@ -89,7 +89,7 @@ describe("video adapter → routeSmart → provider → serialized HTTP", () => 
     const chat = vi.spyOn(provider, "chat");
     const promise = engine.reason("text", { signal: controller.signal });
     setTimeout(() => controller.abort(), 30);
-    expect(await promise).toMatchObject({ success: false, retryable: true });
+    expect(await promise).toMatchObject({ success: false, retryable: !routed });
     if (routed) expect(chat.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });
   it("keeps provider errors as degradation evidence and preserves retryable failure", async () => {
@@ -125,12 +125,17 @@ try {
  const vendor = Object.create(module.LLMEngine.prototype);
  const structured = await vendor.reasonStructured("JSON", { type: "object" }, { temperature: 0, topP: 0.5, maxTokens: 4321, thinking: { type: "disabled" } });
  const chat = await vendor.chat("system", "text", 0);
- console.log("RESULT " + JSON.stringify({ structured, chat }));
+ const legacy = new module.LLMEngine({ model: "kimi-k2p6" });
+ const legacyResult = await legacy.reason("legacy vendor call", { model: "kimi-k2p6" });
+ console.log("RESULT " + JSON.stringify({ structured, chat, legacyResult, legacyUnavailable: legacy._noApiKey }));
 } finally { restore(); }
 `, "utf8");
       const { stdout } = await promisify(execFile)(process.execPath, [path.join(repo, "node_modules/tsx/dist/cli.mjs"), script], { cwd: repo, timeout: 20_000 });
       const result = JSON.parse(stdout.split("\n").find(line => line.startsWith("RESULT "))!.slice(7));
-      expect(result).toMatchObject({ structured: { success: true, data: { ok: true } }, chat: '{"ok":true}' });
+      expect(result).toMatchObject({
+        structured: { success: true, data: { ok: true } }, chat: '{"ok":true}',
+        legacyResult: { success: true, content: '{"ok":true}' }, legacyUnavailable: false,
+      });
       expect(bodies[0]).toMatchObject({ temperature: 0, top_p: 0.5, max_tokens: 4321, response_format: { type: "json_object" }, thinking: { type: "disabled" } });
       expect(bodies[1]).toMatchObject({ temperature: 0 });
     } finally { await rm(temp, { recursive: true, force: true }); }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { GateVerdict } from "./gates.js";
 import type { PrdAuthority, PrdMarketingScope } from "./prd-authority.js";
+import { extractProductVisualAuthority } from "./product-visual-authority.js";
 import { RequirementContractError, requirementHash, requirementRecord, type RequirementRecord } from "./requirement-contract.js";
 
 export interface RequirementApprovedTheme {
@@ -76,6 +77,7 @@ export function requirementAuthorityPrompt(authority: PrdAuthority, theme?: Requ
   }
   const metadata = authority.metadata;
   const key = requirementHash(authority);
+  const productVisualAuthority = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
   return `\n\n## 本次宿主需求权威输入 ${key}（冲突时按本节层级处理）\n`
     + `一、完整客户 Brief 和其中本片制作细则决定本片的主张用途、受众与交付要求。G1 接受某条事实，不能覆盖客户选择的用途限制，不能把底账事实自动变成钩子、口播、屏幕卖点或结尾。\n`
     + `完整客户 Brief：\n${JSON.stringify(metadata.brief)}\n`
@@ -86,6 +88,8 @@ export function requirementAuthorityPrompt(authority: PrdAuthority, theme?: Requ
     + `二、下面本次真实非降级 G1 原件只授权已接受 claims 及其限定用途。完整遵守 restrictions，并阅读嵌套 A1/A2/A3 support review 的 issues、suggestions 和证据状态。`
     + `A1 来源主张不构成竞品证据；A2/A3 为 no_evidence 时不得补写口碑、评分、销量、共识、竞品弱点或市场领先。媒体事实保留媒体、日期和 reported 等来源限定，不升格为实测或厂家独立认证。`
     + `已核规格数字和宣传性来源用语仍保留在事实底账；本片是否可用及如何使用须服从完整客户 Brief。未知外观不因选入道具或动作就成为已核实配置。\n`
+    + `本次结构化商品视觉授权（只来自 G1 A1 已接受图片）：\n${JSON.stringify(productVisualAuthority)}\n`
+    + `required=true 时，场景/道具/动作/关键元素中的商品外观只能对照 images 的可见内容；不得从文字 claim、常识、影视参考或角色档案推出涂装、配色、比例、部件、材质或空气动力细节。无法确认的细节必须省略。\n`
     + `G1 完整原始裁决（所有意见与建议保持原层级）：\n${JSON.stringify(authority.marketing.g1Proof)}\n`
     + `G1 完整原件 ${authority.marketing.g1Artifact.path} / SHA256 ${authority.marketing.g1Artifact.sha256}：\n${authority.marketing.g1Artifact.content}\n`
     + `三、${theme ? `本次已批准 G2 的完整原文与原始裁决只提供创作上下文。advisories 是非阻断建议，不新增硬性门槛、审批或强制重试；不能覆盖客户 Brief/G1 用途限制。\nG2 SHA256 ${theme.contentSha256}：\n${theme.contentMd}\nG2 原始裁决：\n${JSON.stringify(theme.verdict)}\n` : "本次尚无已批准 G2 上下文；不推定主题或新创作已经通过。\n"}`

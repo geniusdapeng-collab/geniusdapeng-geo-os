@@ -5,7 +5,7 @@ import { OpenAiCompatibleProvider, type ChatOptions } from "./providers.js";
 let server: Server;
 let origin: string;
 let bodies: Array<Record<string, unknown>>;
-let mode: "ok" | "error" | "hang" | "hang-body";
+let mode: "ok" | "error" | "hang" | "hang-body" | "empty";
 beforeAll(async () => {
   server = createServer(async (req, res) => {
     if (req.url === "/models") { res.writeHead(200); res.end("{}"); return; }
@@ -16,7 +16,7 @@ beforeAll(async () => {
     if (mode === "hang-body") { res.writeHead(200, { "content-type": "application/json" }); res.flushHeaders(); res.write("{"); return; }
     if (mode === "error") { res.writeHead(400); res.end("unsupported"); return; }
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ choices: [{ message: { content: "provider answer" } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }));
+    res.end(JSON.stringify({ choices: [{ message: { content: mode === "empty" ? "" : "provider answer" } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }));
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -46,6 +46,12 @@ describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
   it("retains HTTP errors instead of reporting an answer", async () => {
     mode = "error";
     await expect(provider().chat(messages)).rejects.toThrow("模型调用失败：HTTP 400");
+  });
+  it("treats an empty content response as a retryable provider failure", async () => {
+    mode = "empty";
+    await expect(provider().chat(messages)).rejects.toMatchObject({
+      name: "ModelProviderError", kind: "empty", message: "模型返回 content 为空", retryable: true,
+    });
   });
   it.each(["hang", "hang-body"] as const)("timeout aborts %s including response-body consumption", async nextMode => {
     mode = nextMode;

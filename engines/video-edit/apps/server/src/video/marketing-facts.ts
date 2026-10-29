@@ -27,6 +27,26 @@ export const extractionSchema = z.object({ payload: z.unknown(), citations: z.ar
   pointer: z.string().min(1).max(500), sourceId: z.string().min(1).max(100), quote: z.string().min(1).max(6000),
   quoteStart: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
 }).strict()).max(200), noEvidenceReason: text.optional() }).strict();
+
+/**
+ * A2/A3 may legitimately have no evidence. Some OpenAI-compatible providers
+ * omit an explicitly empty array. Only normalize that exact, unambiguous case:
+ * empty payload for the current stage plus a non-empty noEvidenceReason. Any
+ * non-empty evidence still has to carry citations.
+ */
+export function normalizeExplicitNoEvidenceExtraction(stage: IntelStage, value: unknown): unknown {
+  if (stage === "A1" || !value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if (Object.hasOwn(record, "citations")) return value;
+  const payload = record.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)
+    || typeof record.noEvidenceReason !== "string" || !record.noEvidenceReason.trim()) return value;
+  const body = payload as Record<string, unknown>;
+  const empty = stage === "A2"
+    ? Array.isArray(body.reviews) && body.reviews.length === 0
+    : Array.isArray(body.competitors) && body.competitors.length === 0;
+  return empty ? { ...record, citations: [] } : value;
+}
 export interface ClaimEvidence {
   claimId: string; stage: IntelStage; pointer: string; value: string | number | boolean;
   sourceId: string; textSha256: string; quote: string; quoteStart: number; quoteEnd: number;
@@ -62,7 +82,7 @@ export function stageFactPointers(stage: IntelStage, payload: unknown): string[]
 }
 
 export function validateStageFacts(stage: IntelStage, raw: unknown, sources: SourceSnapshot[]): ValidatedStageFacts {
-  const extraction = extractionSchema.parse(raw);
+  const extraction = extractionSchema.parse(normalizeExplicitNoEvidenceExtraction(stage, raw));
   const payload = stagePayloadShape(stage, extraction.payload);
   const sourceMap = new Map(sources.map(source => [source.sourceId, source]));
   if (sourceMap.size !== sources.length) throw new Error("MARKETING_SOURCE_INVALID：来源ID重复");

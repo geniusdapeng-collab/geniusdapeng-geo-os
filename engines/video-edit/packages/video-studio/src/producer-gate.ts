@@ -296,6 +296,7 @@ function shrinkImageWithFfmpeg(path: string): string | null {
  */
 async function parseJudgeJson(
   raw: string,
+  originalContent: Array<Record<string, unknown>>,
   llm: LlmConfig,
   fetchImpl: typeof fetch,
   log: (line: string) => void,
@@ -317,14 +318,26 @@ async function parseJudgeJson(
     const sliced = tryParse(stripped.slice(start, end + 1));
     if (sliced) return sliced;
   }
-  log(`[producer][${stage}] 评审输出不是合法 JSON，要求模型自修复一次`);
+  log(`[producer][${stage}] 评审输出不是合法 JSON，携带完整原文和证据重新评审一次`);
   const repair = await fetchImpl(`${llm.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
     body: JSON.stringify({
       model: llm.model,
       messages: [
-        { role: "user", content: "把下面这段内容整理成**严格合法**的 JSON（只输出 JSON，不要任何解释、不要 markdown）：\n\n" + raw.slice(0, 4000) }
+        {
+          role: "user",
+          content: [
+            ...originalContent,
+            {
+              type: "text",
+              text: "上一次输出不是合法 JSON。请基于上面同一份完整证据重新评审，不要只整理或转抄上一次文本；"
+                + '必须只输出合法 JSON：{"approved":true|false,"score":0-100,"issues":["..."],"suggestions":["..."],"reason":"结论"}。'
+                + "五个键缺一不可，不要 markdown、解释或额外键。\n"
+                + `上一次输出仅供识别错误，不能作为新事实：${raw.slice(0, 8_000)}`,
+            },
+          ],
+        }
       ],
       temperature: 0,
       response_format: { type: "json_object" }
@@ -379,12 +392,13 @@ export function coerceJudgeResult(json: unknown): JudgeResult | null {
 /** 结构自修复：把形状不对的 JSON 交给模型按 schema 重排（只整理结构，不得新增事实）。 */
 async function repairJudgeShape(
   parsed: Record<string, unknown>,
+  originalContent: Array<Record<string, unknown>>,
   llm: LlmConfig,
   fetchImpl: typeof fetch,
   log: (line: string) => void,
   stage: ProducerStage
 ): Promise<JudgeResult | null> {
-  log(`[producer][${stage}] 评审结果结构不合规，要求模型按 schema 自修复一次`);
+  log(`[producer][${stage}] 评审结果结构不合规，携带完整原文和证据重新评审一次`);
   const res = await fetchImpl(`${llm.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
@@ -392,9 +406,16 @@ async function repairJudgeShape(
       model: llm.model,
       messages: [{
         role: "user",
-        content: "把下面这份评审结论**只整理成结构**，不得新增或改变任何事实、分数与结论：\n"
-          + '只输出 JSON：{"approved":true|false,"score":0-100,"issues":["..."],"suggestions":["..."],"reason":"结论"}\n\n'
-          + JSON.stringify(parsed)
+        content: [
+          ...originalContent,
+          {
+            type: "text",
+            text: "上一次返回不是可用于放行的评审结构。请基于上面同一份完整证据重新评审，不要只改写或转抄上一次对象；"
+              + '必须只输出 JSON：{"approved":true|false,"score":0-100,"issues":["..."],"suggestions":["..."],"reason":"结论"}。'
+              + "approved、score、issues、suggestions、reason 五个键缺一不可；不得输出 review_object、required_checks 或解释文字。\n"
+              + `上一次输出仅供识别错误，不能作为新事实：${JSON.stringify(parsed).slice(0, 8_000)}`,
+          },
+        ],
       }],
       temperature: 0,
       response_format: { type: "json_object" }
@@ -569,13 +590,13 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       if (!res.ok) throw new Error(`HTTP ${res.status} ${rawBody.slice(0, 160)}`);
       const raw = JSON.parse(rawBody).choices?.[0]?.message?.content;
       if (typeof raw !== "string") throw new Error("评审模型缺少文本结果");
-      const json = await parseJudgeJson(raw, llm, options.fetchImpl ?? fetch, log, stage);
+      const json = await parseJudgeJson(raw, content, llm, options.fetchImpl ?? fetch, log, stage);
       /**
        * 结构归一 → 仍不合规则按 schema 自修复一次 → 还不行才判"结构非法"。
        * 2026-09-28 T1 真机：旧实现在这一步直接判死，10 镜里有 2 镜因形状偏差被要求整环节重跑。
        */
       const normalizedResult = coerceJudgeResult(json)
-        ?? await repairJudgeShape(json, llm, options.fetchImpl ?? fetch, log, stage);
+        ?? await repairJudgeShape(json, content, llm, options.fetchImpl ?? fetch, log, stage);
       if (!normalizedResult) throw new Error("评审结果结构非法");
       answers.push(normalizedResult);
     }

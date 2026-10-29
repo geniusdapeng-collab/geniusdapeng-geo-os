@@ -74,7 +74,7 @@ export function routedLlmCall(deps: {
           // GR-04：signal 下传 + 场景化超时（intent-classify 3s / quest-plan 120s / ask 45s…）
           ...(signal ? { signal } : {}),
         },
-        pool(), sink, { policy },
+        pool(), sink, { policy, allowPeak: process.env.WORKLOOM_ALLOW_PEAK === "1" },
       );
       if ((r.kind === "answered" || r.kind === "circuit_broken") && r.text !== undefined) return r.text;
       if (r.kind === "reused" && r.text !== undefined) return r.text;

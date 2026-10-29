@@ -78,3 +78,29 @@ it("营销G1允许合法JSON空值，拒绝仅摘要或旧自报档案", () => {
   expect(gateDeterministicChecks("G1_DOSSIER", JSON.stringify(good)).every(check => check.pass)).toBe(true);
   for (const bad of ["商品事实摘要".repeat(100), JSON.stringify({ ...good, facts: { ...good.facts, stages: [1] } }), "null"]) expect(gateDeterministicChecks("G1_DOSSIER", bad).some(check => check.hard && !check.pass)).toBe(true);
 });
+
+it("明确商品时G1必须绑定A1已接受真实图，外观授权由宿主结构化产生", () => {
+  const base: any = {
+    facts: {
+      schemaVersion: "workloom.marketing-facts/v1",
+      stages: [
+        { stage: "A1", facts: { status: "source_bound", payload: { identity: { name: "合成商品" }, images: [] } } },
+        { stage: "A2", facts: { status: "no_evidence" } },
+        { stage: "A3", facts: { status: "no_evidence" } },
+      ],
+      sources: [{ sourceId: "SRC-1" }],
+    },
+    requestedMetadata: { brief: { product: "合成商品" } },
+  };
+  const missing = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(base));
+  expect(missing.find(check => check.id === "product-visual-authority")).toMatchObject({ pass: false, hard: true });
+  base.facts.stages[0]!.facts.payload.images.push({
+    url: "https://media.example.com/product.png",
+    page_url: "https://source.example.com/product",
+    angle: "unknown",
+  });
+  const present = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(base));
+  expect(present.find(check => check.id === "product-visual-authority")).toMatchObject({
+    pass: true, detail: expect.stringContaining("1 张本次 G1 已接受图片"),
+  });
+});

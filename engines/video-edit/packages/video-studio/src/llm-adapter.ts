@@ -62,6 +62,8 @@ export interface WorkloomLLMEngineConfig {
     plan?: PlanId;
     /** 覆盖默认场景（默认 preproduction） */
     scene?: string;
+    /** Explicit caller override for off-peak-only scenes; never enabled implicitly. */
+    allowPeak?: boolean;
   };
 }
 
@@ -144,9 +146,9 @@ export class WorkloomLLMEngine {
           },
           this.cfg.router.providers,
           this.cfg.router.sink,
-          { policy: this.cfg.router.policy },
+          { policy: this.cfg.router.policy, allowPeak: this.cfg.router.allowPeak },
         );
-        if ((r.kind === "answered" || r.kind === "circuit_broken" || r.kind === "reused") && r.text) {
+        if ((r.kind === "answered" || r.kind === "circuit_broken" || r.kind === "reused") && r.text?.trim()) {
           return {
             success: true,
             content: r.text,
@@ -155,8 +157,17 @@ export class WorkloomLLMEngine {
               : undefined,
           };
         }
-        // 全链不可用/排队 → vendor 熔断纪律接管（retryable 让其按既有策略降级/重试）
-        return { success: false, error: `模型路由不可用（${r.kind}）`, retryable: true };
+        const failure = r.failure
+          ? `；${r.failure.kind}：${r.failure.reason}`
+          : "";
+        // Preserve the router's actual state. A real timeout/outage must not be
+        // presented as queued, and a deferred off-peak task must not be retried
+        // immediately by vendor-level retry machinery.
+        return {
+          success: false,
+          error: `模型路由不可用（${r.kind}${failure}）`,
+          retryable: r.failure?.retryable ?? r.kind !== "queued",
+        };
       } catch (err) {
         return { success: false, error: err instanceof Error ? err.message : String(err), retryable: true };
       }
@@ -434,18 +445,34 @@ export function installVendorEngineBridge(engine: WorkloomLLMEngine): () => void
       patched.push([name, prototype[name]]);
       prototype[name] = impl;
     };
-    redirect("reason", (prompt: unknown, options: unknown = {}) =>
-      engine.reason(String(prompt ?? ""), options as LLMReasonOptions));
-    redirect("reasonRaw", (prompt: unknown, options: unknown = {}) =>
-      engine.reasonRaw(String(prompt ?? ""), options as LLMReasonOptions));
-    redirect("reasonStructured", (prompt: unknown, schema: unknown, options: unknown = {}) =>
-      engine.reasonStructured(String(prompt ?? ""), schema, options as LLMReasonOptions));
-    redirect("chat", (systemPrompt: unknown, userPrompt: unknown, temperature: unknown = 1) => {
+    const hostOptions = (receiver: unknown, options: unknown): LLMReasonOptions => {
+      const normalized = options && typeof options === "object" && !Array.isArray(options)
+        ? { ...(options as Record<string, unknown>) }
+        : {};
+      // Vendor agents still carry the retired provider/model defaults. They are
+      // not model-selection authority once the host router is installed.
+      if (normalized.model === "kimi-k2p6") delete normalized.model;
+      if (receiver && typeof receiver === "object" && Object.hasOwn(receiver, "_noApiKey")) {
+        try { (receiver as Record<string, unknown>)._noApiKey = false; } catch { /* the host methods below do not read it */ }
+      }
+      return normalized as LLMReasonOptions;
+    };
+    redirect("reason", function (this: unknown, prompt: unknown, options: unknown = {}) {
+      return engine.reason(String(prompt ?? ""), hostOptions(this, options));
+    });
+    redirect("reasonRaw", function (this: unknown, prompt: unknown, options: unknown = {}) {
+      return engine.reasonRaw(String(prompt ?? ""), hostOptions(this, options));
+    });
+    redirect("reasonStructured", function (this: unknown, prompt: unknown, schema: unknown, options: unknown = {}) {
+      return engine.reasonStructured(String(prompt ?? ""), schema, hostOptions(this, options));
+    });
+    redirect("chat", function (this: unknown, systemPrompt: unknown, userPrompt: unknown, temperature: unknown = 1) {
       const parsedTemperature = Number(temperature);
       return engine.chat(String(systemPrompt ?? ""), String(userPrompt ?? ""), Number.isFinite(parsedTemperature) ? parsedTemperature : 1);
     });
-    redirect("generate", (prompt: unknown, options: unknown = {}) =>
-      engine.generate(String(prompt ?? ""), options as LLMReasonOptions));
+    redirect("generate", function (this: unknown, prompt: unknown, options: unknown = {}) {
+      return engine.generate(String(prompt ?? ""), hostOptions(this, options));
+    });
     return () => {
       for (const [name, original] of patched) prototype[name] = original;
     };

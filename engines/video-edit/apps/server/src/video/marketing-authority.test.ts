@@ -38,6 +38,7 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
   imageExtras?: boolean;
   imageMetadata?: "complete" | "no-source" | "no-angle" | "minimal";
   syntheticTokenCharge?: number;
+  omitEmptyCitations?: boolean;
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
   return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
@@ -45,7 +46,11 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       extractionOptions.push(llmOptions);
       extractionCalls.push(prompt); if (options.modelFailure) return { success: false, error: "LLM unavailable" };
       const match = /当前阶段：(A[123])\n(.*)$/s.exec(prompt)!; const source = JSON.parse(match[2]!).sources[0];
-      if (match[1] !== "A1") return { success: true, data: { payload: match[1] === "A2" ? { reviews: [] } : { competitors: [] }, citations: [], noEvidenceReason: "页面仅商品规格，无可核实评价或竞品" } };
+      if (match[1] !== "A1") return { success: true, data: {
+        payload: match[1] === "A2" ? { reviews: [] } : { competitors: [] },
+        ...(!options.omitEmptyCitations ? { citations: [] } : {}),
+        noEvidenceReason: "页面仅商品规格，无可核实评价或竞品",
+      } };
       a1Calls++;
       if (a1Calls === 2 && options.citationFault === "repair-model-failure") return { success: false, error: "LLM unavailable" };
       const specs = options.specs ?? { 风量: "9 档" };
@@ -94,6 +99,19 @@ describe("营销事实宿主完整执行", () => {
     expect(modelCalls.every(call => call.temperature === 0.2 && call.response_format.type === "json_object" && !("thinking" in call))).toBe(true);
     const checked = await verifyMarketingFacts({ root, ...saved, scope, shots }); expect(checked.outputReviews[0]?.promptSha256).toBe(renderSha256(shots[0]!.prompt));
     expect(await readFile(path.join(root, checked.sources[0]!.textRef), "utf8")).toBe(sourceText);
+  });
+  it("A2/A3明确空证据省略citations时由宿主补空数组，并保留原始响应和可复读证据", async () => {
+    const prepared = await prepare({ omitEmptyCitations: true });
+    expect(prepared.bundle.stages.map(stage => [stage.stage, stage.facts.status])).toEqual([
+      ["A1", "source_bound"], ["A2", "no_evidence"], ["A3", "no_evidence"],
+    ]);
+    for (const stage of prepared.bundle.stages.filter(item => item.stage !== "A1")) {
+      const artifact = JSON.parse(await readFile(path.join(root, stage.extractions![0]!.ref), "utf8"));
+      expect(artifact.response.data).not.toHaveProperty("citations");
+      expect(artifact.status).toBe("accepted");
+    }
+    const saved = await finalizeMarketingFacts(prepared, shots, env);
+    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope, rawByAgent: prepared.raw });
   });
   it("模拟provider需12000 token预算：旧8192截断，16384保留完整事实并完成装订与复读", async () => {
     const specs = { "接口/~": "USB/C~口", 待机功率: 0, 自动启停: false };

@@ -3,10 +3,11 @@
  * 全部调用经 routeSmart（preproduction 场景 + 真实计量留痕 + fastModel 强制 L1 + 失败可重试语义）
  */
 import { createRequire } from "node:module";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { MockProvider, type ChatMessage, type ChatOptions, type ModelProvider } from "@workloom/base/model-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MockProvider, resetCircuit, type ChatMessage, type ChatOptions, type ModelProvider } from "@workloom/base/model-router";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 
+beforeEach(() => resetCircuit());
 afterEach(() => vi.restoreAllMocks());
 
 function memSink() {
@@ -23,7 +24,7 @@ function memSink() {
   };
 }
 
-const engine = (sink: any, providers?: Map<string, MockProvider>) =>
+const engine = (sink: any, providers?: Map<string, ModelProvider>) =>
   new WorkloomLLMEngine({
     baseUrl: "http://unused.local/v1",
     apiKey: "sk-test",
@@ -88,6 +89,28 @@ describe("vendor 引擎收口 routeSmart（preproduction 场景）", () => {
     const r = await engine(sink, providers).reason("x");
     expect(r.success).toBe(false);
     expect(r.retryable).toBe(true);
+  });
+
+  it("空响应全链不可用时保留 unavailable/empty 诊断，不伪装成 queued", async () => {
+    const { sink } = memSink();
+    const empty = (modelId: string): ModelProvider => ({
+      modelId, healthy: async () => true,
+      chat: async () => { throw new Error("模型返回 content 为空"); },
+    });
+    const providers = new Map([
+      ["deepseek-v4-pro", empty("deepseek-v4-pro")],
+      ["glm-5.2", empty("glm-5.2")],
+      ["minimax-m3", empty("minimax-m3")],
+      ["deepseek-v4-flash", empty("deepseek-v4-flash")],
+      ["glm-5.3-flash", empty("glm-5.3-flash")],
+      ["qwen-3.8-flash", empty("qwen-3.8-flash")],
+    ]);
+    const r = await engine(sink, providers).reason("x");
+    expect(r.success).toBe(false);
+    expect(r.retryable).toBe(true);
+    expect(r.error).toContain("unavailable");
+    expect(r.error).toContain("empty");
+    expect(r.error).not.toContain("queued");
   });
 
   it("reasonStructured 的 JSON 提取在路由路径上保持兼容", async () => {
