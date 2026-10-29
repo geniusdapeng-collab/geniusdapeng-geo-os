@@ -24309,9 +24309,9 @@
       "sourceMode": "100644",
       "gitBlob": "db70d3ba13462235a154514ed357fff0c9668787",
       "bytes": 11425,
-      "targetBytes": 11425,
+      "targetBytes": 11674,
       "sourceSha256": "6c7a88607aca9ef3b3d9949e5a9e8d46d0f4182b42643169dbed3062ed54859e",
-      "targetSha256": "6c7a88607aca9ef3b3d9949e5a9e8d46d0f4182b42643169dbed3062ed54859e",
+      "targetSha256": "5a88d9248ec252cb4900243d4d94fd88af97726305504924e36b718790287581",
       "evidence": "B"
     },
     {
@@ -39274,9 +39274,10 @@
       "path": "apps/server/src/service/llm-environment.test.ts",
       "mode": "100644",
       "bytes": 6301,
-      "targetSha256": "e2bf2cb73760ba4fcd947d5d13c78668a9f44ec7a9998a8cbfa007f215ecb6fc",
+      "targetSha256": "db24a32139bc574ba19ceb1ee5cce375614676c4d977d5fe369391b50b1d0b4e",
       "evidence": "B",
-      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind.",
+      "targetBytes": 6671
     },
     {
       "path": "apps/server/src/service/llm-environment.ts",

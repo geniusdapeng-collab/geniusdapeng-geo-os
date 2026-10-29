@@ -2,7 +2,7 @@
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
   "commit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "verifiedAt": "2026-10-29T17:17:15.978Z",
+  "verifiedAt": "2026-10-29T17:23:43.859Z",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "66238e6a80c0bb7e183ed016392656279c7d4514006039d6cd2648773d3d92bc",
+  "snapshotSha256": "03be76b8f918a1267b6d7fffede7006c07eb72c6be56dbffc5537e93efd0b72b",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -24,7 +24,7 @@
   ],
   "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
   "targetOwnedFileCount": 53,
-  "sourceOverlayCount": 87,
+  "sourceOverlayCount": 88,
   "pendingAfterV1": [],
   "assetOverlays": [],
   "compatibilityOverlays": [],
@@ -32,7 +32,7 @@
     {
       "id": "pengmanager-host-integration",
       "receipt": "upstreams/pengmanager-host-integration.target-overlay.json",
-      "receiptSha256": "c6e3d8ecfe6d03428ce1063419962c1877871fd7a7b6e7c75270dd9f18ddea6e",
+      "receiptSha256": "c3418be4a7ce8cf23e6604f17c556937a0a375adc72b8c7141b8d20bd6f945b1",
       "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
       "upstreamUpgradeClaimed": true,
       "wholeEngineUpgradeClaimed": true

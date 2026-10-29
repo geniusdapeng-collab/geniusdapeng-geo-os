@@ -3,11 +3,11 @@
   "id": "pengmanager-host-integration",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-29T17:17:47.067Z",
+  "generatedAt": "2026-10-29T17:23:43.856Z",
   "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
   "upstreamUpgradeClaimed": true,
   "wholeEngineUpgradeClaimed": true,
-  "sourceOverlayCount": 87,
+  "sourceOverlayCount": 88,
   "targetOwnedFileCount": 53,
   "targetOwnedByTop": {
     "apps": 7,
@@ -350,6 +350,14 @@
       "targetSha256": "28e8e733a0308cf1221e4dafb294c55e8b92dd01c0061fb317d3ea18cbcda7d8",
       "sourceBytes": 2039,
       "targetBytes": 2067
+    },
+    {
+      "path": "packages/base/workdata/recall.ts",
+      "targetPath": "engines/video-edit/packages/base/workdata/recall.ts",
+      "sourceSha256": "6c7a88607aca9ef3b3d9949e5a9e8d46d0f4182b42643169dbed3062ed54859e",
+      "targetSha256": "5a88d9248ec252cb4900243d4d94fd88af97726305504924e36b718790287581",
+      "sourceBytes": 11425,
+      "targetBytes": 11674
     },
     {
       "path": "packages/runtime/src/assembly.ts",
@@ -741,9 +749,10 @@
       "path": "apps/server/src/service/llm-environment.test.ts",
       "mode": "100644",
       "bytes": 6301,
-      "targetSha256": "e2bf2cb73760ba4fcd947d5d13c78668a9f44ec7a9998a8cbfa007f215ecb6fc",
+      "targetSha256": "db24a32139bc574ba19ceb1ee5cce375614676c4d977d5fe369391b50b1d0b4e",
       "evidence": "B",
-      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind.",
+      "targetBytes": 6671
     },
     {
       "path": "apps/server/src/service/llm-environment.ts",
