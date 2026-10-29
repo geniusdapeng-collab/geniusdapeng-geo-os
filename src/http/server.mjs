@@ -209,6 +209,7 @@ export function createGeoOsServer({
   mediaAssets,
   contentOps,
   productionArtifacts,
+  workloomLaunch,
   publicWebsite = false,
   mediaRenderEnabled = true,
 }) {
@@ -336,6 +337,17 @@ export function createGeoOsServer({
         writeJson, methodNotAllowed })) return;
       if (await routeEditorialApi({ request, response, url, principal, editorial, mediaAssets,
         readJsonBody, writeJson, methodNotAllowed })) return;
+      if (path === "/api/workloom/launch") {
+        if (request.method !== "POST") { methodNotAllowed(response, ["POST"]); return; }
+        if (principal.method === "agent") {
+          throw new ApiError(403, "AGENT_SCOPE_DENIED", "AI 研发中心启动只允许管理员会话。");
+        }
+        if (!workloomLaunch?.enabled) {
+          throw new ApiError(503, "WORKLOOM_LAUNCH_NOT_CONFIGURED", "AI 研发中心入口尚未完成配置。");
+        }
+        writeJson(response, 200, workloomLaunch.issue());
+        return;
+      }
       const reconcile = path.match(/^\/api\/operations\/([A-Za-z0-9_-]+)\/reconcile$/);
       if (reconcile && accountOperations?.reconcile) {
         if (request.method !== "POST") { methodNotAllowed(response, ["POST"]); return; }
