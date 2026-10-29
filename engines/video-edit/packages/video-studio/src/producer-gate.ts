@@ -234,6 +234,7 @@ interface LlmConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
+  nonThinking?: boolean;
 }
 
 /**
@@ -251,9 +252,9 @@ function textEvidenceBudget(model: string): number {
 export function resolveProducerLlm(env: Record<string, string | undefined> = process.env): LlmConfig | null {
   const baseUrl = env.LLM_BASE_URL ?? env.DEEPSEEK_BASE_URL ?? "";
   const apiKey = env.LLM_API_KEY ?? env.DEEPSEEK_API_KEY ?? "";
-  const model = env.LLM_MODEL ?? env.DEEPSEEK_MODEL ?? "";
+  const model = env.LLM_FORCE_MODEL ?? env.LLM_MODEL ?? env.DEEPSEEK_MODEL ?? "";
   if (!baseUrl || !apiKey || !model) return null;
-  return { baseUrl: baseUrl.replace(/\/$/, ""), apiKey, model };
+  return { baseUrl: baseUrl.replace(/\/$/, ""), apiKey, model, nonThinking: env.LLM_NON_THINKING === "1" };
 }
 
 function summarizeArtifacts(artifacts: ProducerArtifact[]): string {
@@ -340,7 +341,8 @@ async function parseJudgeJson(
         }
       ],
       temperature: 0,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      ...(llm.nonThinking ? { thinking: { type: "disabled" } } : {}),
     }),
     signal: AbortSignal.timeout(120_000)
   });
@@ -418,7 +420,8 @@ async function repairJudgeShape(
         ],
       }],
       temperature: 0,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      ...(llm.nonThinking ? { thinking: { type: "disabled" } } : {}),
     }),
     signal: AbortSignal.timeout(120_000)
   });
@@ -583,7 +586,13 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       ].join("\n") }, ...textContent, ...encoded.slice(batch * batchSize, Math.min(artifactImages, (batch + 1) * batchSize)).flat(), ...encoded.slice(artifactImages).flat()];
       const res = await (options.fetchImpl ?? fetch)(`${llm.baseUrl}/chat/completions`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
-        body: JSON.stringify({ model: llm.model, messages: [{ role: "user", content }], temperature: 0.2, response_format: { type: "json_object" } }),
+        body: JSON.stringify({
+          model: llm.model,
+          messages: [{ role: "user", content }],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          ...(llm.nonThinking ? { thinking: { type: "disabled" } } : {}),
+        }),
         signal: AbortSignal.timeout(180_000)
       });
       const rawBody = await res.text();

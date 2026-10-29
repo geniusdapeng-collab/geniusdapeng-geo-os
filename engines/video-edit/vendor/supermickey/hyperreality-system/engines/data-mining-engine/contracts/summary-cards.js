@@ -37,10 +37,16 @@ function _usable(item) {
 /** Brief 摘要卡：MarketingBriefParser 自动回填依据 */
 function makeBriefCard(dossier) {
   const d = dossier;
-  // 卖点优先级：用户共识 confirmed > 官方主打 confirmed > 用户共识 reported
+  // 卖点优先级：用户共识 confirmed > 官方/媒体公开主张（confirmed 优先于 reported）。
+  // official_selling_points 的字段名是历史合同，不代表每条都能升级为厂家官方确认；
+  // A4 已把单宿主来源标为 reported，摘要卡必须保留这条可核实事实并如实标注证据强度。
   const userPros = (d.pros_cons.pros || []).filter(p => p.claim_nature !== 'official' && _usable(p));
-  const officialPros = (d.pros_cons.pros || []).filter(p => p.claim_nature === 'official' && p.confidence === 'confirmed');
-  const ranked = [...userPros.sort((a, b) => (b.mentions || 0) - (a.mentions || 0)), ...officialPros];
+  const officialPros = (d.pros_cons.pros || []).filter(p => p.claim_nature === 'official' && _usable(p));
+  const rankedOfficial = [...officialPros].sort((a, b) => {
+    const confidenceRank = (item) => item.confidence === 'confirmed' ? 0 : 1;
+    return confidenceRank(a) - confidenceRank(b);
+  });
+  const ranked = [...userPros.sort((a, b) => (b.mentions || 0) - (a.mentions || 0)), ...rankedOfficial];
   const sellingPoints = [];
   for (const p of ranked) {
     const text = p.claim_nature === 'official'
@@ -52,6 +58,8 @@ function makeBriefCard(dossier) {
 
   const topScenario = (d.usage.scenarios || [])[0];
   const topCompetitor = (d.competitors || [])[0];
+  const confirmedClaims = officialPros.filter(p => p.confidence === 'confirmed').length;
+  const reportedClaims = officialPros.filter(p => p.confidence === 'reported').length;
 
   return {
     card: 'brief_card',
@@ -61,7 +69,7 @@ function makeBriefCard(dossier) {
     audience: topScenario ? `${topScenario.persona}${topScenario.scene ? `（${topScenario.scene}）` : ''}` : undefined,
     competitor: topCompetitor ? topCompetitor.name : undefined,
     productHero: d.visual_assets.hero_image_id ? { heroImageId: d.visual_assets.hero_image_id } : undefined,
-    evidence_note: `卖点来自 ${userPros.length} 条用户共识 + ${officialPros.length} 条官方确认主张，完整溯源见档案 ${d.product_id}`
+    evidence_note: `卖点来自 ${userPros.length} 条用户共识 + ${confirmedClaims} 条交叉确认公开主张 + ${reportedClaims} 条单源公开主张，完整溯源见档案 ${d.product_id}`
   };
 }
 

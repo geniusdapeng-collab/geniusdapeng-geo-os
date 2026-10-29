@@ -25,6 +25,12 @@ interface StageFactsReport {
   extractions?: Array<{ ref: string; sha256: string }>;
 }
 interface OutputReview { shotId: string; promptSha256: string; fieldsSha256: string; ref: string; sha256: string; verdict: ProducerVerdict }
+interface ProductImageCandidate {
+  url: string;
+  page_url: string;
+  source: string;
+  angle: "unknown";
+}
 export interface MarketingFactsBundle {
   schemaVersion: "workloom.marketing-facts/v1"; issuer: "workloom.marketing-authority"; scope: MarketingScope;
   collectedAt: string; policyVersion: "source-claims/v1"; productQuery: RecordValue;
@@ -87,6 +93,49 @@ function productInput(metadata: RecordValue): RecordValue {
   if (!input.name) fail("MARKETING_PRODUCT_REQUIRED", "营销预生产需要明确商品名，不能把自由文本猜成已核实商品事实");
   return input;
 }
+const NON_PHYSICAL_CATEGORY = /软件|服务|课程|培训|咨询|订阅|会员|(?:^|\W)saas(?:$|\W)|application|platform|software|service|course|consult|subscription/i;
+const SMALL_IMAGE_ASSET = /(?:^|[/_.-])(logo|icon|favicon|avatar|sprite|placeholder|spacer|loading|badge|qr)(?:[/_.-]|$)/i;
+
+/**
+ * A1 models can omit an `images` array even when the accepted source page
+ * explicitly exposes real product photos. Bind only source-owned asset URLs,
+ * deterministically and without inventing pixels, so the product appearance
+ * authority can proceed without a random model retry. Services and products
+ * without an explicit physical category keep the empty array and fail closed.
+ */
+function withDeterministicProductImages(stage: IntelStage, payload: RecordValue, pages: SourceSnapshot[]): RecordValue {
+  const identity = payload.identity && typeof payload.identity === "object" && !Array.isArray(payload.identity)
+    ? payload.identity as RecordValue : undefined;
+  if (stage !== "A1" || !identity || Array.isArray(payload.images) && payload.images.length > 0) return payload;
+  const category = typeof identity.category === "string" ? identity.category.trim() : "";
+  if (!category || NON_PHYSICAL_CATEGORY.test(category)) return payload;
+
+  const ranked = new Map<string, { candidate: ProductImageCandidate; score: number }>();
+  for (const page of pages) {
+    let pageUrl: URL;
+    try { pageUrl = new URL(page.finalUrl); } catch { continue; }
+    for (const raw of page.assetUrls) {
+      let image: URL;
+      try { image = new URL(raw); } catch { continue; }
+      if (!["http:", "https:"].includes(image.protocol) || image.username || image.password) continue;
+      const transformed = image.pathname.match(/@s_\d+,w_(\d+),h_(\d+)$/i);
+      const normalizedPath = image.pathname.replace(/@s_\d+,w_\d+,h_\d+$/i, "");
+      if (!/\.(?:avif|jpe?g|png|webp)$/i.test(normalizedPath)) continue;
+      const basename = normalizedPath.split("/").pop() ?? "";
+      if (!basename || basename.length <= 3 || SMALL_IMAGE_ASSET.test(normalizedPath)) continue;
+      const key = `${image.hostname.toLowerCase()}${normalizedPath}`;
+      const shortEdge = transformed ? Math.min(Number(transformed[1]), Number(transformed[2])) : 0;
+      let score = transformed ? 10 : 20;
+      if (shortEdge >= 400) score += 40;
+      if (/upload|media|photo|image|product|catalog/i.test(normalizedPath)) score += 20;
+      const candidate = { url: image.toString(), page_url: pageUrl.toString(), source: pageUrl.hostname, angle: "unknown" as const };
+      const previous = ranked.get(key);
+      if (!previous || score > previous.score) ranked.set(key, { candidate, score });
+    }
+  }
+  const images = [...ranked.values()].sort((a, b) => b.score - a.score).slice(0, 3).map(item => item.candidate);
+  return images.length ? { ...payload, images } : payload;
+}
 function engine(storeRoot: string): DossierEngine {
   const entry = fileURLToPath(new URL("../../../../vendor/supermickey/hyperreality-system/engines/data-mining-engine/index.js", import.meta.url));
   const module = createRequire(import.meta.url)(entry) as { JennyLoomEngine: new (options: RecordValue) => DossierEngine };
@@ -147,7 +196,11 @@ async function extractStageFacts(input: {
       try { parsed = result.data ?? JSON.parse(result.content ?? ""); }
       catch { fail("MARKETING_EXTRACTION_UNVERIFIED", "事实提取不是可核实JSON"); }
       const resolved = resolveMarketingExtraction(normalizeExplicitNoEvidenceExtraction(input.stage, parsed), input.pages);
-      boundExtraction = resolved.extraction; bindings = resolved.bindings;
+      boundExtraction = {
+        ...resolved.extraction,
+        payload: withDeterministicProductImages(input.stage, object(resolved.extraction.payload, "提取结果"), input.pages),
+      };
+      bindings = resolved.bindings;
       if (correction && canonicalRenderJson(boundExtraction.payload) !== canonicalRenderJson(correction.payload)) {
         fail("MARKETING_EXTRACTION_PAYLOAD_CHANGED", "引用纠错不能删改原始事实payload");
       }
@@ -200,7 +253,10 @@ async function verifyExtractionAttempts(input: {
     const resolved = indexed ? resolveMarketingExtraction(normalized, input.sources)
       : { extraction: extractionSchema.parse(normalized), bindings: [] };
     if (indexed && canonicalRenderJson(artifact.citationBindings) !== canonicalRenderJson(resolved.bindings)) fail("MARKETING_EXTRACTION_UNVERIFIED", "原始片段选择与宿主装订证据不一致");
-    const parsed = resolved.extraction;
+    const parsed = {
+      ...resolved.extraction,
+      payload: withDeterministicProductImages(input.stage, object(resolved.extraction.payload, "提取结果"), input.sources),
+    };
     if (index === 0) firstPayload = parsed.payload;
     else if (canonicalRenderJson(parsed.payload) !== canonicalRenderJson(firstPayload)) fail("MARKETING_EXTRACTION_PAYLOAD_CHANGED", "归档纠错删改了原始事实payload");
     let checked: ValidatedStageFacts | undefined, failure: unknown;

@@ -388,6 +388,11 @@ describe("host requirement contract data", () => {
     expect(Object.isFrozen(failure.details)).toBe(true);
     expect(failure.message.length).toBeLessThan(600);
     expect(failure.message).not.toContain("PRIVATE-PROSE");
+    if (kind === "target-duration") {
+      const feedback = structuredSceneFeedback(failure);
+      expect(feedback).toContain("duration 合计增加 15 秒");
+      expect(feedback).toContain("totalDuration 精确设为 45");
+    }
   });
 
   it("retains the original 0.05-second arithmetic tolerance", () => {

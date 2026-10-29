@@ -607,6 +607,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
     policy: modelPolicyFor("ai-video"),
     scene: "preproduction",
     allowPeak: process.env.WORKLOOM_ALLOW_PEAK === "1",
+    forceModel: process.env.LLM_FORCE_MODEL?.trim() || undefined,
+    nonThinking: process.env.LLM_NON_THINKING === "1",
   });
 
   /**
@@ -804,6 +806,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             ],
             context: { gate, vendorType: req.vendorType, runId: entry.runId, contentChars: (req.contentMd ?? "").length,
               ...(marketingReview ? { marketingFactsAuthority: marketingReview.context } : {}) },
+            ...(req.contracts ? { contracts: req.contracts } : {}),
             // 内部准备门默认 fail-closed：评审模型不可用即打回，不静默放行
             allowFallbackApprove: (process.env.HR_PRODUCER_FALLBACK_APPROVE ?? "0") === "1",
             log: (line) => console.log(line)

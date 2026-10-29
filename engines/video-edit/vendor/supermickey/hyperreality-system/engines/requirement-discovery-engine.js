@@ -243,15 +243,18 @@ class BaseDiscoveryAgent {
         const useSchema = this.name === 'SceneArchitect' ? null : schema;
         console.log(`[DEBUG] Agent=${this.name}, useSchema=${useSchema === null ? 'null' : 'provided'}, schemaSize=${useSchema ? JSON.stringify(useSchema).length : 0}`);
         
-        // 【v2.1.9-fix2】SceneArchitect 在 JSON mode 下 content 始终为 0
-        // 改用普通 mode + 手动解析 JSON
+        // Current OpenAI-compatible thinking models can consume the entire
+        // completion budget as reasoning before emitting content. Use the
+        // provider's JSON mode and disable thinking for this structured scene
+        // contract; the caller still validates every field at the host boundary.
         if (this.name === 'SceneArchitect') {
           const result = await Promise.race([
             this.llmEngine.reason(fullPrompt, { 
-              maxTokens: 4000, 
-              temperature: 1.0,
+              maxTokens: 16384,
+              temperature: 0.4,
               timeoutMs: this.timeoutMs,
-              forceJson: false
+              forceJson: true,
+              thinking: { type: 'disabled' }
             }),
             timeoutPromise
           ]);
@@ -443,6 +446,10 @@ class AudienceProfiler extends BaseDiscoveryAgent {
 class SceneArchitect extends BaseDiscoveryAgent {
   constructor(options) {
     super({ name: 'SceneArchitect', ...options });
+    // Exact-duration schema correction can converge across a small number of
+    // independent generations. Keep the bound finite and feed back only the
+    // host's numeric validation facts between attempts.
+    this.maxRetries = Math.max(this.maxRetries, 2);
   }
 
   _buildPrompt(input) {

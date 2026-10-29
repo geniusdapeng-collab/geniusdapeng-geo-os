@@ -118,5 +118,12 @@ export function poolFromEnv(opts: { mockOpts?: Record<string, { failFirst?: numb
     if (!baseUrl) continue; // 该 vendor 未配置 → 池内缺位，降级链自动跳过（healthy=false 语义）
     pool.set(m.id, new OpenAiCompatibleProvider(m.id, { baseUrl, apiKey: apiKeyFor(m) }));
   }
+  const forced = process.env.LLM_FORCE_MODEL?.trim();
+  if (forced && !pool.has(forced)) {
+    const deepseek = MODEL_CATALOG.find(model => model.vendor === "deepseek");
+    const baseUrl = deepseek && openAiCompatibleBaseUrl(deepseek);
+    if (!baseUrl) throw new Error(`LLM_FORCE_MODEL=${forced} 但缺少 OpenAI 兼容端点`);
+    pool.set(forced, new OpenAiCompatibleProvider(forced, { baseUrl, apiKey: apiKeyFor(deepseek) }));
+  }
   return pool;
 }

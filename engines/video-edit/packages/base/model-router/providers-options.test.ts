@@ -1,11 +1,11 @@
 import { createServer, type Server } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { OpenAiCompatibleProvider, type ChatOptions } from "./providers.js";
+import { normalizeModelContent, OpenAiCompatibleProvider, type ChatOptions } from "./providers.js";
 
 let server: Server;
 let origin: string;
 let bodies: Array<Record<string, unknown>>;
-let mode: "ok" | "error" | "hang" | "hang-body" | "empty";
+let mode: "ok" | "error" | "hang" | "hang-body" | "empty" | "blocks";
 beforeAll(async () => {
   server = createServer(async (req, res) => {
     if (req.url === "/models") { res.writeHead(200); res.end("{}"); return; }
@@ -14,9 +14,16 @@ beforeAll(async () => {
     bodies.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
     if (mode === "hang") return;
     if (mode === "hang-body") { res.writeHead(200, { "content-type": "application/json" }); res.flushHeaders(); res.write("{"); return; }
-    if (mode === "error") { res.writeHead(400); res.end("unsupported"); return; }
+    if (mode === "error") {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: { code: "invalid_request_error", message: "maximum context length exceeded; Bearer secret-token-value" } }));
+      return;
+    }
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ choices: [{ message: { content: mode === "empty" ? "" : "provider answer" } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }));
+    const content = mode === "empty" ? ""
+      : mode === "blocks" ? [{ type: "text", text: "provider " }, { type: "output_text", content: "answer" }, { unrelated: true }]
+        : "provider answer";
+    res.end(JSON.stringify({ choices: [{ message: { content } }], usage: { prompt_tokens: 20, completion_tokens: 5 } }));
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -43,9 +50,21 @@ describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
     await provider().chat([{ role: "user", content: "hello" }]);
     expect(bodies[0]).toEqual({ model: "local-model", messages: [{ role: "user", content: "hello" }], temperature: 0.2 });
   });
+  it("normalizes OpenAI-compatible text blocks without stringifying objects", async () => {
+    mode = "blocks";
+    await expect(provider().chat(messages)).resolves.toEqual({ text: "provider answer", promptTokens: 20, completionTokens: 5 });
+    expect(normalizeModelContent([{ type: "text", text: "甲" }, { content: "乙" }, { value: "ignored" }])).toBe("甲乙");
+    expect(normalizeModelContent({ text: "丙" })).toBe("丙");
+    expect(normalizeModelContent(null)).toBe("");
+  });
   it("retains HTTP errors instead of reporting an answer", async () => {
     mode = "error";
-    await expect(provider().chat(messages)).rejects.toThrow("模型调用失败：HTTP 400");
+    const failure = await provider().chat(messages).catch(error => error as Error);
+    expect(failure.message).toContain("模型调用失败：HTTP 400");
+    expect(failure.message).toContain("invalid_request_error");
+    expect(failure.message).toContain("maximum context length exceeded");
+    expect(failure.message).toContain("Bearer <redacted>");
+    expect(failure.message).not.toContain("secret-token-value");
   });
   it("treats an empty content response as a retryable provider failure", async () => {
     mode = "empty";

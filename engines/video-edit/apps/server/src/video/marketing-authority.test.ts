@@ -37,6 +37,8 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
   citationFault?: "metadata" | "duplicate" | "missing" | "persistent" | "changed-payload" | "repair-quote" | "repair-source" | "repair-model-failure";
   imageExtras?: boolean;
   imageMetadata?: "complete" | "no-source" | "no-angle" | "minimal";
+  imageFallback?: boolean;
+  category?: string;
   syntheticTokenCharge?: number;
   omitEmptyCitations?: boolean;
 } = {}): Promise<PreparedMarketingFacts> {
@@ -54,8 +56,8 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       a1Calls++;
       if (a1Calls === 2 && options.citationFault === "repair-model-failure") return { success: false, error: "LLM unavailable" };
       const specs = options.specs ?? { 风量: "9 档" };
-      const data: { payload: any; citations: any[] } = { payload: { identity: { name: "星野 F3", specs, ...(options.citationFault ? { prices: [{ amount: 399, currency: "CNY", source_url: sourceUrl }] } : {}), official_selling_points: [{ point: "风量 9 档", source_url: sourceUrl }] }, images: [] },
-        citations: ["/identity/name", ...Object.keys(specs).map(key => `/identity/specs/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`), ...(options.citationFault ? ["/identity/prices/0/amount", "/identity/prices/0/currency"] : []), "/identity/official_selling_points/0/point"]
+      const data: { payload: any; citations: any[] } = { payload: { identity: { name: "星野 F3", ...(options.category ? { category: options.category } : {}), specs, ...(options.citationFault ? { prices: [{ amount: 399, currency: "CNY", source_url: sourceUrl }] } : {}), official_selling_points: [{ point: "风量 9 档", source_url: sourceUrl }] }, images: [] },
+        citations: ["/identity/name", ...(options.category ? ["/identity/category"] : []), ...Object.keys(specs).map(key => `/identity/specs/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`), ...(options.citationFault ? ["/identity/prices/0/amount", "/identity/prices/0/currency"] : []), "/identity/official_selling_points/0/point"]
           .map(pointer => ({ pointer, sourceId: source.sourceId, ...(options.quoteIds ? { quoteId: source.textFragments[0].quoteId } : { quote: options.badQuote ? "不存在的事实" : sourceText }) })) };
       if (options.imageExtras) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl, angle: "unknown", width: 1080, height: 1920 });
       if (options.imageMetadata) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl,
@@ -77,7 +79,7 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       return { success: true, data };
     } }, dependencies: {
       search: async () => (++searches, options.noSearch || options.noAux && searches > 20 ? [] : [{ title: "星野规格", url: sourceUrl, snippet: "故意错误摘要999档，不能当事实" }]),
-      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(options.imageMetadata || options.imageExtras ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
+      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(options.imageMetadata || options.imageExtras || options.imageFallback ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
     } });
 }
 const shots = [{ shotId: "S1", prompt: "窗边展示星野 F3 风扇，字幕说明风量 9 档。", fields: { 场景: "窗边", 产品: "星野 F3", 规格: "9 档" } }];
@@ -166,6 +168,21 @@ describe("营销事实宿主完整执行", () => {
     const saved = await finalizeMarketingFacts(prepared, shots, env);
     await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope });
     if (repair) expect(attempts.map(item => item.status)).toEqual(["rejected", "accepted"]);
+  });
+  it("A1 模型漏图时只从本次来源页面确定性命中真实图片，并可完整复读", async () => {
+    const prepared = await prepare({ imageFallback: true, category: "小家电" });
+    const a1 = prepared.bundle.stages[0]!;
+    const images = (a1.facts.payload.images as Array<Record<string, string>>);
+    expect(images).toHaveLength(1);
+    expect(images[0]).toMatchObject({
+      url: `${sourceUrl}/hero.png`,
+      page_url: prepared.bundle.sources[0]!.finalUrl,
+      source: "source.example.com",
+      angle: "unknown",
+    });
+    expect((prepared.bundle.rawByAgent.A1.images as unknown[])).toEqual(images);
+    const saved = await finalizeMarketingFacts(prepared, shots, env);
+    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope, rawByAgent: prepared.raw });
   });
   it.each(["binding-offset", "binding-quote-id", "response-quote-id", "prompt-policy", "prompt-fragment", "version", "schema", "schema-missing", "schema-stage", "version-downgrade"])("重算摘要也拒绝ID桥%s篡改", async kind => {
     const prepared = await prepare({ quoteIds: true }), saved = await finalizeMarketingFacts(prepared, shots, env);

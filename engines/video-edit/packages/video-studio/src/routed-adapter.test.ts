@@ -230,6 +230,7 @@ describe("结构化调用保留调用方真实输出合同", () => {
     const { adapter, requests } = structuredEngine("不是 JSON");
     const result = await adapter.reasonStructured("原文", { shots: [] });
     expect(result).toMatchObject({ success: false, retryable: true });
+    expect(result.content).toBe("不是 JSON");
     expect(result.data).toBeUndefined();
     expect(result.error).toContain("JSON 解析失败");
     expect(requests).toHaveLength(1);
