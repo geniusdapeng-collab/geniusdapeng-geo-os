@@ -12,6 +12,7 @@ import {
 } from "./prd-authority.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
+import { extractProductVisualAuthority } from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 const QUALITY_KEYS = ["visual", "audio", "narrative", "consistency"] as const;
@@ -80,45 +81,153 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
       audioRequirements: scene.audioRequirements, keyProps: scene.keyProps });
     const matched = mapping.find(item => item.sceneId === scene.sceneId);
     return { sceneId: String(scene.sceneId), sequence: index + 1, duration: Number(scene.duration),
-      estimatedShots: Number(matched?.estimatedShots ?? 1), text };
+      estimatedShots: Math.max(1, Math.trunc(Number(matched?.estimatedShots ?? 1))), text };
   });
   const totalDuration = scenePlan.reduce((sum, scene) => sum + scene.duration, 0);
-  const selected = new Map(scenePlan.map(scene => [scene.sceneId, new Set<string>()]));
-  const plannedSeconds: Record<string, number> = {};
-  const feasibility: Record<string, boolean> = {};
-  for (const tag of requiredTags) {
-    const matcher = tag === "product-close" ? /产品|商品|整车|车身|车头|前轮|仪表|奖杯|车辆|漆面/
-      : tag === "usage" ? /骑|驾驶|压弯|冲线|跨坐|拧|油门|操控|使用/
-        : tag === "host" ? /人物|角色|李英子|她|站|摘|面罩|手|脸|肩|身体/
-          : tag === "ambience" ? /赛道|环境|场地|护栏|路肩|热浪|颁奖|灯|围场/
-            : /追|低机位|压弯|冲出|甩|推近|跟拍|运动|高速/;
-    let candidates = scenePlan.filter(scene => matcher.test(scene.text));
-    if (!candidates.length) candidates = [...scenePlan];
-    const rule = ratios[tag], minimum = totalDuration * rule.minimum, maximum = totalDuration * rule.maximum;
-    let best: typeof candidates | null = null, bestScore = Number.POSITIVE_INFINITY;
-    for (let mask = 1; mask < (1 << candidates.length); mask += 1) {
-      const subset = candidates.filter((_, index) => (mask & (1 << index)) !== 0);
-      const seconds = subset.reduce((sum, scene) => sum + scene.duration, 0);
-      if (seconds < minimum || seconds > maximum) continue;
+  const shots = scenePlan.flatMap(scene => Array.from({ length: scene.estimatedShots }, (_, index) => ({
+    shotId: `${scene.sceneId}-S${index + 1}`,
+    sceneId: scene.sceneId,
+    duration: Number((scene.duration / scene.estimatedShots).toFixed(6)),
+    text: scene.text,
+    policyTags: [] as string[],
+  }))).map((shot, index) => ({ ...shot, sequence: index + 1 }));
+  const matcherFor = (tag: string) => tag === "product-close" ? /产品|商品|整车|车身|车头|前轮|仪表|奖杯|车辆|漆面/
+    : tag === "usage" ? /骑|驾驶|压弯|冲线|跨坐|拧|油门|操控|使用/
+      : tag === "host" ? /人物|角色|李英子|摘盔|脸|肩|站上|领奖台/
+        : tag === "ambience" ? /赛道|环境|场地|护栏|路肩|热浪|颁奖|灯|围场/
+          : /追|低机位|压弯|冲出|甩|推近|跟拍|运动|高速|越过|冲过|加速|掠过|滑过|切进|擦过|甩出|全油门|车尾.*摆/;
+  const chooseSubset = (candidates: typeof shots, minimum: number, maximum: number) => {
+    const pool = candidates.slice(0, 18);
+    let best: typeof shots | null = null, bestScore = Number.POSITIVE_INFINITY;
+    const limit = 1 << pool.length;
+    for (let mask = 1; mask < limit; mask += 1) {
+      const subset = pool.filter((_, index) => (mask & (1 << index)) !== 0);
+      const seconds = subset.reduce((sum, shot) => sum + shot.duration, 0);
+      if (seconds < minimum - 1e-9 || seconds > maximum + 1e-9) continue;
       const score = (seconds - minimum) * 100 + subset.length;
       if (score < bestScore) { best = subset; bestScore = score; }
     }
-    feasibility[tag] = best !== null;
-    const chosen = best ?? candidates.slice().sort((a, b) => b.duration - a.duration).slice(0, 1);
-    plannedSeconds[tag] = chosen.reduce((sum, scene) => sum + scene.duration, 0);
-    for (const scene of chosen) selected.get(scene.sceneId)?.add(tag);
+    return best;
+  };
+  for (const tag of requiredTags) {
+    const matcher = matcherFor(tag);
+    let candidates = shots.filter(shot => matcher.test(shot.text));
+    if (!candidates.length) candidates = [...shots];
+    const rule = ratios[tag], minimum = totalDuration * rule.minimum, maximum = totalDuration * rule.maximum;
+    const selected = tag === "host" ? chooseSubset(candidates, minimum, maximum) ?? [] : candidates;
+    for (const shot of selected) {
+      if (!shot.policyTags.includes(tag)) shot.policyTags.push(tag);
+    }
   }
+  const fallbackTag = requiredTags.includes("ambience") ? "ambience"
+    : requiredTags.find(tag => ratios[tag].maximum === 1) ?? requiredTags[0]!;
+  for (const shot of shots) if (!shot.policyTags.length) shot.policyTags.push(fallbackTag);
+  const plannedSeconds = Object.fromEntries(requiredTags.map(tag => [tag,
+    Number(shots.filter(shot => shot.policyTags.includes(tag)).reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) as Record<string, number>;
+  const feasibility = Object.fromEntries(requiredTags.map(tag => {
+    const ratio = ratios[tag];
+    return [tag, plannedSeconds[tag]! >= totalDuration * ratio.minimum - 1e-5
+      && plannedSeconds[tag]! <= totalDuration * ratio.maximum + 1e-5];
+  })) as Record<string, boolean>;
+  const heroShot = shots.find(shot => shot.policyTags.includes("product-close")
+    && /整车|车身|漆面|涂装|820RR/.test(shot.text) && !/仪表|面罩/.test(shot.text))
+    ?? shots.find(shot => shot.policyTags.includes("product-close")) ?? null;
   return {
-    accounting: "同一镜头可同时拥有多个 policyTags；每个标签的时长与占比按该标签独立累计，不把百分比相加。",
+    accounting: "同一镜头可同时拥有多个 policyTags；每个标签的时长与占比按该标签独立累计，不把百分比相加。host 只累计身份清晰的出镜镜头，不把匿名全盔背影自动计入。",
     requiredTags,
     totalDuration,
     requiredSeconds: Object.fromEntries(requiredTags.map(tag => [tag,
       `${Math.ceil(totalDuration * ratios[tag].minimum * 10) / 10}–${Math.floor(totalDuration * ratios[tag].maximum * 10) / 10}s`])),
     plannedSeconds,
     feasibility,
+    allShotsTagged: shots.every(shot => shot.policyTags.length > 0),
+    hostWithinMaximum: plannedSeconds.host === undefined
+      || plannedSeconds.host <= totalDuration * ratios.host.maximum + 1e-5,
+    heroShot,
     shotCardRule: "正式镜头卡必须逐镜携带非空 policyTags；此处只给场景级预算，不替代镜头卡，也不证明实际成片已满足。",
-    scenes: scenePlan.map(({ text: _text, ...scene }) => ({ ...scene,
-      policyTags: [...(selected.get(scene.sceneId) ?? [])] })),
+    scenes: scenePlan.map(({ text: _text, ...scene }) => {
+      const sceneShots = shots.filter(shot => shot.sceneId === scene.sceneId);
+      return { ...scene, policyTags: [...new Set(sceneShots.flatMap(shot => shot.policyTags))],
+        policyTagSeconds: Object.fromEntries(requiredTags.map(tag => [tag,
+          Number(sceneShots.filter(shot => shot.policyTags.includes(tag)).reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) };
+    }),
+    shots: shots.map(({ text: _text, ...shot }) => ({ ...shot,
+      shareOfTimeline: Number((shot.duration / totalDuration).toFixed(6)) })),
+  };
+}
+
+/**
+ * Scene policy tags are host-owned planning metadata. A model-authored line
+ * inside visualRequirements is not evidence and can contradict the computed
+ * shot budget, so it is removed before hashing and review; the authoritative
+ * tags remain in policyCoveragePlan.
+ */
+function stripScenePolicyAnnotations(value: RequirementRecord): RequirementRecord {
+  const result = structuredClone(value);
+  const scenePlan = result.scenePlan && typeof result.scenePlan === "object"
+    ? requirementRecord(result.scenePlan, "PRD scenePlan") : null;
+  if (!scenePlan || !Array.isArray(scenePlan.scenes)) return result;
+  scenePlan.scenes = scenePlan.scenes.map(value => {
+    const scene = requirementRecord(value, "PRD scene");
+    if (!Array.isArray(scene.visualRequirements)) return scene;
+    scene.visualRequirements = scene.visualRequirements.flatMap(item => {
+      if (typeof item !== "string") return [item];
+      const clean = item.replace(/[，,]\s*标签\s*[:：].*$/u, "").trim();
+      return clean && !/^标签\s*[:：]/u.test(clean) ? [clean] : [];
+    });
+    return scene;
+  });
+  return result;
+}
+
+function productAndClaimPlan(scope: Scope, coverage: ReturnType<typeof policyCoveragePlan>) {
+  const artifact = JSON.parse(scope.authority.marketing.g1Artifact.content) as RequirementRecord;
+  const facts = requirementRecord(artifact.facts, "G1 facts");
+  const cards = facts.cards && typeof facts.cards === "object" ? requirementRecord(facts.cards, "G1 cards") : {};
+  const prdCard = cards.prd_card && typeof cards.prd_card === "object" ? requirementRecord(cards.prd_card, "G1 PRD card") : {};
+  const briefCard = cards.brief_card && typeof cards.brief_card === "object" ? requirementRecord(cards.brief_card, "G1 Brief card") : {};
+  const evidence = Array.isArray(prdCard.selling_point_evidence)
+    ? prdCard.selling_point_evidence.map(value => requirementRecord(value, "G1 selling point")) : [];
+  const sellingPoints = Array.isArray(briefCard.sellingPoints) ? briefCard.sellingPoints.filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0) : [];
+  const claim = typeof evidence[0]?.point === "string" && evidence[0].point.trim()
+    ? evidence[0].point.trim() : sellingPoints[0] ?? null;
+  const authority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
+  if (!authority.required) return {
+    notApplicable: true,
+    reason: "本次 G1 未声明需要视觉呈现的商品，商品特写与图片权利核验不适用",
+  };
+  const hero = coverage?.heroShot ?? coverage?.shots.find(shot => shot.policyTags.includes("product-close")) ?? null;
+  return {
+    ...(claim ? { claim } : {}),
+    claimShot: hero && claim ? {
+      shotId: hero.shotId,
+      sceneId: hero.sceneId,
+      durationSec: hero.duration,
+      policyTags: [...hero.policyTags, "product-close"].filter((tag, index, list) => list.indexOf(tag) === index),
+      framing: "以整车为主体，在已接受参考图实际可见的车身与涂装区域完成一个低机位短特写；不指定图片未确认的部件、局部形态或机位角度。",
+      verification: [
+        "生成前绑定本次 G1 A1 已接受图片及其 SHA/URL",
+        "首帧、中段与末帧逐项核对整车与涂装，不补写未见部件",
+        "该镜头只支撑 G1 已接受卖点，不扩张为性能、冠军或竞品结论",
+      ],
+    } : {
+      required: true,
+      blocked: true,
+      reason: claim ? "当前镜头预算没有可执行 product-close 镜头" : "G1 没有已接受卖点可绑定",
+    },
+    rightsReview: {
+      status: authority.images.some(image => /^(high|unknown)$/iu.test(image.licenseRisk ?? ""))
+        ? "unverified-before-publication" : "owner-verification-required",
+      publicationAuthorized: false,
+      images: authority.images.map(image => ({ url: image.url, pageUrl: image.pageUrl,
+        angle: image.angle ?? "unknown", licenseRisk: image.licenseRisk ?? "unknown" })),
+      plan: [
+        "参考图片只用于本次生成与外观一致性核对，不声称已取得商用授权",
+        "对外发布前由产品所有者核对图片、商标、车辆外观与平台授权",
+        "未取得书面授权前只交付本地成片，不执行平台发布",
+      ],
+    },
   };
 }
 
@@ -337,6 +446,7 @@ function productionPlanningPrompt(scope: Scope): string {
   const brief = scope.authority.metadata.brief === undefined ? {} : requirementRecord(scope.authority.metadata.brief, "本次制作计划Brief");
   const contract = scope.contract!;
   const duration = prdDurationContract(profile, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
+  const productVisualAuthority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
   const declarations = Object.fromEntries(["coverDelivery", "sidecarPolicy", "persistentSubtitleText"]
     .filter(key => Object.hasOwn(profile, key)).map(key => [key, profile[key as keyof typeof profile]]));
   const castAnchors = { selection: contract.cast.selection, characters: contract.cast.characters.map(character =>
@@ -355,6 +465,10 @@ function productionPlanningPrompt(scope: Scope): string {
     + `本次内容时间线 ${duration.contentDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s，静音封面片头 ${duration.coverIntroSeconds}s，`
     + `最终成片 ${duration.finalDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s。`
     + `封面是成片最前片段，不重复加入内容节点；不得把最终片长直接写成内容节点合计。\n`
+    + (productVisualAuthority.required
+      ? `商品片必须在既有场次计划中落实至少一个可执行的 product-close 卖点镜头：以整车为主体，在 G1 A1 已接受图片实际可见的车身/涂装区域取景，并绑定一个已接受 selling point；不得指定图片未确认的部件、局部形态或机位角度。`
+        + `必须单列图片 URL/页面、angle、licenseRisk 与生成前后核验计划；licenseRisk=high/unknown 时，对外发布前由产品所有者核验授权，当前不声称可商业投放。\n`
+      : "")
     + `本次明确的独立交付声明（未出现的键没有新增客户承诺）：${JSON.stringify(declarations)}。`
     + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；独立文件与是否开启片头分别记录，本次openWithCover=${String(profile.openWithCover ?? false)}。`
     + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字、覆盖实际视频0秒至末帧，`
@@ -705,7 +819,10 @@ export function installPrdAuthorityBridge(
         view[key] = agentView;
       }
       // Keep the native two real LLM process calls, timeout/retry budget, rule agents and schema pipeline.
-      const original = await Reflect.apply(generate, view, [discovery]);
+      const original = stripScenePolicyAnnotations(requirementRecord(
+        await Reflect.apply(generate, view, [discovery]),
+        "PRD 原始生成结果",
+      ));
       check(scope);
       if (requirementHash(discovery.sceneStructure) !== sourceHash) prdFail("PRD_G3_CHANGED", "PRD 生成修改了已经批准的源场景");
       const result = bindPrdProvenance(original, scope.authority, contract);
@@ -743,11 +860,25 @@ export function installPrdAuthorityBridge(
       const scenes = nativeScenePlan.scenes as RequirementRecord[];
       const nativeShotMapping = requirementRecord(nativeScenePlan, "G4 原始场景计划").shotMapping;
       const coveragePlan = policyCoveragePlan(scope.authority.metadata, scenes, nativeShotMapping as RequirementRecord[]);
+      const productPlan = productAndClaimPlan(scope, coveragePlan);
       const durationAuthority = prdDurationContract(scope.authority.profile,
         scope.contract!.scenes.reduce((sum, scene) => sum + scene.duration, 0));
       const planning = {
         status: "plan-only-not-executed",
         durationAuthority,
+        subtitleTimeline: {
+          cover: { start: 0, end: durationAuthority.coverIntroSeconds, audio: "silent", carriesPersistentContentText: false },
+          content: {
+            sourceStart: 0,
+            sourceEnd: durationAuthority.contentDurationSeconds,
+            masterStart: durationAuthority.coverIntroSeconds,
+            masterEnd: durationAuthority.finalDurationSeconds,
+            carriesPersistentContentText: true,
+          },
+          ...(scope.authority.profile.persistentSubtitleText
+            ? { persistentText: scope.authority.profile.persistentSubtitleText } : {}),
+        },
+        productAndClaimPlan: productPlan,
         characterPlans: characters.map(character => ({ characterId: character.characterId, name: character.name,
           portraitPath: character.portraitPath, consistencyRequirements: character.consistencyRequirements,
           source: displayContract.cast.characters.find(item => item.id === character.characterId) ?? null,

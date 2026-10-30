@@ -165,7 +165,7 @@ function presentationSection(scope: Scope, fallbackDuration: number): string {
       frameRate: scope.authority!.profile.frameRate ?? null,
     })}\n`
     + `- 叙事披露原文（仅元数据/发布边界，不改成画面文字）：${JSON.stringify(authority.narrativeDisclosure ?? null)}\n`
-    + `- 常驻字幕原文（0 秒至正片末帧；封面片头仍静音）：${JSON.stringify(authority.persistentSubtitleText ?? null)}\n`
+    + `- 常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText ?? null)}。它覆盖内容时间线0秒至内容末帧；插入封面后对应最终成片${authority.coverIntroSeconds}秒至末帧，封面段不承载正片常驻字幕。\n`
     + `- 客户限制：${JSON.stringify(restrictions)}\n`
     + `- 商品视觉授权：${JSON.stringify(authority.productVisualAuthority)}。`
     + `商品外观只能使用整车型号、车身整体、动作结果或授权图片明确可见锚点；`

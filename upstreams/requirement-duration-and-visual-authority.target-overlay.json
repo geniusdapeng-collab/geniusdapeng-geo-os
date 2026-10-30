@@ -3,9 +3,9 @@
   "id": "requirement-duration-and-visual-authority",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-30T12:27:14+08:00",
-  "sourceOverlayCount": 5,
-  "scope": "G3 derives content duration from the final master minus the silent cover, rejects invented product parts when only unclassified reference images authorize appearance, and carries narrative disclosure, persistent text, platform and exact duration boundaries into the reviewed requirement list.",
+  "generatedAt": "2026-10-30T12:57:06+08:00",
+  "sourceOverlayCount": 9,
+  "scope": "G3 derives content duration behind the silent cover, rejects invented product parts without classified visual evidence, keeps the selected project wardrobe in the character projection, carries image license risk and persistent-text timing into review, and preserves exact platform/duration boundaries.",
   "files": [
     {
       "path": "packages/video-studio/src/requirement-authority.ts",
@@ -19,17 +19,17 @@
       "path": "packages/video-studio/src/requirement-contract.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "e9fc50f9052f2a84b4002438ccd8570de2c531eaa72afb22e2c062abd7b0838c",
+      "targetSha256": "7dd133bcecfef9310c9204830e4db601006853c625e75419c6bf9e4c796d3a34",
       "sourceBytes": 38883,
-      "targetBytes": 45048
+      "targetBytes": 45221
     },
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
-      "targetSha256": "d779431aa7092137c1e90363df8d0adfa5c24bef70dad83eb44ae2c5ebb2c382",
+      "targetSha256": "95add57edba44aba6bf0caccf13cc4c47a2e4d2505d8f7c39ce4678afd8bfe57",
       "sourceBytes": 27675,
-      "targetBytes": 36068
+      "targetBytes": 36184
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -46,6 +46,36 @@
       "targetSha256": "3d598862732b1bf88e3355b88a9d335277d68e31b78afefba6d76ceef204b191",
       "sourceBytes": 59825,
       "targetBytes": 61783
+    },
+    {
+      "path": "apps/server/src/video/builtin-character-selection.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.ts",
+      "sourceSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
+      "targetSha256": "1af480fa9ebb65554f310eada539b7aca9a57b8ae53435c5cf952a41db5df2c5",
+      "sourceBytes": 23750,
+      "targetBytes": 25790
+    },
+    {
+      "path": "apps/server/src/video/builtin-character-selection.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.test.ts",
+      "sourceSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
+      "targetSha256": "24f592b3e5aad3fd36f605fcde61fe2a3f322011b58de7fc1f2c4199081d5f5f",
+      "sourceBytes": 9554,
+      "targetBytes": 10651
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "targetOwned": true,
+      "targetSha256": "d7ae40a9566b46b946ee04f4d14af0333757a272cc4174a829ee8632b0c6c9ef",
+      "targetBytes": 4705
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.test.ts",
+      "targetOwned": true,
+      "targetSha256": "36c78d5513c6acefadf49c6bada443729e697614a9c5e20bcf0464be3f00310a",
+      "targetBytes": 2259
     }
   ]
 }

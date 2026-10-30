@@ -261,9 +261,13 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     const persona = plain(fields.persona) ? fields.persona : {};
     fields.speakingStyle ??= persona.speakingStyle;
     fields.behavioralRules ??= persona.behavioralRules ?? persona.continuityRules;
-    const description = JSON.stringify({ identity: fields.identity, appearance: fields.appearance, wardrobe: fields.wardrobe, persona: fields.persona,
-      biography: fields.biography, speakingStyle: fields.speakingStyle, behavioralRules: fields.behavioralRules });
     const selectedWardrobe = row.wardrobe ?? (Array.isArray(fields.wardrobe) ? fields.wardrobe.find(item => plain(item) && item.id === fields.activeWardrobeId) as Json | undefined : undefined);
+    // The projection must agree with the selected project wardrobe. Keeping the
+    // canonical list here reintroduced a superseded baseline (w1) into G3/G4.
+    const description = JSON.stringify({ identity: fields.identity, appearance: fields.appearance,
+      wardrobe: selectedWardrobe ? [selectedWardrobe] : fields.wardrobe, persona: fields.persona,
+      biography: fields.biography, speakingStyle: fields.speakingStyle, behavioralRules: fields.behavioralRules,
+      ...(selectedWardrobe ? { activeWardrobeId: selectedWardrobe.id } : {}) });
     return { ...fields, ...(selectedWardrobe ? { wardrobe: [selectedWardrobe], activeWardrobeId: selectedWardrobe.id, wardrobeId: selectedWardrobe.id } : {}),
       id: model.id, character_id: model.id, name: model.name, ordinal: model.ordinal, role: index === 0 ? "protagonist" : "supporting", description,
       builtinCharacterSource: { profilePath: model.profilePath, profileSha256: model.profileSha256, registrySha256: catalog.registrySha256 } };

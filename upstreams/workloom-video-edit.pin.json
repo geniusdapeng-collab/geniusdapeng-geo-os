@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "3dcfc6895b76973245ceaa7be272af6f99bf8761f05827a47ab05251d3d2da63",
+  "snapshotSha256": "169ccb3d6c11d333e94e553c62c000d941dbbd8a3522b9840b2779f2c3bf14d0",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -88,16 +88,16 @@
     {
       "id": "prd-production-disambiguation",
       "receipt": "upstreams/prd-production-disambiguation.target-overlay.json",
-      "receiptSha256": "d88c15e166c0bb96cc9a57e6c8ff4e7258b96ba67604585be1961ea1873c0530",
-      "scope": "PRD prompting separates final master, silent cover and content timeline, keeps CTA metadata off-screen, and prevents unverified product paint or impossible policy-tag accounting.",
+      "receiptSha256": "f6cc3a8102f416050b6d0d5f868becd7c802c6768eeffafc6593e75c885a1cd3",
+      "scope": "PRD separates final-master/content timing, removes model-authored tag annotations, renders shot-level overlapping policy tags, a verified product claim close-up and image-rights plan, and disambiguates persistent subtitles around the cover.",
       "upstreamUpgradeClaimed": false,
       "wholeEngineUpgradeClaimed": false
     },
     {
       "id": "requirement-duration-and-visual-authority",
       "receipt": "upstreams/requirement-duration-and-visual-authority.target-overlay.json",
-      "receiptSha256": "0b64149edbd56ea86a9e18312d504652c6936f73d56035b1eae6beec009dcc0a",
-      "scope": "G3 derives content duration behind a silent cover, rejects invented product parts without classified visual evidence, and carries narrative disclosure, persistent text and platform constraints into review.",
+      "receiptSha256": "230a44a01ff751f8c5beb3c84efa3e5d00ba74c05b6e71edceb2b41371fd0917",
+      "scope": "G3 derives content duration behind a silent cover, rejects invented product parts without classified visual evidence, uses the selected project wardrobe, and carries image-rights and persistent-text timing into review.",
       "upstreamUpgradeClaimed": false,
       "wholeEngineUpgradeClaimed": false
     }

@@ -494,7 +494,8 @@ export function structuredSceneInstructions(
     ? `本次叙事披露原文：${JSON.stringify(authority.narrativeDisclosure)}；只进入交付/发布元数据，除非客户明确要求，不改成画面文字。`
     : "";
   const persistent = typeof authority.persistentSubtitleText === "string" && authority.persistentSubtitleText.trim()
-    ? `本次常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText)}；必须保留到 G3 和正式后期。`
+    ? `本次常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText)}；覆盖内容时间线0秒至内容末帧，`
+      + `插入静音封面后对应最终成片${authority.coverIntroSeconds ?? 0}秒至末帧，封面段不承载该文字；必须保留到 G3 和正式后期。`
     : "";
   return `\n\n## 宿主结构化需求合同（本次 SceneArchitect 同一响应，不新增提取调用）\n`
     + `唯一出镜人物：${JSON.stringify(cast.characters.map(character => ({ id: character.id, name: character.name, role: character.role })))}。`
