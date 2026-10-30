@@ -267,6 +267,7 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
     + `交付口径消歧（必须逐字执行）：openWithCover=true 且 coverIntroSeconds=N 表示成片最前 N 秒为静音封面段，内容首帧指封面段之后的第一帧；不得改写成“不开启片头封面”，也不得把片头封面误称为 titleCard。titleCard 与独立封面 PNG/JPEG 是另外两个字段。`
+    + `持续字幕作用于内容时间线0秒至内容末帧；在最终成片里应位于${duration.coverIntroSeconds}秒至${finalDuration}秒。封面段${duration.coverIntroSeconds > 0 ? "不承载正片常驻字幕" : "长度为零，不适用"}，避免与封面自身文案重叠。`
     + `Brief.cta 仅是账号互动文案元数据，除非另行提供明确的 onScreenCTAText 字段，不得把 CTA 放进持续字幕、场景文字、道具或旁白；没有可靠人物/商品外观图片的部位必须省略，视觉色彩章节只能写光线、空气、环境与调色意图，不能据此断言商品车漆、贴花或配色分区。`
     + `commerce/平台要求的 product-close、usage、host、ambience、moving 是允许重叠的镜头标签，必须逐镜标注；百分比按各自标签累计秒数分别计数，不要求把各百分比相加不超过 100%。\n`
     + `本次 G3 已审的完整场景、道具、动作和宿主选角合同（冗余旧描述不进入展示，结构化字段完整保留）：\n${JSON.stringify(requirementDisplayContract(contract))}\n`
@@ -285,6 +286,8 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
     + `本次结构化商品视觉授权（由 G1 A1 已接受图片产生，不是模型自述）：\n${JSON.stringify(productVisualAuthority)}\n`
     + `若 required=true，任何商品外观、颜色、涂装、比例、部件或形态描述只能对照上述 images 的可见内容；`
     + `无法从这些图片确认的细节必须省略。文字 claims 不得扩张成新的外观事实。\n`
+    + `图片上的 licenseRisk=high/unknown 只表示可作本次参考，不代表已取得商业授权。G4 计划必须单列权利核验：`
+    + `生成前后绑定图片 URL/页面/摘要，最终对外发布前由产品所有者核对图片、商标和车辆外观授权；未授权时不得声称可对外投放。\n`
     + `G1 完整原始裁决（包括所有意见和建议）：\n${JSON.stringify(authority.marketing.g1Proof)}\n`
     + `G1 原件 ${authority.marketing.g1Artifact.path} / SHA256 ${authority.marketing.g1Artifact.sha256}：\n${authority.marketing.g1Artifact.content}\n`;
 }
@@ -326,7 +329,7 @@ function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord
   const items: RequirementRecord[] = [];
   const duration = prdDurationContract(profile);
   const persistent = profile.persistentSubtitleText === undefined ? ""
-    : `全片持续文字${JSON.stringify(profile.persistentSubtitleText)}（实际视频流0秒至末帧，ASS百分秒终点向上取整且最多超出0.01秒）`;
+    : `全片常驻文字${JSON.stringify(profile.persistentSubtitleText)}（内容时间线0秒至${duration.contentDurationSeconds ?? "已审内容末帧"}，插入${duration.coverIntroSeconds}秒静音封面后对应最终成片${duration.coverIntroSeconds}秒至末帧；封面段不承载正片常驻字幕，ASS百分秒终点向上取整且最多超出0.01秒）`;
   if (profile.subtitleMode && ["both", "burned"].includes(profile.subtitleMode)) items.push({ item: "subtitle_burned",
     spec: !declared ? "字幕烧录进本次视频母版"
       : `将本次台词字幕${persistent ? `及${persistent}` : ""}烧录进本次视频母版；按当前台词、实际总时长、时间线与字体样式核验${profile.sidecarPolicy === "dialogue-and-composite-ass" ? "，并与完整组合ASS使用同一文字、区间、样式与compositionSha256" : ""}；此为待执行交付要求`,

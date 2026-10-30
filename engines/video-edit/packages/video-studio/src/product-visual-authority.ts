@@ -12,6 +12,7 @@ export interface ProductVisualReference {
   pageUrl: string;
   source?: string;
   angle?: string;
+  licenseRisk?: string;
 }
 
 export interface ProductVisualAuthority {
@@ -52,6 +53,14 @@ function imageList(facts: Record<string, unknown>): ProductVisualReference[] {
   const stageFacts = object(a1?.facts);
   const payload = object(stageFacts?.payload);
   const images = Array.isArray(payload?.images) ? payload.images : [];
+  const cards = object(facts.cards);
+  const portraitManifest = object(cards?.portrait_manifest);
+  const referenceImages = Array.isArray(portraitManifest?.reference_images) ? portraitManifest.reference_images : [];
+  const referencesByUrl = new Map<string, Record<string, unknown>>();
+  for (const value of referenceImages) {
+    const reference = object(value);
+    if (reference && typeof reference.url === "string") referencesByUrl.set(reference.url, reference);
+  }
   const unique = new Map<string, ProductVisualReference>();
   for (const value of images) {
     const image = object(value);
@@ -60,11 +69,15 @@ function imageList(facts: Record<string, unknown>): ProductVisualReference[] {
       const url = new URL(image.url), page = new URL(image.page_url);
       if (!["http:", "https:"].includes(url.protocol) || !["http:", "https:"].includes(page.protocol)
         || url.username || url.password || page.username || page.password) continue;
+      const reference = referencesByUrl.get(url.toString()) ?? {};
+      const angle = image.angle ?? reference.angle;
+      const licenseRisk = image.license_risk ?? reference.license_risk;
       unique.set(url.toString(), {
         url: url.toString(),
         pageUrl: page.toString(),
         ...(typeof image.source === "string" && image.source ? { source: image.source } : {}),
-        ...(typeof image.angle === "string" && image.angle ? { angle: image.angle } : {}),
+        ...(typeof angle === "string" && angle ? { angle } : {}),
+        ...(typeof licenseRisk === "string" && licenseRisk ? { licenseRisk } : {}),
       });
     } catch {
       continue;

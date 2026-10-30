@@ -54,6 +54,11 @@ describe("video服务实际消费受控默认角色", () => {
     };
     const result = resolve("英子参加封闭赛道拍摄", { character: { id: "young-rider-01", wardrobe } });
     expect(result.characters[0]).toMatchObject({ id: "young-rider-01", activeWardrobeId: "race-suit", wardrobeId: "race-suit", wardrobe: [wardrobe] });
+    const description = JSON.parse(String(result.characters[0]!.description)) as Record<string, unknown>;
+    expect(description.wardrobe).toEqual([wardrobe]);
+    expect(description.activeWardrobeId).toBe("race-suit");
+    expect(JSON.stringify(description)).not.toContain('"w1"');
+    expect(appendBuiltinCharacterGuidance("原始需求", result)).not.toContain('\\"id\\":\\"w1\\"');
     expect(fixture.profiles[0]!.activeWardrobeId).toBe("w1");
   });
   it.each([{ wardrobeId: "missing-wardrobe" }, { wardrobeId: "w1", activeWardrobeId: "missing-wardrobe" },

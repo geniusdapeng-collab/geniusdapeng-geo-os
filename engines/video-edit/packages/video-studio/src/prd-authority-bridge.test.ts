@@ -72,7 +72,10 @@ describe("scene policy coverage display", () => {
       scenes: [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }],
     });
     expect(plan?.feasibility).toEqual({ "product-close": true, usage: true, host: true, ambience: true, moving: true });
+    expect(plan?.allShotsTagged).toBe(true);
+    expect(plan?.hostWithinMaximum).toBe(true);
     expect(plan?.scenes.every(scene => scene.policyTags.length > 0)).toBe(true);
+    expect(plan?.shots.every(scene => scene.policyTags.length > 0)).toBe(true);
     expect(plan?.plannedSeconds["product-close"]).toBeGreaterThanOrEqual(10.5);
     expect(plan?.plannedSeconds.usage).toBeGreaterThanOrEqual(9);
     expect(plan?.plannedSeconds.host).toBeGreaterThanOrEqual(6);
@@ -1042,10 +1045,33 @@ describe("G4 executable plans and one native quality policy", () => {
       const checks = actualG4Checks(value, markdown);
       expect(checks.map(check => check.id)).toEqual(["content-present", "no-placeholder", "min-length"]);
       expect(checks.every(check => check.pass === true)).toBe(true);
-      expect(planningFromMarkdown(markdown).characterPlans).toHaveLength(count);
+      const planning = planningFromMarkdown(markdown);
+      expect(planning.characterPlans).toHaveLength(count);
+      expect(planning.productAndClaimPlan).toMatchObject({ notApplicable: true });
       expect(prd).toEqual(before); return h.success(prd);
     });
     expect(run.calls).toHaveLength(2);
+  });
+
+  it("removes model-authored scene tag annotations before hashing and uses only the computed shot budget", async () => {
+    const value = fixture("POLICY-TAG-DISPLAY"), h = harness();
+    const metadata = requirementRecord(value.metadata, "metadata");
+    metadata.brief = {
+      ...requirementRecord(metadata.brief, "metadata.brief"),
+      scenePolicyRequirements: { requiredTags: ["product-close", "usage", "host", "ambience", "moving"] },
+    };
+    value.authority.metadata = structuredClone(value.metadata);
+    const run = h.make(value);
+    const scene = (requirementRecord(value.production.scenePlan, "scenePlan").scenes as RequirementRecord[])[0]!;
+    (scene.visualRequirements as unknown[]).push("标签：host、product-close、moving");
+    await withPrdAuthorityScope(value.authority, async () => {
+      const prd = await h.generate(run), markdown = await h.review(run, prd);
+      expect(JSON.stringify(prd.scenePlan)).not.toContain("标签：host");
+      expect(markdown).not.toContain("标签：host、product-close、moving");
+      const planning = planningFromMarkdown(markdown);
+      expect(planning.policyCoveragePlan).toMatchObject({ allShotsTagged: true });
+      return h.success(prd);
+    });
   });
 
   it("does not hide unrelated nullable source data from the real G4 no-placeholder check", async () => {
