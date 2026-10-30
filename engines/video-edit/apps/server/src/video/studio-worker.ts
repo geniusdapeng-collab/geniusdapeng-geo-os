@@ -134,7 +134,13 @@ function dataMiningConfigFor(
     ...(mode === "api"
       ? {
           // vendor 侧按 `executor(stage, plan)` 调用（stage 为 A1/A2/A3），此处收敛为宿主类型
-          executor: createDataMiningExecutor({ llm, log: (line) => console.log(line) }) as unknown as (
+          executor: createDataMiningExecutor({
+            llm,
+            log: (line) => console.log(line),
+            // Preserve keyless search results across retries and allow an owner-reviewed
+            // search/import handoff without weakening source fetch or claim verification.
+            searchCacheFile: path.join(WORK_DIR, "search-cache", `${workspaceId}.json`),
+          }) as unknown as (
             stage: string,
             plan: Record<string, unknown>,
           ) => Promise<Record<string, unknown> | null>,
@@ -1108,7 +1114,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             let g1Approved = true;
             if (input.isMarketing) {
               marketing = await prepareMarketingFacts({ scope: { ...scope, projectId: input.projectId, runId: entry.runId, attempt: ctx.attempt },
-                root: archive.root, metadata: input.metadata ?? {}, intent: input.intent, llm });
+                root: archive.root, metadata: input.metadata ?? {}, intent: input.intent, llm,
+                searchCacheFile: path.join(WORK_DIR, "search-cache", `${scope.workspaceId}.json`) });
               const verdict = await onApproval({ runId: entry.runId, gate: "G1_DOSSIER", vendorType: "host-source-dossier",
                 title: "本次营销来源正文与逐主张事实审核", contentMd: marketing.g1Content });
               const proof = gateProofs.get("G1_DOSSIER");

@@ -51,9 +51,12 @@ import { getRun, startRun, startVideoProjectRun, summarizeWorkspaceRuns, StudioW
 import { resolveScenePolicyForIntent, ScenePolicyRouteError } from "./scene-policy-routing.js";
 import { resolvePlatformForIntent } from "./platform-routing.js";
 import { BuiltinCharacterSelectionError } from "./builtin-character-selection.js";
-import { makeStageArchive } from "./archive-host.js";
+import { archiveWorkDir, makeStageArchive } from "./archive-host.js";
 import { readArchiveSummary, resumeProject, scanStaleRunsOnStartup } from "./archive-resume.js";
-import { applyRouteToMetadata, buildPipelineIntent, normalizeExplicitBriefDuration, PrdAuthorityError, routeVideoPipeline } from "@hyperreality/video-studio";
+import {
+  applyRouteToMetadata, ArchiveStore, buildPipelineIntent, inspectManualBridgeEligibility, listManualBridges,
+  ManualBridgeError, normalizeExplicitBriefDuration, PrdAuthorityError, recordManualBridge, routeVideoPipeline,
+} from "@hyperreality/video-studio";
 import { routedLlmCall } from "../service/llm.js";
 import { deliveryIngestHook, mediaRouter } from "./media/index.js";
 import { whiteboardRouter } from "./whiteboard/router.js";
@@ -67,6 +70,65 @@ import {
 } from "./delivery.js";
 
 interface Scope { tenantId: string; workspaceId: string }
+
+const manualBridgeFileSchema = z.object({
+  path: z.string().min(1).max(500),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict();
+
+const manualBridgeRequestSchema = z.object({
+  schemaVersion: z.literal("pengmanager.video-manual-bridge/v1"),
+  /** Required by execute-class agent capabilities; archive identity is independently derived below. */
+  idempotencyKey: z.string().min(8).max(200).optional(),
+  projectId: z.string().min(1).max(120),
+  stageId: z.string().min(1).max(64),
+  subtaskKey: z.string().min(1).max(120),
+  failureCode: z.string().min(3).max(160),
+  reason: z.string().min(20).max(2000),
+  inputArtifacts: z.array(manualBridgeFileSchema).min(1).max(20),
+  schema: manualBridgeFileSchema,
+  output: manualBridgeFileSchema,
+  validation: z.object({
+    passed: z.literal(true),
+    validatorId: z.string().min(1).max(160),
+    command: z.string().min(1).max(2000),
+    exitCode: z.literal(0),
+    completedAt: z.string().min(1).max(100),
+    evidence: manualBridgeFileSchema,
+  }).strict(),
+  fidelity: z.object({
+    usesOnlyUpstreamFacts: z.literal(true),
+    fabricatedFacts: z.literal(false),
+    formatConforms: z.literal(true),
+    dataFidelityStatus: z.enum(["verified", "partially_verified", "unverified"]),
+    unresolvedFacts: z.array(z.string().max(500)).max(100),
+    deviations: z.array(z.string().max(500)).max(100),
+  }).strict(),
+  externalEffects: z.object({
+    providerCalls: z.literal(0),
+    paidProviderCalls: z.literal(0),
+    publications: z.literal(0),
+    irreversibleActions: z.literal(0),
+  }).strict(),
+  downstream: z.object({
+    handoffReceipt: manualBridgeFileSchema,
+  }).strict(),
+  deliveryDisclosure: z.object({
+    stageLabel: z.string().min(1).max(160),
+    statement: z.string().min(20).max(2000),
+  }).strict(),
+}).strict();
+
+function manualBridgeStore(scope: Scope, projectId: string): ArchiveStore {
+  return new ArchiveStore(archiveWorkDir(), scope.workspaceId, projectId);
+}
+
+function manualBridgeFailure(error: unknown): never {
+  if (error instanceof ManualBridgeError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `${error.code}: ${error.message}`, cause: error });
+  }
+  throw error;
+}
 
 /**
  * 分流用 LLM 调用面（T-2026-0925-0002）：只在规则判不准时被调用，
@@ -704,6 +766,7 @@ const studioRouter = router({
       projectId: z.string().min(1),
       fromStage: z.string().min(1).max(64).optional(),
       intent: z.string().max(2000).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
@@ -712,6 +775,7 @@ const studioRouter = router({
           projectId: input.projectId,
           fromStage: input.fromStage,
           intent: input.intent,
+          metadata: input.metadata,
           startRun: (runInput) => startRun(scope, runInput),
           actor: { id: ctx.identity.memberNo, type: "human" },
         });
@@ -724,6 +788,48 @@ const studioRouter = router({
   archive: protectedProcedure
     .input(z.object({ projectId: z.string().min(1) }))
     .query(async ({ ctx, input }) => readArchiveSummary(scopeOf(ctx.identity), input.projectId)),
+
+  /** 只读判定：同一 stage + failureCode 是否已有至少 3 次正式失败。 */
+  manualBridgeEligibility: protectedProcedure
+    .input(z.object({
+      projectId: z.string().min(1).max(120),
+      stageId: z.string().min(1).max(64),
+      failureCode: z.string().min(3).max(160),
+    }).strict())
+    .query(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      return inspectManualBridgeEligibility(manualBridgeStore(scope, input.projectId), {
+        stageId: input.stageId,
+        failureCode: input.failureCode,
+      });
+    }),
+
+  /** 受审计的人工搭桥登记：系统自行统计失败、校验文件字节、下游回执与无副作用，再写入档案。 */
+  recordManualBridge: writeProcedure
+    .input(manualBridgeRequestSchema)
+    .mutation(async ({ ctx, input }) => {
+      const scope = scopeOf(ctx.identity);
+      try {
+        const record = await recordManualBridge(manualBridgeStore(scope, input.projectId), input);
+        return {
+          result: record,
+          receipt: {
+            synced: true,
+            sourceVerified: true,
+            bridgeId: record.bridgeId,
+            receiptPath: record.receiptPath,
+            receiptSha256: record.receiptSha256,
+          },
+        };
+      } catch (error) {
+        manualBridgeFailure(error);
+      }
+    }),
+
+  /** 当前项目已接受的人工搭桥回执，供交付清单和 Codex 续跑读取。 */
+  manualBridges: protectedProcedure
+    .input(z.object({ projectId: z.string().min(1).max(120) }).strict())
+    .query(async ({ ctx, input }) => listManualBridges(manualBridgeStore(scopeOf(ctx.identity), input.projectId))),
 });
 
 /* ================= cms：渲染脚本 CMS（§6） ================= */

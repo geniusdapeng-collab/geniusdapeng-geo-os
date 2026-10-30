@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "risk-array-capacity",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T09:13:20+08:00",
+  "sourceOverlayCount": 3,
+  "scope": "Align RiskAssessor business constraints and mitigation suggestions with the same 1-5 bounded capacity as technical risks, preserving strict schema validation and bounded retry feedback.",
+  "files": [
+    {
+      "path": "vendor/supermickey/hyperreality-system/engines/requirement-discovery-engine.js",
+      "targetPath": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/requirement-discovery-engine.js",
+      "sourceSha256": "d372d61aa6c851e8f4c5976ab2bb97604722d101054aabe3fae9b31c835697b6",
+      "targetSha256": "7bae6ad9f6a5950570bcfecc7e8fc0fed3e8e9a55fd510669cd6823d1e375765",
+      "sourceBytes": 39359,
+      "targetBytes": 39623
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
+      "targetSha256": "a89176a8dbe84d5c96b460c1ae7ab61a17e48accb689ecffe9d36365a0b9d8b0",
+      "sourceBytes": 59825,
+      "targetBytes": 60823
+    },
+    {
+      "path": "packages/video-studio/src/requirement-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.test.ts",
+      "sourceSha256": "b9ddfbb7f48277976df7ce1fc2b6227321126ea965cbcaab0749202ad71b7719",
+      "targetSha256": "06120899b5c8ae96a74bbb7b713b56a9539d7f081b99704fbcad12485020889c",
+      "sourceBytes": 30605,
+      "targetBytes": 30598
+    }
+  ]
+}

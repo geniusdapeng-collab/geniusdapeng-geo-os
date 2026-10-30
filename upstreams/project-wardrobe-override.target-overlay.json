@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "project-wardrobe-override",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T02:55:00+08:00",
+  "sourceOverlayCount": 2,
+  "scope": "Owner-authorized project wardrobe overrides registered with id, version and approval; preserve default wardrobe unless explicitly selected. Includes regression coverage for conflicting wardrobe selectors.",
+  "files": [
+    {
+      "path": "apps/server/src/video/builtin-character-selection.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.ts",
+      "sourceSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
+      "targetSha256": "8debb2151fc2d3e77b0a5c52ab4fa5129ffc953d5a81058382c3accbcfda84db",
+      "sourceBytes": 23750,
+      "targetBytes": 25506
+    },
+    {
+      "path": "apps/server/src/video/builtin-character-selection.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.test.ts",
+      "sourceSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
+      "targetSha256": "8467b2d682c2ffc0993770752f7229706d3f988b8cd96eb3ef89628d70bc94cb",
+      "sourceBytes": 9554,
+      "targetBytes": 10265
+    }
+  ]
+}

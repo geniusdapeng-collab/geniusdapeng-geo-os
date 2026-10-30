@@ -177,28 +177,50 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     }
     return result;
   };
-  const rows: Array<{ model: BuiltinModel | null; custom: Json | null }> = [];
+  const rows: Array<{ model: BuiltinModel | null; custom: Json | null; wardrobe?: Json }> = [];
   const push = (value: unknown): string => {
     const model = builtin(value);
+    let selectedWardrobe: Json | undefined;
     if (model && plain(value)) {
       const wardrobes = model.profile.wardrobe as Json[];
       const activeId = model.profile.activeWardrobeId;
       const active = wardrobes.find(wardrobe => wardrobe.id === activeId);
-      for (const field of ["wardrobeId", "activeWardrobeId"] as const) if (value[field] !== undefined) {
-        if (typeof value[field] !== "string" || !value[field].trim() || value[field] !== activeId || !active) {
-          invalid(`内置角色 ${model.name} 的服装选择未绑定当前已激活版本：${String(value[field])}`);
+      if (value.wardrobeId !== undefined && value.activeWardrobeId !== undefined && value.wardrobeId !== value.activeWardrobeId) {
+        invalid(`内置角色 ${model.name} 的服装ID与当前服装字段冲突`);
+      }
+      const requestedId = value.wardrobeId ?? value.activeWardrobeId;
+      if (requestedId !== undefined) {
+        if (typeof requestedId !== "string" || !requestedId.trim()) invalid(`内置角色 ${model.name} 的服装ID无效`);
+        selectedWardrobe = wardrobes.find(wardrobe => wardrobe.id === requestedId);
+        if (!selectedWardrobe) invalid(`内置角色 ${model.name} 的服装ID未登记：${String(requestedId)}`);
+      }
+      if (value.wardrobe !== undefined) {
+        if (Array.isArray(value.wardrobe)) {
+          if (shotIntentHash(value.wardrobe) !== shotIntentHash(wardrobes)) invalid(`内置角色 ${model.name} 的服装列表与受控档案冲突`);
+          selectedWardrobe = active;
+        } else if (!plain(value.wardrobe) || typeof value.wardrobe.id !== "string" || !value.wardrobe.id.trim()) {
+          invalid(`内置角色 ${model.name} 的显式服装对象无效`);
+        } else {
+          const requested = value.wardrobe;
+          const registered = wardrobes.find(wardrobe => wardrobe.id === requested.id);
+          if (registered) {
+            if (shotIntentHash(requested) !== shotIntentHash(registered)) invalid(`内置角色 ${model.name} 的显式服装与登记版本冲突`);
+            selectedWardrobe = registered;
+          } else if (requested.projectOverride !== true || requested.ownerApproved !== true
+            || typeof requested.version !== "string" || !requested.version.trim()) {
+            invalid(`内置角色 ${model.name} 的未登记服装必须声明项目覆盖、版本和 owner 授权`);
+          } else {
+            selectedWardrobe = structuredClone(requested);
+          }
         }
       }
-      if (value.wardrobe !== undefined && (!active || (Array.isArray(value.wardrobe)
-        ? shotIntentHash(value.wardrobe) !== shotIntentHash(wardrobes)
-        : !plain(value.wardrobe) || shotIntentHash(value.wardrobe) !== shotIntentHash(active)))) {
-        invalid(`内置角色 ${model.name} 的显式服装与当前已激活版本冲突`);
-      }
+      if (selectedWardrobe && requestedId !== undefined && selectedWardrobe.id !== requestedId) invalid(`内置角色 ${model.name} 的服装ID与服装内容不一致`);
+      selectedWardrobe ??= active;
     }
     const user = model ? null : completeCustom(value) ? value : [...custom.values()].find(item => plain(value) ? [value.id, value.character_id, value.name].some(token => token === item.id || token === item.character_id || token === item.name) : value === item.id || value === item.name) ?? null;
     if (!model && !user) invalid("自定义人物需要完整的ID、姓名和外观/人物描述，不能用默认人选补位");
     const id = model?.id ?? String(user!.id ?? user!.character_id);
-    if (!rows.some(row => (row.model?.id ?? String(row.custom!.id ?? row.custom!.character_id)) === id)) rows.push({ model, custom: user });
+    if (!rows.some(row => (row.model?.id ?? String(row.custom!.id ?? row.custom!.character_id)) === id)) rows.push({ model, custom: user, ...(selectedWardrobe ? { wardrobe: selectedWardrobe } : {}) });
     return id;
   };
   if (rosters.length) {
@@ -241,7 +263,8 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     fields.behavioralRules ??= persona.behavioralRules ?? persona.continuityRules;
     const description = JSON.stringify({ identity: fields.identity, appearance: fields.appearance, wardrobe: fields.wardrobe, persona: fields.persona,
       biography: fields.biography, speakingStyle: fields.speakingStyle, behavioralRules: fields.behavioralRules });
-    return { ...fields, ...(typeof fields.activeWardrobeId === "string" ? { wardrobeId: fields.activeWardrobeId } : {}),
+    const selectedWardrobe = row.wardrobe ?? (Array.isArray(fields.wardrobe) ? fields.wardrobe.find(item => plain(item) && item.id === fields.activeWardrobeId) as Json | undefined : undefined);
+    return { ...fields, ...(selectedWardrobe ? { wardrobe: [selectedWardrobe], activeWardrobeId: selectedWardrobe.id, wardrobeId: selectedWardrobe.id } : {}),
       id: model.id, character_id: model.id, name: model.name, ordinal: model.ordinal, role: index === 0 ? "protagonist" : "supporting", description,
       builtinCharacterSource: { profilePath: model.profilePath, profileSha256: model.profileSha256, registrySha256: catalog.registrySha256 } };
   });

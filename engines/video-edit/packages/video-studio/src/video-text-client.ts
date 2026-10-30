@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import http from "node:http";
+import https from "node:https";
 import { normalizeModelContent, planDeepSeekWindow } from "@workloom/base/model-router";
 import {
   DEEPSEEK_FLASH_CONTEXT_TOKENS,
@@ -59,6 +61,58 @@ export class VideoTextDispatchError extends Error {
 }
 
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Node's global fetch uses undici's 300-second body timeout. Long, complete
+ * producer reviews can legitimately exceed that budget even when their own
+ * 600-second timeout has not elapsed, surfacing a bare `terminated` and
+ * discarding a successful paid response. Keep the public fetch-compatible
+ * seam for fixtures, but use a bounded native HTTP request by default.
+ */
+const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestInit = {}): Promise<Response> => {
+  const url = new URL(typeof input === "string" || input instanceof URL ? String(input) : input.url);
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("MODEL_ENDPOINT_PROTOCOL_INVALID");
+  const body = init.body === undefined || init.body === null
+    ? undefined
+    : typeof init.body === "string"
+      ? Buffer.from(init.body)
+      : Buffer.isBuffer(init.body)
+        ? init.body
+        : init.body instanceof Uint8Array
+          ? Buffer.from(init.body)
+          : (() => { throw new Error("MODEL_REQUEST_BODY_UNSUPPORTED"); })();
+  const headers = new Headers(init.headers);
+  if (body !== undefined) headers.set("content-length", String(body.length));
+  headers.set("accept-encoding", "identity");
+  return await new Promise<Response>((resolve, reject) => {
+    const request = (url.protocol === "https:" ? https : http).request(url, {
+      method: init.method ?? "GET",
+      headers: Object.fromEntries(headers.entries()),
+    }, response => {
+      const chunks: Buffer[] = [];
+      response.on("data", chunk => chunks.push(Buffer.from(chunk)));
+      response.once("error", reject);
+      response.once("end", () => {
+        const responseHeaders = new Headers();
+        for (const [key, value] of Object.entries(response.headers)) {
+          if (value !== undefined) responseHeaders.set(key, Array.isArray(value) ? value.join(", ") : String(value));
+        }
+        resolve(new Response(Buffer.concat(chunks), {
+          status: response.statusCode ?? 502,
+          statusText: response.statusMessage ?? "",
+          headers: responseHeaders,
+        }));
+      });
+    });
+    request.once("error", reject);
+    const abort = () => request.destroy(init.signal?.reason instanceof Error ? init.signal.reason : new Error("MODEL_REQUEST_ABORTED"));
+    if (init.signal?.aborted) return abort();
+    init.signal?.addEventListener("abort", abort, { once: true });
+    request.once("close", () => init.signal?.removeEventListener("abort", abort));
+    if (body !== undefined) request.write(body);
+    request.end();
+  });
+}) as typeof fetch;
 
 export function videoTextEndpointFromEnv(
   env: Record<string, string | undefined> = process.env,
@@ -181,9 +235,10 @@ export async function completeVideoTextTask(input: {
   const signal = input.signal
     ? AbortSignal.any([input.signal, AbortSignal.timeout(input.timeoutMs ?? 600_000)])
     : AbortSignal.timeout(input.timeoutMs ?? 600_000);
+  const fetchImpl = input.fetchImpl ?? nodeHttpFetch;
   let response: Response;
   try {
-    response = await (input.fetchImpl ?? fetch)(`${input.endpoint.baseUrl}/chat/completions`, {
+    response = await fetchImpl(`${input.endpoint.baseUrl}/chat/completions`, {
       method: "POST",
       redirect: "error",
       headers: {

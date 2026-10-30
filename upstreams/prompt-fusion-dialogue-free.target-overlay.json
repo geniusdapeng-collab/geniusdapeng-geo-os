@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "prompt-fusion-dialogue-free",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T03:14:00+08:00",
+  "sourceOverlayCount": 1,
+  "scope": "Treat explicitly dialogue-free or genuinely textless shots as valid without injecting a rule-fallback dialogue placeholder that would mark the shot degraded.",
+  "files": [
+    {
+      "path": "vendor/supermickey/hyperreality-system/engines/production-engine/agents/prompt-fusion-agent.js",
+      "targetPath": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/prompt-fusion-agent.js",
+      "sourceSha256": "73a981c511488013d1819b8119aa2aae07e8d0fbc44041966c2484df6f35b8c7",
+      "targetSha256": "ec53fdfc3ccb2bf426c90368c13a622cdf70e209fc07f8e38e6bd8bcef230df2",
+      "sourceBytes": 107394,
+      "targetBytes": 107925
+    }
+  ]
+}

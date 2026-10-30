@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "review-transport-timeout",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T10:31:00+08:00",
+  "sourceOverlayCount": 2,
+  "scope": "Long complete model reviews use bounded Node HTTP by default instead of undici global fetch, whose 300-second body timeout returns a bare terminated before the documented 600-second producer-review budget.",
+  "files": [
+    {
+      "path": "packages/video-studio/src/video-text-client.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
+      "targetSha256": "f28c90da6da23c883d697d2e0e8cf814aae4e8b9e3464af2c2fb8157ba60eddc",
+      "targetBytes": 14058,
+      "reason": "Native HTTP buffering preserves the full 600-second business timeout while retaining the 8 MiB response bound and fetch-compatible fixture seam."
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.test.ts",
+      "targetSha256": "eca38e83f57b44f67b368b7326b3cd3c8d6a809e2aad3577d379ba083a0c7e29",
+      "targetBytes": 4906,
+      "reason": "Loopback regression proves the default dispatcher uses Node HTTP and never invokes global fetch."
+    }
+  ]
+}

@@ -47,8 +47,18 @@ describe("video服务实际消费受控默认角色", () => {
     expect(result.characters[0]).toMatchObject({ activeWardrobeId: "w1", wardrobeId: "w1", wardrobe: fixture.profiles[0]!.wardrobe });
     expect(resolve("英子讲述", applyBuiltinCharacters({}, result)).characters).toEqual(result.characters);
   });
+  it("owner明确授权的项目服装版本可覆盖本片，不篡改默认w1", () => {
+    const wardrobe = {
+      id: "race-suit", name: "项目赛车服", detail: "黑红连体赛车服，护具完整",
+      projectOverride: true, ownerApproved: true, version: "race-suit-v1",
+    };
+    const result = resolve("英子参加封闭赛道拍摄", { character: { id: "young-rider-01", wardrobe } });
+    expect(result.characters[0]).toMatchObject({ id: "young-rider-01", activeWardrobeId: "race-suit", wardrobeId: "race-suit", wardrobe: [wardrobe] });
+    expect(fixture.profiles[0]!.activeWardrobeId).toBe("w1");
+  });
   it.each([{ wardrobeId: "missing-wardrobe" }, { wardrobeId: "w1", activeWardrobeId: "missing-wardrobe" },
-    { wardrobeId: 1 }, { wardrobe: { id: "w1", name: "红裙" } }])("显式服装%j不符时失败，不用w1静默补位", wardrobe => {
+    { wardrobeId: 1 }, { wardrobe: { id: "w1", name: "红裙" } },
+    { wardrobe: { id: "race-suit", name: "项目赛车服", projectOverride: true } }])("显式服装%j不符时失败，不用w1静默补位", wardrobe => {
     expect(() => resolve("英子讲述", { character: { id: "young-rider-01", ...wardrobe } })).toThrow("服装");
   });
   it.each([{ character: { id: "young-rider-01", name: "陈卓" } }, { characterOrdinal: 1, characterName: "陈卓" }, { character: "unknown-id" }, { characterOrdinal: 99 }, { characterOrdinal: "bad" }, { character: true }])("非法或冲突选择%j失败，不回退默认", metadata => expect(() => resolve("拍短片", metadata)).toThrow());

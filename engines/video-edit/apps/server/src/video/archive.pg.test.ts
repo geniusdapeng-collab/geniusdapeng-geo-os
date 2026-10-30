@@ -134,6 +134,7 @@ describe.runIf(RUN_DB)("制片档案活库契约", () => {
     const result = await resumeProject(scope, {
       projectId,
       intent: "续跑契约用例",
+      metadata: { brief: { product: "恢复测试商品" } },
       startRun: (runInput) => {
         started.push(runInput);
         return "RUN-RESUMED";
@@ -142,7 +143,12 @@ describe.runIf(RUN_DB)("制片档案活库契约", () => {
     });
     expect(result.kind).toBe("resumed");
     if (result.kind === "resumed") expect(result.runId).toBe("RUN-RESUMED");
-    expect(started[0]).toMatchObject({ projectId, intent: "续跑契约用例", isMarketing: false });
+    expect(started[0]).toMatchObject({
+      projectId,
+      intent: "续跑契约用例",
+      isMarketing: false,
+      metadata: { brief: { product: "恢复测试商品" } },
+    });
     const rows = await owner.query<{ status: string }>(
       `SELECT status FROM production_stage_runs WHERE workspace_id=$1 AND project_id=$2`,
       [workspaceId, projectId],

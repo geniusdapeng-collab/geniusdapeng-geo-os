@@ -140,6 +140,23 @@ describe("人工恢复共用运行锁", () => {
     expect(startRun).not.toHaveBeenCalled();
   });
 
+  it("营销预生产恢复缺少 metadata 时在启动前停止，不能用截断标题替代客户输入", async () => {
+    db.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_try_advisory_xact_lock")) return { rows: [{ ok: true }], rowCount: 1 };
+      if (sql.startsWith("UPDATE production_stage_runs")) return { rows: [{ id: "SR-1" }], rowCount: 1 };
+      if (sql.startsWith("SELECT stage_id AS")) {
+        return { rows: [{ stageId: "preproduction", attempt: 3, status: "failed", errorClass: null, startedAt: "2026-10-30T00:00:00Z" }], rowCount: 1 };
+      }
+      if (sql.startsWith("SELECT title, kind FROM video_projects")) return { rows: [{ title: "截断标题", kind: "marketing" }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    });
+    const startRun = vi.fn();
+    const result = await resumeProject(scope, { projectId: "VID-1", intent: "同一原始意图", startRun, actor: { id: "MEM-1", type: "human" } });
+    expect(result).toMatchObject({ kind: "noaction", stage: "preproduction" });
+    expect(result.message).toContain("必须重新提交本次完整 metadata");
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
   it("异常锁回执不是 busy，更不能启动；回滚失败销毁连接", async () => {
     db.query.mockImplementation(async (sql: string) => {
       if (sql === "ROLLBACK") throw new Error("rollback failed");

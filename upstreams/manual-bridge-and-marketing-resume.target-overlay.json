@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "manual-bridge-and-marketing-resume",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T10:23:51+08:00",
+  "sourceOverlayCount": 5,
+  "scope": "Marketing preproduction resume carries and validates the current metadata, and the video guide documents the strictly gated 3-failure manual bridge fallback with byte-bound receipts and final disclosure.",
+  "files": [
+    {
+      "path": "apps/server/src/video/archive-resume.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.ts",
+      "sourceSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
+      "targetSha256": "9a6f52b4fe2acc3e82f7c1122f2dbad863ddcb240dbdc5b1053b281fd9ff5f95",
+      "sourceBytes": 20036,
+      "targetBytes": 20646
+    },
+    {
+      "path": "apps/server/src/video/archive-resume.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.test.ts",
+      "sourceSha256": "b8fd05c91570c5ac3aaf7b60ba08f3110c7373cd85ac701b65ff8fae92702a48",
+      "targetSha256": "713a4bf23ef9c55bb0f418c093b0f08c7eda4f580a46a87566a197fdc26f2e41",
+      "sourceBytes": 8915,
+      "targetBytes": 10098
+    },
+    {
+      "path": "apps/server/src/video/archive.pg.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/archive.pg.test.ts",
+      "sourceSha256": "ede36ed4ff00027c17e6f89641b4f46ff8070bd69d2cf102fc79cf1a817d02c3",
+      "targetSha256": "f4c8114eae5f125dc425e0ecb6e429e1dd095a048aa117c3d041bfedc834607e",
+      "sourceBytes": 17752,
+      "targetBytes": 17899
+    },
+    {
+      "path": "apps/server/src/video/router.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
+      "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
+      "targetSha256": "5063cace776167d61aab96e2e2791c409d84a775f5cb9d12e50e7f927f584d4c",
+      "sourceBytes": 68733,
+      "targetBytes": 68831
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "sourceSha256": "6effdf4eba7dc4192c157d555b6d615a3b74e09026aeb1a5f883bce22608284c",
+      "targetSha256": "71b6062508108a147bbcc1979a668295da16bb07addbede6a1ee3167393f675e",
+      "sourceBytes": 50616,
+      "targetBytes": 54189
+    }
+  ]
+}
