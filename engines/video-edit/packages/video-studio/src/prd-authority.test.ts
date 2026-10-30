@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdDeliverySchema, effectivePrdModelSchema, normalizeExplicitBriefDuration, normalizePrdProductionProfile,
-  preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
+  preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
 } from "./prd-authority.js";
 import { PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -41,6 +41,17 @@ describe("PRD explicit production requirements", () => {
     expect(normalizePrdProductionProfile(value.metadata)).toEqual({ targetDuration: 30, aspectRatio: "9:16", targetPlatform: "抖音",
       resolution: "1080p", frameRate: 30, subtitleMode: "both", nativeAudio: true, openWithCover: false, titleCard: false, durationToleranceFrames: 1 });
     expect(value.metadata).toEqual(before);
+  });
+  it("projects the silent cover intro out of the content timeline and back into the final master", () => {
+    expect(prdDurationContract({ targetDuration: 30, frameRate: 30, durationToleranceFrames: 1,
+      openWithCover: true, coverIntroSeconds: 0.6 })).toEqual({
+      finalDurationSeconds: 30,
+      contentDurationSeconds: 29.4,
+      coverIntroSeconds: 0.6,
+      toleranceSeconds: 1 / 30,
+    });
+    expect(prdDurationContract({ targetDuration: 30, openWithCover: false, coverIntroSeconds: 5 }))
+      .toMatchObject({ finalDurationSeconds: 30, contentDurationSeconds: 30, coverIntroSeconds: 0 });
   });
   it("legacy briefs without the new object enforce only fields the client actually provided", () => {
     expect(normalizePrdProductionProfile({ brief: { product: "legacy product" } })).toEqual({});
@@ -393,13 +404,10 @@ describe("PRD real model response and provenance", () => {
     model.scenePlan.scenes[0]!.duration += 1 / 30;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
   });
-  it("accepts a 34-second scene total for a 30-second target while preserving each approved node", () => {
+  it("rejects a 34-second scene total for a 30-second target while preserving each approved node", () => {
     const value = fixture(), model = structuredClone(value.production);
     value.contract.scenes[0]!.duration += 4;
     model.scenePlan.scenes[0]!.duration += 4;
-    expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).not.toThrow();
-    model.scenePlan.scenes[0]!.duration += 1.1;
-    value.contract.scenes[0]!.duration += 1.1;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
   });
   it("preserves ten approved nodes and a long purpose without the obsolete PRD 8-node/200-character ceilings", () => {

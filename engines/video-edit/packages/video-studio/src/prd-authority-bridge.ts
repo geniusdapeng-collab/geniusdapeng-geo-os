@@ -3,12 +3,12 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import {
-  requirementHash, requirementRecord, verifiedRequirementContract,
+  requirementDisplayContract, requirementHash, requirementRecord, verifiedRequirementContract,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdModelSchema, prdAuthorityPrompt, prdFail,
-  validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
+  prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
 } from "./prd-authority.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
@@ -57,6 +57,70 @@ const generators = new WeakMap<object, Scope>();
 const promptReviewContracts = new Map<string, { createdAt: number; contracts: ProducerReviewContracts }>();
 const PROMPT_REVIEW_CONTRACT_TTL_MS = 10 * 60 * 1000;
 const PROMPT_REVIEW_CONTRACT_LIMIT = 32;
+const POLICY_TAGS = ["product-close", "usage", "host", "ambience", "moving"] as const;
+
+export function policyCoveragePlan(metadata: RequirementRecord, scenes: RequirementRecord[], mapping: RequirementRecord[]) {
+  const brief = metadata.brief && typeof metadata.brief === "object" ? requirementRecord(metadata.brief, "Brief") : {};
+  const requirements = brief.scenePolicyRequirements && typeof brief.scenePolicyRequirements === "object"
+    ? requirementRecord(brief.scenePolicyRequirements, "scenePolicyRequirements") : null;
+  if (!requirements || !Array.isArray(requirements.requiredTags)) return null;
+  const requiredTags = [...new Set(requirements.requiredTags.filter(
+    (tag): tag is typeof POLICY_TAGS[number] => typeof tag === "string" && POLICY_TAGS.includes(tag as typeof POLICY_TAGS[number]),
+  ))];
+  if (!requiredTags.length) return null;
+  const ratios: Record<typeof POLICY_TAGS[number], { minimum: number; maximum: number }> = {
+    "product-close": { minimum: 0.35, maximum: 1 },
+    usage: { minimum: 0.30, maximum: 1 },
+    host: { minimum: 0.20, maximum: 0.30 },
+    ambience: { minimum: 0.10, maximum: 1 },
+    moving: { minimum: 0.30, maximum: 1 },
+  };
+  const scenePlan = scenes.map((scene, index) => {
+    const text = JSON.stringify({ purpose: scene.purpose, visualRequirements: scene.visualRequirements,
+      audioRequirements: scene.audioRequirements, keyProps: scene.keyProps });
+    const matched = mapping.find(item => item.sceneId === scene.sceneId);
+    return { sceneId: String(scene.sceneId), sequence: index + 1, duration: Number(scene.duration),
+      estimatedShots: Number(matched?.estimatedShots ?? 1), text };
+  });
+  const totalDuration = scenePlan.reduce((sum, scene) => sum + scene.duration, 0);
+  const selected = new Map(scenePlan.map(scene => [scene.sceneId, new Set<string>()]));
+  const plannedSeconds: Record<string, number> = {};
+  const feasibility: Record<string, boolean> = {};
+  for (const tag of requiredTags) {
+    const matcher = tag === "product-close" ? /产品|商品|整车|车身|车头|前轮|仪表|奖杯|车辆|漆面/
+      : tag === "usage" ? /骑|驾驶|压弯|冲线|跨坐|拧|油门|操控|使用/
+        : tag === "host" ? /人物|角色|李英子|她|站|摘|面罩|手|脸|肩|身体/
+          : tag === "ambience" ? /赛道|环境|场地|护栏|路肩|热浪|颁奖|灯|围场/
+            : /追|低机位|压弯|冲出|甩|推近|跟拍|运动|高速/;
+    let candidates = scenePlan.filter(scene => matcher.test(scene.text));
+    if (!candidates.length) candidates = [...scenePlan];
+    const rule = ratios[tag], minimum = totalDuration * rule.minimum, maximum = totalDuration * rule.maximum;
+    let best: typeof candidates | null = null, bestScore = Number.POSITIVE_INFINITY;
+    for (let mask = 1; mask < (1 << candidates.length); mask += 1) {
+      const subset = candidates.filter((_, index) => (mask & (1 << index)) !== 0);
+      const seconds = subset.reduce((sum, scene) => sum + scene.duration, 0);
+      if (seconds < minimum || seconds > maximum) continue;
+      const score = (seconds - minimum) * 100 + subset.length;
+      if (score < bestScore) { best = subset; bestScore = score; }
+    }
+    feasibility[tag] = best !== null;
+    const chosen = best ?? candidates.slice().sort((a, b) => b.duration - a.duration).slice(0, 1);
+    plannedSeconds[tag] = chosen.reduce((sum, scene) => sum + scene.duration, 0);
+    for (const scene of chosen) selected.get(scene.sceneId)?.add(tag);
+  }
+  return {
+    accounting: "同一镜头可同时拥有多个 policyTags；每个标签的时长与占比按该标签独立累计，不把百分比相加。",
+    requiredTags,
+    totalDuration,
+    requiredSeconds: Object.fromEntries(requiredTags.map(tag => [tag,
+      `${Math.ceil(totalDuration * ratios[tag].minimum * 10) / 10}–${Math.floor(totalDuration * ratios[tag].maximum * 10) / 10}s`])),
+    plannedSeconds,
+    feasibility,
+    shotCardRule: "正式镜头卡必须逐镜携带非空 policyTags；此处只给场景级预算，不替代镜头卡，也不证明实际成片已满足。",
+    scenes: scenePlan.map(({ text: _text, ...scene }) => ({ ...scene,
+      policyTags: [...(selected.get(scene.sceneId) ?? [])] })),
+  };
+}
 
 /**
  * The vendor creates the G6 review text and the structured prompt cards in the
@@ -272,6 +336,7 @@ function productionPlanningPrompt(scope: Scope): string {
   const profile = scope.authority.profile;
   const brief = scope.authority.metadata.brief === undefined ? {} : requirementRecord(scope.authority.metadata.brief, "本次制作计划Brief");
   const contract = scope.contract!;
+  const duration = prdDurationContract(profile, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
   const declarations = Object.fromEntries(["coverDelivery", "sidecarPolicy", "persistentSubtitleText"]
     .filter(key => Object.hasOwn(profile, key)).map(key => [key, profile[key as keyof typeof profile]]));
   const castAnchors = { selection: contract.cast.selection, characters: contract.cast.characters.map(character =>
@@ -287,8 +352,11 @@ function productionPlanningPrompt(scope: Scope): string {
     + `要求烧录或 sidecar 时说明如何与同一台词、总时长和时间线核对；both 时按明确口径核对烧录与旁挂共有的台词及时间线，台词侧车与完整组合ASS分别说明，不能要求dialogue-only侧车包含持续文字。没有请求的字幕不得额外添加。`
     + `本次 nativeAudio=${profile.nativeAudio === undefined ? "未显式指定" : String(profile.nativeAudio)}；明确保留原生声音时，写出原始片段/音轨来源与时长核对、原速拼接、不加速口播、不静默换声或补 TTS 的后续验证计划；`
     + `枚举 voicePolicy、具体对白和音乐/环境音安排须彼此一致。所有这些是待执行计划，当前没有成片、听音或字幕通过证据。\n`
+    + `本次内容时间线 ${duration.contentDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s，静音封面片头 ${duration.coverIntroSeconds}s，`
+    + `最终成片 ${duration.finalDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s。`
+    + `封面是成片最前片段，不重复加入内容节点；不得把最终片长直接写成内容节点合计。\n`
     + `本次明确的独立交付声明（未出现的键没有新增客户承诺）：${JSON.stringify(declarations)}。`
-    + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；不要把独立交付推断成开启片头封面。`
+    + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；独立文件与是否开启片头分别记录，本次openWithCover=${String(profile.openWithCover ?? false)}。`
     + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字、覆盖实际视频0秒至末帧，`
     + `并规划文字、区间、字体样式及compositionSha256的核对；both时烧录和ASS使用同一组合。没有明确请求的持续文字、封面或其他文字层不得新增。`
     + `将下面原文已给出的字号、边距、描边、墨迹范围、平台遮挡区和字体核验要求落实为本次模型计划，不以泛称“安全区”代替明确数值；未给数值时由本次模型按实际要求规划并标明待验证，不伪称已测量。\n`
@@ -661,7 +729,7 @@ export function installPrdAuthorityBridge(
         + `- **客户 Brief 权威受众原文**：${scope.contract!.ownerAudience ?? "客户未显式指定"}\n`
         + `- **以下年龄、性别与兴趣细分仅为模型推测**：不覆盖客户原文，不构成已核实市场事实，仍待本次 G4 独立评审。\n\n### 模型细分原文`);
       // This field is inapplicable when props exist; retain the canonical contract and hashes.
-      const displayContract = { ...scope.contract!, scenes: scope.contract!.scenes.map(scene => {
+      const displayContract = { ...requirementDisplayContract(scope.contract!), scenes: scope.contract!.scenes.map(scene => {
         if (Array.isArray(scene.props) && scene.props.length > 0 && scene.noPropsReason === null) {
           const { noPropsReason: _inapplicableReason, ...displayScene } = scene;
           return displayScene;
@@ -671,16 +739,25 @@ export function installPrdAuthorityBridge(
       const delivery = requirementRecord(result.deliveryStandard, "G4 原生交付计划");
       const quality = scope.quality.get(result)!;
       const characters = requirementRecord(result.characterSystem, "G4 人物计划").characters as RequirementRecord[];
-      const scenes = requirementRecord(result.scenePlan, "G4 场景计划").scenes as RequirementRecord[];
+      const nativeScenePlan = requirementRecord(result.scenePlan, "G4 场景计划");
+      const scenes = nativeScenePlan.scenes as RequirementRecord[];
+      const nativeShotMapping = requirementRecord(nativeScenePlan, "G4 原始场景计划").shotMapping;
+      const coveragePlan = policyCoveragePlan(scope.authority.metadata, scenes, nativeShotMapping as RequirementRecord[]);
+      const durationAuthority = prdDurationContract(scope.authority.profile,
+        scope.contract!.scenes.reduce((sum, scene) => sum + scene.duration, 0));
       const planning = {
         status: "plan-only-not-executed",
+        durationAuthority,
         characterPlans: characters.map(character => ({ characterId: character.characterId, name: character.name,
           portraitPath: character.portraitPath, consistencyRequirements: character.consistencyRequirements,
-          source: character._workloomCharacterSource, selection: character._workloomCharacterSelection })),
+          source: displayContract.cast.characters.find(item => item.id === character.characterId) ?? null,
+          selection: character._workloomCharacterSelection })),
         audioSpecification: result.audioSpecification,
-        shotMapping: requirementRecord(result.scenePlan, "G4 原始场景计划").shotMapping,
+        shotMapping: nativeShotMapping,
+        ...(coveragePlan ? { policyCoveragePlan: coveragePlan } : {}),
         sceneVerificationPlans: scenes.map(scene => ({ sceneId: scene.sceneId, duration: scene.duration,
-          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue })),
+          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue,
+          ...(coveragePlan ? { policyTags: coveragePlan.scenes.find(item => item.sceneId === scene.sceneId)?.policyTags ?? [] } : {}) })),
         continuityCheckpoints: delivery.continuityCheckpoints,
         revisionPolicy: delivery.revisionPolicy,
         qualityPolicy: { thresholds: quality.thresholds, fallbackTrigger: quality.fallbackTrigger,

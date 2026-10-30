@@ -8,7 +8,7 @@ import { bindRequirementContract, requirementCast, requirementHash, requirementR
 import { effectivePrdModelSchema, prdAuthorityPrompt, preparePrdAuthority } from "./prd-authority.js";
 import {
   assertPrdAuthorityBridge, consumePromptReviewContracts, installPrdAuthorityBridge, installPrdProductionBridge,
-  productionModelInput, withPrdAuthorityScope
+  policyCoveragePlan, productionModelInput, withPrdAuthorityScope
 } from "./prd-authority-bridge.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
@@ -52,6 +52,37 @@ function schemaFromPrompt(prompt: string, kind: "creative" | "production"): Requ
   expect(encoded).toHaveLength(1);
   return JSON.parse(encoded[0]!) as RequirementRecord;
 }
+
+describe("scene policy coverage display", () => {
+  it("states overlapping tag accounting and gives every scene an explicit non-empty shot-card budget", () => {
+    const plan = policyCoveragePlan({
+      brief: { scenePolicyRequirements: { requiredTags: ["product-close", "usage", "host", "ambience", "moving"] } },
+    }, [
+      { sceneId: "opening", duration: 10, purpose: "女车手跨坐整车拧油门冲入赛道",
+        visualRequirements: ["低机位追拍车身与前轮，赛道热浪清晰"], audioRequirements: [], keyProps: ["820RR-RC"] },
+      { sceneId: "middle", duration: 14, purpose: "压弯超车并冲线",
+        visualRequirements: ["低机位跟拍整车高速压弯"], audioRequirements: [], keyProps: ["车辆"] },
+      { sceneId: "ending", duration: 6, purpose: "人物站在最高领奖台，奖杯与整车同框",
+        visualRequirements: ["自然光颁奖环境，人物与车辆稳定构图"], audioRequirements: [], keyProps: ["奖杯", "车辆"] },
+    ], [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }]);
+    expect(plan).toMatchObject({
+      requiredTags: ["product-close", "usage", "host", "ambience", "moving"],
+      totalDuration: 30,
+      requiredSeconds: { "product-close": "10.5–30s", host: "6–9s" },
+      scenes: [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }],
+    });
+    expect(plan?.feasibility).toEqual({ "product-close": true, usage: true, host: true, ambience: true, moving: true });
+    expect(plan?.scenes.every(scene => scene.policyTags.length > 0)).toBe(true);
+    expect(plan?.plannedSeconds["product-close"]).toBeGreaterThanOrEqual(10.5);
+    expect(plan?.plannedSeconds.usage).toBeGreaterThanOrEqual(9);
+    expect(plan?.plannedSeconds.host).toBeGreaterThanOrEqual(6);
+    expect(plan?.plannedSeconds.host).toBeLessThanOrEqual(9);
+    expect(plan?.plannedSeconds.ambience).toBeGreaterThanOrEqual(3);
+    expect(plan?.plannedSeconds.moving).toBeGreaterThanOrEqual(9);
+    expect(plan?.accounting).toContain("不把百分比相加");
+    expect(plan?.shotCardRule).toContain("正式镜头卡必须逐镜携带");
+  });
+});
 function authorityFromMarkdown(markdown: string): RequirementRecord {
   const pieces = markdown.split("\n\n## 宿主本次权威生产与交付要求\n\n```json\n");
   expect(pieces).toHaveLength(2);
@@ -155,7 +186,9 @@ describe("G4-bound authority at the shared real model request boundary", () => {
       expect(prompt).toContain(JSON.stringify(prd));
       expect(prompt).toContain("G4 批准不把 PRD 新增的修辞");
       expect(request.messages[0]).toEqual({ role: "system", content: "原调用方system" });
-      expect(request.options).toMatchObject({ maxTokens: 4096, temperature: 0.37, topP: 0.82, thinking: { type: "disabled" }, responseFormat: { type: "json_object" } });
+      expect(request.options).toMatchObject({ maxTokens: 393216, topP: 0.82, thinking: { type: "enabled" },
+        reasoningEffort: "high", responseFormat: { type: "json_object" } });
+      expect(request.options).not.toHaveProperty("temperature");
       expect(schema).toEqual(before); expect(prd).toEqual(prdBefore);
       return h.success(prd);
     }, validate);
@@ -163,7 +196,7 @@ describe("G4-bound authority at the shared real model request boundary", () => {
     expect(productionModelInput(original).prompt).toBe(original);
   });
 
-  it("covers reason, raw, generate, chat and structured paths including vendor-created engines with exactly their original requests", async () => {
+  it("covers reason, raw, generate, chat and structured paths while applying the host full-window policy", async () => {
     // Use the same tsx CommonJS loading path as the production server. Vite's
     // ESM test loader cannot load the legacy systems/*.js constructor directly.
     const value = fixture("PRODUCTION-PATHS"), script = `${value.workDir}/vendor-context-probe.mts`;
@@ -233,8 +266,10 @@ console.log("RESULT " + JSON.stringify({ ...receipt, cleanup: { clearedTimers, h
     const result = JSON.parse(stdout.split("\n").find(line => line.startsWith("RESULT "))!.slice(7));
     expect(result.count).toBe(5);
     expect(result.inputs.every((input: RequirementRecord) => input.prefix === true && input.complete === true)).toBe(true);
-    expect(result.inputs[3]).toMatchObject({ system: { role: "system", content: "原生system" }, options: { temperature: 0.41 } });
-    expect(result.inputs[4].options.maxTokens).toBe(1234);
+    expect(result.inputs[3]).toMatchObject({ system: { role: "system", content: "原生system" },
+      options: { maxTokens: 393216, thinking: { type: "enabled" }, reasoningEffort: "high", timeoutMs: 180000 } });
+    expect(result.inputs[3].options).not.toHaveProperty("temperature");
+    expect(result.inputs[4].options.maxTokens).toBe(393216);
     expect(result.results).toMatchObject({ results: [{ success: true, content: result.raw }, { success: true, content: result.raw }, { success: true, content: result.raw }],
       chat: result.raw, structured: { success: true, content: result.raw, data: { unchanged: true } } });
     expect(result.cleanup).toMatchObject({ hookDisabled: true, clearedTimers: expect.any(Number) });
@@ -246,7 +281,8 @@ console.log("RESULT " + JSON.stringify({ ...receipt, cleanup: { clearedTimers, h
     const raw = '{"unchanged":"原始返回"}'; expectedFetchCalls = 1;
     vi.mocked(globalThis.fetch).mockImplementation(async (_url, init) => {
       bodies.push(JSON.parse(String(init?.body)) as RequirementRecord);
-      return new Response(JSON.stringify({ choices: [{ message: { content: raw } }] }), { status: 200 });
+      return new Response(JSON.stringify({ id: "direct-response-1", model: "original-model", choices: [{ finish_reason: "stop",
+        message: { content: raw } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }), { status: 200 });
     });
     const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "original-model" });
     await withPrdAuthorityScope(value.authority, async () => {
@@ -254,7 +290,7 @@ console.log("RESULT " + JSON.stringify({ ...receipt, cleanup: { clearedTimers, h
       expect(await adapter.reasonStructured("直连原始需求", { unchanged: "" }, { maxTokens: 4321 })).toMatchObject({ content: raw, data: JSON.parse(raw) });
       return h.success(prd);
     });
-    expect(bodies).toHaveLength(1); expect(bodies[0]).toMatchObject({ model: "original-model", max_tokens: 4321 });
+    expect(bodies).toHaveLength(1); expect(bodies[0]).toMatchObject({ model: "original-model", max_tokens: 393216 });
     const prompt = (bodies[0]!.messages as ChatMessage[]).at(-1)!.content;
     expect(prompt.startsWith("直连原始需求")).toBe(true); expect(prompt).toContain(value.content);
   });

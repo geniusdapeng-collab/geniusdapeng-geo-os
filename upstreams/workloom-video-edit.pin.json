@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "4d7a5347efcbf05bddb91191312e0cee6c12d6230152c2240e41aaa9175fa981",
+  "snapshotSha256": "3dcfc6895b76973245ceaa7be272af6f99bf8761f05827a47ab05251d3d2da63",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -88,8 +88,16 @@
     {
       "id": "prd-production-disambiguation",
       "receipt": "upstreams/prd-production-disambiguation.target-overlay.json",
-      "receiptSha256": "e39ca37d69bed3e0662cb0c3f454ef6df0d2e9ab71fab1d5b3b9c5e5d0466d9f",
-      "scope": "PRD prompting separates silent cover intro from content first frame and title card, keeps CTA metadata off-screen, and prevents unverified product paint or impossible policy-tag accounting.",
+      "receiptSha256": "d88c15e166c0bb96cc9a57e6c8ff4e7258b96ba67604585be1961ea1873c0530",
+      "scope": "PRD prompting separates final master, silent cover and content timeline, keeps CTA metadata off-screen, and prevents unverified product paint or impossible policy-tag accounting.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "requirement-duration-and-visual-authority",
+      "receipt": "upstreams/requirement-duration-and-visual-authority.target-overlay.json",
+      "receiptSha256": "0b64149edbd56ea86a9e18312d504652c6936f73d56035b1eae6beec009dcc0a",
+      "scope": "G3 derives content duration behind a silent cover, rejects invented product parts without classified visual evidence, and carries narrative disclosure, persistent text and platform constraints into review.",
       "upstreamUpgradeClaimed": false,
       "wholeEngineUpgradeClaimed": false
     }

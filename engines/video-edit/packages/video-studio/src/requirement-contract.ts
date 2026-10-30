@@ -4,6 +4,7 @@ import {
   TARGET_DURATION_TOLERANCE_SECONDS,
   withinTargetDurationTolerance,
 } from "./duration-contract.js";
+import type { ProductVisualAuthority } from "./product-visual-authority.js";
 
 export type RequirementRecord = Record<string, unknown>;
 export const REQUIREMENT_CONTRACT_VERSION = "workloom.requirement-contract/v1";
@@ -34,11 +35,17 @@ function withValidationFacts(error: RequirementContractError, details: Requireme
 export function structuredSceneFeedback(error: unknown): string {
   const facts = error instanceof RequirementContractError ? validationFacts.get(error) : undefined;
   if (!facts) return "";
+  if (facts.kind === "product-visual") {
+    return `\n\n## 上一次原生场景校验反馈\n${JSON.stringify(facts)}\n`
+      + `仅依据这些校验事实重新生成完整合法响应。商品外观只能使用整车型号、车身整体和动作结果；`
+      + `不得新增未经本次图片逐项确认的部件名称、空间位置、局部形态或特定机位。重新完整生成全部节点，不补填上次节点。`;
+  }
   const duration = finiteNumber(facts.durationSum), target = finiteNumber(facts.targetDuration);
+  const tolerance = finiteNumber(facts.targetDurationToleranceSeconds) ?? TARGET_DURATION_TOLERANCE_SECONDS;
   const durationCorrection = duration !== null && target !== null
-    && !withinTargetDurationTolerance(duration, target)
+    && !withinTargetDurationTolerance(duration, target, tolerance)
     ? `\n本次必须把 opening、scenes、ending 的 duration 合计${duration > target ? "减少" : "增加"} ${Math.abs(duration - target)} 秒，`
-      + `并把 totalDuration 精确设为 ${target}；保持真实场景内容重新完整生成，不得复用或补填上一次节点。`
+      + `并把 totalDuration 精确设为 ${target}（允许 ±${tolerance} 秒）；保持真实场景内容重新完整生成，不得复用或补填上一次节点。`
     : "";
   return `\n\n## 上一次原生场景校验反馈\n${JSON.stringify(facts)}\n仅依据这些校验事实重新生成完整合法响应；不复用或补填上次场景，不改变原有 schema、人物与时长约束。${durationCorrection}`;
 }
@@ -258,8 +265,46 @@ export interface RequirementContract {
   hash: string;
 }
 
+export interface RequirementSceneValidationOptions {
+  toleranceSeconds?: number;
+  productVisualAuthority?: ProductVisualAuthority;
+}
+
+const UNVERIFIED_PRODUCT_VISUAL_PATTERNS: Array<[string, RegExp]> = [
+  ["component", /(?:前制动卡钳|后制动卡钳|制动卡钳|卡钳|前叉|后摇臂|摇臂|减震器|排气口|排气管|轮辋|轮毂|前整流罩|后整流罩|进气口|定风翼)/u],
+  ["surface", /(?:配色区块|配色分区|涂装区块|涂装分区|贴花位置|车漆颜色|漆面颜色)/u],
+  ["view", /(?:侧前角度|侧后角度|正侧视|前\s*45\s*度?|后\s*45\s*度?|轮胎接地局部|轮辋与轮胎接地)/u],
+];
+
+function assertProductVisualScenes(scenes: RequirementScene[], authority?: ProductVisualAuthority): void {
+  if (!authority?.required || !authority.images.length) return;
+  for (const scene of scenes) {
+    const fields = [
+      scene.purpose,
+      ...scene.keyElements,
+      ...scene.props.flatMap(prop => [prop.name, prop.description]),
+      ...scene.actions.map(action => action.description),
+    ];
+    for (const [index, field] of fields.entries()) {
+      for (const [category, pattern] of UNVERIFIED_PRODUCT_VISUAL_PATTERNS) {
+        if (!pattern.test(field)) continue;
+        const details = Object.freeze({ kind: "product-visual", sceneId: scene.id, fieldIndex: index, category });
+        throw withValidationFacts(new RequirementContractError(
+          "REQUIREMENT_PRODUCT_VISUAL_UNVERIFIED",
+          `SceneArchitect response/${scene.source} 包含未经本次商品图片逐项确认的${category}外观描述`,
+        ), details);
+      }
+    }
+  }
+}
+
 /** Every physical item and action must be present in the same SceneArchitect response. */
-export function requirementScenes(structureValue: unknown, cast: RequirementCast, targetDuration?: unknown): RequirementScene[] {
+export function requirementScenes(
+  structureValue: unknown,
+  cast: RequirementCast,
+  targetDuration?: unknown,
+  options: RequirementSceneValidationOptions = {},
+): RequirementScene[] {
   const structure = requirementRecord(structureValue, "SceneArchitect 场景结构");
   const middle = array(structure.scenes, "主体场景");
   const nodes: Array<[string, string, unknown]> = [
@@ -299,9 +344,13 @@ export function requirementScenes(structureValue: unknown, cast: RequirementCast
   }
   const total = scenes.reduce((sum, scene) => sum + scene.duration, 0);
   const declared = structure.totalDuration, target = Number(targetDuration);
+  const tolerance = options.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
+  if (!Number.isFinite(tolerance) || tolerance < 0) {
+    throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "场景目标时长容差不是非负有限数");
+  }
   if (typeof declared !== "number" || !Number.isFinite(declared)
     || Math.abs(total - declared) > SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS
-    || (Number.isFinite(target) && target > 0 && !withinTargetDurationTolerance(total, target))
+    || (Number.isFinite(target) && target > 0 && !withinTargetDurationTolerance(total, target, tolerance))
     || structure.sceneCount !== scenes.length) {
     // Fixed numeric fields only: diagnostics must never expose scene prose, cast,
     // source stories or the private authority appended to the model transport.
@@ -310,10 +359,11 @@ export function requirementScenes(structureValue: unknown, cast: RequirementCast
       durationSum: number(total), declaredTotalDuration: number(declared), targetDuration: Number.isFinite(target) && target > 0 ? target : null,
       declaredDurationDelta: typeof declared === "number" ? number(total - declared) : null,
       targetDurationDelta: Number.isFinite(target) && target > 0 ? number(total - target) : null,
-      targetDurationToleranceSeconds: TARGET_DURATION_TOLERANCE_SECONDS });
+      targetDurationToleranceSeconds: tolerance });
     throw withValidationFacts(new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED",
-      `场景节点数、声明总时长或目标总时长（允许 ±${TARGET_DURATION_TOLERANCE_SECONDS}s）不一致；numeric ${JSON.stringify(details)}`), details);
+      `场景节点数、声明总时长或目标总时长（允许 ±${tolerance}s）不一致；numeric ${JSON.stringify(details)}`), details);
   }
+  assertProductVisualScenes(scenes, options.productVisualAuthority);
   return scenes;
 }
 
@@ -352,7 +402,8 @@ export function bindRequirementContract(
     ...(ownerAudience ? { targetAudience: ownerAudience } : {}),
     inferredAudienceProfile: structuredClone(discovery.audienceProfile ?? null),
     _workloomRequirementContract: contract,
-    keyPoints: [...originalKeyPoints, `[本次结构化需求契约 ${REQUIREMENT_CONTRACT_VERSION}] ${JSON.stringify(contract)}`]
+    keyPoints: [...originalKeyPoints,
+      `[本次结构化需求契约 ${REQUIREMENT_CONTRACT_VERSION}] ${JSON.stringify(requirementDisplayContract(contract))}`]
   };
 }
 
@@ -378,6 +429,20 @@ export function verifiedRequirementContract(listValue: unknown, metadataValue: u
   return contract;
 }
 
+/**
+ * The profile `description` is a legacy aggregate that can repeat an older
+ * wardrobe. Every field represented by it remains authoritative in the
+ * structured cast/copy above, so display surfaces omit only that duplicate.
+ */
+export function requirementDisplayContract(contract: RequirementContract): RequirementContract {
+  const display = structuredClone(contract);
+  display.cast.characters = display.cast.characters.map(character => {
+    const { description: _duplicateDescription, ...rest } = character;
+    return rest;
+  });
+  return display;
+}
+
 export function renderRequirementContract(contract: RequirementContract, metadata: RequirementRecord): string {
   const brief = metadata.brief === undefined ? {} : requirementRecord(metadata.brief, "Brief");
   const characters = contract.cast.characters.map(character => `- ${String(character.name)}（ID ${String(character.id)}；角色 ${String(character.role)}）`);
@@ -388,7 +453,7 @@ export function renderRequirementContract(contract: RequirementContract, metadat
   return `\n\n---\n\n## 四、需求契约（同一结构继续进入 PRD、剧本与镜头卡）\n\n`
     + `状态：结构已形成，等待本次 G3 真实审核；不代表事实或影片已经通过。\n\n`
     + `### 角色（${contract.cast.characters.length}）\n\n${characters.length ? characters.join("\n") : "明确无人：宿主选角凭据 mode=none。"}\n\n`
-    + `人物档案、语气与行为约束完整保留如下，仅用于角色表达，不作为道具或商品事实：\n\n\`\`\`json\n${JSON.stringify({ selection: contract.cast.selection, characters: contract.cast.characters }, null, 2)}\n\`\`\`\n\n`
+    + `人物档案、语气与行为约束完整保留如下，仅用于角色表达，不作为道具或商品事实；其中冗余的旧聚合 description 不进入展示，结构化字段与当前服装版本完整保留：\n\n\`\`\`json\n${JSON.stringify({ selection: contract.cast.selection, characters: requirementDisplayContract(contract).cast.characters }, null, 2)}\n\`\`\`\n\n`
     + `${scenes.join("\n\n")}\n\n### 道具（${contract.props.length}）\n\n${props.join("\n")}${absentProps.length ? `\n${absentProps.join("\n")}` : ""}\n\n`
     + `### 动作（${contract.actions.length}）\n\n${actions.join("\n")}\n\n`
     + `## 五、权威口径与推测边界\n\n- 客户受众原文：${contract.ownerAudience ?? "客户未显式指定；模型细分仍为待审核推测"}\n`
@@ -398,22 +463,59 @@ export function renderRequirementContract(contract: RequirementContract, metadat
     + `- 商品事实是否已被本次审核覆盖，仍由真实 G3 结合宿主提供的本次 G1 证据判断；本合同不产生事实通过凭据。\n`;
 }
 
-export function structuredSceneInstructions(cast: RequirementCast, audience: unknown): string {
+export interface StructuredSceneAuthority {
+  targetContentDurationSeconds?: number;
+  finalDurationSeconds?: number;
+  coverIntroSeconds?: number;
+  toleranceSeconds?: number;
+  narrativeDisclosure?: string;
+  persistentSubtitleText?: string;
+  productVisualAuthority?: ProductVisualAuthority;
+}
+
+export function structuredSceneInstructions(
+  cast: RequirementCast,
+  audience: unknown,
+  authority: StructuredSceneAuthority = {},
+): string {
+  const target = authority.targetContentDurationSeconds;
+  const tolerance = authority.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
+  const durationRule = target === undefined ? "" :
+    `内容时间线节点合计必须为 ${target} 秒 ±${tolerance} 秒。`;
+  const coverRule = target === undefined ? "" :
+    `如果 openWithCover=true，静音封面 ${authority.coverIntroSeconds ?? 0} 秒不占内容节点；`
+      + `内容节点加封面后的最终成片必须为 ${authority.finalDurationSeconds ?? target + (authority.coverIntroSeconds ?? 0)} 秒 ±${tolerance} 秒。`;
+  const productRule = authority.productVisualAuthority?.required
+    ? `本次商品外观只允许来自 G1 A1 的 ${authority.productVisualAuthority.images.length} 张真实图片：${JSON.stringify(authority.productVisualAuthority.images)}。`
+      + `在文字计划中只写整车型号、车身整体、赛道运动结果或图中明确可见的锚点；不得补写卡钳、排气口、轮辋、整流罩、配色分区、前/后 45 度视角或轮胎接地局部。`
+      + `连超对手、夺冠和领奖台是本片虚构叙事记忆点，不是商品卖点、性能证据、竞品对比或真实赛事成绩。`
+    : "";
+  const disclosure = typeof authority.narrativeDisclosure === "string" && authority.narrativeDisclosure.trim()
+    ? `本次叙事披露原文：${JSON.stringify(authority.narrativeDisclosure)}；只进入交付/发布元数据，除非客户明确要求，不改成画面文字。`
+    : "";
+  const persistent = typeof authority.persistentSubtitleText === "string" && authority.persistentSubtitleText.trim()
+    ? `本次常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText)}；必须保留到 G3 和正式后期。`
+    : "";
   return `\n\n## 宿主结构化需求合同（本次 SceneArchitect 同一响应，不新增提取调用）\n`
     + `唯一出镜人物：${JSON.stringify(cast.characters.map(character => ({ id: character.id, name: character.name, role: character.role })))}。`
     + `动作 actorId 只能是这些 ID；非人物动作可用 "$product"（商品）或 "$scene"（环境）。\n`
     + `客户受众原文：${typeof audience === "string" ? audience : "未显式指定"}。不得把模型年龄/性别推测当作客户要求。\n`
-    + `自行决定开场、零个或多个主体节点和结尾；sceneCount 必须等于 opening + scenes.length + ending 的真实节点总数；节点时长之和必须等于 totalDuration，并位于目标时长 ±${TARGET_DURATION_TOLERANCE_SECONDS} 秒内。\n`
+    + `自行决定开场、零个或多个主体节点和结尾；sceneCount 必须等于 opening + scenes.length + ending 的真实节点总数；节点时长之和必须等于 totalDuration。${durationRule}${coverRule}\n`
     + `每个 opening、scenes[i]、ending 必须在原有 duration/purpose/keyElements 字段之外，直接输出 productionContract：\n`
     + `有可见道具时：{"props":[{"name":"镜头中实际可见的物体","description":"这个物体的可见形态或本场用途"}],"actions":[{"actorId":"所选人物ID或$product/$scene","description":"完整可拍的动作过程、对象和结果，至少6字"}]}\n`
     + `确实无可见道具时：{"props":[],"actions":[{"actorId":"$scene","description":"云影缓慢移过封闭场地的地面"}],"noPropsReason":"本场只展示环境光影变化，没有独立可见道具"}。有 props 时必须完全省略 noPropsReason，不能填空串或 null；两个示例互斥。\n`
     + `props 必须是当前场景中实际可见的物理对象，不得把性格、语气、摄影、履历、否定规则或人物日常爱好当道具；人物档案里的用品只有本场真正出现才可声明。`
     + `actions 不能只填“起身”“看向”等孤立动词；每个所选出镜人物至少在一个节点有明确动作。每个节点至少一个动作；真正没有可见道具时才允许显式空props并说明原因。`
-    + `完整保留场景目的和约束，不截断，不虚构额外人物；商品参数和部件事实必须能由本次商品事实证据支持，未知项不得靠人物设定补齐。\n`;
+    + `完整保留场景目的和约束，不截断，不虚构额外人物；商品参数和部件事实必须能由本次商品事实证据支持，未知项不得靠人物设定补齐。\n`
+    + `${productRule}${disclosure}${persistent}`;
 }
 
 /** Derive constraints from the exact effective schema; this never allocates a scene. */
-export function structuredSceneTiming(schemaValue: unknown, targetDuration: number) {
+export function structuredSceneTiming(
+  schemaValue: unknown,
+  targetDuration: number,
+  toleranceSeconds = TARGET_DURATION_TOLERANCE_SECONDS,
+) {
   const unsupported = (): never => { throw new RequirementContractError("REQUIREMENT_SCHEMA_UNSUPPORTED", "场景时长边界或数量边界不是可派生的有效范围"); };
   const properties = requirementRecord(requirementRecord(schemaValue, "场景时长 schema").properties, "场景时长 properties");
   const bounds = (nodeValue: unknown) => {
@@ -432,6 +534,9 @@ export function structuredSceneTiming(schemaValue: unknown, targetDuration: numb
   if (!Number.isFinite(targetDuration) || targetDuration <= 0) {
     throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "场景目标时长不是有效正数");
   }
+  if (!Number.isFinite(toleranceSeconds) || toleranceSeconds < 0) {
+    throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "场景目标时长容差不是非负有限数");
+  }
   const feasibleMiddleCounts: number[] = [];
   for (let count = minimum; count <= maximum; count++) {
     const lower = opening.minimum + ending.minimum + count * middle.minimum;
@@ -439,32 +544,42 @@ export function structuredSceneTiming(schemaValue: unknown, targetDuration: numb
     if (!Number.isFinite(lower) || !Number.isFinite(upper)) return unsupported();
     // A count is feasible when its schema-derived duration interval intersects
     // the accepted target band, not only the exact target point.
-    const acceptedMinimum = targetDuration - TARGET_DURATION_TOLERANCE_SECONDS;
-    const acceptedMaximum = targetDuration + TARGET_DURATION_TOLERANCE_SECONDS;
+    const acceptedMinimum = targetDuration - toleranceSeconds;
+    const acceptedMaximum = targetDuration + toleranceSeconds;
     if (lower <= acceptedMaximum && upper >= acceptedMinimum) feasibleMiddleCounts.push(count);
   }
   if (!feasibleMiddleCounts.length) {
     throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED",
-      `本次 schema 时长边界内没有满足目标 ±${TARGET_DURATION_TOLERANCE_SECONDS} 秒容差的节点数量`);
+      `本次 schema 时长边界内没有满足目标 ±${toleranceSeconds} 秒容差的节点数量`);
   }
   return Object.freeze({ targetDuration,
-    targetToleranceSeconds: TARGET_DURATION_TOLERANCE_SECONDS,
+    targetToleranceSeconds: toleranceSeconds,
     arithmeticToleranceSeconds: SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS,
     opening, middle, ending,
     middleCount: Object.freeze({ minimum, maximum }), feasibleMiddleCounts: Object.freeze(feasibleMiddleCounts) });
 }
 
 /** Correct only the pinned vendor-generated suffix, never matching customer text. */
-export function structuredScenePrompt(value: unknown, inputValue: unknown, schemaValue: unknown): string {
+export function structuredScenePrompt(
+  value: unknown,
+  inputValue: unknown,
+  schemaValue: unknown,
+  targetOverride?: number,
+  toleranceOverride?: number,
+): string {
   if (typeof value !== "string") throw new RequirementContractError("REQUIREMENT_VENDOR_UNAVAILABLE", "原始场景 prompt 不是文本");
   const input = requirementRecord(inputValue, "SceneArchitect 输入");
-  const duration = input.duration_sec || 45, target = Number(duration);
-  if (!["string", "number"].includes(typeof duration) || !Number.isFinite(target) || target <= 0) {
+  const originalDuration = input.duration_sec || 45, originalTarget = Number(originalDuration);
+  if (!["string", "number"].includes(typeof originalDuration) || !Number.isFinite(originalTarget) || originalTarget <= 0) {
     throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "场景目标时长不是有效正数");
   }
-  const count = Math.min(Math.max(Math.ceil(target / 15), 2), 8);
-  const countLine = `请设计 ${count} 个场景（含开场和结尾），总时长约 ${duration} 秒。`;
-  const example = `{"opening":{"duration":10,"purpose":"开场目的 —— 观众第一眼看到什么？为什么会被吸引？","keyElements":["元素1","元素2"]},"scenes":[{"index":1,"duration":10,"purpose":"场景目的 —— 如果删掉这镜，故事会损失什么？","keyElements":["元素1","元素2"],"emotionalBeat":"setup"}],"ending":{"duration":10,"purpose":"结尾目的 —— 观众离开时会记住什么？","keyElements":["元素1","元素2"]},"totalDuration":${duration},"sceneCount":${count},"narrativeArc":"linear"}`;
+  const target = Number(targetOverride ?? originalTarget);
+  if (!Number.isFinite(target) || target <= 0) {
+    throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "宿主内容时间线目标时长不是有效正数");
+  }
+  const originalCount = Math.min(Math.max(Math.ceil(originalTarget / 15), 2), 8);
+  const countLine = `请设计 ${originalCount} 个场景（含开场和结尾），总时长约 ${originalDuration} 秒。`;
+  const example = `{"opening":{"duration":10,"purpose":"开场目的 —— 观众第一眼看到什么？为什么会被吸引？","keyElements":["元素1","元素2"]},"scenes":[{"index":1,"duration":10,"purpose":"场景目的 —— 如果删掉这镜，故事会损失什么？","keyElements":["元素1","元素2"],"emotionalBeat":"setup"}],"ending":{"duration":10,"purpose":"结尾目的 —— 观众离开时会记住什么？","keyElements":["元素1","元素2"]},"totalDuration":${originalDuration},"sceneCount":${originalCount},"narrativeArc":"linear"}`;
   // The suffix begins after description and the type's film grammar. Matching the
   // whole terminal suffix keeps identical literals inside either source intact.
   const suffix = `${countLine}
@@ -473,7 +588,7 @@ export function structuredScenePrompt(value: unknown, inputValue: unknown, schem
 ${example}
 
 要求：
-1. 所有场景时长之和 ≈ ${duration} 秒
+1. 所有场景时长之和 ≈ ${originalDuration} 秒
 2. 每个场景必须有 emotionalBeat（从枚举中选一个：setup/rising/climax/falling/resolution/twist）
 3. 场景按叙事节奏排列：setup → rising → climax → resolution
 4. 关键元素 1-3 个
@@ -494,7 +609,8 @@ ${example}
   let schema: string;
   try { schema = JSON.stringify(requirementRecord(schemaValue, "本次实际 SceneArchitect schema")); }
   catch { throw new RequirementContractError("REQUIREMENT_SCHEMA_UNSUPPORTED", "本次实际场景 schema 无法完整序列化"); }
-  const timing = structuredSceneTiming(schemaValue, target);
+  const tolerance = toleranceOverride ?? TARGET_DURATION_TOLERANCE_SECONDS;
+  const timing = structuredSceneTiming(schemaValue, target, tolerance);
   const fallingMinimum = Math.max(3, timing.middle.minimum), fallingMaximum = Math.min(6, timing.middle.maximum);
   const fallingRange = fallingMinimum <= fallingMaximum
     ? `${fallingMinimum}-${fallingMaximum}秒，遵守主体节点 schema 边界`
@@ -504,7 +620,7 @@ ${example}
   const guidance = `场景数量与逐节点时长由本次模型根据叙事自行决定，不采用固定数量或预制镜头。scenes 数组只包含主体节点，opening 和 ending 各为一个独立节点。`;
   const contract = `本次实际 SceneArchitect 响应 JSON Schema（完整适用，不是示例成品）：\n${schema}\n`
     + `本次 schema 派生时长边界与可行数量（仅约束，不分配节点）：\n${JSON.stringify(timing)}\n`
-    + `以下精确结构约束优先于本段其余“约/≈”表述：sceneCount 必须等于 2 + scenes.length；所有节点 duration 之和必须等于 totalDuration（算术容差 ${SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS} 秒），并位于目标 ${target} 秒 ±${TARGET_DURATION_TOLERANCE_SECONDS} 秒内。`
+    + `以下精确结构约束优先于本段其余“约/≈”表述：sceneCount 必须等于 2 + scenes.length；所有节点 duration 之和必须等于 totalDuration（算术容差 ${SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS} 秒），并位于目标 ${target} 秒 ±${tolerance} 秒内。`
     + `逐节点内容、数量和时长仍由本次模型创作，输出前核对节点数与时长之和；不得用预制节点或返回后补值替代。`;
   const exampleAt = suffix.indexOf(example);
   return value.slice(0, value.length - suffix.length) + guidance
