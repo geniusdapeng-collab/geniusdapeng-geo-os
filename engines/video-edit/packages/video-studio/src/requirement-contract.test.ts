@@ -432,6 +432,19 @@ describe("host requirement contract data", () => {
     expect(structuredSceneFeedback(failure)).toContain("不得新增未经本次图片逐项确认的部件名称");
   });
 
+  it("allows explicit negative appearance restrictions without treating them as new product evidence", () => {
+    const scene = structure();
+    requirementRecord(scene.opening, "opening").keyElements = [
+      "无法确认的贴花、配色分区与部件形态一律省略，只引用已确认参考图可见内容",
+      "围场护栏",
+    ];
+    expect(requirementScenes(scene, requirementCast(metadata()), 30, {
+      productVisualAuthority: { required: true, product: "820RR-RC", images: [
+        { url: "https://example.com/product.jpg", pageUrl: "https://example.com/product", angle: "unknown" },
+      ], rule: "only verified image content" },
+    })).toHaveLength(3);
+  });
+
   it("states the final master, silent cover and content-timeline split in the scene authority", () => {
     const instructions = structuredSceneInstructions(requirementCast(metadata()), "客户受众", {
       targetContentDurationSeconds: 29.4,

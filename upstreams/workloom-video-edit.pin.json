@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "9e66d2e87794804e7632d74f41d8617b54bd31151140943e04cf2497ee385577",
+  "snapshotSha256": "bf65c47d15bc9f5abf190d97b37c6bbf91cdbe76d6deb23b379a7d8df644f51d",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -96,8 +96,8 @@
     {
       "id": "requirement-duration-and-visual-authority",
       "receipt": "upstreams/requirement-duration-and-visual-authority.target-overlay.json",
-      "receiptSha256": "230a44a01ff751f8c5beb3c84efa3e5d00ba74c05b6e71edceb2b41371fd0917",
-      "scope": "G3 derives content duration behind a silent cover, rejects invented product parts without classified visual evidence, uses the selected project wardrobe, and carries image-rights and persistent-text timing into review.",
+      "receiptSha256": "bb0b1efa002afefd391b6098f661ebf475f2a109340adfbb5f83a4a5ddc28948",
+      "scope": "G3 derives content duration behind a silent cover, rejects invented product parts while allowing negative omission constraints, uses the selected project wardrobe, and carries image-rights and subtitle timing into review.",
       "upstreamUpgradeClaimed": false,
       "wholeEngineUpgradeClaimed": false
     }

@@ -6,7 +6,7 @@
     "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-30T13:21:48+08:00",
+  "generatedAt": "2026-10-30T13:36:57+08:00",
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
@@ -27603,9 +27603,9 @@
       "sourceMode": "100644",
       "gitBlob": "acc9db7740436097c9c8fb0140539b4e816df89c",
       "bytes": 52098,
-      "targetBytes": 55158,
+      "targetBytes": 55848,
       "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
-      "targetSha256": "d83f2d6868423fa5e27d5648a4beb629b15f71d6971e78b60808c03442d9333a",
+      "targetSha256": "2ce68c29056b5c83a08317b576fbbccf4b35bad41a5389bfb4cd61cb87c5ac43",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -27615,9 +27615,9 @@
       "sourceMode": "100644",
       "gitBlob": "c1b9fd239bafd31413a9ba76b11a6b5f3295fa5f",
       "bytes": 38883,
-      "targetBytes": 45221,
+      "targetBytes": 45375,
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "7dd133bcecfef9310c9204830e4db601006853c625e75419c6bf9e4c796d3a34",
+      "targetSha256": "22e0a25982432f20d2ea24eca43472e606178d6a229a2e14b61bdb2c25a0861b",
       "evidence": "B"
     },
     {

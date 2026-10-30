@@ -287,7 +287,8 @@ function assertProductVisualScenes(scenes: RequirementScene[], authority?: Produ
     ];
     for (const [index, field] of fields.entries()) {
       for (const [category, pattern] of UNVERIFIED_PRODUCT_VISUAL_PATTERNS) {
-        if (!pattern.test(field)) continue;
+        if (!pattern.test(field)
+          || /(?:无法确认|无法核实|未确认|不得|禁止|省略|不要写|不作|不扩写|只引用已确认|仅引用已确认)/u.test(field)) continue;
         const details = Object.freeze({ kind: "product-visual", sceneId: scene.id, fieldIndex: index, category });
         throw withValidationFacts(new RequirementContractError(
           "REQUIREMENT_PRODUCT_VISUAL_UNVERIFIED",
