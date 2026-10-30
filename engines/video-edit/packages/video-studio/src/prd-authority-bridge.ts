@@ -57,6 +57,45 @@ const generators = new WeakMap<object, Scope>();
 const promptReviewContracts = new Map<string, { createdAt: number; contracts: ProducerReviewContracts }>();
 const PROMPT_REVIEW_CONTRACT_TTL_MS = 10 * 60 * 1000;
 const PROMPT_REVIEW_CONTRACT_LIMIT = 32;
+const POLICY_TAGS = ["product-close", "usage", "host", "ambience", "moving"] as const;
+
+export function policyCoveragePlan(metadata: RequirementRecord, scenes: RequirementRecord[], mapping: RequirementRecord[]) {
+  const brief = metadata.brief && typeof metadata.brief === "object" ? requirementRecord(metadata.brief, "Brief") : {};
+  const requirements = brief.scenePolicyRequirements && typeof brief.scenePolicyRequirements === "object"
+    ? requirementRecord(brief.scenePolicyRequirements, "scenePolicyRequirements") : null;
+  if (!requirements || !Array.isArray(requirements.requiredTags)) return null;
+  const requiredTags = [...new Set(requirements.requiredTags.filter(
+    (tag): tag is typeof POLICY_TAGS[number] => typeof tag === "string" && POLICY_TAGS.includes(tag as typeof POLICY_TAGS[number]),
+  ))];
+  if (!requiredTags.length) return null;
+  const scenePlan = scenes.map((scene, index) => {
+    const text = JSON.stringify({ purpose: scene.purpose, visualRequirements: scene.visualRequirements,
+      audioRequirements: scene.audioRequirements, keyProps: scene.keyProps });
+    const tags = new Set<string>();
+    if (/产品|商品|整车|车身|车头|前轮|仪表|奖杯|车辆|漆面/.test(text)) tags.add("product-close");
+    if (/骑|驾驶|压弯|冲线|跨坐|拧|油门|操控|使用/.test(text)) tags.add("usage");
+    if (/人物|角色|李英子|她|站|摘|面罩|手|脸|肩|身体/.test(text)) tags.add("host");
+    if (/赛道|环境|场地|护栏|路肩|热浪|颁奖|灯|围场/.test(text)) tags.add("ambience");
+    if (/追|低机位|压弯|冲出|甩|推近|跟拍|运动|高速/.test(text)) tags.add("moving");
+    if (requiredTags.includes("ambience")) tags.add("ambience");
+    const matched = mapping.find(item => item.sceneId === scene.sceneId);
+    return { sceneId: String(scene.sceneId), sequence: index + 1, duration: Number(scene.duration),
+      estimatedShots: Number(matched?.estimatedShots ?? 1), policyTags: [...tags] };
+  });
+  return {
+    accounting: "同一镜头可同时拥有多个 policyTags；每个标签的时长与占比按该标签独立累计，不把百分比相加。",
+    requiredTags,
+    requiredSeconds: {
+      "product-close": "≥35% 全片时长",
+      usage: "≥30% 全片时长",
+      host: "20%–30% 全片时长",
+      ambience: "≥10% 全片时长",
+      moving: "≥30% 全片时长",
+    },
+    shotCardRule: "正式镜头卡必须逐镜携带非空 policyTags；此处只给场景级预算，不替代镜头卡，也不证明实际成片已满足。",
+    scenes: scenePlan,
+  };
+}
 
 /**
  * The vendor creates the G6 review text and the structured prompt cards in the
@@ -671,16 +710,21 @@ export function installPrdAuthorityBridge(
       const delivery = requirementRecord(result.deliveryStandard, "G4 原生交付计划");
       const quality = scope.quality.get(result)!;
       const characters = requirementRecord(result.characterSystem, "G4 人物计划").characters as RequirementRecord[];
-      const scenes = requirementRecord(result.scenePlan, "G4 场景计划").scenes as RequirementRecord[];
+      const nativeScenePlan = requirementRecord(result.scenePlan, "G4 场景计划");
+      const scenes = nativeScenePlan.scenes as RequirementRecord[];
+      const nativeShotMapping = requirementRecord(nativeScenePlan, "G4 原始场景计划").shotMapping;
+      const coveragePlan = policyCoveragePlan(scope.authority.metadata, scenes, nativeShotMapping as RequirementRecord[]);
       const planning = {
         status: "plan-only-not-executed",
         characterPlans: characters.map(character => ({ characterId: character.characterId, name: character.name,
           portraitPath: character.portraitPath, consistencyRequirements: character.consistencyRequirements,
           source: character._workloomCharacterSource, selection: character._workloomCharacterSelection })),
         audioSpecification: result.audioSpecification,
-        shotMapping: requirementRecord(result.scenePlan, "G4 原始场景计划").shotMapping,
+        shotMapping: nativeShotMapping,
+        ...(coveragePlan ? { policyCoveragePlan: coveragePlan } : {}),
         sceneVerificationPlans: scenes.map(scene => ({ sceneId: scene.sceneId, duration: scene.duration,
-          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue })),
+          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue,
+          ...(coveragePlan ? { policyTags: coveragePlan.scenes.find(item => item.sceneId === scene.sceneId)?.policyTags ?? [] } : {}) })),
         continuityCheckpoints: delivery.continuityCheckpoints,
         revisionPolicy: delivery.revisionPolicy,
         qualityPolicy: { thresholds: quality.thresholds, fallbackTrigger: quality.fallbackTrigger,

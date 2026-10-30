@@ -288,7 +288,7 @@ function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord
         : "交付与本次视频台词和时间线一致的SRT/VTT独立字幕文件（dialogue-only）；不将台词侧车当成完整文字组合ASS或持续文字完成凭据；此为待执行交付要求",
     priority: "required" });
   if (profile.coverDelivery === "standalone") items.push({ item: "cover", priority: "required",
-    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；是否用于片头另依openWithCover声明，本项不启用片头封面；此为待执行交付要求` });
+    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；本项只声明独立文件，是否用于片头完全由openWithCover${profile.coverIntroSeconds === undefined ? "" : `=${profile.openWithCover},coverIntroSeconds=${profile.coverIntroSeconds}`}决定；此为待执行交付要求` });
   return items;
 }
 
