@@ -263,6 +263,8 @@ describe("PRD private accepted current G1", () => {
     expect(value.authority.marketing.g1Proof.suggestions).toEqual(["限定媒体归因"]);
     const prompt = prdAuthorityPrompt(value.authority, value.contract);
     for (const text of [value.content, JSON.stringify(value.metadata.brief), "仅支持媒体报道归因", "原始年轻消费者", "非阻断的创意建议仍为建议", "完整原始意见"]) expect(prompt).toContain(text);
+    for (const text of ["静音封面段", "内容首帧指封面段之后的第一帧", "不得把 CTA 放进持续字幕",
+      "视觉色彩章节只能写光线、空气、环境与调色意图", "百分比按各自标签累计秒数分别计数"]) expect(prompt).toContain(text);
     value.marketing.g1Proof.model = "caller-mutated";
     expect(value.authority.marketing.g1Proof.model).toBe("synthetic-reviewed-model");
   });

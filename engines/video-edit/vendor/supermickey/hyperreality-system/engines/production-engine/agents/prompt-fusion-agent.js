@@ -123,7 +123,13 @@ function _getRequiredFieldsForShot(shot) {
   }
   
   // 获取该场景类型的可选字段
-  const optionalFields = OPTIONAL_BY_SCENE_TYPE[sceneType] || [];
+  const optionalFields = [...(OPTIONAL_BY_SCENE_TYPE[sceneType] || [])];
+  const dialogueBlocks = Array.isArray(shot.dialogueBlocks) ? shot.dialogueBlocks : [];
+  const dialogueLines = Array.isArray(shot.dialogue?.lines) ? shot.dialogue.lines : [];
+  const hasDialogue = dialogueBlocks.length > 0 || dialogueLines.length > 0
+    || (typeof shot.dialogue === 'string' && shot.dialogue.trim().length > 0)
+    || (typeof shot.dialogueText === 'string' && shot.dialogueText.trim().length > 0);
+  if (shot.dialogueFree === true || !hasDialogue) optionalFields.push('dialogue');
   
   // 从必填列表中移除可选字段
   return baseFields.filter(f => !optionalFields.includes(f));
@@ -1135,12 +1141,11 @@ ${fieldDescs}
       consistency: '保持角色面部特征、服装造型、发型妆容跨镜头一致,场景光线连续,色调统一'
     };
 
-    const value = defaults[field];
-    if (!value) {
+    if (!Object.prototype.hasOwnProperty.call(defaults, field)) {
       console.warn(`[PromptFusionAgent] 未知字段的默认值: ${field}`);
       return `[规则兜底] ${field} 默认值`;
     }
-    return value;
+    return defaults[field];
   }
 
   // ==================== v2.1.7: 动态字段生成 ====================

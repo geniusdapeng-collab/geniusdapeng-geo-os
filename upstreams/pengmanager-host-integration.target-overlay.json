@@ -3,11 +3,11 @@
   "id": "pengmanager-host-integration",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-29T17:23:43.856Z",
+  "generatedAt": "2026-10-29T18:55:24.000Z",
   "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
   "upstreamUpgradeClaimed": true,
   "wholeEngineUpgradeClaimed": true,
-  "sourceOverlayCount": 88,
+  "sourceOverlayCount": 91,
   "targetOwnedFileCount": 53,
   "targetOwnedByTop": {
     "apps": 7,
@@ -107,9 +107,9 @@
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "7a4e029cf10db98ce4413bb40a4a8bf6e2823362f46da4d3c265023d87868279",
+      "targetSha256": "7b7f6d8f89b5fc0b9b9aa0aa50a8ab03cd57ddc42ff1f97373be92711b8e23e5",
       "sourceBytes": 38033,
-      "targetBytes": 41763
+      "targetBytes": 41835
     },
     {
       "path": "apps/server/src/video/marketing-facts.test.ts",
@@ -155,9 +155,9 @@
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
-      "targetSha256": "6d5048f1aab753cb01a0b2e2b795d3346be21767e4c15cce3f2204902841ab75",
+      "targetSha256": "940793148d4ae044b30766513dbaea7a7c8735fc8ef514252ff3986d62be2ede",
       "sourceBytes": 90435,
-      "targetBytes": 90559
+      "targetBytes": 90963
     },
     {
       "path": "apps/server/src/voice/station.test.ts",

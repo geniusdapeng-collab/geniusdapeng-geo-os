@@ -219,6 +219,9 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
+    + `交付口径消歧（必须逐字执行）：openWithCover=true 且 coverIntroSeconds=N 表示成片最前 N 秒为静音封面段，内容首帧指封面段之后的第一帧；不得改写成“不开启片头封面”，也不得把片头封面误称为 titleCard。titleCard 与独立封面 PNG/JPEG 是另外两个字段。`
+    + `Brief.cta 仅是账号互动文案元数据，除非另行提供明确的 onScreenCTAText 字段，不得把 CTA 放进持续字幕、场景文字、道具或旁白；没有可靠人物/商品外观图片的部位必须省略，视觉色彩章节只能写光线、空气、环境与调色意图，不能据此断言商品车漆、贴花或配色分区。`
+    + `commerce/平台要求的 product-close、usage、host、ambience、moving 是允许重叠的镜头标签，必须逐镜标注；百分比按各自标签累计秒数分别计数，不要求把各百分比相加不超过 100%。\n`
     + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
     + `人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。\n`

@@ -3,8 +3,8 @@
   "generatedAt": "2026-10-24",
   "source": {
     "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
-    "pin": "8707ac5fb7503e48c698a5029bef860e52d93342",
-    "tree": "be80142a9acf0d1fee856a88f7b810f466c0ba9c"
+    "pin": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+    "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208"
   },
   "evidenceNotice": "B级完整声明/源码引用目录；发现、已接线、依赖就绪和真实产出分开记录。目录导入不等于模型调用或经营完成。",
   "bundles": [
@@ -127,10 +127,8 @@
           "pipelines/explainer-film.yml"
         ],
         "library": [
-          "library/README.md",
-          "library/account-profiles/README.md",
           "library/account-profiles/chen-zhuo.yml",
-          "library/bgm-library-curated/README.md",
+          "library/account-profiles/README.md",
           "library/bgm-library-curated/acoustic-warm-ghostrifter-official-zeal-456.m4a",
           "library/bgm-library-curated/acoustic-warm-john-bartmann-a-kwela-fella-461.m4a",
           "library/bgm-library-curated/acoustic-warm-liqwyd-shine-552.m4a",
@@ -173,6 +171,7 @@
           "library/bgm-library-curated/modern-pop-keys-of-moon-the-success-633.m4a",
           "library/bgm-library-curated/modern-pop-salvation-inspiring-uplifting-orchestra-617.m4a",
           "library/bgm-library-curated/modern-pop-scott-buckley-soar-640.m4a",
+          "library/bgm-library-curated/README.md",
           "library/bgm-library-curated/sports-hype-crusaders-approaching-104.m4a",
           "library/bgm-library-curated/sports-hype-luke-bergs-tropical-soulmp3-496.m4a",
           "library/bgm-library-curated/sports-hype-red-convertible-35.m4a",
@@ -186,6 +185,7 @@
           "library/bgm-library/README.md",
           "library/bgm-library/tracks.example.json",
           "library/bgm-recipes/recipes.json",
+          "library/characters/model-01-chen-zhuo/gates.jsonl",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-actionPose.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-back.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-closeup.png",
@@ -195,8 +195,12 @@
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-side.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-threeQuarter.png",
           "library/characters/model-01-chen-zhuo/profile.json",
+          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-22-40-535Z.json",
+          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-23-24-545Z.json",
+          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-42-00-544Z.json",
           "library/characters/model-01-young-rider/gates.jsonl",
           "library/characters/model-01-young-rider/portrait-sets/v1.json",
+          "library/characters/model-01-young-rider/portrait-sets/v2.json",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-actionPose.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-back.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-closeup.png",
@@ -205,8 +209,34 @@
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-handDetail.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-side.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-threeQuarter.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-actionPose.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-back.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-closeup.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-emotionCloseup.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-handDetail.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-side.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-threeQuarter.png",
           "library/characters/model-01-young-rider/profile.json",
           "library/characters/model-01-young-rider/provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2.json",
+          "library/characters/model-01-young-rider/provenance/v2/actionPose.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/actionPose.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/back.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/back.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/closeup.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/closeup.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/front.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/front.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/handDetail.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/side.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/side.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json",
+          "library/characters/model-01-young-rider/README.md",
           "library/characters/model-01-young-rider/reviews/v1-owner-acceptance-2026-10-24T05-46-51-679Z.json",
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-actionPose.jpg",
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-back.jpg",
@@ -218,8 +248,20 @@
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-threeQuarter.jpg",
           "library/characters/model-02-lin-yu-an/profile.json",
           "library/characters/model-02-lin-yu-an/provenance.json",
+          "library/characters/nc-commuter-metro/portraits/portrait.png",
+          "library/characters/nc-commuter-metro/profile.json",
+          "library/characters/nc-elder-taichi/portraits/portrait.png",
+          "library/characters/nc-elder-taichi/profile.json",
+          "library/characters/nc-vendor-noodle/portraits/portrait.png",
+          "library/characters/nc-vendor-noodle/profile.json",
+          "library/characters/nc-vendor-soup/portraits/portrait.png",
+          "library/characters/nc-vendor-soup/profile.json",
+          "library/characters/nc-visitor-tower/portraits/portrait.png",
+          "library/characters/nc-visitor-tower/profile.json",
+          "library/characters/README.md",
           "library/characters/registry.json",
           "library/color-recipes/recipes.json",
+          "library/cover-kb/_INDEX.md",
           "library/cover-kb/ACCT-001-账号定位到视觉锤.md",
           "library/cover-kb/ACCT-002-系列化与主页拼图.md",
           "library/cover-kb/CRAFT-001-封面构图与视觉层次.md",
@@ -234,14 +276,12 @@
           "library/cover-kb/PLAT-006-海外平台封面规范.md",
           "library/cover-kb/THEME-001-题材到版式映射.md",
           "library/cover-kb/THEME-002-题材到配色与字体映射.md",
-          "library/cover-kb/_INDEX.md",
+          "library/font-catalog/font_db.json",
           "library/font-catalog/LICENSES.md",
           "library/font-catalog/README.md",
-          "library/font-catalog/font_db.json",
-          "library/fonts/LICENSES.md",
-          "library/fonts/cn/LXGWWenKai-Regular.ttf",
           "library/fonts/cn/LiuJianMaoCao-Regular.ttf",
           "library/fonts/cn/LongCang-Regular.ttf",
+          "library/fonts/cn/LXGWWenKai-Regular.ttf",
           "library/fonts/cn/MaShanZheng-Regular.ttf",
           "library/fonts/cn/NotoSansSC-Variable.ttf",
           "library/fonts/cn/NotoSerifSC-Variable.ttf",
@@ -268,6 +308,15 @@
           "library/fonts/en/Poppins-Bold.ttf",
           "library/fonts/en/Poppins-Regular.ttf",
           "library/fonts/en/Roboto-Variable.ttf",
+          "library/fonts/LICENSE-SOURCES.json",
+          "library/fonts/LICENSES.md",
+          "library/fonts/licenses/EMBEDDED-NOTICES.txt",
+          "library/fonts/licenses/lxgw-wen-kai-OFL.txt",
+          "library/fonts/licenses/noto-sans-sc-OFL.txt",
+          "library/fonts/licenses/noto-serif-sc-OFL.txt",
+          "library/fonts/licenses/smiley-sans-OFL.txt",
+          "library/fonts/licenses/source-han-sans-OFL.txt",
+          "library/fonts/licenses/zcool-xiaowei-OFL.txt",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卡梅隆_情感手持.md",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卡梅隆_紧张手持.md",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卢卡斯_告别斯坦尼康.md",
@@ -485,7 +534,6 @@
           "library/luts/slog3-to-rec709.cube",
           "library/media-catalog/media-catalog.json",
           "library/products/README.md",
-          "library/products/zxmoto-820rr-rc/README.md",
           "library/products/zxmoto-820rr-rc/photos/01-sina-release-8.jpg",
           "library/products/zxmoto-820rr-rc/photos/02-chejiahao-1.jpg",
           "library/products/zxmoto-820rr-rc/photos/03-chejiahao-2.jpg",
@@ -495,6 +543,7 @@
           "library/products/zxmoto-820rr-rc/photos/07-rc-release-02.jpg",
           "library/products/zxmoto-820rr-rc/photos/08-rc-release-03.jpg",
           "library/products/zxmoto-820rr-rc/profile.json",
+          "library/products/zxmoto-820rr-rc/README.md",
           "library/products/zxmoto-820rr-rc/research-import.json",
           "library/products/zxmoto-820rr-rc/research/dossier.json",
           "library/products/zxmoto-820rr-rc/research/gallery-source-mapping.json",
@@ -528,16 +577,24 @@
           "library/products/zxmoto-820rr-rc/research/source-assessment.json",
           "library/products/zxmoto-820rr-rc/research/summary-cards.json",
           "library/products/zxmoto-820rr-rc/research/support-review-summary.json",
-          "library/products/zxmoto/README.md",
           "library/products/zxmoto/photos/01-sina-release-1.jpg",
           "library/products/zxmoto/photos/02-sina-release-9.jpg",
           "library/products/zxmoto/photos/03-founder-xinhua-portrait.jpg",
           "library/products/zxmoto/profile.json",
+          "library/products/zxmoto/README.md",
           "library/products/zxmoto/research-import.json",
           "library/products/zxmoto/research/dossier.json",
           "library/products/zxmoto/research/summary-cards.json",
           "library/products/zxmoto/research/support-review-summary.json",
-          "library/scene-policies/README.md",
+          "library/products/携住科技.search-report.json",
+          "library/products/携住科技/photos/01-data-op-y-d9ebc9ee-data--web2.jpg",
+          "library/products/携住科技/photos/02-data-op-y-d9ebc9ee-data--web2.jpg",
+          "library/products/携住科技/photos/03-data-op-y-d9ebc9ee-data--web2.jpg",
+          "library/products/携住科技/photos/04-data-op-y-d9ebc9ee-data--web.jpg",
+          "library/products/携住科技/profile.json",
+          "library/products/携住科技/sources.json",
+          "library/products/睿沃科技.search-report.json",
+          "library/README.md",
           "library/scene-policies/beauty-fashion.json",
           "library/scene-policies/beauty-fashion.source.md",
           "library/scene-policies/commerce-seeding.json",
@@ -552,6 +609,7 @@
           "library/scene-policies/knowledge-talking-head.source.md",
           "library/scene-policies/professional-service.json",
           "library/scene-policies/professional-service.source.md",
+          "library/scene-policies/README.md",
           "library/scene-policies/tech-review.json",
           "library/scene-policies/tech-review.source.md",
           "library/seedance-references/audio-tags.md",
@@ -654,7 +712,7 @@
         "modelPolicy": "model-policy.yml",
         "evalQuestions": "eval/questions.json"
       },
-      "manifestSha256": "5643eb269b8976a6c135660b000a67bbb9e95e9a3a215b6cd47efb63759bd389",
+      "manifestSha256": "2a818093f2cfd53a7a6b9678fd7cbef97601ad9dd4848e78332d5a92251148c7",
       "evidence": "B"
     },
     {
@@ -1889,6 +1947,126 @@
       "kind": "agent-capability",
       "operation": "read",
       "declaredDataMode": "unverified"
+    },
+    {
+      "id": "growth.video.manual_bridge.eligibility",
+      "name": "判定人工搭桥是否准入",
+      "description": "只读检查同一 projectId + stageId + failureCode 是否在当前制片档案中已有至少 3 次 stage.failed；少于 3 次、存在 RECEIPT_UNVERIFIED 或缺档时拒绝。不会生成产物或修改档案。",
+      "bundle": "geo-growth",
+      "category": "ai-video-production",
+      "bindings": {
+        "roleIds": [],
+        "skillIds": [],
+        "toolIds": [],
+        "capabilityIds": []
+      },
+      "sourcePaths": [
+        "bundles/geo-growth/agent-capabilities.json"
+      ],
+      "entrypoints": [
+        {
+          "kind": "trpc",
+          "path": "video.studio.manualBridgeEligibility",
+          "method": "query"
+        }
+      ],
+      "dependencies": [],
+      "evidence": "B",
+      "status": {
+        "declared": true,
+        "codePresent": true,
+        "dependencyState": "unchecked",
+        "validated": "unverified",
+        "reason": "目录和文件已发现；运行依赖、实际接线与产出需以独立验收为准"
+      },
+      "tests": {
+        "paths": [],
+        "executed": "unverified",
+        "report": null
+      },
+      "kind": "agent-capability",
+      "operation": "read",
+      "declaredDataMode": "real"
+    },
+    {
+      "id": "growth.video.manual_bridge.list",
+      "name": "读取项目人工搭桥回执",
+      "description": "读取当前项目已经系统接受的人工搭桥回执，包含失败次数、输入/schema/输出/校验/下游回执路径与 SHA-256、数据真实性、外部副作用和最终交付披露。只读；无记录返回空数组。",
+      "bundle": "geo-growth",
+      "category": "ai-video-production",
+      "bindings": {
+        "roleIds": [],
+        "skillIds": [],
+        "toolIds": [],
+        "capabilityIds": []
+      },
+      "sourcePaths": [
+        "bundles/geo-growth/agent-capabilities.json"
+      ],
+      "entrypoints": [
+        {
+          "kind": "trpc",
+          "path": "video.studio.manualBridges",
+          "method": "query"
+        }
+      ],
+      "dependencies": [],
+      "evidence": "B",
+      "status": {
+        "declared": true,
+        "codePresent": true,
+        "dependencyState": "unchecked",
+        "validated": "unverified",
+        "reason": "目录和文件已发现；运行依赖、实际接线与产出需以独立验收为准"
+      },
+      "tests": {
+        "paths": [],
+        "executed": "unverified",
+        "report": null
+      },
+      "kind": "agent-capability",
+      "operation": "read",
+      "declaredDataMode": "real"
+    },
+    {
+      "id": "growth.video.manual_bridge.record",
+      "name": "登记受审计的人工搭桥",
+      "description": "仅在同一细分环节已有至少 3 次档案内失败后使用。系统复核文件字节、schema/交叉字段校验证据、下游 bridgeId+outputSha256 接受回执、零付费/外发/不可逆副作用，并写入 manual-bridges/ 权威回执；同一细分环节最多一份已接受搭桥。不会代做审批、供应商调用或平台发布。",
+      "bundle": "geo-growth",
+      "category": "ai-video-production",
+      "bindings": {
+        "roleIds": [],
+        "skillIds": [],
+        "toolIds": [],
+        "capabilityIds": []
+      },
+      "sourcePaths": [
+        "bundles/geo-growth/agent-capabilities.json"
+      ],
+      "entrypoints": [
+        {
+          "kind": "trpc",
+          "path": "video.studio.recordManualBridge",
+          "method": "mutation"
+        }
+      ],
+      "dependencies": [],
+      "evidence": "B",
+      "status": {
+        "declared": true,
+        "codePresent": true,
+        "dependencyState": "unchecked",
+        "validated": "unverified",
+        "reason": "目录和文件已发现；运行依赖、实际接线与产出需以独立验收为准"
+      },
+      "tests": {
+        "paths": [],
+        "executed": "unverified",
+        "report": null
+      },
+      "kind": "agent-capability",
+      "operation": "execute",
+      "declaredDataMode": "real"
     },
     {
       "id": "pipeline:ai-video:account-ops",
@@ -7373,6 +7551,7 @@
           "bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts",
           "bundles/ai-video/connectors/post-bridge/revision-concurrency.test.ts",
           "bundles/ai-video/connectors/subtitle-bridge/executor.test.ts",
+          "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
           "packages/base/bundles/acquisition-loop.test.ts",
           "packages/base/bundles/color-capability.test.ts",
           "packages/base/bundles/post-delivery-capability.test.ts",
@@ -8104,6 +8283,7 @@
           "apps/web/src/components/loomball/agent-emotion.test.ts",
           "bundles/ai-video/connectors/subtitle-bridge/executor.test.ts",
           "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
+          "bundles/ai-video/connectors/subtitle-bridge/timeline.test.mjs",
           "packages/base/bundles/color-capability.test.ts",
           "packages/base/bundles/post-delivery-capability.test.ts",
           "packages/base/bundles/subtitle-capability.test.ts"
@@ -12660,7 +12840,7 @@
         "report": null
       },
       "key": "cover-design",
-      "contentSha256": "1fb0ac32770d09038c567eb61765c0b9d9d6821b90f8c6d832cf05d30735bc20",
+      "contentSha256": "aeb7d4328aaf7423f43f24d163760778da0202f540b1e424f3da6ad5677f32d2",
       "signedDeclaration": true
     },
     {
@@ -31322,6 +31502,8 @@
       "tests": {
         "paths": [
           "bundles/ai-video/connectors/subtitle-bridge/executor.test.ts",
+          "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
+          "bundles/ai-video/connectors/subtitle-bridge/timeline.test.mjs",
           "packages/base/bundles/subtitle-capability.test.ts"
         ],
         "executed": "unverified",
@@ -31401,6 +31583,7 @@
       "tests": {
         "paths": [
           "bundles/ai-video/connectors/subtitle-bridge/executor.test.ts",
+          "bundles/ai-video/connectors/subtitle-bridge/processing.test.ts",
           "packages/base/bundles/color-capability.test.ts",
           "packages/base/bundles/post-delivery-capability.test.ts",
           "packages/base/bundles/subtitle-capability.test.ts"
@@ -34587,7 +34770,7 @@
   ],
   "summary": {
     "bundles": 4,
-    "capabilities": 80,
+    "capabilities": 83,
     "roles": 101,
     "uniqueRoleKeys": 97,
     "skills": 123,

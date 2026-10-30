@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "manual-bridge-runtime",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T10:42:21+08:00",
+  "sourceOverlayCount": 14,
+  "scope": "Runtime mechanism for the tightly gated three-failure manual bridge: archive-derived eligibility, strict byte/schema/downstream receipt validation, zero-side-effect enforcement, one bridge per subtask, delivery disclosure, CLI/MCP capabilities and AI agent guidance.",
+  "files": [
+    {
+      "path": "AGENTS.repo.md",
+      "targetPath": "engines/video-edit/AGENTS.repo.md",
+      "sourceSha256": "4e3248234ffff5f4096f5e5729a98915e250c007ebde0e3983f681814dab0fd3",
+      "targetSha256": "b428c3ac70483046cfcf069cddbd3db4858f65ba46e781d791b702b6a1034666",
+      "sourceBytes": 5705,
+      "targetBytes": 7276
+    },
+    {
+      "path": "apps/server/src/video/archive-resume.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.ts",
+      "sourceSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
+      "targetSha256": "f766213d1149b13c6ab0a1e4ef9061a790c1ea71994ce5e27d2e3641f6c01aee",
+      "sourceBytes": 20036,
+      "targetBytes": 20804
+    },
+    {
+      "path": "apps/server/src/video/router.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
+      "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
+      "targetSha256": "615f03de4699d0872908b6b69d1aea963c86b58017d9cd6a63e599000f3a30ff",
+      "sourceBytes": 68733,
+      "targetBytes": 72790
+    },
+    {
+      "path": "bundles/geo-growth/agent-capabilities.json",
+      "targetPath": "engines/video-edit/bundles/geo-growth/agent-capabilities.json",
+      "sourceSha256": "4576929566aca26d2a43b70f0cfbb859013bed66c5d23bb46032bbe8e95aaf7e",
+      "targetSha256": "df206fc7fca56dff0d3b9e291b785e352801502a964c9cb76f8d1e6d10b0d40f",
+      "sourceBytes": 15096,
+      "targetBytes": 23480
+    },
+    {
+      "path": "docs/ai-video-workbench-guide.md",
+      "targetPath": "engines/video-edit/docs/ai-video-workbench-guide.md",
+      "sourceSha256": "6effdf4eba7dc4192c157d555b6d615a3b74e09026aeb1a5f883bce22608284c",
+      "targetSha256": "06a2912274c095285dfcd2cf3d0478e24fbfd3011b072f4e59d9a10ae265fa47",
+      "sourceBytes": 50616,
+      "targetBytes": 54913
+    },
+    {
+      "path": "docs/capabilities.auto.json",
+      "targetPath": "engines/video-edit/docs/capabilities.auto.json",
+      "sourceSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a",
+      "targetSha256": "1d771978c6dd2766a437d30e6b25fd43699f820fc92d81f72a03057a261ee899",
+      "sourceBytes": 32289,
+      "targetBytes": 32289
+    },
+    {
+      "path": "docs/capabilities.auto.md",
+      "targetPath": "engines/video-edit/docs/capabilities.auto.md",
+      "sourceSha256": "f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e",
+      "targetSha256": "ea680f41effaa37a653daa73656043ab7e542fd219cad11a533972d995100bbf",
+      "sourceBytes": 13063,
+      "targetBytes": 13063
+    },
+    {
+      "path": "packages/video-studio/src/archive/index.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/archive/index.ts",
+      "sourceSha256": "62738cfa907b81f8cbf9f906f9c76fd2d5433087c80c88aea9d6a4fe3634ad45",
+      "targetSha256": "e98f47423de8a4eed4989a2f169690af9f16527b0e94d81658e1fe5a1753480a",
+      "sourceBytes": 679,
+      "targetBytes": 805
+    },
+    {
+      "path": "README.md",
+      "targetPath": "engines/video-edit/README.md",
+      "sourceSha256": "f64edcfa652171195a52bd76bba5be664d9f9b7359e715a1dbbbc10409b7b51c",
+      "targetSha256": "36abc40990345b8b59ea173f828c7653d4b9842c68d8d8757f5f36a959556237",
+      "sourceBytes": 40574,
+      "targetBytes": 42076
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
+      "targetSha256": "e5f8db0d1e9b52eafa486f89276159b7f784626dc769db4cba159cab2e721042",
+      "targetBytes": 14068
+    },
+    {
+      "path": "pengmanager-capabilities.json",
+      "targetPath": "engines/video-edit/pengmanager-capabilities.json",
+      "targetSha256": "3133cdbc1dcb3e9446e64283ab69101f50633496f6818bed62ce39481659940a",
+      "targetBytes": 1067383
+    },
+    {
+      "path": "apps/server/src/video/manual-bridge-router.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/manual-bridge-router.test.ts",
+      "targetSha256": "445bbc48e12142ec500e91e97d3dc8ad1e852be706f834e34b12098e040b011e",
+      "targetBytes": 5999
+    },
+    {
+      "path": "packages/video-studio/src/archive/manual-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/archive/manual-bridge.test.ts",
+      "targetSha256": "2ae5e784372117b4547929a34bf2da9a07b4a614a99ab7e2f95d94bebeba3866",
+      "targetBytes": 8272
+    },
+    {
+      "path": "packages/video-studio/src/archive/manual-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/archive/manual-bridge.ts",
+      "targetSha256": "136555767a49f52792136d936cc762197905cafb85b715887c67d9c209855600",
+      "targetBytes": 17391
+    }
+  ]
+}

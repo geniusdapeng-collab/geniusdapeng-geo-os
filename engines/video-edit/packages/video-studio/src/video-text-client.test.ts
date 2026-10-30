@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { createServer } from "node:http";
+import { describe, expect, it, vi } from "vitest";
 import { completeVideoTextTask } from "./video-text-client.js";
 
 const endpoint = {
@@ -23,6 +24,44 @@ function envelope(content = '{"ok":true}', overrides: Record<string, unknown> = 
 }
 
 describe("embedded video text dispatcher", () => {
+  it("uses native HTTP by default so undici's body timeout cannot terminate a long complete review", async () => {
+    const globalFetch = vi.fn(() => Promise.reject(new Error("global fetch must not run")));
+    vi.stubGlobal("fetch", globalFetch);
+    let received = "";
+    const server = createServer((request, response) => {
+      request.setEncoding("utf8");
+      request.on("data", chunk => { received += String(chunk); });
+      request.on("end", () => {
+        setTimeout(() => {
+          response.writeHead(200, { "content-type": "application/json" });
+          response.end(JSON.stringify(envelope('{"approved":true}')));
+        }, 25);
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("loopback fixture has no port");
+      const result = await completeVideoTextTask({
+        endpoint: { ...endpoint, baseUrl: `http://127.0.0.1:${address.port}` },
+        scene: "video.quality.producer-review",
+        messages: [{ role: "user", content: [{ type: "text", text: "完整长评审" }] }],
+        tokenMessages: [{ role: "user", content: "完整长评审" }],
+        timeoutMs: 2_000,
+        requireJson: true,
+      });
+      expect(result.value).toEqual({ approved: true });
+      expect(JSON.parse(received)).toMatchObject({ model: "deepseek-flash", stream: false });
+      expect(globalFetch).not.toHaveBeenCalled();
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("uses scene thinking, explicit JSON mode and the maximum legal output window", async () => {
     let body: Record<string, any>;
     const result = await completeVideoTextTask({

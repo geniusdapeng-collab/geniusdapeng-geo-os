@@ -368,6 +368,9 @@ node scripts/agent.mjs status
 node scripts/agent.mjs capabilities
 node scripts/agent.mjs list
 node scripts/agent.mjs describe growth.video.production.shots
+node scripts/agent.mjs describe growth.video.manual_bridge.eligibility
+node scripts/agent.mjs describe growth.video.manual_bridge.record
+node scripts/agent.mjs invoke growth.video.manual_bridge.list --input-file <项目输入JSON>
 node scripts/agent.mjs invoke core.workspace.profile
 node scripts/agent-mcp.mjs
 ```
@@ -381,6 +384,18 @@ CLI/MCP 在首次需要原生后端时管理自己的运行时，退出时停止
 本机 owner 集成需要明确选用既有合成角色时，可用程序构造参数 `createVideoRuntime({ dataDir, portraitReuseManifestPath })` 选择复用 manifest；默认关闭，HTTP／metadata、继承的 `HR_PORTRAIT_REUSE_MANIFEST` 及媒体工具环境不能代替这个选择。manifest 必须是 `dataDir` 内既有的规范绝对路径、无软链普通文件，大小为 1–8,000,000 字节；在本 Mac 上，私有根、途中目录与文件都须由当前用户所有且无组／其他用户权限。构造时记录完整字节 hash，每次构建原生环境时重核，改变或失效即报 `PORTRAIT_REUSE_MANIFEST_CHANGED`／`PORTRAIT_REUSE_MANIFEST_INVALID`。后端只收到通过检查的路径；Studio 在任务首次读取时另验 schema、合成身份、明确版本与源字节，并用该次 manifest hash 绑定后续验收。同 UID owner 在后端启动后改文件仍可能影响下一任务选择，因此本参数不承诺整个运行期文件不可变，也不代替原生模型配置、审批、预算或产物验收。
 
 安装／模型／素材许可／工位缺项时依 [VIDEO-RUNTIME.md](VIDEO-RUNTIME.md) 和实际诊断处理，不下载到其他项目、不共用外部数据库、不杀别人的进程。小型云端禁用媒体渲染时返回 `503 MEDIA_RENDER_DISABLED`，应转到本机执行，云端只留实际运营回执，不为了过检查打开重型任务。
+
+### 9.1 连续失败的人工搭桥兜底
+
+通用视频或营销视频的同一 `projectId + stageId + subtaskKey` 至少失败 3 次（首次失败后再完成 2 次重试）且没有未知付费结果时，Codex 可以按该环节当前正式 schema、事实边界和下游接口人工补齐一份准入接缝产物。未达到门槛、外部结果未知、审批/权利未决或根因未定位时不得使用。
+
+人工搭桥不代表模型调用、供应商任务或外部发布成功；不得用占位文、静帧或手写回执冒充真实媒体/平台结果，也不得跳过门禁、事实核对、预算或审批。每份搭桥必须写入项目归档的 `manual-bridges/` 独立路径，记录失败 attempt、输入、schema、输出、SHA-256、校验器与交叉字段结果、事实是否失实、未解决项、外部副作用和下游交接回执，并使用 [视频人工搭桥清单](video-manual-bridge.schema.json) 与 `scripts/validate-video-manual-bridge.mjs` 核验。
+
+运行时先调用 `video.studio.manualBridgeEligibility({projectId,stageId,failureCode})`；服务端从当前制片档案的 `stage.failed` 事件独立统计同一细分环节，少于 3 次直接拒绝。产物和证据准备完成后调用 `video.studio.recordManualBridge`，服务端再核验文件字节、schema/交叉字段校验日志、下游接受回执、零付费/外发/不可逆副作用及每个细分环节最多一份搭桥。`video.studio.manualBridges` 与 `video.studio.archive` 返回的 `manualBridges` 是最终交付说明的权威数据源。
+
+对应 Agent 能力为 `growth.video.manual_bridge.eligibility`（只读）、`growth.video.manual_bridge.record`（执行，必须携带至少 8 字符 `idempotencyKey`）和 `growth.video.manual_bridge.list`（只读）。Codex 应先 `describe` 当前 schema，不得凭记忆拼字段。
+
+最终交付说明必须逐项披露每个使用人工搭桥的环节、失败次数、产物 hash、规范校验、数据真实性、未解决事实和剩余风险；未使用也必须明确写“未使用”。完整规则见 [AI 视频细分环节人工搭桥兜底](VIDEO-MANUAL-BRIDGE-FALLBACK.md)。
 
 ## 10. 定稿自动备份到这台 Mac
 

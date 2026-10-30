@@ -6,9 +6,11 @@
  * - logger.ts         结构化环节日志通道（与文本 tee 并行）
  * - context-bundle.ts 交接包（跨会话承接，对齐 handoff 口径）
  * - stage-log.ts      一次性环节记账（渲染/后期/交付段的事后落账）
+ * - manual-bridge.ts  连续失败后的人工搭桥准入、证据固化与交付披露
  */
 export * from "./store.js";
 export * from "./stage-runner.js";
 export * from "./logger.js";
 export * from "./context-bundle.js";
 export * from "./stage-log.js";
+export * from "./manual-bridge.js";

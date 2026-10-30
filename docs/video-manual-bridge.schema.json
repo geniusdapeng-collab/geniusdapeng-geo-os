@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pengmanager.com/schemas/video-manual-bridge.schema.json",
+  "title": "PengManager video manual bridge receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "pipelineKind",
+    "stageId",
+    "subtaskKey",
+    "trigger",
+    "manualBridge",
+    "validation",
+    "fidelity",
+    "externalEffects",
+    "downstream",
+    "deliveryDisclosure",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "pengmanager.video-manual-bridge/v1"
+    },
+    "bridgeId": {
+      "type": "string",
+      "pattern": "^MB-[a-f0-9]{16}$"
+    },
+    "failureCode": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "receiptPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receiptSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pipelineKind": {
+      "enum": ["narrative", "marketing"]
+    },
+    "stageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subtaskKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["failedAttempts", "attempts"],
+      "properties": {
+        "failedAttempts": {
+          "type": "integer",
+          "minimum": 3
+        },
+        "attempts": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["attempt", "subtaskKey", "status", "evidencePath", "evidenceSha256"],
+            "properties": {
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "subtaskKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "const": "failed"
+              },
+              "evidencePath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidenceSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "manualBridge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "reason", "inputArtifacts", "schema", "output"],
+      "properties": {
+        "actor": {
+          "const": "Codex"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 20
+        },
+        "inputArtifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/fileReceipt"
+          }
+        },
+        "schema": {
+          "$ref": "#/$defs/fileReceipt"
+        },
+        "output": {
+          "$ref": "#/$defs/fileReceipt"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "validatorId", "command", "exitCode", "completedAt", "evidence"],
+      "properties": {
+        "passed": {
+          "const": true
+        },
+        "validatorId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exitCode": {
+          "const": 0
+        },
+        "completedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/fileReceipt"
+        }
+      }
+    },
+    "fidelity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "usesOnlyUpstreamFacts",
+        "fabricatedFacts",
+        "formatConforms",
+        "dataFidelityStatus",
+        "unresolvedFacts",
+        "deviations"
+      ],
+      "properties": {
+        "usesOnlyUpstreamFacts": {
+          "type": "boolean"
+        },
+        "fabricatedFacts": {
+          "type": "boolean"
+        },
+        "formatConforms": {
+          "type": "boolean"
+        },
+        "dataFidelityStatus": {
+          "enum": ["verified", "partially_verified", "unverified"]
+        },
+        "unresolvedFacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deviations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "externalEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerCalls", "paidProviderCalls", "publications", "irreversibleActions"],
+      "properties": {
+        "providerCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "paidProviderCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "publications": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "irreversibleActions": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "downstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted", "handoffReceipt"],
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "handoffReceipt": {
+          "$ref": "#/$defs/fileReceipt"
+        }
+      }
+    },
+    "deliveryDisclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredInFinalReport", "stageLabel", "statement"],
+      "properties": {
+        "requiredInFinalReport": {
+          "const": true
+        },
+        "stageLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "fileReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

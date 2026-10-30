@@ -13,6 +13,14 @@
 指南是工作台纪律，本次不新增生产硬闸；Growth 当前没有 Growthtest 的 standard-post/nativeaudio 专用契约，
 普通全链默认保留原节目声音、不隐式 ASR/TTS；明确配音或换声才进入授权的新声音请求，不能静默替代。成功源片核验真实任务/来源/授权与当前字节后直接正式后期，历史品质失败保留，不因组件变化重新付费。
 
+### 连续失败的人工搭桥机制
+
+同一 `projectId + stageId + failureCode` 只有在制片档案 `events.jsonl` 已记录至少 3 次 `stage.failed` 时才允许人工搭桥；这是首次失败后再完成 2 次重试后的最后手段，不是常规降级，更不能提前使用。Codex 必须先调用 `video.studio.manualBridgeEligibility` 读取系统统计，不能只凭对话或日志摘要在客户端自算通过。
+
+人工产物必须按该阶段原有 schema、字段数量、枚举、事实边界和下游消费者生成，并把上游输入、目标 schema、输出、校验日志及下游交接回执全部放入当前项目档案。随后调用 `video.studio.recordManualBridge`；系统会再次核对失败 attempt、文件 SHA-256、8 MiB 文件上限、无符号链接、零付费/外发/不可逆副作用、下游 `accepted=true + bridgeId + outputSha256` 绑定，并保证同一细分环节最多一份已接受搭桥。`video.studio.manualBridges` 与 `video.studio.archive` 返回的 `manualBridges` 是交付清单的数据源。
+
+以下情况禁止搭桥：未知付费/外发结果、`RECEIPT_UNVERIFIED`、审批或权利未决、事实不足需要猜测、源片不存在，或准备用占位文/静帧/手写回执冒充供应商与平台成功。最终交付必须逐项列出环节、失败次数、输出 hash、校验结果、数据真实性、未解决事实和剩余风险；未使用必须明确写“未使用”。完整机器契约见 `docs/VIDEO-MANUAL-BRIDGE-FALLBACK.md` 和 `docs/video-manual-bridge.schema.json`。
+
 ## 一、视频工位：内置角色资产（新接手最容易踩的一条）
 
 **本仓自带默认模特「李英子」（`young-rider-01`），开箱即用——不要以为"仓库里没有人物资产"而重复建档。**

@@ -6,11 +6,11 @@
     "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208"
   },
   "engineRoot": "engines/video-edit",
-  "generatedAt": "2026-10-29T13:27:44.020Z",
+  "generatedAt": "2026-10-30T02:42:21.000Z",
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshotPolicy": "Complete pinned tracked source plus explicit target overlays and additive regular target files; dependencies, build outputs, ignored credentials, work and runtime data are excluded.",
-  "targetOwnedFileCount": 48,
+  "targetOwnedFileCount": 56,
   "files": [
     {
       "path": ".ai-prompt",
@@ -316,9 +316,9 @@
       "sourceMode": "100644",
       "gitBlob": "b56acf79ce586c3847da8628f9d2c72e96e6ef85",
       "bytes": 5705,
-      "targetBytes": 5705,
+      "targetBytes": 7276,
       "sourceSha256": "4e3248234ffff5f4096f5e5729a98915e250c007ebde0e3983f681814dab0fd3",
-      "targetSha256": "4e3248234ffff5f4096f5e5729a98915e250c007ebde0e3983f681814dab0fd3",
+      "targetSha256": "b428c3ac70483046cfcf069cddbd3db4858f65ba46e781d791b702b6a1034666",
       "evidence": "B"
     },
     {
@@ -1607,9 +1607,9 @@
       "sourceMode": "100644",
       "gitBlob": "2c90f7d8348ee1dc8e190d3ab89d0008041378cd",
       "bytes": 8915,
-      "targetBytes": 8915,
+      "targetBytes": 10098,
       "sourceSha256": "b8fd05c91570c5ac3aaf7b60ba08f3110c7373cd85ac701b65ff8fae92702a48",
-      "targetSha256": "b8fd05c91570c5ac3aaf7b60ba08f3110c7373cd85ac701b65ff8fae92702a48",
+      "targetSha256": "713a4bf23ef9c55bb0f418c093b0f08c7eda4f580a46a87566a197fdc26f2e41",
       "evidence": "B"
     },
     {
@@ -1618,9 +1618,9 @@
       "sourceMode": "100644",
       "gitBlob": "aa7bf431cc02780f31299a66108f8620ba3b26e3",
       "bytes": 20036,
-      "targetBytes": 20036,
+      "targetBytes": 20804,
       "sourceSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
-      "targetSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
+      "targetSha256": "f766213d1149b13c6ab0a1e4ef9061a790c1ea71994ce5e27d2e3641f6c01aee",
       "evidence": "B"
     },
     {
@@ -1629,9 +1629,9 @@
       "sourceMode": "100644",
       "gitBlob": "07d7bf64e0d9b2de953c0f802d72401e7b64760d",
       "bytes": 17752,
-      "targetBytes": 17752,
+      "targetBytes": 17899,
       "sourceSha256": "ede36ed4ff00027c17e6f89641b4f46ff8070bd69d2cf102fc79cf1a817d02c3",
-      "targetSha256": "ede36ed4ff00027c17e6f89641b4f46ff8070bd69d2cf102fc79cf1a817d02c3",
+      "targetSha256": "f4c8114eae5f125dc425e0ecb6e429e1dd095a048aa117c3d041bfedc834607e",
       "evidence": "B"
     },
     {
@@ -1651,9 +1651,9 @@
       "sourceMode": "100644",
       "gitBlob": "2a400269628ea9af601a0bf29e8b5fc96213747a",
       "bytes": 9554,
-      "targetBytes": 9554,
+      "targetBytes": 10265,
       "sourceSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
-      "targetSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
+      "targetSha256": "8467b2d682c2ffc0993770752f7229706d3f988b8cd96eb3ef89628d70bc94cb",
       "evidence": "B"
     },
     {
@@ -1662,9 +1662,9 @@
       "sourceMode": "100644",
       "gitBlob": "b6d6b0637331ee05f710a9484feb0d253027da11",
       "bytes": 23750,
-      "targetBytes": 23750,
+      "targetBytes": 25506,
       "sourceSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
-      "targetSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
+      "targetSha256": "8debb2151fc2d3e77b0a5c52ab4fa5129ffc953d5a81058382c3accbcfda84db",
       "evidence": "B"
     },
     {
@@ -2259,9 +2259,9 @@
       "sourceMode": "100644",
       "gitBlob": "9a261acf6d9fa31cbb393ca0ad8c6fba484c7c5b",
       "bytes": 38033,
-      "targetBytes": 41763,
+      "targetBytes": 41835,
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "7a4e029cf10db98ce4413bb40a4a8bf6e2823362f46da4d3c265023d87868279",
+      "targetSha256": "7b7f6d8f89b5fc0b9b9aa0aa50a8ab03cd57ddc42ff1f97373be92711b8e23e5",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -2693,9 +2693,9 @@
       "sourceMode": "100644",
       "gitBlob": "00b08b3b000f26d28c3dca985967293b0ac38fbe",
       "bytes": 68733,
-      "targetBytes": 68733,
+      "targetBytes": 72790,
       "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
+      "targetSha256": "615f03de4699d0872908b6b69d1aea963c86b58017d9cd6a63e599000f3a30ff",
       "evidence": "B"
     },
     {
@@ -2771,9 +2771,9 @@
       "sourceMode": "100644",
       "gitBlob": "5e1b5f0dbb323560849772e1e75ccdf3b1ff3070",
       "bytes": 90435,
-      "targetBytes": 90559,
+      "targetBytes": 90963,
       "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
-      "targetSha256": "6d5048f1aab753cb01a0b2e2b795d3346be21767e4c15cce3f2204902841ab75",
+      "targetSha256": "940793148d4ae044b30766513dbaea7a7c8735fc8ef514252ff3986d62be2ede",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -15402,9 +15402,9 @@
       "sourceMode": "100644",
       "gitBlob": "eccfd1ef8f9db4dd4440db57d0dc1ee8461cd462",
       "bytes": 15096,
-      "targetBytes": 15096,
+      "targetBytes": 23480,
       "sourceSha256": "4576929566aca26d2a43b70f0cfbb859013bed66c5d23bb46032bbe8e95aaf7e",
-      "targetSha256": "4576929566aca26d2a43b70f0cfbb859013bed66c5d23bb46032bbe8e95aaf7e",
+      "targetSha256": "df206fc7fca56dff0d3b9e291b785e352801502a964c9cb76f8d1e6d10b0d40f",
       "evidence": "B"
     },
     {
@@ -17867,9 +17867,9 @@
       "sourceMode": "100644",
       "gitBlob": "2e1817d347b327810570446dafb7fd32e98b4cfc",
       "bytes": 50616,
-      "targetBytes": 52888,
+      "targetBytes": 54913,
       "sourceSha256": "6effdf4eba7dc4192c157d555b6d615a3b74e09026aeb1a5f883bce22608284c",
-      "targetSha256": "767a13c62c1980949094c186f0f19ee659f6e9f686c45f66535136154a5306e6",
+      "targetSha256": "06a2912274c095285dfcd2cf3d0478e24fbfd3011b072f4e59d9a10ae265fa47",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -17991,7 +17991,7 @@
       "bytes": 32289,
       "targetBytes": 32289,
       "sourceSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a",
-      "targetSha256": "522fd693d80cc74a382dd1169670a838f0e3f8c69de0f5abffffb7c8e88ee72a",
+      "targetSha256": "1d771978c6dd2766a437d30e6b25fd43699f820fc92d81f72a03057a261ee899",
       "evidence": "B"
     },
     {
@@ -18002,7 +18002,7 @@
       "bytes": 13063,
       "targetBytes": 13063,
       "sourceSha256": "f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e",
-      "targetSha256": "f837f430f2d4768d386d6d00ee0483ee24f770745eba4c97c4e4bc71e8db914e",
+      "targetSha256": "ea680f41effaa37a653daa73656043ab7e542fd219cad11a533972d995100bbf",
       "evidence": "B"
     },
     {
@@ -25642,9 +25642,9 @@
       "sourceMode": "100644",
       "gitBlob": "48f859d2b9a87278264a8d27ff1311460db9f8f0",
       "bytes": 679,
-      "targetBytes": 679,
+      "targetBytes": 805,
       "sourceSha256": "62738cfa907b81f8cbf9f906f9c76fd2d5433087c80c88aea9d6a4fe3634ad45",
-      "targetSha256": "62738cfa907b81f8cbf9f906f9c76fd2d5433087c80c88aea9d6a4fe3634ad45",
+      "targetSha256": "e98f47423de8a4eed4989a2f169690af9f16527b0e94d81658e1fe5a1753480a",
       "evidence": "B"
     },
     {
@@ -27266,9 +27266,9 @@
       "sourceMode": "100644",
       "gitBlob": "f2c0eca79d4038a1103699d77390695f262f9973",
       "bytes": 33825,
-      "targetBytes": 35596,
+      "targetBytes": 35882,
       "sourceSha256": "2f6096496b72de90fe558e592b5716ad04355d2a59a1cc1c9da6560f644a0e08",
-      "targetSha256": "71f246f65fb9d636cb19295c4132f815c5b2e69d33de5d303de6c9274b4a86ff",
+      "targetSha256": "35e5b5b946ae19db0a7b3f4c396110935c88b88747d45b11b824cf2f3963927e",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -27278,9 +27278,9 @@
       "sourceMode": "100644",
       "gitBlob": "bb0e82a7fb02998c1bd7ddea03d0d7f38f3c64fa",
       "bytes": 30063,
-      "targetBytes": 30648,
+      "targetBytes": 31585,
       "sourceSha256": "fa0c7713e61a6dff8106579b0d07e6c2049f3cca43466efb1f4703d0044c6fb4",
-      "targetSha256": "a851d83d367ed61ff61cb3a50fcc336c81833de386eb595c74ce5a07b48524bc",
+      "targetSha256": "c3ccebe90f7e79c7bda8bc54d14952590efc34a87945b7ae1700465876c43b0c",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -27558,7 +27558,7 @@
       "bytes": 30605,
       "targetBytes": 30598,
       "sourceSha256": "b9ddfbb7f48277976df7ce1fc2b6227321126ea965cbcaab0749202ad71b7719",
-      "targetSha256": "c01c0ead1c8c059bee791cd440b6c446c0cf680f96df5e99f1c113204400b3f7",
+      "targetSha256": "06120899b5c8ae96a74bbb7b713b56a9539d7f081b99704fbcad12485020889c",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -27591,9 +27591,9 @@
       "sourceMode": "100644",
       "gitBlob": "22ef3b9bbf274aeb4ff2b83b70dbf9e967b113e9",
       "bytes": 59825,
-      "targetBytes": 59791,
+      "targetBytes": 60823,
       "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
-      "targetSha256": "1ddae7d01239914fdc699adb3bc95a197724adefe9e432299178d5f1d40586d4",
+      "targetSha256": "a89176a8dbe84d5c96b460c1ae7ab61a17e48accb689ecffe9d36365a0b9d8b0",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -28140,7 +28140,7 @@
       "bytes": 40574,
       "targetBytes": 42076,
       "sourceSha256": "f64edcfa652171195a52bd76bba5be664d9f9b7359e715a1dbbbc10409b7b51c",
-      "targetSha256": "361782ec2bcad2d14180aebda2870f144aaf653162e477877aad7a3d62649fc4",
+      "targetSha256": "36abc40990345b8b59ea173f828c7653d4b9842c68d8d8757f5f36a959556237",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -34065,9 +34065,9 @@
       "sourceMode": "100644",
       "gitBlob": "60eb617045447121f29faf53f65ef3979fa5f087",
       "bytes": 107394,
-      "targetBytes": 107394,
+      "targetBytes": 107925,
       "sourceSha256": "73a981c511488013d1819b8119aa2aae07e8d0fbc44041966c2484df6f35b8c7",
-      "targetSha256": "73a981c511488013d1819b8119aa2aae07e8d0fbc44041966c2484df6f35b8c7",
+      "targetSha256": "ec53fdfc3ccb2bf426c90368c13a622cdf70e209fc07f8e38e6bd8bcef230df2",
       "evidence": "B"
     },
     {
@@ -34342,7 +34342,7 @@
       "bytes": 39359,
       "targetBytes": 39623,
       "sourceSha256": "d372d61aa6c851e8f4c5976ab2bb97604722d101054aabe3fae9b31c835697b6",
-      "targetSha256": "371dfa9b526d8e241b49495b9d1f879a6ad275dd8017721938848142e8d1d003",
+      "targetSha256": "7bae6ad9f6a5950570bcfecc7e8fc0fed3e8e9a55fd510669cd6823d1e375765",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-29 rebind to WorkLoom-video-edit c0aca4a; exact target bytes are listed here for runtime verification."
     },
@@ -39522,16 +39522,16 @@
     {
       "path": "packages/video-studio/src/video-text-client.test.ts",
       "mode": "100644",
-      "bytes": 3126,
-      "targetSha256": "2e8efc56276622e3de03f1069041e2e2ea785f8e54660f6281f1797e20537626",
+      "bytes": 4906,
+      "targetSha256": "eca38e83f57b44f67b368b7326b3cd3c8d6a809e2aad3577d379ba083a0c7e29",
       "evidence": "B",
       "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "mode": "100644",
-      "bytes": 11392,
-      "targetSha256": "ef1af9315c69eb217cb71881b93a2ff4d2fdc7d53497d0b9e5de5e89200c21db",
+      "bytes": 14068,
+      "targetSha256": "e5f8db0d1e9b52eafa486f89276159b7f784626dc769db4cba159cab2e721042",
       "evidence": "B",
       "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },
@@ -39546,8 +39546,8 @@
     {
       "path": "pengmanager-capabilities.json",
       "mode": "100644",
-      "bytes": 1058420,
-      "targetSha256": "c1e3f14b04b81ce504ed2a0154d4fb64b690b42c91167e209265fcf6593c5421",
+      "bytes": 1067383,
+      "targetSha256": "3133cdbc1dcb3e9446e64283ab69101f50633496f6818bed62ce39481659940a",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -39678,6 +39678,30 @@
       "targetSha256": "1595b6fe09da73ba63b9c9bb734ff6b81cb76adf8d52e5574b94b9d29e24c903",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+    },
+    {
+      "path": "apps/server/src/video/manual-bridge-router.test.ts",
+      "mode": "100644",
+      "bytes": 5999,
+      "targetSha256": "445bbc48e12142ec500e91e97d3dc8ad1e852be706f834e34b12098e040b011e",
+      "evidence": "B",
+      "reason": "Actual tRPC integration test for server-computed manual bridge eligibility, byte validation, accepted receipt and delivery listing."
+    },
+    {
+      "path": "packages/video-studio/src/archive/manual-bridge.test.ts",
+      "mode": "100644",
+      "bytes": 8272,
+      "targetSha256": "2ae5e784372117b4547929a34bf2da9a07b4a614a99ab7e2f95d94bebeba3866",
+      "evidence": "B",
+      "reason": "Regression coverage for the three-failure threshold, zero-side-effect enforcement, file hashes, downstream acceptance and one-bridge-per-subtask limit."
+    },
+    {
+      "path": "packages/video-studio/src/archive/manual-bridge.ts",
+      "mode": "100644",
+      "bytes": 17391,
+      "targetSha256": "136555767a49f52792136d936cc762197905cafb85b715887c67d9c209855600",
+      "evidence": "B",
+      "reason": "Runtime manual bridge eligibility, evidence custody, strict artifact and downstream validation, archive receipt and final disclosure source."
     }
   ]
 }

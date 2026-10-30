@@ -484,6 +484,206 @@
         },
         "additionalProperties": false
       }
+    },
+    {
+      "id": "growth.video.manual_bridge.eligibility",
+      "version": "1.0.0",
+      "title": "判定人工搭桥是否准入",
+      "description": "只读检查同一 projectId + stageId + failureCode 是否在当前制片档案中已有至少 3 次 stage.failed；少于 3 次、存在 RECEIPT_UNVERIFIED 或缺档时拒绝。不会生成产物或修改档案。",
+      "operation": "read",
+      "risk": "low",
+      "dataMode": "real",
+      "transport": {
+        "kind": "trpc",
+        "path": "video.studio.manualBridgeEligibility",
+        "method": "query"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "stageId": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "failureCode": { "type": "string", "minLength": 3, "maxLength": 160 }
+        },
+        "required": ["projectId", "stageId", "failureCode"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "growth.video.manual_bridge.list",
+      "version": "1.0.0",
+      "title": "读取项目人工搭桥回执",
+      "description": "读取当前项目已经系统接受的人工搭桥回执，包含失败次数、输入/schema/输出/校验/下游回执路径与 SHA-256、数据真实性、外部副作用和最终交付披露。只读；无记录返回空数组。",
+      "operation": "read",
+      "risk": "low",
+      "dataMode": "real",
+      "transport": {
+        "kind": "trpc",
+        "path": "video.studio.manualBridges",
+        "method": "query"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string", "minLength": 1, "maxLength": 120 }
+        },
+        "required": ["projectId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "growth.video.manual_bridge.record",
+      "version": "1.0.0",
+      "title": "登记受审计的人工搭桥",
+      "description": "仅在同一细分环节已有至少 3 次档案内失败后使用。系统复核文件字节、schema/交叉字段校验证据、下游 bridgeId+outputSha256 接受回执、零付费/外发/不可逆副作用，并写入 manual-bridges/ 权威回执；同一细分环节最多一份已接受搭桥。不会代做审批、供应商调用或平台发布。",
+      "operation": "execute",
+      "risk": "review",
+      "dataMode": "real",
+      "transport": {
+        "kind": "trpc",
+        "path": "video.studio.recordManualBridge",
+        "method": "mutation"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "string", "enum": ["pengmanager.video-manual-bridge/v1"] },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 200 },
+          "projectId": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "stageId": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "subtaskKey": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "failureCode": { "type": "string", "minLength": 3, "maxLength": 160 },
+          "reason": { "type": "string", "minLength": 20, "maxLength": 2000 },
+          "inputArtifacts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              },
+              "required": ["path", "sha256"],
+              "additionalProperties": false
+            }
+          },
+          "schema": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "required": ["path", "sha256"],
+            "additionalProperties": false
+          },
+          "output": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "required": ["path", "sha256"],
+            "additionalProperties": false
+          },
+          "validation": {
+            "type": "object",
+            "properties": {
+              "passed": { "type": "boolean", "enum": [true] },
+              "validatorId": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "command": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "exitCode": { "type": "integer", "enum": [0] },
+              "completedAt": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "evidence": {
+                "type": "object",
+                "properties": {
+                  "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+                  "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+                },
+                "required": ["path", "sha256"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["passed", "validatorId", "command", "exitCode", "completedAt", "evidence"],
+            "additionalProperties": false
+          },
+          "fidelity": {
+            "type": "object",
+            "properties": {
+              "usesOnlyUpstreamFacts": { "type": "boolean", "enum": [true] },
+              "fabricatedFacts": { "type": "boolean", "enum": [false] },
+              "formatConforms": { "type": "boolean", "enum": [true] },
+              "dataFidelityStatus": { "type": "string", "enum": ["verified", "partially_verified", "unverified"] },
+              "unresolvedFacts": {
+                "type": "array",
+                "maxItems": 100,
+                "items": { "type": "string", "maxLength": 500 }
+              },
+              "deviations": {
+                "type": "array",
+                "maxItems": 100,
+                "items": { "type": "string", "maxLength": 500 }
+              }
+            },
+            "required": ["usesOnlyUpstreamFacts", "fabricatedFacts", "formatConforms", "dataFidelityStatus", "unresolvedFacts", "deviations"],
+            "additionalProperties": false
+          },
+          "externalEffects": {
+            "type": "object",
+            "properties": {
+              "providerCalls": { "type": "integer", "enum": [0] },
+              "paidProviderCalls": { "type": "integer", "enum": [0] },
+              "publications": { "type": "integer", "enum": [0] },
+              "irreversibleActions": { "type": "integer", "enum": [0] }
+            },
+            "required": ["providerCalls", "paidProviderCalls", "publications", "irreversibleActions"],
+            "additionalProperties": false
+          },
+          "downstream": {
+            "type": "object",
+            "properties": {
+              "handoffReceipt": {
+                "type": "object",
+                "properties": {
+                  "path": { "type": "string", "minLength": 1, "maxLength": 500 },
+                  "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+                },
+                "required": ["path", "sha256"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["handoffReceipt"],
+            "additionalProperties": false
+          },
+          "deliveryDisclosure": {
+            "type": "object",
+            "properties": {
+              "stageLabel": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "statement": { "type": "string", "minLength": 20, "maxLength": 2000 }
+            },
+            "required": ["stageLabel", "statement"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "idempotencyKey",
+          "projectId",
+          "stageId",
+          "subtaskKey",
+          "failureCode",
+          "reason",
+          "inputArtifacts",
+          "schema",
+          "output",
+          "validation",
+          "fidelity",
+          "externalEffects",
+          "downstream",
+          "deliveryDisclosure"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

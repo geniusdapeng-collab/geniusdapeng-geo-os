@@ -16,7 +16,7 @@
 import path from "node:path";
 import { newId } from "@workloom/shared";
 import { getAppPool, getOwnerPool } from "@workloom/db";
-import { ArchiveStore, readContextBundle, type ContextBundle } from "@hyperreality/video-studio";
+import { ArchiveStore, listManualBridges, readContextBundle, type ContextBundle, type ManualBridgeRecord } from "@hyperreality/video-studio";
 import { scopedRows, archiveWorkDir, projectRunLockKey } from "./archive-host.js";
 
 interface Scope {
@@ -41,6 +41,8 @@ export interface ResumeOptions {
   fromStage?: string;
   /** 预生产续跑需要（缺省读 video_projects.title） */
   intent?: string;
+  /** 营销预生产恢复必须携带本次完整 metadata，避免丢失商品、人物与事实来源。 */
+  metadata?: Record<string, unknown>;
   /** 复用既有补跑入口（router 传 `startRun(scope, …)`） */
   startRun: (input: {
     projectId: string;
@@ -218,10 +220,18 @@ export async function resumeProject(
     if (!project) {
       return { kind: "noaction", stage: stuckStage, message: `项目 ${opts.projectId} 不存在或不属于当前工作区` };
     }
+    if (project.kind === "marketing" && (!opts.metadata || Object.keys(opts.metadata).length === 0)) {
+      return {
+        kind: "noaction",
+        stage: stuckStage,
+        message: `营销项目 ${opts.projectId} 的预生产恢复必须重新提交本次完整 metadata；项目标题只有截断后的意图，不能替代商品、人物或事实来源。`,
+      };
+    }
     const runId = await opts.startRun({
       projectId: opts.projectId,
       intent: opts.intent ?? project.title ?? "",
       isMarketing: project.kind === "marketing",
+      ...(opts.metadata ? { metadata: structuredClone(opts.metadata) } : {}),
     });
     const attempt = breakpoints[0]?.attempt ?? null;
     return {
@@ -270,6 +280,7 @@ export interface ArchiveSummary {
   pendingApprovalId: string | null;
   recentEvents: Array<Record<string, unknown>>;
   findings: Array<Record<string, unknown>>;
+  manualBridges: ManualBridgeRecord[];
 }
 
 /** 档案只读视图（任务详情页「制片档案」标签数据源）：文件本体 + PG 索引合并返回 */
@@ -278,6 +289,7 @@ export async function readArchiveSummary(scope: Scope, projectId: string): Promi
   const manifest = await store.readManifest();
   const contextBundle = await readContextBundle(store);
   const recentEvents = await store.readEvents(20);
+  const manualBridges = await listManualBridges(store);
 
   const stages = await scopedRows<{
     stage_id: string; attempt: number; status: string; error_class: string | null; error_msg: string | null;
@@ -326,6 +338,7 @@ export async function readArchiveSummary(scope: Scope, projectId: string): Promi
     pendingApprovalId: await findPendingApproval(scope, projectId),
     recentEvents,
     findings,
+    manualBridges,
   };
 }
 

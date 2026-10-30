@@ -106,13 +106,13 @@ const RiskAssessmentSchema = {
       type: "array",
       items: { type: "string" },
       minItems: 1,
-      maxItems: 4
+      maxItems: 5
     },
     mitigationSuggestions: {
       type: "array",
       items: { type: "string" },
       minItems: 1,
-      maxItems: 4
+      maxItems: 5
     }
   },
   additionalProperties: false
@@ -586,8 +586,8 @@ class RiskAssessor extends BaseDiscoveryAgent {
 
 要求：
 1. technicalRisks 1-5 个
-2. businessConstraints 1-4 个
-3. mitigationSuggestions 1-4 个
+2. businessConstraints 1-5 个
+3. mitigationSuggestions 1-5 个
 4. 风险 level 必须从枚举中选择`;
   }
 

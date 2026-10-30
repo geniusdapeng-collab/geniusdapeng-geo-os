@@ -316,6 +316,7 @@ export function toJennyMarketingRaw(
 
 export async function prepareMarketingFacts(input: {
   scope: MarketingScope; root: string; metadata: RecordValue; intent: string; llm: ExecutorLlm; env?: NodeJS.ProcessEnv;
+  searchCacheFile?: string;
   dependencies?: { search?: SearchFn; fetchSource?: typeof fetchMarketingSource; review?: typeof reviewStage };
 }): Promise<PreparedMarketingFacts> {
   const env = input.env ?? process.env;
@@ -330,6 +331,7 @@ export async function prepareMarketingFacts(input: {
   const sourceFetch = input.dependencies?.fetchSource ?? fetchMarketingSource;
   const review = input.dependencies?.review ?? reviewStage;
   const executor = createDataMiningExecutor({ llm: input.llm, search: input.dependencies?.search,
+    searchCacheFile: input.searchCacheFile,
     evidenceCollector: async (stage, stagePlan, hits: SearchHit[]) => {
       const pages: SourceSnapshot[] = [], failures: Array<{ url: string; reason: string }> = [];
       const candidates = [...new Map(hits.map(hit => [hit.url, hit])).values()]; let attempted = 0;

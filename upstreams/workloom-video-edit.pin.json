@@ -2,7 +2,7 @@
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
   "commit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "verifiedAt": "2026-10-29T17:23:43.859Z",
+  "verifiedAt": "2026-10-30T02:42:21.000Z",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "03be76b8f918a1267b6d7fffede7006c07eb72c6be56dbffc5537e93efd0b72b",
+  "snapshotSha256": "4d7a5347efcbf05bddb91191312e0cee6c12d6230152c2240e41aaa9175fa981",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
-  "targetOwnedFileCount": 53,
-  "sourceOverlayCount": 88,
+  "targetOwnedFileCount": 56,
+  "sourceOverlayCount": 91,
   "pendingAfterV1": [],
   "assetOverlays": [],
   "compatibilityOverlays": [],
@@ -32,10 +32,66 @@
     {
       "id": "pengmanager-host-integration",
       "receipt": "upstreams/pengmanager-host-integration.target-overlay.json",
-      "receiptSha256": "c3418be4a7ce8cf23e6604f17c556937a0a375adc72b8c7141b8d20bd6f945b1",
+      "receiptSha256": "1da4470effd276584b2cabaed6283b1020fc5efa911fd4eda636b2255b9f4f3b",
       "scope": "Post-rebind PengManager host integration: process-only model configuration, marketing fact and product visual authority, host-bound portraits, local runtime/capability entrypoints, PengManager tools and tests.",
       "upstreamUpgradeClaimed": true,
       "wholeEngineUpgradeClaimed": true
+    },
+    {
+      "id": "project-wardrobe-override",
+      "receipt": "upstreams/project-wardrobe-override.target-overlay.json",
+      "receiptSha256": "afabf482daced135bd4acfbfc5fd2316d80e59f4b794f0431d1a6d92859e2d2f",
+      "scope": "Owner-authorized project wardrobe overrides registered with id, version and approval; preserve the canonical default wardrobe unless explicitly selected.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prompt-fusion-dialogue-free",
+      "receipt": "upstreams/prompt-fusion-dialogue-free.target-overlay.json",
+      "receiptSha256": "cfac66f860573ecce9117bc2380c0ac5cab5ef5e71b0a00d6f600ceec7935dbc",
+      "scope": "Do not fabricate a dialogue placeholder for explicitly dialogue-free or textless shots and therefore do not mark those shots degraded.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "risk-array-capacity",
+      "receipt": "upstreams/risk-array-capacity.target-overlay.json",
+      "receiptSha256": "f73a3b3a95aecd0fc016dab1704fcc620d7892ff080393dfa6a5f0088247059c",
+      "scope": "Align RiskAssessor business constraints and mitigation suggestions with the same 1-5 bounded capacity as technical risks, preserving strict schema validation and bounded retry feedback.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "manual-bridge-and-marketing-resume",
+      "receipt": "upstreams/manual-bridge-and-marketing-resume.target-overlay.json",
+      "receiptSha256": "45695efe51bd762d46f8b277df6cc38fc5f9d155f0a5e99cc6bb360475b1e6e4",
+      "scope": "Marketing resume carries current metadata, and the video guide requires a byte-bound, schema-validated, disclosed manual bridge only after three failures of the same subtask.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "review-transport-timeout",
+      "receipt": "upstreams/review-transport-timeout.target-overlay.json",
+      "receiptSha256": "adfb248c073aa870d6fa10568f77a4e50594b01d3717bdb0f581096437c9cef9",
+      "scope": "Long complete model reviews use bounded native HTTP so the undici 300-second body timeout cannot terminate a response inside the documented 600-second producer-review budget.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "manual-bridge-runtime",
+      "receipt": "upstreams/manual-bridge-runtime.target-overlay.json",
+      "receiptSha256": "56be6baf142f1aa74d0a8ce4f09c497f013f878f1ff6c15d9ee04b88609505aa",
+      "scope": "Runtime enforcement for the three-failure manual bridge, archive evidence and downstream acceptance, zero-side-effect limits, CLI/MCP capabilities, AI guidance and final delivery disclosure.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "prd-production-disambiguation",
+      "receipt": "upstreams/prd-production-disambiguation.target-overlay.json",
+      "receiptSha256": "e39ca37d69bed3e0662cb0c3f454ef6df0d2e9ab71fab1d5b3b9c5e5d0466d9f",
+      "scope": "PRD prompting separates silent cover intro from content first frame and title card, keeps CTA metadata off-screen, and prevents unverified product paint or impossible policy-tag accounting.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
     }
   ]
 }

@@ -248,7 +248,7 @@ describe("actual native scene prompt and strict production response", () => {
     { duration: 60, feasibleMiddleCounts: [1, 2, 3, 4, 5, 6, 7, 8] }
   ])("corrects the actual $duration s native contradiction without changing identical customer literals or schema", async ({ duration, feasibleMiddleCounts }) => {
     expect(createHash("sha256").update(readFileSync(nativeDiscoveryFile)).digest("hex"))
-      .toBe("371dfa9b526d8e241b49495b9d1f879a6ad275dd8017721938848142e8d1d003");
+      .toBe("7bae6ad9f6a5950570bcfecc7e8fc0fed3e8e9a55fd510669cd6823d1e375765");
     const input: RequirementRecord = { type: "商业广告", theme: "自主创作", duration_sec: duration, description: "最初的客户描述" };
     const original = await nativePromptParts(input), sample = JSON.parse(original.example) as RequirementRecord;
     const nodes = [sample.opening, ...(sample.scenes as unknown[]), sample.ending].map(value => requirementRecord(value, "sample node"));
@@ -615,14 +615,14 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     expect(requirementHash(result.riskAssessment)).toBe(before);
     expect(calls[0]!.options).toEqual({ maxTokens: 4000, temperature: 1, timeoutMs: 100 });
     const properties = requirementRecord(requirementRecord(calls[0]!.schema, "risk schema").properties, "risk properties");
-    for (const [key, maximum] of [["technicalRisks", 5], ["businessConstraints", 4], ["mitigationSuggestions", 4]] as const) {
+    for (const [key, maximum] of [["technicalRisks", 5], ["businessConstraints", 5], ["mitigationSuggestions", 5]] as const) {
       expect(properties[key]).toMatchObject({ type: "array", minItems: 1, maxItems: maximum });
     }
     for (const call of model.calls) { expectCompleteSources(call.prompt, run); expect(call.prompt).not.toContain(riskFeedbackHeading); }
     expect(risk.run).toBe(nativeRun); expect(risk.maxRetries).toBe(1); expect(risk.timeoutMs).toBe(100);
   });
 
-  it.each([{ key: "technicalRisks", maximum: 5 }, { key: "businessConstraints", maximum: 4 }, { key: "mitigationSuggestions", maximum: 4 }] as const)
+  it.each([{ key: "technicalRisks", maximum: 5 }, { key: "businessConstraints", maximum: 5 }, { key: "mitigationSuggestions", maximum: 5 }] as const)
     ("keeps native $key 1..$maximum inclusive and feeds only numeric facts to its existing second call", async ({ key, maximum }) => {
       installNativeDiscovery();
       for (const count of [1, maximum]) {
@@ -664,7 +664,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     expect(failureText(failure)).not.toContain("mitigationSuggestions"); expect(failureText(failure)).not.toContain("PRIVATE-RESPONSE");
     const calls = riskCalls(model.calls);
     expect(calls).toHaveLength(2); expect(model.calls).toHaveLength(4); // Audience, Scene, Risk twice; no Reference.
-    expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 6, 4));
+    expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 6, 5));
   });
 
   it("replaces an earlier Risk schema failure with the actual current transport rejection", async () => {
@@ -674,7 +674,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     const failure = await runDiscovery(run, model.engine).catch(error => error), calls = riskCalls(model.calls);
     expect(failure).toBe(current); expect(requirementRecord(failure, "current failure").details).toBeUndefined();
     expect(failureText(failure)).not.toContain("mitigationSuggestions"); expect(calls).toHaveLength(2);
-    expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 7, 4));
+    expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 7, 5));
     expect(model.calls).toHaveLength(4);
   });
 
@@ -695,7 +695,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     expect(failureText(failure)).not.toContain("mitigationSuggestions");
     expect(requirementRecord(failure, "native parser failure").details).toBeUndefined();
     expect(riskRequests).toHaveLength(2); expect(calls).toHaveLength(4);
-    expect(promptJson(riskRequests[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 8, 4));
+    expect(promptJson(riskRequests[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 8, 5));
     for (const call of calls) { expectCompleteSources(call.prompt, run); expect(call.options).toEqual({ maxTokens: 4000, temperature: 1 }); }
   });
 
@@ -704,7 +704,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     const run = privateRun(`risk-first-${kind}`, 30, physicalScene([10, 10, 10]));
     const failure = kind === "transport" ? new Error("synthetic first transport")
       : Object.assign(new RequirementContractError("REQUIREMENT_DISCOVERY_UNVERIFIED", "PRIVATE-UNTRUSTED-MESSAGE"),
-        { details: riskFacts("mitigationSuggestions", "maxItems", 99, 4) });
+        { details: riskFacts("mitigationSuggestions", "maxItems", 99, 5) });
     const model = modelFor(run, [run.modules.scene], [failure, run.modules.risk]), result = await runDiscovery(run, model.engine);
     expect(requirementHash(result.riskAssessment)).toBe(requirementHash(run.modules.risk)); expect(riskCalls(model.calls)).toHaveLength(2);
     for (const call of model.calls) { expect(call.prompt).not.toContain(riskFeedbackHeading); expect(call.prompt).not.toContain("PRIVATE-UNTRUSTED"); }
@@ -775,7 +775,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
       const attempt = attempts.get(run) ?? 0; attempts.set(run, attempt + 1);
       if (run !== c && attempt === 0) {
         if (++first === 2) releaseFirst(); await bothFirst;
-        return { success: true, data: riskResponse(run, run === a ? "mitigationSuggestions" : "businessConstraints", run === a ? 5 : 0) };
+        return { success: true, data: riskResponse(run, run === a ? "mitigationSuggestions" : "businessConstraints", run === a ? 6 : 0) };
       }
       return { success: true, data: structuredClone(run.modules.risk) };
     });
@@ -788,7 +788,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     const aCalls = callsFor(a), bCalls = callsFor(b), cCalls = callsFor(c);
     expect(aCalls).toHaveLength(2); expect(bCalls).toHaveLength(2); expect(cCalls).toHaveLength(1);
     for (const call of [aCalls[0]!, bCalls[0]!, cCalls[0]!]) expect(call.prompt).not.toContain(riskFeedbackHeading);
-    expect(promptJson(aCalls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 5, 4));
+    expect(promptJson(aCalls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 6, 5));
     expect(promptJson(bCalls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("businessConstraints", "minItems", 0, 1));
     for (const call of calls) {
       const run = select(call.prompt); expectCompleteSources(call.prompt, run); expect(call.prompt).not.toContain("PRIVATE-RESPONSE");
@@ -813,5 +813,19 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     const result = await (mode === "legacy-scope" ? withRequirementContractScope(run.metadata, operation) : operation());
     expect(requirementHash(result.riskAssessment)).toBe(requirementHash(value)); expect(riskCalls(model.calls)).toHaveLength(1);
     for (const call of model.calls) { expect(call.prompt).not.toContain(riskFeedbackHeading); expect(call.prompt).not.toContain("本次宿主需求权威输入"); }
+  });
+
+  it("accepts the production-observed five-item RiskAssessor response without a second model call", async () => {
+    installNativeDiscovery();
+    const run = privateRun("risk-five-items", 30, physicalScene([10, 10, 10]));
+    const businessConstraints = ["参数与款式以已核来源为准", "服从抖音平台审核规范", "赛事情节仅作虚构演绎", "商品外观必须对照授权参考", "画面内不显示披露说明"];
+    const value = riskResponse(run, "businessConstraints", 5);
+    value.businessConstraints = businessConstraints;
+    const model = modelFor(run, [run.modules.scene], [value]), before = requirementHash(value);
+    const result = await runDiscovery(run, model.engine), calls = riskCalls(model.calls);
+    expect(calls).toHaveLength(1);
+    expect(requirementHash(result.riskAssessment)).toBe(before);
+    expect(requirementRecord(result.riskAssessment, "risk result").businessConstraints).toEqual(businessConstraints);
+    expect(calls[0]!.prompt).not.toContain(riskFeedbackHeading);
   });
 });
