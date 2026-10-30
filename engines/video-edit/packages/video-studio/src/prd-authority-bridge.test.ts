@@ -1459,8 +1459,10 @@ describe("approved production authority at native technical and title seams", ()
       const call = h.calls.find(call => call.key === "produce")!, input = call.args[0] as RequirementRecord;
       expect(call.receiver).toBe(run.engine); expect(call.args[1]).toBe(argument);
       expect(input).not.toBe(blueprint); expect(input.scenes).toBe(scenes);
-      expect(input.config).not.toBe(config); expect(input.config).toEqual({ ...config, aspectRatio: "9:16" });
+      expect(input.config).not.toBe(config); expect(input.config).toEqual({ ...config, aspectRatio: "9:16", target_duration: 30 });
       expect(input.metadata).toBe(blueprint.metadata);
+      expect(input.meta).toEqual({ target_duration: 30 });
+      expect(input.targetDuration).toBe(30);
       const marker = requirementRecord(input._workloomProductionAuthority, "private production marker");
       expect(marker).toMatchObject({ schemaVersion: "workloom.production-authority/v1", scope: value.scope, profile: value.authority.profile, g4Hash: requirementHash(prd) });
       expect(marker.hash).toBe(requirementHash({ authority: requirementHash(value.authority), g4: requirementHash(prd), scope: value.scope }));

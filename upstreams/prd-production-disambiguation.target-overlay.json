@@ -3,9 +3,9 @@
   "id": "prd-production-disambiguation",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-30T12:57:06+08:00",
+  "generatedAt": "2026-10-30T13:21:48+08:00",
   "sourceOverlayCount": 4,
-  "scope": "PRD prompting separates final master, silent cover and content timeline; removes model-authored tag annotations; renders shot-level overlapping policy tags, a verified-claim product close-up and image-rights plan; and disambiguates persistent subtitles from the cover interval.",
+  "scope": "PRD prompting separates final master, silent cover and content timeline; removes model-authored tag annotations; renders shot-level overlapping policy tags, a verified-claim product close-up and image-rights plan; disambiguates persistent subtitles; and carries the approved content duration into script and production projection.",
   "files": [
     {
       "path": "packages/video-studio/src/prd-authority.ts",
@@ -27,17 +27,17 @@
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "633b44d3baa15ec6be31f001854d8ab42a449f9f06cfac6f7308e45cc451ce72",
+      "targetSha256": "0f4ec3ec85e5c4331124ba4d420754de148744bfb190e2d35f0602f861fea14e",
       "sourceBytes": 81284,
-      "targetBytes": 97157
+      "targetBytes": 98601
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
       "sourceSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
-      "targetSha256": "2fc77b69adb284d2ff395f280c31687df425b1392593855677e3e7dfe88f76e5",
+      "targetSha256": "4678b3ea286ab14155d91847e61c0c786fc648b64bdbf517b15ce603df02b1e5",
       "sourceBytes": 152458,
-      "targetBytes": 157987
+      "targetBytes": 158112
     }
   ]
 }
