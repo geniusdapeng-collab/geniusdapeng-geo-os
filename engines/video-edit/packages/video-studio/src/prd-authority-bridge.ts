@@ -980,6 +980,7 @@ export function installVendorPrdAuthorityBridge(constructor: { prototype: object
 
 interface ProductionDependencies {
   systemPrototype: RequirementRecord;
+  scriptGeneratorPrototype?: RequirementRecord;
   productionPrototype: RequirementRecord;
   phase1Prototype: RequirementRecord;
   refinerPrototype: RequirementRecord;
@@ -1130,6 +1131,20 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     productionOwners.set(this, scope);
     return awaited(scope, async () => { check(scope); const result = await Reflect.apply(original, this, args); check(scope); return result; });
   });
+  if (deps.scriptGeneratorPrototype) {
+    add(deps.scriptGeneratorPrototype, "_enforceTargetDuration", original => function (parsed, target, ...args) {
+      const scope = current();
+      const contentDuration = scope?.g4Decision === "approved"
+        ? prdDurationContract(scope.authority.profile).contentDurationSeconds : null;
+      return Reflect.apply(original, this, [parsed, contentDuration ?? target, ...args]);
+    });
+  }
+  add(productionPrototype, "_normalizeDurations", original => function (shots, target, ...args) {
+    const scope = current();
+    const contentDuration = scope?.g4Decision === "approved"
+      ? prdDurationContract(scope.authority.profile).contentDurationSeconds : null;
+    return Reflect.apply(original, this, [shots, contentDuration ?? target, ...args]);
+  }, true);
   add(systemPrototype, "_shouldUseTitleCard", original => function (...args) {
     const scope = productionScope(this);
     if (!scope) return Reflect.apply(original, this, args);
@@ -1208,11 +1223,18 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
       check(scope);
       const blueprint = requirementRecord(blueprintValue, "实际制作蓝图");
       const config = blueprint.config === undefined ? {} : requirementRecord(blueprint.config, "实际制作配置");
+      const meta = blueprint.meta === undefined ? {} : requirementRecord(blueprint.meta, "实际制作元数据");
       const profile = scope.authority.profile;
+      const contentDuration = prdDurationContract(profile).contentDurationSeconds;
       const marker = { schemaVersion: "workloom.production-authority/v1", hash: requirementHash({ authority: scope.authorityHash,
         g4: scope.reviewedHash, scope: scope.authority.marketing.scope }), scope: structuredClone(scope.authority.marketing.scope),
         profile: structuredClone(profile), g4Hash: scope.reviewedHash };
-      const view = { ...blueprint, config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}) }, _workloomProductionAuthority: marker };
+      const view = { ...blueprint,
+        ...(contentDuration !== null ? { targetDuration: contentDuration } : {}),
+        config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}),
+          ...(contentDuration !== null ? { target_duration: contentDuration } : {}) },
+        meta: { ...meta, ...(contentDuration !== null ? { target_duration: contentDuration } : {}) },
+        _workloomProductionAuthority: marker };
       const result = await Reflect.apply(original, this, [view, ...args]);
       check(scope);
       return result;
@@ -1388,6 +1410,7 @@ export function installVendorPrdProductionBridge(constructor: { prototype: objec
     const standardizer = require(path.resolve(path.dirname(lease.identity.entryPath), "engines/field-standardizer.js")) as Pick<ProductionDependencies, "standardizeShot" | "validateShot"> & { CRITICAL_FIELDS: ProductionDependencies["fields"] };
     return installPrdProductionBridge({ systemPrototype: requirementRecord(constructor.prototype, "受控 system prototype"),
       productionPrototype: load("engines/production-engine/production-engine.js", "ProductionEngine"),
+      scriptGeneratorPrototype: load("engines/script-engine/core/script-generator.js", "ScriptGenerator"),
       phase1Prototype: load("engines/production-engine/phases/phase-1-scene-design.js", "Phase1SceneDesign"),
       refinerPrototype: load("engines/production-engine/agents/field-content-refiner.js", "FieldContentRefiner"),
       costumePrototype: load("engines/character-system/character-costume-prompter.js", "CharacterCostumePrompter"),
