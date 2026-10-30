@@ -3,41 +3,41 @@
   "id": "prd-production-disambiguation",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-30T10:57:55+08:00",
+  "generatedAt": "2026-10-30T12:27:14+08:00",
   "sourceOverlayCount": 4,
-  "scope": "PRD prompting separates silent cover intro from content first frame and title card, keeps account CTA metadata off-screen unless explicitly requested, forbids inferring product paint from text claims, and defines overlapping policy-tag accounting.",
+  "scope": "PRD prompting separates the final master, silent cover and content timeline, keeps account CTA metadata off-screen unless explicitly requested, forbids inferring product paint from text claims, and renders a feasible overlapping policy-tag budget with shot-card enforcement.",
   "files": [
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "sourceSha256": "fa0c7713e61a6dff8106579b0d07e6c2049f3cca43466efb1f4703d0044c6fb4",
-      "targetSha256": "e1576a03e5888207fa9673f9dac3b42eb46fcf90a982b8155a2e80e516efd4fb",
+      "targetSha256": "468cb089833b4a320adfd46969593564e6b1a6ed7a325d889b9cb06bfb735f46",
       "sourceBytes": 30063,
-      "targetBytes": 31712
+      "targetBytes": 34594
     },
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
       "sourceSha256": "2f6096496b72de90fe558e592b5716ad04355d2a59a1cc1c9da6560f644a0e08",
-      "targetSha256": "35e5b5b946ae19db0a7b3f4c396110935c88b88747d45b11b824cf2f3963927e",
+      "targetSha256": "baa3647bcb7d044d3e43df91b42f7c5da083f59d3f09ce4bb50b57526855cf2f",
       "sourceBytes": 33825,
-      "targetBytes": 35882
+      "targetBytes": 36318
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "03a3b9dc69d4ef49d9f6d4d5202a61ce3e98e20aa7b85d87147620be8fe562f9",
+      "targetSha256": "39b934c4f8f6f80c71117931214bb3863120326270bda4b0e3c7034299338473",
       "sourceBytes": 81284,
-      "targetBytes": 86532
+      "targetBytes": 89111
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
       "sourceSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
-      "targetSha256": "3304fa1b1d2809ac8070827622db6ae0e45afbc129c663bbf0c27879da96b8dc",
+      "targetSha256": "1c8ccd8462bb87a931924a239bb7a76439f9e025ed18576b32e05cbc4477ffd8",
       "sourceBytes": 152458,
-      "targetBytes": 155758
+      "targetBytes": 156466
     }
   ]
 }

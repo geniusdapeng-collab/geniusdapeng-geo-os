@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { GateVerdict } from "./gates.js";
-import type { PrdAuthority, PrdMarketingScope } from "./prd-authority.js";
+import { prdDurationContract, type PrdAuthority, type PrdMarketingScope } from "./prd-authority.js";
 import { extractProductVisualAuthority } from "./product-visual-authority.js";
 import { RequirementContractError, requirementHash, requirementRecord, type RequirementRecord } from "./requirement-contract.js";
 
@@ -78,6 +78,13 @@ export function requirementAuthorityPrompt(authority: PrdAuthority, theme?: Requ
   const metadata = authority.metadata;
   const key = requirementHash(authority);
   const productVisualAuthority = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
+  const duration = prdDurationContract(authority.profile);
+  const brief = metadata.brief && typeof metadata.brief === "object"
+    ? requirementRecord(metadata.brief, "需求 Brief") : {};
+  const production = brief.productionRequirements && typeof brief.productionRequirements === "object"
+    ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
+  const narrative = brief.narrativeDisclosure && typeof brief.narrativeDisclosure === "object"
+    ? requirementRecord(brief.narrativeDisclosure, "narrativeDisclosure") : {};
   return `\n\n## 本次宿主需求权威输入 ${key}（冲突时按本节层级处理）\n`
     + `一、完整客户 Brief 和其中本片制作细则决定本片的主张用途、受众与交付要求。G1 接受某条事实，不能覆盖客户选择的用途限制，不能把底账事实自动变成钩子、口播、屏幕卖点或结尾。\n`
     + `完整客户 Brief：\n${JSON.stringify(metadata.brief)}\n`
@@ -90,6 +97,13 @@ export function requirementAuthorityPrompt(authority: PrdAuthority, theme?: Requ
     + `已核规格数字和宣传性来源用语仍保留在事实底账；本片是否可用及如何使用须服从完整客户 Brief。未知外观不因选入道具或动作就成为已核实配置。\n`
     + `本次结构化商品视觉授权（只来自 G1 A1 已接受图片）：\n${JSON.stringify(productVisualAuthority)}\n`
     + `required=true 时，场景/道具/动作/关键元素中的商品外观只能对照 images 的可见内容；不得从文字 claim、常识、影视参考或角色档案推出涂装、配色、比例、部件、材质或空气动力细节。无法确认的细节必须省略。\n`
+    + `本次时长与封面母版口径：最终成片 ${duration.finalDurationSeconds ?? "未指定"}s；静音封面片头 ${duration.coverIntroSeconds}s；`
+    + `因此内容节点合计必须为 ${duration.contentDurationSeconds ?? "未指定"}s；容差 ${duration.toleranceSeconds ?? "未指定"}s。`
+    + `封面片头是最终成片的一部分，不能再次计入内容节点，也不能把最终片长直接当内容节点合计。\n`
+    + `连续超车、夺冠和领奖台只能作为客户明确要求的虚构叙事记忆点，不是商品卖点、性能证据、竞品对比或真实赛事成绩。`
+    + `本次常驻字幕原文：${JSON.stringify(production.persistentSubtitleText ?? null)}；`
+    + `本次叙事披露原文：${JSON.stringify(narrative.statement ?? null)}，该披露只进入交付/发布元数据，不改成画面文字。`
+    + `客户 CTA 未明确要求上屏时只作为账号互动元数据。客户已明确平台 ${String(brief.platform ?? "未指定")}、画幅 ${String(brief.aspectRatio ?? "未指定")}；模型不得改成其他平台或画幅。\n`
     + `G1 完整原始裁决（所有意见与建议保持原层级）：\n${JSON.stringify(authority.marketing.g1Proof)}\n`
     + `G1 完整原件 ${authority.marketing.g1Artifact.path} / SHA256 ${authority.marketing.g1Artifact.sha256}：\n${authority.marketing.g1Artifact.content}\n`
     + `三、${theme ? `本次已批准 G2 的完整原文与原始裁决只提供创作上下文。advisories 是非阻断建议，不新增硬性门槛、审批或强制重试；不能覆盖客户 Brief/G1 用途限制。\nG2 SHA256 ${theme.contentSha256}：\n${theme.contentMd}\nG2 原始裁决：\n${JSON.stringify(theme.verdict)}\n` : "本次尚无已批准 G2 上下文；不推定主题或新创作已经通过。\n"}`

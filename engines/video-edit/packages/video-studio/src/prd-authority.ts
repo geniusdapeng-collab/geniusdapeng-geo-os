@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import {
-  requirementHash, requirementRecord, validateRequirementSchema,
+  requirementDisplayContract, requirementHash, requirementRecord, validateRequirementSchema,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { extractProductVisualAuthority } from "./product-visual-authority.js";
@@ -168,6 +168,45 @@ export function normalizePrdProductionProfile(metadata: RequirementRecord): PrdP
   return normalized;
 }
 
+export interface PrdDurationContract {
+  finalDurationSeconds: number | null;
+  contentDurationSeconds: number | null;
+  coverIntroSeconds: number;
+  toleranceSeconds: number | null;
+}
+
+/**
+ * The customer duration is the final playable master. A silent opening cover is
+ * part of that duration, so the content timeline must be shorter by exactly the
+ * declared intro. This projection is shared by G3 scene discovery, G4 PRD review
+ * and delivery validation.
+ */
+export function prdDurationContract(
+  profile: PrdProductionProfile,
+  fallbackDuration?: number,
+): PrdDurationContract {
+  const final = profile.targetDuration ?? fallbackDuration;
+  if (final !== undefined && (!Number.isFinite(final) || final <= 0)) {
+    prdFail("PRD_PROFILE_INVALID", "最终成片目标时长必须为有效正数");
+  }
+  const cover = profile.openWithCover === true ? (profile.coverIntroSeconds ?? 0) : 0;
+  if (!Number.isFinite(cover) || cover < 0) prdFail("PRD_PROFILE_INVALID", "封面片头时长必须为非负有限数");
+  const content = final === undefined ? null : Number((final - cover).toFixed(6));
+  if (content !== null && content <= 0) prdFail("PRD_PROFILE_INVALID", "封面片头不能占满或超过最终成片时长");
+  const tolerance = profile.durationToleranceFrames !== undefined && profile.frameRate !== undefined
+    ? profile.durationToleranceFrames / profile.frameRate
+    : null;
+  if (tolerance !== null && (!Number.isFinite(tolerance) || tolerance < 0)) {
+    prdFail("PRD_PROFILE_INVALID", "成片时长容差必须为非负有限数");
+  }
+  return {
+    finalDurationSeconds: final ?? null,
+    contentDurationSeconds: content,
+    coverIntroSeconds: cover,
+    toleranceSeconds: tolerance,
+  };
+}
+
 /** Recheck exact current bytes, including the full nested support review; never reduce this to summary cards. */
 export function preparePrdAuthority(input: {
   metadata: RequirementRecord; marketing: PrdMarketingAuthority; workDir: string; projectId: string;
@@ -216,17 +255,27 @@ export function preparePrdAuthority(input: {
 /** Both existing real LLM agents receive the same complete authority; this grants no new approval. */
 export function prdAuthorityPrompt(authority: PrdAuthority, contract: RequirementContract): string {
   const productVisualAuthority = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
+  const duration = prdDurationContract(
+    authority.profile,
+    contract.scenes.reduce((sum, scene) => sum + scene.duration, 0),
+  );
+  const contentDuration = duration.contentDurationSeconds
+    ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0);
+  const tolerance = duration.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
+  const finalDuration = duration.finalDurationSeconds ?? contentDuration + duration.coverIntroSeconds;
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
     + `交付口径消歧（必须逐字执行）：openWithCover=true 且 coverIntroSeconds=N 表示成片最前 N 秒为静音封面段，内容首帧指封面段之后的第一帧；不得改写成“不开启片头封面”，也不得把片头封面误称为 titleCard。titleCard 与独立封面 PNG/JPEG 是另外两个字段。`
     + `Brief.cta 仅是账号互动文案元数据，除非另行提供明确的 onScreenCTAText 字段，不得把 CTA 放进持续字幕、场景文字、道具或旁白；没有可靠人物/商品外观图片的部位必须省略，视觉色彩章节只能写光线、空气、环境与调色意图，不能据此断言商品车漆、贴花或配色分区。`
     + `commerce/平台要求的 product-close、usage、host、ambience、moving 是允许重叠的镜头标签，必须逐镜标注；百分比按各自标签累计秒数分别计数，不要求把各百分比相加不超过 100%。\n`
-    + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
+    + `本次 G3 已审的完整场景、道具、动作和宿主选角合同（冗余旧描述不进入展示，结构化字段完整保留）：\n${JSON.stringify(requirementDisplayContract(contract))}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
     + `人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。\n`
     + `制作规格 scenePlan.scenes 按合同节点顺序一一对应，sceneId 必须逐项等于合同 scenes[].id，duration 必须逐项等于该节点 duration。`
-    + `不得合并、拆分、漏掉开场或结尾；总时长必须位于 ${authority.profile.targetDuration ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0)}s 的 ±${TARGET_DURATION_TOLERANCE_SECONDS}s 内，且各节点时长必须继承已审 G3 合同。`
+    + `不得合并、拆分、漏掉开场或结尾；内容时间线节点合计必须为 ${contentDuration}s ±${tolerance}s；`
+    + `openWithCover=${String(authority.profile.openWithCover ?? false)} 且静音片头 ${duration.coverIntroSeconds}s，二者相加后的最终成片必须为 ${finalDuration}s ±${tolerance}s。`
+    + `不得把最终片长直接当作内容节点合计，也不得在封面之外重复增加同段时长。\n`
     + `完整保留场景原目的、角色行为、可见道具与创作原文；叙事语言由本次模型创作。\n`
     + `下面是本次宿主真实非降级 G1 通过的完整原件，仅授权其中已接受 claims 及其限定用途，不批准本次 PRD。`
     + `必须遵守原件明确 restrictions。完整阅读嵌套 A1/A2/A3 support review 的 issues 和 suggestions，回应其中的事实不确定性、来源/报道日期/用途限定。`
@@ -275,6 +324,7 @@ function hasDeliveryPlan(profile: PrdProductionProfile): boolean {
 function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord[] {
   const declared = Object.hasOwn(profile, "sidecarPolicy") || Object.hasOwn(profile, "persistentSubtitleText");
   const items: RequirementRecord[] = [];
+  const duration = prdDurationContract(profile);
   const persistent = profile.persistentSubtitleText === undefined ? ""
     : `全片持续文字${JSON.stringify(profile.persistentSubtitleText)}（实际视频流0秒至末帧，ASS百分秒终点向上取整且最多超出0.01秒）`;
   if (profile.subtitleMode && ["both", "burned"].includes(profile.subtitleMode)) items.push({ item: "subtitle_burned",
@@ -288,7 +338,7 @@ function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord
         : "交付与本次视频台词和时间线一致的SRT/VTT独立字幕文件（dialogue-only）；不将台词侧车当成完整文字组合ASS或持续文字完成凭据；此为待执行交付要求",
     priority: "required" });
   if (profile.coverDelivery === "standalone") items.push({ item: "cover", priority: "required",
-    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；本项只声明独立文件，是否用于片头完全由openWithCover${profile.coverIntroSeconds === undefined ? "" : `=${profile.openWithCover},coverIntroSeconds=${profile.coverIntroSeconds}`}决定；此为待执行交付要求` });
+    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；本项只声明独立文件，openWithCover=${String(profile.openWithCover ?? false)}，coverIntroSeconds=${duration.coverIntroSeconds}；内容时间线${duration.contentDurationSeconds ?? "未指定"}s加静音片头后的最终成片${duration.finalDurationSeconds ?? "未指定"}s；此为待执行交付要求` });
   return items;
 }
 
@@ -372,6 +422,10 @@ export function validatePrdModelPayload(value: unknown, kind: "creative" | "prod
 export function validatePrdProduction(value: unknown, contract: RequirementContract, profile: PrdProductionProfile): void {
   const result = requirementRecord(value, "PRD 制作规格");
   const scenes = list(requirementRecord(result.scenePlan, "PRD scenePlan").scenes, "PRD scenes").map(value => requirementRecord(value, "PRD scene"));
+  const duration = prdDurationContract(profile, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
+  const expectedContentDuration = duration.contentDurationSeconds
+    ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0);
+  const totalTolerance = duration.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
   const sceneTolerance = profile.durationToleranceFrames !== undefined && profile.frameRate !== undefined
     ? profile.durationToleranceFrames / profile.frameRate
     : 0;
@@ -379,11 +433,11 @@ export function validatePrdProduction(value: unknown, contract: RequirementContr
     const original = contract.scenes[index]!;
     return scene.sceneId !== original.id || scene.sequence !== index + 1 || typeof scene.duration !== "number"
       || !Number.isFinite(scene.duration) || scene.duration <= 0 || Math.abs(scene.duration - original.duration) > sceneTolerance + 1e-9;
-  }) || (profile.targetDuration !== undefined && !(
-    Math.abs(scenes.reduce((total, scene) => total + Number(scene.duration), 0) - profile.targetDuration)
-      <= Math.max(sceneTolerance, TARGET_DURATION_TOLERANCE_SECONDS) + 1e-9
-  ))) {
-    prdFail("PRD_SCENE_DURATION_CONFLICT", "模型场景节点、顺序或时长未继承本次已审 G3，拒绝改写为凑齐目标");
+  }) || !(
+    Math.abs(scenes.reduce((total, scene) => total + Number(scene.duration), 0) - expectedContentDuration)
+      <= totalTolerance + 1e-9
+  )) {
+    prdFail("PRD_SCENE_DURATION_CONFLICT", "模型场景节点、顺序或内容时长未继承本次已审 G3，或与封面片头后的最终成片时长冲突");
   }
   const characters = list(requirementRecord(result.characterSystem, "PRD characterSystem").characters, "PRD characters").map(value => requirementRecord(value, "PRD character"));
   if (characters.length !== contract.cast.characters.length || new Set(characters.map(character => character.characterId)).size !== characters.length

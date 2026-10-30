@@ -58,17 +58,27 @@ describe("scene policy coverage display", () => {
     const plan = policyCoveragePlan({
       brief: { scenePolicyRequirements: { requiredTags: ["product-close", "usage", "host", "ambience", "moving"] } },
     }, [
-      { sceneId: "opening", duration: 4, purpose: "女车手跨坐整车拧油门冲入赛道",
+      { sceneId: "opening", duration: 10, purpose: "女车手跨坐整车拧油门冲入赛道",
         visualRequirements: ["低机位追拍车身与前轮，赛道热浪清晰"], audioRequirements: [], keyProps: ["820RR-RC"] },
+      { sceneId: "middle", duration: 14, purpose: "压弯超车并冲线",
+        visualRequirements: ["低机位跟拍整车高速压弯"], audioRequirements: [], keyProps: ["车辆"] },
       { sceneId: "ending", duration: 6, purpose: "人物站在最高领奖台，奖杯与整车同框",
         visualRequirements: ["自然光颁奖环境，人物与车辆稳定构图"], audioRequirements: [], keyProps: ["奖杯", "车辆"] },
-    ], [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "ending", estimatedShots: 1 }]);
+    ], [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }]);
     expect(plan).toMatchObject({
       requiredTags: ["product-close", "usage", "host", "ambience", "moving"],
-      requiredSeconds: { "product-close": "≥35% 全片时长", host: "20%–30% 全片时长" },
-      scenes: [{ sceneId: "opening", estimatedShots: 2, policyTags: expect.arrayContaining(["product-close", "usage", "host", "ambience", "moving"]) },
-        { sceneId: "ending", estimatedShots: 1, policyTags: expect.arrayContaining(["product-close", "host", "ambience"]) }],
+      totalDuration: 30,
+      requiredSeconds: { "product-close": "10.5–30s", host: "6–9s" },
+      scenes: [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }],
     });
+    expect(plan?.feasibility).toEqual({ "product-close": true, usage: true, host: true, ambience: true, moving: true });
+    expect(plan?.scenes.every(scene => scene.policyTags.length > 0)).toBe(true);
+    expect(plan?.plannedSeconds["product-close"]).toBeGreaterThanOrEqual(10.5);
+    expect(plan?.plannedSeconds.usage).toBeGreaterThanOrEqual(9);
+    expect(plan?.plannedSeconds.host).toBeGreaterThanOrEqual(6);
+    expect(plan?.plannedSeconds.host).toBeLessThanOrEqual(9);
+    expect(plan?.plannedSeconds.ambience).toBeGreaterThanOrEqual(3);
+    expect(plan?.plannedSeconds.moving).toBeGreaterThanOrEqual(9);
     expect(plan?.accounting).toContain("不把百分比相加");
     expect(plan?.shotCardRule).toContain("正式镜头卡必须逐镜携带");
   });

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RequirementContractError, bindRequirementContract, renderRequirementContract, requirementCast, requirementHash, requirementRecord,
-  requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredScenePrompt, structuredSceneSchema, structuredSceneTiming,
+  requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema, structuredSceneTiming,
   validateRequirementSchema, verifiedRequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS, TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
@@ -402,6 +402,51 @@ describe("host requirement contract data", () => {
     requirementRecord(invalid.opening, "opening").duration = 9.949;
     expect(requirementScenes(valid, requirementCast(metadata()), 30)).toHaveLength(3);
     expect(() => requirementScenes(invalid, requirementCast(metadata()), 30)).toThrow("REQUIREMENT_SCENE_UNVERIFIED");
+  });
+
+  it("applies an explicit one-frame tolerance to the content timeline", () => {
+    const scene = structure(), opening = requirementRecord(scene.opening, "opening");
+    opening.duration = 9.4;
+    scene.totalDuration = 29.4;
+    expect(requirementScenes(scene, requirementCast(metadata()), 29.4, { toleranceSeconds: 1 / 30 })).toHaveLength(3);
+    opening.duration = 9.5;
+    scene.totalDuration = 29.5;
+    expect(() => requirementScenes(scene, requirementCast(metadata()), 29.4, { toleranceSeconds: 1 / 30 }))
+      .toThrow("REQUIREMENT_SCENE_UNVERIFIED");
+  });
+
+  it("rejects unverified product part and angle invention before G3", () => {
+    const scene = structure();
+    requirementRecord(scene.opening, "opening").keyElements = ["前制动卡钳的金属冷光", "围场护栏"];
+    let failure: RequirementContractError & { details?: RequirementRecord };
+    try {
+      requirementScenes(scene, requirementCast(metadata()), 30, {
+        productVisualAuthority: { required: true, product: "820RR-RC", images: [
+          { url: "https://example.com/product.jpg", pageUrl: "https://example.com/product", angle: "unknown" },
+        ], rule: "only verified image content" },
+      });
+      throw new Error("expected failure");
+    } catch (error) { failure = error as typeof failure; }
+    expect(failure.code).toBe("REQUIREMENT_PRODUCT_VISUAL_UNVERIFIED");
+    expect(failure.details).toEqual({ kind: "product-visual", sceneId: "opening", fieldIndex: 1, category: "component" });
+    expect(structuredSceneFeedback(failure)).toContain("不得新增未经本次图片逐项确认的部件名称");
+  });
+
+  it("states the final master, silent cover and content-timeline split in the scene authority", () => {
+    const instructions = structuredSceneInstructions(requirementCast(metadata()), "客户受众", {
+      targetContentDurationSeconds: 29.4,
+      finalDurationSeconds: 30,
+      coverIntroSeconds: 0.6,
+      toleranceSeconds: 1 / 30,
+      narrativeDisclosure: "冠军和连续超车是叙事演绎。",
+      persistentSubtitleText: "张雪机车 820RR-RC｜赛道专用",
+      productVisualAuthority: { required: true, product: "820RR-RC", images: [], rule: "no invented parts" },
+    });
+    expect(instructions).toContain("内容时间线节点合计必须为 29.4 秒 ±0.03333333333333333 秒");
+    expect(instructions).toContain("最终成片必须为 30 秒 ±0.03333333333333333 秒");
+    expect(instructions).toContain("冠军和连续超车是叙事演绎。");
+    expect(instructions).toContain("张雪机车 820RR-RC｜赛道专用");
+    expect(instructions).toContain("不是商品卖点、性能证据");
   });
 
   it.each([

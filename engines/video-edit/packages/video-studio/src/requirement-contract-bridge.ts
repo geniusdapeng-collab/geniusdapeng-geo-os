@@ -11,7 +11,8 @@ import {
   qualifyRequirementThemeInput, requirementAuthorityFailure, requirementAuthorityPrompt, scopedRequirementEngine,
   type RequirementAuthorityOptions
 } from "./requirement-authority.js";
-import type { PrdAuthority } from "./prd-authority.js";
+import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
+import { extractProductVisualAuthority } from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 interface Scope {
@@ -97,6 +98,124 @@ function scopeCast(scope: Scope): RequirementCast {
 }
 function audience(scope: Scope): unknown {
   return scope.metadata.brief && requirementRecord(scope.metadata.brief, "Brief").audience;
+}
+
+function sceneAuthority(scope: Scope, fallbackDuration: unknown) {
+  if (!scope.authority) return undefined;
+  const fallback = Number(fallbackDuration);
+  const duration = prdDurationContract(
+    scope.authority.profile,
+    Number.isFinite(fallback) && fallback > 0 ? fallback : undefined,
+  );
+  const targetContentDurationSeconds = duration.contentDurationSeconds
+    ?? (Number.isFinite(fallback) && fallback > 0 ? fallback : undefined);
+  if (targetContentDurationSeconds === undefined) {
+    requirementAuthorityFailure("REQUIREMENT_SCENE_UNVERIFIED", "本次内容时间线目标时长缺失");
+  }
+  const toleranceSeconds = duration.toleranceSeconds
+    ?? (scope.authority.profile.durationToleranceFrames === undefined ? 5 : 0);
+  const productVisualAuthority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
+  const brief = scope.authority.metadata.brief && typeof scope.authority.metadata.brief === "object"
+    ? requirementRecord(scope.authority.metadata.brief, "需求 Brief") : {};
+  const narrative = brief.narrativeDisclosure && typeof brief.narrativeDisclosure === "object"
+    ? requirementRecord(brief.narrativeDisclosure, "narrativeDisclosure") : {};
+  const production = brief.productionRequirements && typeof brief.productionRequirements === "object"
+    ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
+  return {
+    targetContentDurationSeconds,
+    finalDurationSeconds: duration.finalDurationSeconds ?? targetContentDurationSeconds + duration.coverIntroSeconds,
+    coverIntroSeconds: duration.coverIntroSeconds,
+    toleranceSeconds,
+    narrativeDisclosure: typeof narrative.statement === "string" ? narrative.statement : undefined,
+    persistentSubtitleText: typeof production.persistentSubtitleText === "string" ? production.persistentSubtitleText : undefined,
+    productVisualAuthority,
+  };
+}
+
+function sceneValidationOptions(scope: Scope, fallbackDuration: unknown) {
+  const authority = sceneAuthority(scope, fallbackDuration);
+  const fallback = Number(fallbackDuration);
+  return {
+    targetDuration: authority?.targetContentDurationSeconds
+      ?? (Number.isFinite(fallback) && fallback > 0 ? fallback : undefined),
+    options: {
+      ...(authority ? { toleranceSeconds: authority.toleranceSeconds,
+        productVisualAuthority: authority.productVisualAuthority } : {}),
+    },
+  };
+}
+
+function presentationSection(scope: Scope, fallbackDuration: number): string {
+  const authority = sceneAuthority(scope, fallbackDuration);
+  if (!authority) return "";
+  const brief = scope.authority!.metadata.brief && typeof scope.authority!.metadata.brief === "object"
+    ? requirementRecord(scope.authority!.metadata.brief, "需求 Brief") : {};
+  const production = brief.productionRequirements && typeof brief.productionRequirements === "object"
+    ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
+  const restrictions = Array.isArray(brief.restrictions) ? brief.restrictions.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  return `\n\n## 六、宿主权威交付与事实边界（不可被模型改写）\n\n`
+    + `- 内容时间线：${authority.targetContentDurationSeconds}s ±${authority.toleranceSeconds}s；`
+    + `静音封面片头：${authority.coverIntroSeconds}s；最终成片：${authority.finalDurationSeconds}s ±${authority.toleranceSeconds}s。`
+    + `封面片头是最终成片的一部分，不占内容节点合计，也不能在正文重复计算。\n`
+    + `- 平台/画幅/分辨率/帧率：${JSON.stringify({
+      platform: scope.authority!.profile.targetPlatform ?? brief.platform ?? null,
+      aspectRatio: scope.authority!.profile.aspectRatio ?? brief.aspectRatio ?? null,
+      resolution: scope.authority!.profile.resolution ?? null,
+      frameRate: scope.authority!.profile.frameRate ?? null,
+    })}\n`
+    + `- 叙事披露原文（仅元数据/发布边界，不改成画面文字）：${JSON.stringify(authority.narrativeDisclosure ?? null)}\n`
+    + `- 常驻字幕原文（0 秒至正片末帧；封面片头仍静音）：${JSON.stringify(authority.persistentSubtitleText ?? null)}\n`
+    + `- 客户限制：${JSON.stringify(restrictions)}\n`
+    + `- 商品视觉授权：${JSON.stringify(authority.productVisualAuthority)}。`
+    + `商品外观只能使用整车型号、车身整体、动作结果或授权图片明确可见锚点；`
+    + `不得把“连续超车”“夺冠”等虚构叙事写成产品卖点、性能证据、竞品对比或真实赛事成绩；`
+    + `不得新增卡钳、排气口、轮辋、整流罩、配色分区、特定 45 度机位或轮胎接地局部等未经逐项确认的外观。\n`
+    + `- 客户 CTA 仅为账号互动元数据，未明确要求时不得写成画面文字、字幕、道具或台词。\n`;
+}
+
+function applyRequirementProductionAuthority(value: unknown, scope: Scope): RequirementRecord {
+  const source = requirementRecord(value, "G3 实际需求清单");
+  if (!scope.authority) return source;
+  const result = structuredClone(source);
+  const brief = scope.authority.metadata.brief && typeof scope.authority.metadata.brief === "object"
+    ? requirementRecord(scope.authority.metadata.brief, "需求 Brief") : {};
+  const production = brief.productionRequirements && typeof brief.productionRequirements === "object"
+    ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
+  const authority = sceneAuthority(scope, brief.duration);
+  if (!authority) return result;
+  const final = authority.finalDurationSeconds;
+  const tolerance = authority.toleranceSeconds;
+  result.targetDuration = final;
+  result.contentDuration = authority.targetContentDurationSeconds;
+  result.durationRange = [Number((final - tolerance).toFixed(6)), Number((final + tolerance).toFixed(6))];
+  if (typeof brief.aspectRatio === "string") result.aspectRatio = brief.aspectRatio;
+  if (typeof brief.platform === "string") result.platform = brief.platform;
+  result.narrativeDisclosure = structuredClone(brief.narrativeDisclosure ?? null);
+  result.productionRequirements = structuredClone(production);
+  result.persistentSubtitleText = authority.persistentSubtitleText ?? null;
+  result.restrictions = Array.isArray(brief.restrictions) ? structuredClone(brief.restrictions) : [];
+  const profile = result.productionProfile && typeof result.productionProfile === "object"
+    ? requirementRecord(result.productionProfile, "G3 productionProfile") : null;
+  if (profile) {
+    profile.duration_target = final;
+    profile.content_duration = authority.targetContentDurationSeconds;
+    if (typeof brief.aspectRatio === "string") profile.aspect_ratio = brief.aspectRatio;
+    if (typeof brief.platform === "string") profile.platform = brief.platform;
+    if (typeof brief.audience === "string") profile.audience = brief.audience;
+    if (typeof brief.voice === "string" && /无对白|no dialogue/iu.test(brief.voice)) profile.dialogue_density = "none";
+  }
+  const keyPoints = Array.isArray(result.keyPoints) ? result.keyPoints : [];
+  keyPoints.push(`[本次宿主权威时长与交付边界] ${JSON.stringify({
+    contentDurationSeconds: authority.targetContentDurationSeconds,
+    coverIntroSeconds: authority.coverIntroSeconds,
+    finalDurationSeconds: final,
+    toleranceSeconds: tolerance,
+    narrativeDisclosure: authority.narrativeDisclosure ?? null,
+    persistentSubtitleText: authority.persistentSubtitleText ?? null,
+  })}`);
+  result.keyPoints = keyPoints;
+  return result;
 }
 function method(owner: RequirementRecord, key: string): Method {
   const value = owner[key];
@@ -211,8 +330,9 @@ export function installRequirementContractBridge(
       // The controlled caller really awaits this result; original profile generation is not replaced.
       const original = await Reflect.apply(convert, this, [discovery, upstream]);
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "转换结束时运行作用域已经关闭");
-      return bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
+      const bound = bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
         typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null);
+      return applyRequirementProductionAuthority(bound, scope);
     });
   };
   const rendered: Method = function (intent, metadata, list, discovery) {
@@ -225,7 +345,8 @@ export function installRequirementContractBridge(
       if (contract.ownerAudience !== (typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null)) {
         throw new RequirementContractError("REQUIREMENT_AUDIENCE_CHANGED", "G3 与本次宿主冻结的客户受众口径不一致");
       }
-      return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"));
+      return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"))
+        + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
     });
   };
   const discovered: Method = async function (input) {
@@ -360,7 +481,12 @@ export function installRequirementContractBridge(
         runView._buildPrompt = function (this: RequirementRecord, input: unknown) {
           requireActiveScope();
           const original = Reflect.apply(build, this, [input]);
-          return structuredScenePrompt(original, input, effectiveSchema) + structuredSceneInstructions(cast, audience(scope)) + attemptFeedback;
+          const upstream = requirementRecord(input, "SceneArchitect 上游输入");
+          const target = sceneValidationOptions(scope, upstream.duration_sec);
+          return structuredScenePrompt(original, input, effectiveSchema, target.targetDuration,
+            target.options.toleranceSeconds)
+            + structuredSceneInstructions(cast, audience(scope), sceneAuthority(scope, upstream.duration_sec))
+            + attemptFeedback;
         };
         runView._validateAndFill = function (this: RequirementRecord, response: unknown, responseSchema: unknown) {
           requireActiveScope();
@@ -368,7 +494,8 @@ export function installRequirementContractBridge(
           const upstream = requirementRecord(input, "SceneArchitect 上游输入");
           try {
             validateRequirementSchema(response, responseSchema);
-            requirementScenes(response, cast, upstream.duration_sec);
+            const target = sceneValidationOptions(scope, upstream.duration_sec);
+            requirementScenes(response, cast, target.targetDuration, target.options);
           } catch (error) {
             const feedback = structuredSceneFeedback(error);
             if (feedback && error instanceof RequirementContractError) {
@@ -405,7 +532,9 @@ export function installRequirementContractBridge(
       const result = await awaited(scope, () => Reflect.apply(discover, engineView, [input]));
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "需求洞察结束时运行作用域已经关闭");
       const record = requirementRecord(result, "实际需求洞察结果");
-      requirementScenes(record.sceneStructure, cast, requirementRecord(input, "上游输入").duration_sec);
+      const upstream = requirementRecord(input, "上游输入");
+      const target = sceneValidationOptions(scope, upstream.duration_sec);
+      requirementScenes(record.sceneStructure, cast, target.targetDuration, target.options);
       return { ...record, audienceAuthority: audience(scope) ?? null, audienceProfileStatus: "model-hypothesis" };
     });
   };

@@ -302,6 +302,21 @@ describe("actual native scene prompt and strict production response", () => {
     expect(JSON.stringify(result)).not.toContain(run.approvedTheme.contentMd);
   });
 
+  it("uses the final-master contract to project the content timeline behind a silent cover", async () => {
+    installNativeDiscovery();
+    const scene = physicalScene([9.4, 10, 10]);
+    const run = privateRun("cover-content-timeline", 30, scene);
+    run.authority.profile = { targetDuration: 30, frameRate: 30, durationToleranceFrames: 1,
+      openWithCover: true, coverIntroSeconds: 0.6 };
+    const model = modelFor(run, [scene]);
+    const result = await runDiscovery(run, model.engine);
+    expect(requirementHash(result.sceneStructure)).toBe(requirementHash(scene));
+    const sceneCall = model.calls.find(call => call.method === "reason")!;
+    expect(sceneCall.prompt).toContain("目标 29.4 秒 ±0.03333333333333333 秒内");
+    expect(sceneCall.prompt).toContain("内容时间线节点合计必须为 29.4 秒 ±0.03333333333333333 秒");
+    expect(sceneCall.prompt).toContain("最终成片必须为 30 秒 ±0.03333333333333333 秒");
+  });
+
   it("uses the native second scene attempt to correct a schema minimum with complete unchanged story and G1/G2 authority", async () => {
     installNativeDiscovery();
     const valid = physicalScene([3, 5, 7, 15]), invalid = physicalScene([3, 4, 8, 15]);

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "requirement-duration-and-visual-authority",
+  "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
+  "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
+  "generatedAt": "2026-10-30T12:27:14+08:00",
+  "sourceOverlayCount": 5,
+  "scope": "G3 derives content duration from the final master minus the silent cover, rejects invented product parts when only unclassified reference images authorize appearance, and carries narrative disclosure, persistent text, platform and exact duration boundaries into the reviewed requirement list.",
+  "files": [
+    {
+      "path": "packages/video-studio/src/requirement-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
+      "sourceSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
+      "targetSha256": "bde7c1e7ab888820ed2847e624f0983b5a0523308688e9394874f15fb262578c",
+      "sourceBytes": 12270,
+      "targetBytes": 14559
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
+      "targetSha256": "e9fc50f9052f2a84b4002438ccd8570de2c531eaa72afb22e2c062abd7b0838c",
+      "sourceBytes": 38883,
+      "targetBytes": 45048
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
+      "targetSha256": "d779431aa7092137c1e90363df8d0adfa5c24bef70dad83eb44ae2c5ebb2c382",
+      "sourceBytes": 27675,
+      "targetBytes": 36068
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
+      "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
+      "targetSha256": "d83f2d6868423fa5e27d5648a4beb629b15f71d6971e78b60808c03442d9333a",
+      "sourceBytes": 52098,
+      "targetBytes": 55158
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
+      "targetSha256": "3d598862732b1bf88e3355b88a9d335277d68e31b78afefba6d76ceef204b191",
+      "sourceBytes": 59825,
+      "targetBytes": 61783
+    }
+  ]
+}
