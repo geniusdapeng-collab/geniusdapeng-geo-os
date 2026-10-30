@@ -3,9 +3,9 @@
   "id": "requirement-duration-and-visual-authority",
   "engineBaselineCommit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "engineBaselineTree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "generatedAt": "2026-10-30T12:57:06+08:00",
+  "generatedAt": "2026-10-30T13:36:57+08:00",
   "sourceOverlayCount": 9,
-  "scope": "G3 derives content duration behind the silent cover, rejects invented product parts without classified visual evidence, keeps the selected project wardrobe in the character projection, carries image license risk and persistent-text timing into review, and preserves exact platform/duration boundaries.",
+  "scope": "G3 derives content duration behind the silent cover, rejects invented product parts without classified visual evidence while allowing explicit negative omission constraints, keeps the selected project wardrobe, and carries image-rights and persistent-text timing into review.",
   "files": [
     {
       "path": "packages/video-studio/src/requirement-authority.ts",
@@ -19,9 +19,9 @@
       "path": "packages/video-studio/src/requirement-contract.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "7dd133bcecfef9310c9204830e4db601006853c625e75419c6bf9e4c796d3a34",
+      "targetSha256": "22e0a25982432f20d2ea24eca43472e606178d6a229a2e14b61bdb2c25a0861b",
       "sourceBytes": 38883,
-      "targetBytes": 45221
+      "targetBytes": 45375
     },
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
@@ -35,9 +35,9 @@
       "path": "packages/video-studio/src/requirement-contract.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
       "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
-      "targetSha256": "d83f2d6868423fa5e27d5648a4beb629b15f71d6971e78b60808c03442d9333a",
+      "targetSha256": "2ce68c29056b5c83a08317b576fbbccf4b35bad41a5389bfb4cd61cb87c5ac43",
       "sourceBytes": 52098,
-      "targetBytes": 55158
+      "targetBytes": 55848
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
