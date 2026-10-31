@@ -167,6 +167,89 @@ describe("商品情报档案引擎回归", () => {
     expect(brief.evidence_note).not.toContain("0 条单源公开主张");
   });
 
+  it("媒体单源、无用户和竞品证据时保留 claim 原文，不伪造官方、共识或差异空位", () => {
+    const root = tempRoot();
+    const engine = new JennyLoomEngine({ storeRoot: root });
+    const restrictions = [
+      "没有可核实用户评价：禁止用户口碑、评分、人数、销量或使用效果共识主张",
+      "没有可核实竞品证据：禁止对比、竞品弱点或市场领先主张",
+      "不展示公路骑行",
+      "不写真实赛事结果、品牌代言、销量、价格或绝对性能结论",
+    ];
+    const input = {
+      name: "媒体机车 RC", brand: "媒体品牌", category: "摩托车",
+      restrictions,
+      priceContext: { reportedAt: "2026-09-19", retrievedAt: "2026-10-30T05:48:40.720Z", sourceUrl: "https://news.example.com/rc" },
+    };
+    const plan = engine.plan(input);
+    const raw = rawFixture();
+    raw.A1.identity.name = "媒体机车 RC";
+    raw.A1.identity.brand = "媒体品牌";
+    raw.A1.identity.category = "摩托车";
+    (raw.A1.identity.specs as Record<string, unknown>).使用场景 = "赛道日及竞速场景";
+    const mediaPoints = [
+      "赛道专用，不具备道路行驶资质",
+      "818.8cc 直列三缸发动机",
+      "最大功率 113 千瓦",
+      "轴距 1420 毫米",
+      "座高 825 毫米",
+      "湿重 160 公斤",
+    ];
+    raw.A1.identity.official_selling_points = mediaPoints.map(point => ({
+      point, source_url: "https://news.example.com/rc", channel: "媒体报道",
+    }));
+    raw.A1.images = [{ url: "https://news.example.com/rc.png", source: "媒体报道", page_url: "https://news.example.com/rc",
+      angle: "unknown", width: 640, height: 640 }];
+    raw.A2.reviews = [];
+    raw.A3.competitors = [];
+    const result = engine.assemble(plan.trace_id, input, raw);
+    expect(result.ok).toBe(true);
+
+    const dossier = result.dossier as {
+      restrictions: string[];
+      identity: { selling_points_field_note: string; official_selling_points: Array<{ point: string; source_nature: string }> };
+      usage: { scenarios: Array<{ scene: string; not_user_consensus: boolean }>; evidence_note: string };
+      pros_cons: { pros: Array<{ point: string; aspect: string; claim_nature: string }> };
+    };
+    const claim = dossier.pros_cons.pros.find(item => item.point === "赛道专用，不具备道路行驶资质")!;
+    expect(claim).toMatchObject({ aspect: "reported_claim", claim_nature: "media-reported" });
+    expect(dossier.pros_cons.pros.some(item => item.point.includes("官方主打"))).toBe(false);
+    expect(dossier.restrictions).toEqual(restrictions);
+    expect(dossier.identity.selling_points_field_note).toContain("不是厂商官方确认");
+    expect(dossier.identity.official_selling_points).toHaveLength(6);
+    expect(dossier.identity.official_selling_points.every(item => item.source_nature === "media-reported-single-source")).toBe(true);
+    expect(dossier.usage.scenarios).toContainEqual(expect.objectContaining({ scene: "赛道日及竞速场景", not_user_consensus: true }));
+    expect(dossier.usage.evidence_note).toContain("不是用户评价");
+
+    const cards = result.cards as Record<string, any>;
+    expect(cards.brief_card.sellingPointEvidence).toHaveLength(6);
+    expect(cards.brief_card.sellingPointEvidence).toContainEqual(expect.objectContaining({
+      point: "赛道专用，不具备道路行驶资质", nature: "media-reported", confidence: "reported",
+      source_refs: [expect.stringMatching(/^EV-/)],
+    }));
+    expect(cards.insight_card.consensus_points).toEqual([]);
+    expect(cards.insight_card.reported_claims).toHaveLength(6);
+    expect(cards.insight_card.reported_claims).toContainEqual(expect.objectContaining({
+      point: "赛道专用，不具备道路行驶资质", nature: "media-reported", confidence: "reported", mentions: 0,
+      evaluation_nature: "source-claim-not-user-review", source_refs: [expect.stringMatching(/^EV-/)],
+    }));
+    expect(cards.prd_card.selling_point_evidence).toHaveLength(6);
+    expect(cards.insight_card.market_position.our_opening).toEqual([]);
+    expect(cards.theme_card.differentiation_space).toEqual([]);
+    expect(cards.prd_card.compliance_redlines).toEqual(expect.arrayContaining(restrictions));
+    expect(cards.prd_card.hook_candidates.data_points).not.toEqual(expect.arrayContaining([expect.stringContaining("价格")]));
+    expect(cards.router_material.hook_material.data_points).not.toEqual(expect.arrayContaining([expect.stringContaining("价格")]));
+    expect(cards.insight_card.market_position).toMatchObject({
+      price_reported_at: "2026-09-19", price_retrieved_at: "2026-10-30T05:48:40.720Z",
+    });
+    expect(cards.portrait_manifest).toMatchObject({
+      licensed_for_delivery: false,
+      usage_policy: expect.stringContaining("不得直接用于商业成片"),
+    });
+    expect(cards.brief_card.productHero).toMatchObject({ licensed_for_delivery: false });
+    expect(cards.prd_card.reference_image_policy).toMatchObject({ licensed_for_delivery: false });
+  });
+
   it("信封链：逐环 prev_checksum 连续且链校验通过；篡改即判断裂", () => {
     const root = tempRoot();
     const engine = new JennyLoomEngine({ storeRoot: root });

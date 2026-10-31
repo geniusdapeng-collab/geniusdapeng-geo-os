@@ -74,9 +74,69 @@ describe("默认门策略（T-2026-1001-0007）：机器不替人类做决定", 
 });
 
 it("营销G1允许合法JSON空值，拒绝仅摘要或旧自报档案", () => {
-  const good = { facts: { schemaVersion: "workloom.marketing-facts/v1", stages: [1, 2, 3], sources: [1], optional: null } };
+  const good = {
+    facts: {
+      schemaVersion: "workloom.marketing-facts/v1",
+      stages: [
+        { stage: "A1", facts: { status: "source_bound", claims: [], payload: { identity: { name: "合成服务" }, images: [] } } },
+        { stage: "A2", facts: { status: "no_evidence", claims: [], payload: { reviews: [] } } },
+        { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
+      ],
+      sources: [{ sourceId: "SRC-1" }],
+      restrictions: [],
+      dossier: { identity: {}, provenance: [], pros_cons: { pros: [] } },
+      cards: {
+        insight_card: { consensus_points: [], market_position: { our_opening: [] } },
+        theme_card: { differentiation_space: [] },
+        prd_card: { compliance_redlines: [] },
+        portrait_manifest: { reference_images: [] },
+      },
+    },
+    integrity: { schemaVersion: "workloom.g1-content-integrity/v1", algorithm: "sha256", factsSha256: "a".repeat(64),
+      factsHashScope: "canonical facts", evidenceHashPolicy: "producer evidence binds exact bytes" },
+  };
   expect(gateDeterministicChecks("G1_DOSSIER", JSON.stringify(good)).every(check => check.pass)).toBe(true);
   for (const bad of ["商品事实摘要".repeat(100), JSON.stringify({ ...good, facts: { ...good.facts, stages: [1] } }), "null"]) expect(gateDeterministicChecks("G1_DOSSIER", bad).some(check => check.hard && !check.pass)).toBe(true);
+});
+
+it("营销G1确定性拒绝媒体冒充官方、无证据共识/差异、红线遗漏、图片授权和价格日期缺口", () => {
+  const invalid: any = {
+    facts: {
+      schemaVersion: "workloom.marketing-facts/v1",
+      stages: [
+        { stage: "A1", facts: { status: "source_bound", claims: [], payload: { identity: { name: "合成商品" }, images: [{ url: "https://media.example.com/a.png", page_url: "https://source.example.com", angle: "unknown" }] } } },
+        { stage: "A2", facts: { status: "no_evidence", claims: [], payload: { reviews: [] } } },
+        { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
+      ],
+      sources: [{ sourceId: "SRC-1" }],
+      restrictions: ["没有可核实竞品证据：禁止竞品对比", "不写销量、价格或绝对性能结论"],
+      dossier: {
+        identity: { price_band: "CNY 128000" },
+        provenance: [{ evidence_id: "EV-1", channel_class: "unknown" }],
+        pros_cons: { pros: [{ point: "媒体转述", claim_nature: "official", source_refs: ["EV-1"] }] },
+      },
+      cards: {
+        insight_card: { consensus_points: [{ point: "用户共识" }], market_position: { our_opening: ["差异"] } },
+        theme_card: { differentiation_space: ["差异"] },
+        prd_card: { compliance_redlines: [], hook_candidates: { data_points: ["价格带：CNY 128000"] }, reference_image_policy: { licensed_for_delivery: true } },
+        portrait_manifest: { reference_images: [{ license_risk: "high" }] },
+        brief_card: { productHero: { heroImageId: "x", licensed_for_delivery: true } },
+        router_material: { hook_material: { data_points: ["价格带：CNY 128000"] } },
+      },
+    },
+    integrity: { schemaVersion: "workloom.g1-content-integrity/v1", algorithm: "sha256", factsSha256: "a".repeat(64),
+      factsHashScope: "canonical facts", evidenceHashPolicy: "producer evidence binds exact bytes" },
+  };
+  const check = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(invalid)).find(item => item.id === "marketing-evidence-integrity")!;
+  expect(check.pass).toBe(false);
+  expect(check.detail).toContain("声称official");
+  expect(check.detail).toContain("用户共识");
+  expect(check.detail).toContain("差异化空位");
+  expect(check.detail).toContain("PRD合规红线遗漏");
+  expect(check.detail).toContain("高授权风险图片");
+  expect(check.detail).toContain("图片授权限制未内联");
+  expect(check.detail).toContain("hook/creative字段仍分发价格");
+  expect(check.detail).toContain("价格缺少来源页面日期");
 });
 
 it("明确商品时G1必须绑定A1已接受真实图，外观授权由宿主结构化产生", () => {

@@ -4,11 +4,11 @@ import { mkdir, mkdtemp, realpath, rm, readFile, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, type PreparedMarketingFacts } from "./marketing-authority.js";
+import { assertMarketingReviewCapacity, prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, type PreparedMarketingFacts } from "./marketing-authority.js";
 import { fetchMarketingSource, requestSource } from "./marketing-source-fetcher.js";
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
 const scope = { tenantId: "tenant-a", workspaceId: "ws-a", projectId: "P1", runId: "RUN1", attempt: 1 };
-const env = { LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "test-only", LLM_MODEL: "test-judge" };
+const env = { LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "test-only", LLM_MODEL: "deepseek-flash" };
 const sourceUrl = "https://source.example.com/f3";
 const sourceText = "星野 F3 是一款风扇，风量 9 档。价格 399 CNY。待机功率 0，自动启停 false，接口 USB/C~口。尾部注意：9 档是风量档位，不是能耗等级；不得声称静音或市场第一。";
 let server: Server, origin: string, root: string, modelCalls: any[], rejectJudge: boolean, extractionCalls: string[], extractionOptions: unknown[];
@@ -30,7 +30,12 @@ beforeAll(async () => {
 afterAll(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); });
 beforeEach(async () => {
   root = await realpath(await mkdtemp(path.join(tmpdir(), "marketing-authority-"))); modelCalls = []; extractionCalls = []; extractionOptions = []; simulatedProviderCalls = []; rejectJudge = false;
-  vi.stubGlobal("fetch", vi.fn(async (_url, init) => { modelCalls.push(JSON.parse(String(init.body))); return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ approved: !rejectJudge, score: rejectJudge ? 10 : 96, issues: rejectJudge ? ["来源不支持此主张"] : [], suggestions: [], reason: rejectJudge ? "原文限定相冲突" : "逐项原文支持" }) } }] })); }));
+  vi.stubGlobal("fetch", vi.fn(async (_url, init) => { modelCalls.push(JSON.parse(String(init.body)));
+    return new Response(JSON.stringify({ id: "chatcmpl-test", model: "deepseek-flash",
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
+        approved: !rejectJudge, score: rejectJudge ? 10 : 96, issues: rejectJudge ? ["来源不支持此主张"] : [],
+        suggestions: [], reason: rejectJudge ? "原文限定相冲突" : "逐项原文支持",
+      }) } }], usage: { prompt_tokens: 100, completion_tokens: 30 } })); }));
 });
 afterEach(async () => { vi.unstubAllGlobals(); await rm(root, { recursive: true, force: true }); });
 async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?: boolean; modelFailure?: boolean; mode?: string; attempt?: number; specs?: Record<string, string | number | boolean>; quoteIds?: boolean;
@@ -84,6 +89,9 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
 }
 const shots = [{ shotId: "S1", prompt: "窗边展示星野 F3 风扇，字幕说明风量 9 档。", fields: { 场景: "窗边", 产品: "星野 F3", 规格: "9 档" } }];
 describe("营销事实宿主完整执行", () => {
+  it("uses the current DeepSeek token budget instead of rejecting a complete G1 archive at an obsolete character count", async () => {
+    await expect(assertMarketingReviewCapacity("完整事实".repeat(40_001))).resolves.toBeUndefined();
+  });
   it("真实HTTP正文→三站提取/完整支持审核→A1–A5→逐最终镜头事实审核→复读", async () => {
     const prepared = await prepare();
     expect(prepared.bundle.stages.map(stage => [stage.stage, stage.facts.status])).toEqual([["A1", "source_bound"], ["A2", "no_evidence"], ["A3", "no_evidence"]]);
@@ -96,9 +104,25 @@ describe("营销事实宿主完整执行", () => {
     expect(prepared.bundle.rawByAgent.A1.identity).toMatchObject({ specs: { 风量: "9 档" } });
     expect(prepared.bundle.rawSha256).toBe(renderSha256(canonicalRenderJson(prepared.raw)));
     expect(prepared.g1Content).toContain('"schemaVersion":"workloom.marketing-facts/v1"'); expect(modelCalls).toHaveLength(3);
+    const g1 = JSON.parse(prepared.g1Content);
+    expect(prepared.bundle.g1ContentSha256).toBe(renderSha256(prepared.g1Content));
+    expect(g1.facts).not.toHaveProperty("g1ContentSha256");
+    expect(g1.integrity).toMatchObject({
+      schemaVersion: "workloom.g1-content-integrity/v1",
+      algorithm: "sha256",
+      factsSha256: renderSha256(canonicalRenderJson(g1.facts)),
+    });
+    expect((prepared.bundle.dossier.pros_cons as { pros: Array<Record<string, unknown>> }).pros).toEqual([
+      expect.objectContaining({ point: "风量 9 档", aspect: "reported_claim", claim_nature: "media-reported" }),
+    ]);
+    const cards = prepared.bundle.cards as Record<string, any>;
+    expect(cards.insight_card.consensus_points).toEqual([]);
+    expect(cards.theme_card.differentiation_space).toEqual([]);
+    expect(cards.prd_card.compliance_redlines).toEqual(expect.arrayContaining(prepared.bundle.restrictions));
+    expect(cards.portrait_manifest.reference_images).toEqual([]);
     expect(JSON.stringify(modelCalls)).toContain("不得声称静音或市场第一"); expect(JSON.stringify(modelCalls)).not.toContain("999档");
     const saved = await finalizeMarketingFacts(prepared, shots, env); expect(modelCalls).toHaveLength(4);
-    expect(modelCalls.every(call => call.temperature === 0.2 && call.response_format.type === "json_object" && !("thinking" in call))).toBe(true);
+    expect(modelCalls.every(call => call.model === "deepseek-flash" && call.response_format?.type === "json_object")).toBe(true);
     const checked = await verifyMarketingFacts({ root, ...saved, scope, shots }); expect(checked.outputReviews[0]?.promptSha256).toBe(renderSha256(shots[0]!.prompt));
     expect(await readFile(path.join(root, checked.sources[0]!.textRef), "utf8")).toBe(sourceText);
   });

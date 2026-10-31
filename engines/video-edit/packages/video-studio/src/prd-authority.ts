@@ -341,7 +341,7 @@ function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord
         : "交付与本次视频台词和时间线一致的SRT/VTT独立字幕文件（dialogue-only）；不将台词侧车当成完整文字组合ASS或持续文字完成凭据；此为待执行交付要求",
     priority: "required" });
   if (profile.coverDelivery === "standalone") items.push({ item: "cover", priority: "required",
-    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；本项只声明独立文件，openWithCover=${String(profile.openWithCover ?? false)}，coverIntroSeconds=${duration.coverIntroSeconds}；内容时间线${duration.contentDurationSeconds ?? "未指定"}s加静音片头后的最终成片${duration.finalDurationSeconds ?? "未指定"}s；此为待执行交付要求` });
+    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；不得使用licenseRisk=high/unknown、licensed_for_delivery=false或未清权的参考图，只能用本次自生成首帧或已清权素材；对外发布前由产品所有者复核图片、商标和车辆外观授权；本项只声明独立文件，openWithCover=${String(profile.openWithCover ?? false)}，coverIntroSeconds=${duration.coverIntroSeconds}；内容时间线${duration.contentDurationSeconds ?? "未指定"}s加静音片头后的最终成片${duration.finalDurationSeconds ?? "未指定"}s；此为待执行交付要求` });
   return items;
 }
 
@@ -402,6 +402,70 @@ export function effectivePrdModelSchema(kind: "creative" | "production", schemaV
   return schema;
 }
 
+/**
+ * Models often copy host-owned character metadata back into their response.
+ * Accept and remove only an extra field whose key and complete JSON value are
+ * byte-equivalent, by the canonical requirement hash, to the selected cast
+ * record. Unknown fields, changed copies and creative additions remain present
+ * for the strict schema validator to reject.
+ */
+export function normalizePrdProductionResponse(value: unknown, schemaValue: RequirementRecord, contract: RequirementContract): RequirementRecord {
+  const result = structuredClone(requirementRecord(value, "PRD production response"));
+  if (!result.characterSystem || typeof result.characterSystem !== "object" || Array.isArray(result.characterSystem)
+    || !Array.isArray((result.characterSystem as RequirementRecord).characters)) return result;
+  const properties = requirementRecord(schemaValue.properties, "PRD production schema properties");
+  const characterProperties = requirementRecord(
+    requirementRecord(
+      requirementRecord(
+        requirementRecord(properties.characterSystem, "PRD characterSystem schema").properties,
+        "PRD characterSystem properties",
+      ).characters,
+      "PRD characters schema",
+    ).items,
+    "PRD character item schema",
+  );
+  const allowed = new Set(Object.keys(requirementRecord(characterProperties.properties, "PRD character properties")));
+  const characters = (result.characterSystem as RequirementRecord).characters as unknown[];
+  characters.forEach((characterValue, index) => {
+    if (!characterValue || typeof characterValue !== "object" || Array.isArray(characterValue)) return;
+    const character = characterValue as RequirementRecord;
+    const selected = contract.cast.characters.find(item => item.id === character.characterId);
+    if (!selected) return;
+    for (const key of Object.keys(character)) {
+      if (allowed.has(key) || !Object.hasOwn(selected, key)) continue;
+      if (requirementHash(character[key]) === requirementHash(selected[key])) delete character[key];
+    }
+    characters[index] = character;
+  });
+  return result;
+}
+
+/**
+ * Persistent subtitle timing is host-owned. Models sometimes describe the
+ * final master as "video 0s" while the same document correctly reserves the
+ * silent cover. Keep all creative text, but replace only that contradictory
+ * timing phrase with the single canonical content/master mapping.
+ */
+export function normalizePrdDeliveryLanguage(value: RequirementRecord, profile: PrdProductionProfile): RequirementRecord {
+  const timing = prdDurationContract(profile);
+  const canonical = `持续文字在内容时间线0秒至内容末帧，插入${timing.coverIntroSeconds}秒静音封面后对应最终成片${timing.coverIntroSeconds}秒至${timing.finalDurationSeconds ?? "内容末帧"}秒`;
+  const style = "字幕样式锁定为Noto Sans SC、74px字号、4px黑色描边、白字、底部安全边距18%、单行优先且最多两行；实测只允许增加底衬或上移，不改变文字与时间区间";
+  const visit = (input: unknown): unknown => {
+    if (typeof input === "string") return input
+      .replace(/持续(?:字幕|文字)[^。；\n]{0,32}(?:覆盖)?(?:实际)?视频\s*0(?:\.0+)?\s*秒至末帧/giu, canonical)
+      .replace(/(?:覆盖)?实际视频\s*0(?:\.0+)?\s*秒至末帧/giu, canonical)
+      .replace(/字号描边待[^；。\n]*(?:检查|确定)?/giu, style)
+      .replace(/(?:由)?G4后[^；。\n]*实测[^；。\n]*/giu, style)
+      .replace(/绑定本镜首帧与(?:车型)?参考图\s*URL/giu, "以本镜自生成首帧为封面来源；未清权参考图仅用于一致性核对，不得进入封面或成片");
+    if (Array.isArray(input)) return input.map(visit);
+    if (input && typeof input === "object") {
+      return Object.fromEntries(Object.entries(input as RequirementRecord).map(([key, child]) => [key, visit(child)]));
+    }
+    return input;
+  };
+  return visit(value) as RequirementRecord;
+}
+
 /** Validate the actual model payload before vendor parsers can manufacture missing modules. */
 export function validatePrdModelPayload(value: unknown, kind: "creative" | "production", schemaValue: RequirementRecord, contract: RequirementContract, profile: PrdProductionProfile): RequirementRecord {
   let parsed: unknown = value;
@@ -416,9 +480,12 @@ export function validatePrdModelPayload(value: unknown, kind: "creative" | "prod
   const schema = kind === "creative"
     ? { type: "object", required: ["creativeCore"], properties: { creativeCore: effective }, additionalProperties: false }
     : effective;
-  validateRequirementSchema(kind === "creative" ? { creativeCore: result } : result, schema, `PRD ${kind} response`);
-  if (kind === "production") validatePrdProduction(result, contract, profile);
-  return result;
+  const normalized = kind === "production"
+    ? normalizePrdDeliveryLanguage(normalizePrdProductionResponse(result, effective, contract), profile)
+    : result;
+  validateRequirementSchema(kind === "creative" ? { creativeCore: normalized } : normalized, schema, `PRD ${kind} response`);
+  if (kind === "production") validatePrdProduction(normalized, contract, profile);
+  return normalized;
 }
 
 /** No scene-duration projection or creative repair is allowed here. */

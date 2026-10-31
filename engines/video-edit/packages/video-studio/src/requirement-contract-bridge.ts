@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import {
   RequirementContractError, bindRequirementContract, renderRequirementContract, requirementCast,
-  requirementHash, requirementRecord, requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema,
+  normalizeRiskResponseShape, requirementHash, requirementRecord, requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema,
   validateRequirementSchema, verifiedRequirementContract, type RequirementCast, type RequirementRecord
 } from "./requirement-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
@@ -11,6 +11,7 @@ import {
   qualifyRequirementThemeInput, requirementAuthorityFailure, requirementAuthorityPrompt, scopedRequirementEngine,
   type RequirementAuthorityOptions
 } from "./requirement-authority.js";
+import { policyCoveragePlan } from "./prd-authority-bridge.js";
 import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
 import { extractProductVisualAuthority } from "./product-visual-authority.js";
 
@@ -28,6 +29,85 @@ interface Scope {
 }
 const scopes = new AsyncLocalStorage<Scope>();
 const receivers = new WeakMap<object, Scope>();
+const UNVERIFIED_PRODUCT_VISUAL = /后视镜|座椅.{0,5}接缝|轮胎接地面|轮胎接地局部|制动卡钳|刹车卡钳|浮动盘|排气口|轮辋|整流罩|配色分区|前\s*\/?\s*后\s*45\s*度/u;
+const NEGATIVE_VISUAL_CONSTRAINT = /不得|禁止|不要|不能|无需|省略|不新增|仅引用|只引用/u;
+
+function unsafeProductVisual(text: unknown): boolean {
+  return String(text ?? "").split(/[；。\n]/u).some(clause =>
+    UNVERIFIED_PRODUCT_VISUAL.test(clause) && !NEGATIVE_VISUAL_CONSTRAINT.test(clause));
+}
+
+/** Risk advice may suggest camera language, but it cannot smuggle new product appearance facts downstream. */
+export function sanitizeUnverifiedProductRisk(value: RequirementRecord): RequirementRecord {
+  const result = structuredClone(value);
+  const risk = result.riskAssessment && typeof result.riskAssessment === "object"
+    ? requirementRecord(result.riskAssessment, "RiskAssessor result") : null;
+  if (!risk) return result;
+  let normalized = 0;
+  if (Array.isArray(risk.technicalRisks)) {
+    risk.technicalRisks = risk.technicalRisks.map(item => {
+      const row = requirementRecord(item, "RiskAssessor technical risk");
+      if (!unsafeProductVisual(row.risk) && !unsafeProductVisual(row.impact)) return item;
+      normalized += 1;
+      return {
+        risk: "已核实商品参考区域的一致性",
+        level: row.level,
+        impact: "商品外观只能按本次 G1 已接受图片中明确可见的区域核对",
+      };
+    });
+  }
+  if (Array.isArray(risk.mitigationSuggestions)) {
+    risk.mitigationSuggestions = risk.mitigationSuggestions.map(item => {
+      if (!unsafeProductVisual(item)) return item;
+      normalized += 1;
+      return "商品特写只使用本次 G1 已接受图片中明确可见的区域，不指定未确认的部件、局部形态或机位角度";
+    });
+  }
+  if (normalized) result.productVisualRiskNormalization = {
+    applied: true,
+    normalizedEntries: normalized,
+    rule: "风险规划不得把未经 G1 claims/图片确认的局部外观写成拍摄清单；已替换为通用复核表述",
+  };
+  return result;
+}
+
+/** Materialize the scene-policy budget at G3 so the reviewer can verify it before shot cards exist. */
+export function renderScenePolicyCoverage(metadata: RequirementRecord, contract: RequirementRecord): string {
+  const brief = metadata.brief && typeof metadata.brief === "object" ? requirementRecord(metadata.brief, "Brief") : {};
+  if (!brief.scenePolicyRequirements || typeof brief.scenePolicyRequirements !== "object") return "";
+  const scenes = Array.isArray(contract.scenes) ? contract.scenes.map(value => requirementRecord(value, "G3 scene")) : [];
+  const sceneInputs = scenes.map(scene => ({
+    sceneId: String(scene.id), duration: Number(scene.duration), purpose: String(scene.purpose ?? ""),
+    visualRequirements: Array.isArray(scene.keyElements) ? scene.keyElements : [],
+    audioRequirements: [],
+    keyProps: Array.isArray(scene.props) ? scene.props.map(value => {
+      const prop = requirementRecord(value, "G3 prop");
+      return String(prop.name ?? "");
+    }) : [],
+    actions: Array.isArray(scene.actions) ? scene.actions : [],
+  }));
+  const mapping = sceneInputs.map(scene => ({ sceneId: scene.sceneId,
+    estimatedShots: Math.max(1, Math.min(6, Math.ceil(scene.duration / 3))) }));
+  const plan = policyCoveragePlan(metadata, sceneInputs, mapping);
+  if (!plan) return "";
+  if (!plan.allShotsTagged || Object.values(plan.feasibility).some(ok => !ok) || !plan.hostWithinMaximum) {
+    requirementAuthorityFailure("REQUIREMENT_SCENE_UNVERIFIED", "场景级片型标签无法满足 commerce-seeding 时长配比");
+  }
+  const tags = plan.requiredTags.join("、");
+  const rows = plan.scenes.map(scene =>
+    `| ${scene.sequence} | ${scene.sceneId} | ${scene.duration}s | ${scene.policyTags.join("、")} | `
+    + `${Object.entries(scene.policyTagSeconds).map(([tag, seconds]) => `${tag}=${seconds}s`).join("；")} |`).join("\n");
+  const totals = plan.requiredTags.map(tag =>
+    `${tag}: ${plan.plannedSeconds[tag]}s / ${plan.totalDuration}s`).join("；");
+  return `\n\n## 七、场景级 policyTags 与配比预算\n\n`
+    + `- 必填标签：${tags}\n`
+    + `- 配比口径：${plan.accounting}\n`
+    + `- 场景预算：${totals}\n`
+    + `- 可执行性：${Object.entries(plan.feasibility).map(([tag, ok]) => `${tag}=${ok ? "通过" : "不足"}`).join("；")}`
+    + `${plan.hostWithinMaximum ? "；host≤30%=通过" : "；host≤30%=不足"}\n`
+    + `- 下游硬约束：${plan.shotCardRule}\n\n`
+    + `| 序号 | 场景 | 时长 | policyTags | 各标签时长 |\n|---:|---|---:|---|---|\n${rows}\n`;
+}
 
 function fatal(scope: Scope, error: unknown): never {
   if (!scope.authority) throw error;
@@ -346,6 +426,7 @@ export function installRequirementContractBridge(
         throw new RequirementContractError("REQUIREMENT_AUDIENCE_CHANGED", "G3 与本次宿主冻结的客户受众口径不一致");
       }
       return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"))
+        + renderScenePolicyCoverage(scope.authority!.metadata, contract as unknown as RequirementRecord)
         + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
     });
   };
@@ -404,6 +485,8 @@ export function installRequirementContractBridge(
         riskView.run = async function (this: RequirementRecord, value: unknown, schema: unknown) {
           requireActiveScope();
           finalRiskFailure = undefined;
+          const responseSchema = requirementRecord(schema, "RiskAssessor response schema");
+          const allowedRiskFields = Object.keys(requirementRecord(responseSchema.properties, "RiskAssessor response properties"));
           const runView = Object.create(this) as RequirementRecord;
           let pendingFeedback = "", attemptFeedback = "";
           let currentFailure: { error: unknown } | undefined;
@@ -414,7 +497,12 @@ export function installRequirementContractBridge(
             // The second transport/parser failure must replace the first schema
             // failure. Authority/engine failures remain sticky in requireActiveScope.
             currentFailure = undefined;
-            try { return await Reflect.apply(callRisk, this, args); }
+            try {
+              const response = await Reflect.apply(callRisk, this, args);
+              const normalized = normalizeRiskResponseShape(response);
+              if (normalized.normalization) console.log(`   [RiskAssessor] 结构化响应兼容规范化: ${normalized.normalization}`);
+              return normalized.value;
+            }
             catch (error) { currentFailure = { error }; throw error; }
             finally { attemptFeedback = ""; }
           };
@@ -422,7 +510,10 @@ export function installRequirementContractBridge(
             requireActiveScope();
             const original = Reflect.apply(buildRisk, this, [input]);
             if (typeof original !== "string") requirementAuthorityFailure("REQUIREMENT_VENDOR_UNAVAILABLE", "RiskAssessor 原始 prompt 不是文本");
-            return original + attemptFeedback;
+            return original + `\n\n## 宿主原始响应结构约束（不可扩展）\n`
+              + `RiskAssessor response 顶层必须且只能包含 ${JSON.stringify(allowedRiskFields)}。`
+              + `不得增加解释、外层包装、补充字段或其他同义字段；三个数组均须遵守响应 schema 的 1–5 项边界。`
+              + attemptFeedback;
           };
           runView._validateAndFill = function (this: RequirementRecord, response: unknown, responseSchema: unknown) {
             requireActiveScope();
@@ -533,9 +624,12 @@ export function installRequirementContractBridge(
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "需求洞察结束时运行作用域已经关闭");
       const record = requirementRecord(result, "实际需求洞察结果");
       const upstream = requirementRecord(input, "上游输入");
+      const productVisualAuthority = scope.authority
+        ? extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content) : null;
+      const safeRecord = productVisualAuthority?.required ? sanitizeUnverifiedProductRisk(record) : record;
       const target = sceneValidationOptions(scope, upstream.duration_sec);
-      requirementScenes(record.sceneStructure, cast, target.targetDuration, target.options);
-      return { ...record, audienceAuthority: audience(scope) ?? null, audienceProfileStatus: "model-hypothesis" };
+      requirementScenes(safeRecord.sceneStructure, cast, target.targetDuration, target.options);
+      return { ...safeRecord, audienceAuthority: audience(scope) ?? null, audienceProfileStatus: "model-hypothesis" };
     });
   };
   const noFastFallback: Method = function (...args) {
@@ -552,8 +646,13 @@ export function installRequirementContractBridge(
       throw new RequirementContractError("REQUIREMENT_VENDOR_UNAVAILABLE", "需求洞察的受众渲染口径发生变化");
     }
     const ownerAudience = audience(scope);
-    return original.replace("### 2.1 目标受众画像", "### 2.1 模型受众细分假设（待审核）")
+    const output = original.replace("### 2.1 目标受众画像", "### 2.1 模型受众细分假设（待审核）")
       .replace("**主要受众**", `**客户 Brief 权威受众原文**\n${typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : "客户未显式指定"}\n\n**模型细分推测（不覆盖客户口径，不是已核实人群事实）**`);
+    const discoveryResult = args[0] && typeof args[0] === "object" ? requirementRecord(args[0], "洞察渲染输入") : {};
+    const normalization = discoveryResult.productVisualRiskNormalization;
+    return output + (normalization && typeof normalization === "object"
+      ? `\n\n> 商品外观风险归并：${requirementRecord(normalization, "商品外观归并").rule}`
+      : "");
   };
   const patches: Array<[RequirementRecord, string, Method]> = [
     [vendorPrototype, "_convertDiscoveryToRequirementList", converted], [vendorPrototype, "_renderRequirementContract", rendered],

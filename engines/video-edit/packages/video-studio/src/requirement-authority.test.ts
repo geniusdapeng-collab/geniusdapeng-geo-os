@@ -140,8 +140,8 @@ describe("current requirement authority and original transport", () => {
   it("pins the exact native source bodies used by the offline fixtures", () => {
     for (const [relative, hash] of [
       ["index.js", "489171f35ce7cf5fc2cc4387e07380337ea1a574df638533f2b90ed6bd1f86fd"],
-      ["engines/requirement-discovery-engine.js", "7bae6ad9f6a5950570bcfecc7e8fc0fed3e8e9a55fd510669cd6823d1e375765"],
-      ["skills/creative-theme-generator/index.js", "e79065e6bb87b0aa1418c9a509deabb575750635ef22f4b162148e6456fbeaae"],
+      ["engines/requirement-discovery-engine.js", "44ed547fc8b2b14fbc0fdf51d4026311a77df340e23ab491ea40e3b39feaf3e3"],
+      ["skills/creative-theme-generator/index.js", "fffa187a5f26f1430efe3edc3f718bf9109098e0058274489b94e2c885d0e8f8"],
       ["skills/creative-theme-generator/dynamic-type-resolver.js", "65bf2ea16a8871c65c21bea0621af92b98ff5f924b753be4dc96223561c61368"]
     ]) expect(digest(readFileSync(path.join(vendor, relative!), "utf8"))).toBe(hash);
   });
@@ -269,6 +269,24 @@ describe("current requirement authority and original transport", () => {
 describe("native theme generation has the same private authority without story pollution", () => {
   const themeFields = { type: "商业广告", theme: "可见设计", duration_sec: 30, tone: "轻快明朗", description: "人物观察商品的可见外形并向朋友分享具体疑问。",
     visual_style: "参考《极速车王》自然光", dialogue_requirement: "自然短句", special_notes: "外观需核对", target_audience: "成年观众", creative_style: 0.6, difficulty: "中" };
+  it("renders structured dialogue and note objects without placeholder text", () => {
+    const generator = new CreativeThemeGenerator({ llmEngine: {} });
+    const summary = (generator as unknown as { generateConfirmationSummary(value: unknown): string }).generateConfirmationSummary({
+      tasks: [{
+        type: "商业广告", theme: "赛道", duration_sec: 30, difficulty: "中", creative_style: 0.6,
+        tone: "冷酷精密", description: "赛道骑行。", visual_style: "自然光", target_audience: "成年观众",
+        dialogue_requirement: { voice: "无对白、无旁白、无TTS", lines: [], audio_layers: ["发动机", "风噪"], note: "不得添加口播" },
+        special_notes: ["保留护具", "常驻字幕"],
+      }],
+    }) as string;
+    expect(summary).toContain("声音：无对白、无旁白、无TTS");
+    expect(summary).toContain("音频层：");
+    expect(summary).toContain("发动机；风噪");
+    expect(summary).toContain("保留护具；常驻字幕");
+    expect(summary).not.toContain("[object Object]");
+    expect(summary).not.toContain("null");
+  });
+
   it.each(["generate", "reason", "chat"] as const)("uses original %s extraction and its one JSON retry with authority exactly once", async mode => {
     const { Vendor } = install(); const f = fixture(mode); const calls: Array<{ prompt: string; options: unknown }> = [];
     const model: RequirementRecord = {};

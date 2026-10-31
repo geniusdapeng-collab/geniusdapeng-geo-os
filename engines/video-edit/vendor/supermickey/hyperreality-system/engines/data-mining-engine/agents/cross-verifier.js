@@ -101,11 +101,24 @@ class CrossVerifier {
       identity.price_confidence = null;
     }
 
-    // 官方卖点定级：挂了官方级来源的才是 confirmed
-    identity.official_selling_points = (identity.official_selling_points || []).map(point => {
+    // 字段名 official_selling_points 是历史合同；只有证据账本确认的官方渠道才是 official。
+    // 媒体、电商、社区的单源或跨源公开主张必须保留为公开主张，不能仅因落在这个字段就升级成官方口径。
+    identity.official_selling_points = (identity.official_selling_points || []).map(item => {
+      const point = typeof item === 'string' ? item : String(item?.point || '');
       const refs = ledger.forClaim(`identity.official_selling_points:${point}`);
-      return { point, confidence: refs.some(r => r.channel_class === 'official') || refs.length >= 2 ? 'confirmed' : 'reported' };
+      const refIds = refs.map(entry => entry.id);
+      const official = ledger.hasOfficialAmong(refIds);
+      const independent = ledger.independentSourceCountForRefs(refIds);
+      return {
+        point,
+        confidence: official || independent >= 2 ? 'confirmed' : 'reported',
+        claim_nature: official ? 'official' : independent >= 2 ? 'cross-confirmed-public' : 'media-reported',
+        source_nature: official ? 'official' : independent >= 2 ? 'cross-confirmed-public' : 'media-reported-single-source',
+        evidence_strength: official || independent >= 2 ? 'strong' : 'single',
+        source_refs: refIds
+      };
     });
+    identity.selling_points_field_note = 'official_selling_points 是历史字段名；source_nature 与 evidence_strength 才表示真实来源性质，media-reported 不是厂商官方确认';
 
     // ===== 3. 竞品数据定级（A3 产出）=====
     const competitors = (packs.a3?.competitors || []).map(c => {
@@ -129,22 +142,24 @@ class CrossVerifier {
       quote: p.quote,
       confidence: p.confidence,
       evidence_strength: p.evidence_strength,
-      source_refs: p.source_refs
+      source_refs: p.source_refs,
+      claim_nature: 'user'
     }));
     for (const osp of identity.official_selling_points) {
       if (osp.confidence !== 'confirmed' && osp.confidence !== 'reported') continue;
       const already = pros.some(p => osp.point.includes(p.aspect) || p.point.includes(osp.point.slice(0, 4)));
       if (!already) {
-        const refs = ledger.forClaim(`identity.official_selling_points:${osp.point}`).map(e => e.id);
+        const refs = Array.isArray(osp.source_refs) ? osp.source_refs : [];
+        const official = osp.claim_nature === 'official';
         pros.push({
-          point: `官方主打「${osp.point}」`,
-          aspect: 'official_claim',
+          point: osp.point,
+          aspect: official ? 'official_claim' : 'reported_claim',
           mentions: 0,
           quote: '',
           confidence: osp.confidence,
-          evidence_strength: refs.length >= 2 ? 'strong' : 'single',
+          evidence_strength: osp.evidence_strength || (refs.length >= 2 ? 'strong' : 'single'),
           source_refs: refs,
-          claim_nature: 'official' // 标记：这是官方宣称，不等于用户共识
+          claim_nature: osp.claim_nature
         });
       }
     }

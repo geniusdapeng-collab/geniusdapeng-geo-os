@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdDeliverySchema, effectivePrdModelSchema, normalizeExplicitBriefDuration, normalizePrdProductionProfile,
-  preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
+  normalizePrdDeliveryLanguage, preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
 } from "./prd-authority.js";
 import { PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -325,6 +325,19 @@ describe("PRD private accepted current G1", () => {
 });
 
 describe("PRD real model response and provenance", () => {
+  it("normalizes only contradictory delivery wording into the frozen content/master timeline and subtitle style", () => {
+    const value = fixture(), model = structuredClone(value.production);
+    value.authority.profile = { ...value.authority.profile, openWithCover: true, coverIntroSeconds: 0.6 };
+    model.audioSpecification.soundDesign = "持续文字覆盖实际视频0秒至末帧；字号描边待1080×1920实测确定";
+    const normalized = normalizePrdDeliveryLanguage(model, value.authority.profile);
+    const audio = requirementRecord(normalized.audioSpecification, "normalized audio");
+    expect(audio.soundDesign).toContain("内容时间线0秒至内容末帧");
+    expect(audio.soundDesign).toContain("最终成片0.6秒至30秒");
+    expect(audio.soundDesign).toContain("Noto Sans SC、74px字号");
+    expect(audio.soundDesign).not.toContain("实际视频0秒");
+    expect(audio.soundDesign).not.toContain("待1080×1920实测");
+    expect(model.audioSpecification.soundDesign).toContain("实际视频0秒");
+  });
   it("derives the bare creative shape and exact four production modules without mutating native constraints", () => {
     const value = fixture(), before = structuredClone(PRDSchema), contractBefore = structuredClone(value.contract);
     const creative = effectivePrdModelSchema("creative", PRDSchema, value.contract);
@@ -381,6 +394,27 @@ describe("PRD real model response and provenance", () => {
       ...value.production.characterSystem.characters[0], _workloomCharacterSource: expect.objectContaining({ portraitVersion: 2 })
     })]);
     expect(requirementRecord(bound.scenePlan, "scenes").scenes).toEqual(value.production.scenePlan.scenes.map((scene, index) => ({ ...scene, _workloomRequirementScene: value.contract.scenes[index] })));
+  });
+  it("removes only exact host-owned character projections copied back by the model", () => {
+    const value = fixture(), model = structuredClone(value.production), source = value.contract.cast.characters[0]!;
+    Object.assign(model.characterSystem.characters[0]!, {
+      character_id: source.character_id,
+      portraitVersion: source.portraitVersion,
+      builtinCharacterSource: structuredClone(source.builtinCharacterSource),
+    });
+    const before = structuredClone(model), normalized = validatePrdModelPayload(model, "production", PRDSchema, value.contract, value.authority.profile);
+    expect(normalized).toEqual(value.production);
+    expect(model).toEqual(before);
+  });
+  it("rejects a changed or unknown extra character field without repairing creative content", () => {
+    const value = fixture(), changed = structuredClone(value.production), unknown = structuredClone(value.production);
+    (changed.characterSystem.characters[0] as unknown as RequirementRecord).portraitVersion = 999;
+    (unknown.characterSystem.characters[0] as unknown as RequirementRecord).portraitPlan = "模型新增的执行计划";
+    for (const model of [changed, unknown]) {
+      const before = structuredClone(model);
+      expect(() => validatePrdModelPayload(model, "production", PRDSchema, value.contract, value.authority.profile)).toThrow("包含未声明字段");
+      expect(model).toEqual(before);
+    }
   });
   it.each(["missing-scene", "wrong-id", "wrong-order", "over-duration", "wrong-character", "invented-character", "wrong-mapping", "missing-module", "bad-enum"])("rejects %s without writing a repaired creative result", kind => {
     const value = fixture(), model = structuredClone(value.production);

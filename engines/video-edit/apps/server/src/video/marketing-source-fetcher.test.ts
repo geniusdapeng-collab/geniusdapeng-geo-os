@@ -53,7 +53,7 @@ describe("来源公网地址与真实HTTP读取", () => {
       ...(kind === "dns" ? { resolver: () => new Promise(() => {}) } : kind === "transport" ? { transport: () => new Promise(() => {}) } : {}) })).rejects.toThrow(/abort|timeout/i);
   });
   it("拒绝空文/验证码/长文，不把裁剪当完整原文", () => {
-    for (const value of ["", "请完成安全验证", "x".repeat(SOURCE_MAX_TEXT_CHARS + 1)]) expect(() => sourceDocument(value, "text/plain", "https://source.example.com/")).toThrow();
+    for (const value of ["", "请完成安全验证", "搜索Agent，你的全能搜索助手", "x".repeat(SOURCE_MAX_TEXT_CHARS + 1)]) expect(() => sourceDocument(value, "text/plain", "https://source.example.com/")).toThrow();
     expect(sourceDocument('<img src="http://127.0.0.1/x">有效正文', "text/html", "https://source.example.com/").assetUrls).toEqual([]);
   });
 });

@@ -204,7 +204,9 @@ class JennyLoomEngine {
       visual: a1Out,
       ledger,
       reviewMeta: { review_count: a2Out.review_count, cleaned: a2Out.cleaned },
-      gaps: [...a1Out.gaps, ...a2Out.gaps, ...a3Out.gaps, ...a4Out.gaps, ...stageGaps]
+      gaps: [...a1Out.gaps, ...a2Out.gaps, ...a3Out.gaps, ...a4Out.gaps, ...stageGaps],
+      restrictions: Array.isArray(input.restrictions) ? input.restrictions : [],
+      priceContext: input.priceContext && typeof input.priceContext === 'object' ? input.priceContext : null,
     });
     pass('A5_BIND', 'DossierBinder', { dossier: a5Out.dossier, cards: a5Out.cards });
 

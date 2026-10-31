@@ -229,9 +229,16 @@ class BaseDiscoveryAgent {
     const originalStory = input._originalStoryText || input.original_story_text || '';
     const fullPrompt = originalStory ? `${prompt}\n\n## 📖 原始故事文本（需求分析的核心依据）\n${originalStory}` : prompt;
     
-    // 超时保护
+    // The agent deadline must cancel the underlying provider request as well as
+    // reject the race. Otherwise a timed-out first attempt keeps consuming the
+    // connection while the native retry starts and receives the wrong state.
+    const controller = new AbortController();
+    let timeout;
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('LLM 调用超时')), this.timeoutMs);
+      timeout = setTimeout(() => {
+        controller.abort(new Error('LLM 调用超时'));
+        reject(new Error('LLM 调用超时'));
+      }, this.timeoutMs);
     });
 
     let responseText = '';
@@ -252,7 +259,8 @@ class BaseDiscoveryAgent {
               temperature: 0.4,
               timeoutMs: this.timeoutMs,
               forceJson: true,
-              thinking: { type: 'disabled' }
+              thinking: { type: 'disabled' },
+              signal: controller.signal
             }),
             timeoutPromise
           ]);
@@ -267,14 +275,15 @@ class BaseDiscoveryAgent {
           this.llmEngine.reasonStructured(fullPrompt, useSchema, { 
             maxTokens: 4000, 
             temperature: 1.0,
-            timeoutMs: this.timeoutMs 
+            timeoutMs: this.timeoutMs,
+            signal: controller.signal
           }),
           timeoutPromise
         ]);
         return result.data || result;
       } else if (typeof this.llmEngine.generate === 'function') {
         const result = await Promise.race([
-          this.llmEngine.generate(fullPrompt, { maxTokens: 4000, temperature: 1.0 }),
+          this.llmEngine.generate(fullPrompt, { maxTokens: 4000, temperature: 1.0, signal: controller.signal }),
           timeoutPromise
         ]);
         responseText = result.content || '';
@@ -289,6 +298,8 @@ class BaseDiscoveryAgent {
       }
     } catch (error) {
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
 
     // 解析 JSON

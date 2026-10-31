@@ -85,6 +85,21 @@ describe("scene policy coverage display", () => {
     expect(plan?.accounting).toContain("不把百分比相加");
     expect(plan?.shotCardRule).toContain("正式镜头卡必须逐镜携带");
   });
+
+  it("derives product-close and usage from the current product contract and structured actions instead of a fixed film", () => {
+    const plan = policyCoveragePlan({
+      brief: {
+        product: "Aster Mini",
+        scenePolicyRequirements: { requiredTags: ["product-close", "usage"] },
+      },
+    }, [{
+      sceneId: "device", duration: 10, purpose: "Aster Mini 的通电状态与接口近景",
+      visualRequirements: ["Aster Mini 机身与接口清晰可见"], audioRequirements: [], keyProps: ["Aster Mini"],
+      actions: [{ actorId: "$product", description: "Aster Mini 启动后接口指示灯亮起" }],
+    }], [{ sceneId: "device", estimatedShots: 2 }]);
+    expect(plan?.scenes[0]?.policyTags).toEqual(expect.arrayContaining(["product-close", "usage"]));
+    expect(plan?.feasibility).toEqual({ "product-close": true, usage: true });
+  });
 });
 function authorityFromMarkdown(markdown: string): RequirementRecord {
   const pieces = markdown.split("\n\n## 宿主本次权威生产与交付要求\n\n```json\n");
@@ -1038,6 +1053,33 @@ describe("G4 executable plans and one native quality policy", () => {
     expect(run.calls).toHaveLength(2);
   });
 
+  it("passes a model's exact host-owned character projection back into the native parser after structural normalization", async () => {
+    const value = fixture("REDUNDANT-CHARACTER-PROJECTION"), h = harness();
+    const source = value.contract.cast.characters[0]!, character = value.production.characterSystem.characters[0]!;
+    Object.assign(character, {
+      character_id: source.character_id,
+      portraitVersion: source.portraitVersion,
+      builtinCharacterSource: structuredClone(source.builtinCharacterSource),
+    });
+    const run = h.make(value);
+    await withPrdAuthorityScope(value.authority, async () => {
+      const prd = await h.generate(run);
+      const actual = (requirementRecord(prd.characterSystem, "characters").characters as RequirementRecord[])[0]!;
+      expect(actual).not.toHaveProperty("character_id");
+      expect(actual).not.toHaveProperty("portraitVersion");
+      expect(actual).not.toHaveProperty("builtinCharacterSource");
+      expect(actual).toMatchObject({
+        characterId: source.id,
+        name: source.name,
+        portraitPath: "",
+        _workloomCharacterSource: expect.objectContaining({ id: source.id }),
+      });
+      await h.review(run, prd);
+      return h.success(prd);
+    });
+    expect(run.calls).toHaveLength(2);
+  });
+
   it.each([1, 0])("the real G4 deterministic gate accepts the complete rendered plan for %i selected characters without placeholder leakage", async count => {
     const value = fixture(`PLAN-REAL-G4-${count}`, [8, 14, 8], count), h = harness(), run = h.make(value);
     await withPrdAuthorityScope(value.authority, async () => {
@@ -1063,10 +1105,11 @@ describe("G4 executable plans and one native quality policy", () => {
     value.authority.metadata = structuredClone(value.metadata);
     const run = h.make(value);
     const scene = (requirementRecord(value.production.scenePlan, "scenePlan").scenes as RequirementRecord[])[0]!;
-    (scene.visualRequirements as unknown[]).push("标签：host、product-close、moving");
+    (scene.visualRequirements as unknown[]).push("标签：host、product-close、moving", "镜头标签：usage、ambience、moving");
     await withPrdAuthorityScope(value.authority, async () => {
       const prd = await h.generate(run), markdown = await h.review(run, prd);
       expect(JSON.stringify(prd.scenePlan)).not.toContain("标签：host");
+      expect(JSON.stringify(prd.scenePlan)).not.toContain("镜头标签");
       expect(markdown).not.toContain("标签：host、product-close、moving");
       const planning = planningFromMarkdown(markdown);
       expect(planning.policyCoveragePlan).toMatchObject({ allShotsTagged: true });

@@ -17,6 +17,12 @@
 const DossierSchema = require('../contracts/dossier-schema');
 const SummaryCards = require('../contracts/summary-cards');
 
+function priceProhibited(restrictions) {
+  return (Array.isArray(restrictions) ? restrictions : []).some(value =>
+    /(?:不写|不得|禁止|不展示|不出现|不提及|不播报)[^。；\n]{0,100}价格|价格[^。；\n]{0,100}(?:不得|禁止|不展示|不出现|不提及|不播报)/u.test(String(value || ''))
+  );
+}
+
 class DossierBinder {
   constructor(opts = {}) {
     this.agentName = 'DossierBinder';
@@ -35,11 +41,18 @@ class DossierBinder {
    * @returns {{dossier, cards, saved?, validation}}
    */
   bind(input = {}) {
-    const { productId, verified = {}, pros = [], cons = [], visual = {}, ledger, reviewMeta = {} } = input;
+    const {
+      productId, verified = {}, pros = [], cons = [], visual = {}, ledger, reviewMeta = {},
+      restrictions = [], priceContext = null,
+    } = input;
     if (!productId) throw new Error('[A5] 缺 productId');
 
     const dossier = DossierSchema.emptyDossier(productId);
     dossier.built_at = new Date().toISOString();
+    dossier.restrictions = [...new Set((Array.isArray(restrictions) ? restrictions : [])
+      .map(value => String(value || '').trim())
+      .filter(Boolean))];
+    if (priceContext && typeof priceContext === 'object') dossier.price_context = priceContext;
 
     // ===== 身份与图档 =====
     Object.assign(dossier.identity, verified.identity || {});
@@ -54,11 +67,28 @@ class DossierBinder {
 
     // ===== 使用情况 =====
     dossier.usage = {
-      scenarios: verified.scenarios || [],
+      scenarios: structuredClone(verified.scenarios || []),
       frequency_notes: reviewMeta.review_count
         ? [`评价样本 ${reviewMeta.review_count} 条（清洗：水军 ${reviewMeta.cleaned?.spam_removed || 0} / 重复 ${reviewMeta.cleaned?.duplicate_removed || 0}）`]
         : []
     };
+    if (!dossier.usage.scenarios.length) {
+      for (const [key, value] of Object.entries(dossier.identity.specs || {})) {
+        if (!/(使用场景|适用场景|使用定位|用途)/u.test(key) || typeof value !== 'string' || !value.trim()) continue;
+        dossier.usage.scenarios.push({
+          persona: '来源描述（非用户画像）',
+          scene: value.trim(),
+          moment: '',
+          mentions: 0,
+          evidence_nature: 'source-description',
+          not_user_consensus: true,
+          source: `identity.specs.${key}`,
+        });
+      }
+    }
+    dossier.usage.evidence_note = dossier.usage.scenarios.some(scene => scene.not_user_consensus === true)
+      ? '来源明确描述的使用场景，仅作来源口径，不是用户评价、使用频次或效果共识'
+      : '使用场景来自当前证据档案';
 
     // ===== VOC =====
     dossier.voice_of_customer = {
@@ -68,7 +98,13 @@ class DossierBinder {
     };
 
     // ===== 优缺点 =====
-    dossier.pros_cons = { pros, cons };
+    dossier.pros_cons = {
+      pros: pros.map(pro => ({
+        ...pro,
+        evaluation_nature: pro.claim_nature === 'user' ? 'user-review' : 'source-claim-not-user-review',
+      })),
+      cons,
+    };
 
     // ===== 竞品 =====
     dossier.competitors = verified.competitors || [];
@@ -80,6 +116,11 @@ class DossierBinder {
 
     // ===== 钩子原料预制 =====
     dossier.hook_material = this._buildHookMaterial(dossier);
+    if (priceProhibited(dossier.restrictions)) {
+      dossier.hook_material.data_points = dossier.hook_material.data_points.filter(point =>
+        !/(?:^|[：:])\s*(?:价格|售价|指导价)|(?:CNY|RMB|人民币)\s*\d|(?:¥|￥)\s*\d/i.test(String(point))
+      );
+    }
 
     // ===== 溯源与缺口 =====
     dossier.provenance = ledger ? ledger.export() : [];
@@ -94,7 +135,7 @@ class DossierBinder {
     }
 
     // ===== 摘要卡 =====
-    const cards = SummaryCards.makeAllCards(dossier);
+    const cards = SummaryCards.makeAllCards(dossier, { restrictions: dossier.restrictions, priceContext });
 
     // ===== 落盘 =====
     let saved = null;
