@@ -29971,10 +29971,11 @@
       "sourceMode": "100644",
       "gitBlob": "2efdbb47489e21478a8e835ff5b429325135ee09",
       "bytes": 18207,
-      "targetBytes": 18207,
+      "targetBytes": 18674,
       "sourceSha256": "83e1e28313d1ec30c89c37c74d8d8193c1c8c811a0326f5847ec0fccae8a380c",
-      "targetSha256": "83e1e28313d1ec30c89c37c74d8d8193c1c8c811a0326f5847ec0fccae8a380c",
-      "evidence": "B"
+      "targetSha256": "7d6673349e05337ae0b4fc2d136ec24922366feac3b6a3e8623f36bdf7147240",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "scripts/ci/protocol-rules.mjs",
