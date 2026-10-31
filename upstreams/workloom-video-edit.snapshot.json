@@ -30004,9 +30004,9 @@
       "sourceMode": "100644",
       "gitBlob": "b214fcbd6330e6df650b8b9397b6f01164f622fd",
       "bytes": 32389,
-      "targetBytes": 33504,
+      "targetBytes": 34777,
       "sourceSha256": "a61509f99b217d13cf52b5f903c7af36a5875a11df559c9682642cef54307920",
-      "targetSha256": "bab188dfe6f95fe58fce4004439c5ea5122da1e694f78e254f72d2ff0cf12873",
+      "targetSha256": "a9a7c4e6d1a256bf4dfb24fe9d9ebc6924265f52eb8951becb6c2ad568eab841",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
