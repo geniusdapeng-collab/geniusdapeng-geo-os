@@ -14,6 +14,7 @@ const REPOSITORY = "https://github.com/geniusdapeng-collab/WorkLoom-video-edit";
 const DEFAULT_TARGET_REASON =
   "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind.";
 const GENERATED_PREFIXES = [
+  "outputs/",
   "packages/industry-contract/dist/",
   "vendor/supermickey/hyperreality-system/output/",
   "vendor/supermickey/output/",
@@ -93,6 +94,25 @@ function modeOf(stat) {
   return stat.mode & 0o111 ? "100755" : "100644";
 }
 
+function ignoredTargetPaths(relativePaths) {
+  if (relativePaths.length === 0) return new Set();
+  let raw;
+  try {
+    raw = execFileSync("git", ["-C", ROOT, "check-ignore", "--stdin", "-z"], {
+      input: Buffer.from(relativePaths.map((relative) => `engines/video-edit/${relative}\0`).join("")),
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (error) {
+    if (error.status === 1) return new Set();
+    throw error;
+  }
+  const prefix = "engines/video-edit/";
+  return new Set(raw.toString("utf8").split("\0").filter(Boolean).map((value) => {
+    if (!value.startsWith(prefix)) fail(`ignored path escaped target root: ${value}`);
+    return value.slice(prefix.length);
+  }));
+}
+
 function atomicWrite(file, content) {
   const temporary = `${file}.tmp-${process.pid}-${Date.now()}`;
   try {
@@ -135,7 +155,12 @@ try {
 const oldReasons = new Map(
   (previousSnapshot.targetOwnedFiles ?? []).map((item) => [item.path, item.reason]),
 );
-const sourceEntries = parseTree(sourceRoot, headTree);
+const parsedSourceEntries = parseTree(sourceRoot, headTree);
+const targetOnlyPaths = walkFiles(TARGET_ROOT).sort((left, right) => left.localeCompare(right, "en"));
+const ignored = ignoredTargetPaths([
+  ...new Set([...parsedSourceEntries.map((entry) => entry.path), ...targetOnlyPaths]),
+]);
+const sourceEntries = parsedSourceEntries.filter((entry) => !ignored.has(entry.path));
 const sourcePaths = new Set(sourceEntries.map((entry) => entry.path));
 const files = [];
 let sourceBytes = 0;
@@ -168,7 +193,8 @@ for (const entry of sourceEntries) {
   });
 }
 
-const targetOnly = walkFiles(TARGET_ROOT)
+const targetOnly = targetOnlyPaths
+  .filter((relative) => !ignored.has(relative))
   .filter((relative) => !sourcePaths.has(relative))
   .sort((left, right) => left.localeCompare(right, "en"));
 const targetOwnedFiles = targetOnly.map((relative) => {

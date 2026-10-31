@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TARGET_ROOT = path.join(ROOT, "engines", "video-edit");
 const GENERATED_PREFIXES = [
+  "outputs/",
   "packages/industry-contract/dist/",
   "vendor/supermickey/hyperreality-system/output/",
   "vendor/supermickey/output/",
