@@ -13,11 +13,13 @@
  * 真实计量 + model.call 事件留痕 + 降级链），vendor 只读纪律不破。
  */
 import {
-  normalizeModelContent,
-  DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
-  planDeepSeekWindow,
-  routeSmart, type EventSink, type ModelPolicy, type ModelProvider, type PlanId,
-  type VideoScene,
+  canonicalDeepSeekModel,
+  OpenAiCompatibleProvider,
+  routeSmart,
+  type EventSink,
+  type ModelPolicy,
+  type ModelProvider,
+  type PlanId,
 } from "@workloom/base/model-router";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -25,15 +27,10 @@ import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productionModelInput } from "./prd-authority-bridge.js";
 import {
-  DEEPSEEK_FLASH_MODEL,
-  VIDEO_SCENE_POLICY_VERSION,
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
   resolveVideoModel,
-  resolveVideoNonThinking,
-  resolveVideoScene,
 } from "./llm-config.js";
-import { createHash } from "node:crypto";
 
 export interface LLMReasonOptions {
   model?: string;
@@ -44,8 +41,10 @@ export interface LLMReasonOptions {
   forceJson?: boolean;
   responseFormat?: { type: string };
   thinking?: Record<string, unknown>;
+  timeoutMs?: number;
   signal?: AbortSignal;
-  policyScene?: VideoScene;
+  /** Optional registered scene. Vendor callers may leave this unset. */
+  scene?: string;
 }
 
 export interface LLMReasonResult {
@@ -55,14 +54,6 @@ export interface LLMReasonResult {
   error?: string;
   retryable?: boolean;
   usage?: { promptTokens?: number; completionTokens?: number };
-  requestedModel?: string;
-  resolvedModel?: string;
-  mode?: "enabled" | "disabled";
-  effort?: "low" | "high" | "max" | null;
-  finishReason?: string;
-  requestHash?: string;
-  responseHash?: string;
-  policyVersion?: string;
 }
 
 export interface WorkloomLLMEngineConfig {
@@ -73,8 +64,9 @@ export interface WorkloomLLMEngineConfig {
   fastModel?: string;
   timeoutMs?: number;
   maxTokens?: number;
-  /** Video-pipeline reasoning policy; Flash defaults to non-thinking. */
-  nonThinking?: boolean;
+  /** Default scene for bridged vendor calls. */
+  scene?: string;
+  fetchImpl?: typeof fetch;
   /**
    * v3.0 收口：注入路由配置后，全部 LLM 调用经 routeSmart
    * （场景 preproduction；opts.model===fastModel 的快速调用强制 L1 轻量档）——
@@ -87,27 +79,13 @@ export interface WorkloomLLMEngineConfig {
     plan?: PlanId;
     /** 覆盖默认场景（默认 preproduction） */
     scene?: string;
-    /** Explicit caller override for off-peak-only scenes; never enabled implicitly. */
-    allowPeak?: boolean;
     /** Deployment-level model pin. It bypasses tier substitution and fallback. */
     forceModel?: string;
-    /** Deployment policy for OpenAI-compatible reasoning models. */
+    /** Explicit one-run override for off-peak-only scenes. */
+    allowPeak?: boolean;
+    /** @deprecated Thinking is owned by scene policy. */
     nonThinking?: boolean;
   };
-}
-
-interface ChatCompletionResponse {
-  model?: string;
-  choices?: Array<{
-    finish_reason?: string;
-    message?: { content?: unknown; reasoning_content?: string | null };
-  }>;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    completion_tokens_details?: { reasoning_tokens?: number };
-  };
-  error?: { message?: string };
 }
 
 export class WorkloomLLMEngine {
@@ -126,24 +104,16 @@ export class WorkloomLLMEngine {
     this.cfg = {
       fastModel: config.model,
       timeoutMs: 180_000,
-      maxTokens: DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
-      nonThinking: config.nonThinking ?? resolveVideoNonThinking(config.model),
+      maxTokens: config.maxTokens ?? 0,
+      scene: config.scene ?? "video.preproduction.plan",
+      fetchImpl: config.fetchImpl ?? fetch,
       ...config
     };
-    if (this.cfg.router && this.cfg.model === DEEPSEEK_FLASH_MODEL) {
-      this.attachRouter(this.cfg.router);
-    }
+    this.cfg.model = canonicalDeepSeekModel(this.cfg.model);
   }
 
   /** v3.0 收口：装配后注入路由配置（宿主侧 seam；vendor 无感） */
   attachRouter(router: NonNullable<WorkloomLLMEngineConfig["router"]>): void {
-    if (this.cfg.model === DEEPSEEK_FLASH_MODEL) {
-      if (router.forceModel !== undefined && router.forceModel !== DEEPSEEK_FLASH_MODEL) {
-        throw new Error("VIDEO_TEXT_MODEL_NOT_REGISTERED");
-      }
-      this.cfg.router = { ...router, forceModel: DEEPSEEK_FLASH_MODEL };
-      return;
-    }
     this.cfg.router = router;
   }
 
@@ -157,7 +127,6 @@ export class WorkloomLLMEngine {
       baseUrl,
       apiKey,
       model,
-      nonThinking: resolveVideoNonThinking(model, env),
     });
   }
 
@@ -168,31 +137,78 @@ export class WorkloomLLMEngine {
   }
 
   private async requestChat(prompt: string, opts: LLMReasonOptions): Promise<LLMReasonResult> {
-    const policyScene: VideoScene = opts.policyScene
-      ?? (opts.forceJson || opts.responseFormat?.type === "json_object"
-        ? "video.preproduction.structured"
-        : "video.preproduction.plan");
-    const scenePolicy = resolveVideoScene(policyScene);
-    const responseFormat = opts.forceJson
-      ? { type: "json_object" as const }
-      : opts.responseFormat;
-    const messages = [
-      {
-        role: "system" as const,
-        content: opts.systemPrompt
-          ?? (opts.forceJson
-            ? "你是一个严格输出 JSON 的助手。除合法 JSON 外不要输出任何额外文字。"
-            : "你是一个可靠的助手。"),
-      },
-      { role: "user" as const, content: prompt },
-    ];
-    let budget;
+    const activeModel = canonicalDeepSeekModel(opts.model ?? this.cfg.model);
+    const scene = opts.scene
+      ?? this.cfg.router?.scene
+      ?? this.cfg.scene;
+    const providers = this.cfg.router?.providers ?? new Map<string, ModelProvider>([[
+      activeModel,
+      new OpenAiCompatibleProvider(activeModel, {
+        baseUrl: this.cfg.baseUrl,
+        apiKey: this.cfg.apiKey,
+        fetchImpl: this.cfg.fetchImpl,
+      }),
+    ]]);
+    const sink: EventSink = this.cfg.router?.sink ?? {
+      recordModelTrace: async () => undefined,
+      recordDegradation: async () => undefined,
+      recordCircuitBreak: async () => undefined,
+    };
     try {
-      budget = await planDeepSeekWindow({
-        messages,
-        responseFormat,
-        maxOutputTokens: Math.max(this.cfg.maxTokens, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS),
-      });
+      const result = await routeSmart(
+        {
+          action: scene,
+          scene,
+          plan: this.cfg.router?.plan,
+          ...(this.cfg.router?.forceModel
+            ? { forceModel: canonicalDeepSeekModel(this.cfg.router.forceModel) }
+            : {}),
+          timeoutMs: opts.timeoutMs ?? this.cfg.timeoutMs,
+          signal: opts.signal,
+          // Vendor max-token values are historical product guesses. The
+          // dispatcher calculates the complete legal window instead.
+          generation: {
+            temperature: opts.temperature,
+            topP: opts.topP,
+          },
+          messages: [
+            {
+              role: "system",
+              content: opts.systemPrompt
+                ?? (opts.forceJson
+                  ? "你是一个严格输出 JSON 的助手。除合法 JSON 外不要输出任何额外文字。"
+                  : "你是一个可靠的助手。"),
+            },
+            { role: "user", content: prompt },
+          ],
+        },
+        providers,
+        sink,
+        {
+          policy: this.cfg.router?.policy,
+          allowPeak: this.cfg.router?.allowPeak,
+        },
+      );
+      if ((result.kind === "answered" || result.kind === "circuit_broken" || result.kind === "reused")
+        && result.text) {
+        return {
+          success: true,
+          content: result.text,
+          usage: result.providerResult
+            ? {
+                promptTokens: result.providerResult.promptTokens,
+                completionTokens: result.providerResult.completionTokens,
+              }
+            : undefined,
+        };
+      }
+      return {
+        success: false,
+        error: result.failure?.reason
+          ?? result.degraded?.at(-1)?.reason
+          ?? `模型路由不可用（${result.kind}）`,
+        retryable: false,
+      };
     } catch (error) {
       return {
         success: false,
@@ -200,195 +216,10 @@ export class WorkloomLLMEngine {
         retryable: false,
       };
     }
-    // v3.0 收口：router 注入 → 经 routeSmart（场景 preproduction；fastModel 快速调用强制 L1）
-    if (this.cfg.router) {
-      const scene = this.cfg.router.scene ?? "preproduction";
-      const isFast = !!opts.model && opts.model === this.cfg.fastModel && opts.model !== this.cfg.model;
-      try {
-        const r = await routeSmart(
-          {
-            action: scene, scene, plan: this.cfg.router.plan,
-            forceTier: isFast ? "L1" : undefined,
-            ...(this.cfg.router.forceModel ? { forceModel: this.cfg.router.forceModel } : {}),
-            timeoutMs: this.cfg.timeoutMs,
-            signal: opts.signal,
-            generation: {
-              ...(scenePolicy.thinking.type === "disabled"
-                ? { temperature: opts.temperature ?? 0.2 }
-                : {}),
-              ...(opts.topP === undefined ? {} : { topP: opts.topP }),
-              maxTokens: budget.outputCeiling,
-              responseFormat,
-              thinking: scenePolicy.thinking.type === "enabled"
-                ? { type: "enabled" }
-                : { type: "disabled" },
-              ...(scenePolicy.thinking.type === "enabled"
-                ? { reasoningEffort: scenePolicy.thinking.effort ?? "high" }
-                : {}),
-            },
-            messages,
-          },
-          this.cfg.router.providers,
-          this.cfg.router.sink,
-          { policy: this.cfg.router.policy, allowPeak: this.cfg.router.allowPeak },
-        );
-        if ((r.kind === "answered" || r.kind === "circuit_broken" || r.kind === "reused") && r.text?.trim()) {
-          return {
-            success: true,
-            content: r.text,
-            usage: r.providerResult
-              ? { promptTokens: r.providerResult.promptTokens, completionTokens: r.providerResult.completionTokens }
-              : undefined,
-            requestedModel: r.providerResult?.modelId ?? this.cfg.model,
-            resolvedModel: r.providerResult?.modelId ?? r.modelTrace?.model_id ?? this.cfg.model,
-            mode: scenePolicy.thinking.type,
-            effort: scenePolicy.thinking.type === "enabled" ? scenePolicy.thinking.effort ?? "high" : null,
-            finishReason: r.providerResult?.finishReason,
-            requestHash: r.providerResult?.requestHash,
-            responseHash: r.providerResult?.responseHash,
-            policyVersion: VIDEO_SCENE_POLICY_VERSION,
-          };
-        }
-        const failure = r.failure
-          ? `；${r.failure.kind}：${r.failure.reason}`
-          : "";
-        // Preserve the router's actual state. A real timeout/outage must not be
-        // presented as queued, and a deferred off-peak task must not be retried
-        // immediately by vendor-level retry machinery.
-        return {
-          success: false,
-          error: `模型路由不可用（${r.kind}${failure}）`,
-          retryable: r.failure?.retryable ?? r.kind !== "queued",
-        };
-      } catch (err) {
-        return { success: false, error: err instanceof Error ? err.message : String(err), retryable: true };
-      }
-    }
-    const body: Record<string, unknown> = {
-      model: opts.model ?? this.cfg.model,
-      messages,
-      max_tokens: budget.outputCeiling,
-      thinking: scenePolicy.thinking.type === "enabled"
-        ? { type: "enabled" }
-        : { type: "disabled" },
-    };
-    if (scenePolicy.thinking.type === "enabled") {
-      body.reasoning_effort = scenePolicy.thinking.effort ?? "high";
-      if (opts.topP !== undefined) body.top_p = Math.min(1, Math.max(0.95, opts.topP));
-    } else {
-      body.temperature = opts.temperature ?? 0.2;
-      body.top_p = opts.topP ?? 1;
-    }
-    if (responseFormat) body.response_format = responseFormat;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs);
-    const serializedBody = JSON.stringify(body);
-    const requestHash = createHash("sha256").update(serializedBody).digest("hex");
-    try {
-      const resp = await fetch(`${this.cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.cfg.apiKey}`
-        },
-        body: serializedBody,
-        signal: opts.signal ? AbortSignal.any([opts.signal, controller.signal]) : controller.signal
-      });
-      if (!resp.ok) {
-        return {
-          success: false,
-          error: `LLM HTTP ${resp.status}`,
-          retryable: resp.status >= 500 || resp.status === 429
-        };
-      }
-      const rawBody = await resp.text();
-      const responseHash = createHash("sha256").update(rawBody).digest("hex");
-      let json: ChatCompletionResponse;
-      try {
-        json = JSON.parse(rawBody) as ChatCompletionResponse;
-      } catch {
-        return { success: false, error: "LLM 响应不是合法 JSON", retryable: false };
-      }
-      if (typeof json.model === "string" && json.model !== (opts.model ?? this.cfg.model)) {
-        return {
-          success: false,
-          error: `LLM 模型身份 ${json.model || "<missing>"} 与请求 ${opts.model ?? this.cfg.model} 不一致`,
-          retryable: false,
-        };
-      }
-      if (json.choices?.length !== 1) {
-        return { success: false, error: "LLM 响应必须包含唯一 choice", retryable: false };
-      }
-      const choice = json.choices[0]!;
-      if (choice.finish_reason !== "stop") {
-        return {
-          success: false,
-          error: `LLM 未完整结束：${choice.finish_reason ?? "missing"}`,
-          retryable: false,
-        };
-      }
-      if (scenePolicy.thinking.type === "disabled" && String(choice.message?.reasoning_content ?? "").trim()) {
-        return { success: false, error: "非思考场景返回了 reasoning_content", retryable: false };
-      }
-      const content = normalizeModelContent(json.choices?.[0]?.message?.content);
-      if (!content) return { success: false, error: "LLM 返回 content 为空", retryable: true };
-      const promptTokens = json.usage?.prompt_tokens;
-      const completionTokens = json.usage?.completion_tokens;
-      const reasoningTokens = json.usage?.completion_tokens_details?.reasoning_tokens;
-      if (!Number.isSafeInteger(promptTokens) || promptTokens! < 0
-        || !Number.isSafeInteger(completionTokens) || completionTokens! < 0) {
-        return { success: false, error: "LLM usage 缺失或无效", retryable: false };
-      }
-      if (reasoningTokens !== undefined
-        && (!Number.isSafeInteger(reasoningTokens) || reasoningTokens < 0 || reasoningTokens > completionTokens!)) {
-        return { success: false, error: "LLM reasoning_tokens 无效", retryable: false };
-      }
-      if (scenePolicy.thinking.type === "disabled" && reasoningTokens !== undefined && reasoningTokens !== 0) {
-        return { success: false, error: "非思考场景返回了 reasoning tokens", retryable: false };
-      }
-      return {
-        success: true,
-        content,
-        usage: {
-          promptTokens,
-          completionTokens
-        },
-        requestedModel: opts.model ?? this.cfg.model,
-        resolvedModel: json.model,
-        mode: scenePolicy.thinking.type,
-        effort: scenePolicy.thinking.type === "enabled" ? scenePolicy.thinking.effort ?? "high" : null,
-        finishReason: choice.finish_reason,
-        requestHash,
-        responseHash,
-        policyVersion: VIDEO_SCENE_POLICY_VERSION,
-      };
-    } catch (err) {
-      if (opts.signal?.aborted) {
-        return { success: false, error: "LLM 调用已取消", retryable: false };
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, error: msg, retryable: true };
-    } finally {
-      clearTimeout(timer);
-    }
   }
 
   private static extractJson(text: string): unknown {
-    const trimmed = text.trim();
-    const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const candidate = fence?.[1] ?? trimmed;
-    const start = candidate.search(/[{[]/);
-    if (start === -1) throw new Error("响应中未找到 JSON");
-    const slice = candidate.slice(start);
-    // 从最外层括号尝试整体解析，失败则回退到第一个完整对象
-    try {
-      return JSON.parse(slice);
-    } catch {
-      const end = slice.lastIndexOf(slice.startsWith("[") ? "]" : "}");
-      if (end > 0) return JSON.parse(slice.slice(0, end + 1));
-      throw new Error("JSON 提取失败");
-    }
+    return JSON.parse(text.trim());
   }
 
   async reason(prompt: string, options: LLMReasonOptions = {}): Promise<LLMReasonResult> {
@@ -404,7 +235,7 @@ export class WorkloomLLMEngine {
           ...result,
           success: false,
           error: `JSON 解析失败: ${err instanceof Error ? err.message : String(err)}`,
-          retryable: true
+          retryable: false
         };
       }
     }
@@ -564,7 +395,7 @@ export class WorkloomLLMEngine {
  * vendor 自建 LLMEngine 的「原型桥」（2026-09-21 真机修复）
  *
  * 问题：vendor 多条链路（剧本引擎、需求洞察子引擎、提示词/微动作…）会**自己** `new LLMEngine({...})`，
- * 读的是 vendor 自己的环境变量（LLM_ENDPOINT / KIMI_API_KEY …）与模型名（kimi-k2p6）。
+ * 读的是 vendor 自己的旧环境变量与历史模型名。
  * 宿主注入的适配器只在主流水线生效，于是这些环节全部失败：
  *   `[ScriptGenerator] LLM引擎返回失败: API Key 未配置` → 剧本生成重试 3 次 → 预生产 pipeline.failed。
  *
@@ -590,34 +421,18 @@ export function installVendorEngineBridge(engine: WorkloomLLMEngine): () => void
       patched.push([name, prototype[name]]);
       prototype[name] = impl;
     };
-    const hostOptions = (receiver: unknown, options: unknown): LLMReasonOptions => {
-      const normalized = options && typeof options === "object" && !Array.isArray(options)
-        ? { ...(options as Record<string, unknown>) }
-        : {};
-      // Vendor agents still carry the retired provider/model defaults. They are
-      // not model-selection authority once the host router is installed.
-      if (normalized.model === "kimi-k2p6") delete normalized.model;
-      if (receiver && typeof receiver === "object" && Object.hasOwn(receiver, "_noApiKey")) {
-        try { (receiver as Record<string, unknown>)._noApiKey = false; } catch { /* the host methods below do not read it */ }
-      }
-      return normalized as LLMReasonOptions;
-    };
-    redirect("reason", function (this: unknown, prompt: unknown, options: unknown = {}) {
-      return engine.reason(String(prompt ?? ""), hostOptions(this, options));
-    });
-    redirect("reasonRaw", function (this: unknown, prompt: unknown, options: unknown = {}) {
-      return engine.reasonRaw(String(prompt ?? ""), hostOptions(this, options));
-    });
-    redirect("reasonStructured", function (this: unknown, prompt: unknown, schema: unknown, options: unknown = {}) {
-      return engine.reasonStructured(String(prompt ?? ""), schema, hostOptions(this, options));
-    });
-    redirect("chat", function (this: unknown, systemPrompt: unknown, userPrompt: unknown, temperature: unknown = 1) {
+    redirect("reason", (prompt: unknown, options: unknown = {}) =>
+      engine.reason(String(prompt ?? ""), options as LLMReasonOptions));
+    redirect("reasonRaw", (prompt: unknown, options: unknown = {}) =>
+      engine.reasonRaw(String(prompt ?? ""), options as LLMReasonOptions));
+    redirect("reasonStructured", (prompt: unknown, schema: unknown, options: unknown = {}) =>
+      engine.reasonStructured(String(prompt ?? ""), schema, options as LLMReasonOptions));
+    redirect("chat", (systemPrompt: unknown, userPrompt: unknown, temperature: unknown = 1) => {
       const parsedTemperature = Number(temperature);
       return engine.chat(String(systemPrompt ?? ""), String(userPrompt ?? ""), Number.isFinite(parsedTemperature) ? parsedTemperature : 1);
     });
-    redirect("generate", function (this: unknown, prompt: unknown, options: unknown = {}) {
-      return engine.generate(String(prompt ?? ""), hostOptions(this, options));
-    });
+    redirect("generate", (prompt: unknown, options: unknown = {}) =>
+      engine.generate(String(prompt ?? ""), options as LLMReasonOptions));
     return () => {
       for (const [name, original] of patched) prototype[name] = original;
     };

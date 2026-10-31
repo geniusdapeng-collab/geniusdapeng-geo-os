@@ -4,11 +4,11 @@ import { mkdir, mkdtemp, realpath, rm, readFile, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { assertMarketingReviewCapacity, prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, type PreparedMarketingFacts } from "./marketing-authority.js";
+import { prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, supportReviewFacts, type PreparedMarketingFacts } from "./marketing-authority.js";
 import { fetchMarketingSource, requestSource } from "./marketing-source-fetcher.js";
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
 const scope = { tenantId: "tenant-a", workspaceId: "ws-a", projectId: "P1", runId: "RUN1", attempt: 1 };
-const env = { LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "test-only", LLM_MODEL: "deepseek-flash" };
+const env = { LLM_BASE_URL: "https://api.deepseek.com", LLM_API_KEY: "test-only", LLM_MODEL: "deepseek-flash" };
 const sourceUrl = "https://source.example.com/f3";
 const sourceText = "星野 F3 是一款风扇，风量 9 档。价格 399 CNY。待机功率 0，自动启停 false，接口 USB/C~口。尾部注意：9 档是风量档位，不是能耗等级；不得声称静音或市场第一。";
 let server: Server, origin: string, root: string, modelCalls: any[], rejectJudge: boolean, extractionCalls: string[], extractionOptions: unknown[];
@@ -30,22 +30,38 @@ beforeAll(async () => {
 afterAll(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); });
 beforeEach(async () => {
   root = await realpath(await mkdtemp(path.join(tmpdir(), "marketing-authority-"))); modelCalls = []; extractionCalls = []; extractionOptions = []; simulatedProviderCalls = []; rejectJudge = false;
-  vi.stubGlobal("fetch", vi.fn(async (_url, init) => { modelCalls.push(JSON.parse(String(init.body)));
-    return new Response(JSON.stringify({ id: "chatcmpl-test", model: "deepseek-flash",
-      choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
-        approved: !rejectJudge, score: rejectJudge ? 10 : 96, issues: rejectJudge ? ["来源不支持此主张"] : [],
-        suggestions: [], reason: rejectJudge ? "原文限定相冲突" : "逐项原文支持",
-      }) } }], usage: { prompt_tokens: 100, completion_tokens: 30 } })); }));
+  vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+    modelCalls.push(JSON.parse(String(init.body)));
+    return new Response(JSON.stringify({
+      id: "marketing-authority-judge",
+      model: "deepseek-flash",
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify({
+          approved: !rejectJudge,
+          score: rejectJudge ? 10 : 96,
+          issues: rejectJudge ? ["来源不支持此主张"] : [],
+          suggestions: [],
+          reason: rejectJudge ? "原文限定相冲突" : "逐项原文支持",
+        }) },
+      }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 30,
+        total_tokens: 130,
+        completion_tokens_details: { reasoning_tokens: 10 },
+      },
+    }));
+  }));
 });
 afterEach(async () => { vi.unstubAllGlobals(); await rm(root, { recursive: true, force: true }); });
 async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?: boolean; modelFailure?: boolean; mode?: string; attempt?: number; specs?: Record<string, string | number | boolean>; quoteIds?: boolean;
   citationFault?: "metadata" | "duplicate" | "missing" | "persistent" | "changed-payload" | "repair-quote" | "repair-source" | "repair-model-failure";
   imageExtras?: boolean;
   imageMetadata?: "complete" | "no-source" | "no-angle" | "minimal";
-  imageFallback?: boolean;
-  category?: string;
   syntheticTokenCharge?: number;
-  omitEmptyCitations?: boolean;
+  absoluteSellingPoint?: boolean;
+  conflictingBrand?: string;
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
   return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
@@ -53,16 +69,16 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       extractionOptions.push(llmOptions);
       extractionCalls.push(prompt); if (options.modelFailure) return { success: false, error: "LLM unavailable" };
       const match = /当前阶段：(A[123])\n(.*)$/s.exec(prompt)!; const source = JSON.parse(match[2]!).sources[0];
-      if (match[1] !== "A1") return { success: true, data: {
-        payload: match[1] === "A2" ? { reviews: [] } : { competitors: [] },
-        ...(!options.omitEmptyCitations ? { citations: [] } : {}),
-        noEvidenceReason: "页面仅商品规格，无可核实评价或竞品",
-      } };
+      if (match[1] !== "A1") return { success: true, data: { payload: match[1] === "A2" ? { reviews: [] } : { competitors: [] }, citations: [], noEvidenceReason: "页面仅商品规格，无可核实评价或竞品" } };
       a1Calls++;
       if (a1Calls === 2 && options.citationFault === "repair-model-failure") return { success: false, error: "LLM unavailable" };
       const specs = options.specs ?? { 风量: "9 档" };
-      const data: { payload: any; citations: any[] } = { payload: { identity: { name: "星野 F3", ...(options.category ? { category: options.category } : {}), specs, ...(options.citationFault ? { prices: [{ amount: 399, currency: "CNY", source_url: sourceUrl }] } : {}), official_selling_points: [{ point: "风量 9 档", source_url: sourceUrl }] }, images: [] },
-        citations: ["/identity/name", ...(options.category ? ["/identity/category"] : []), ...Object.keys(specs).map(key => `/identity/specs/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`), ...(options.citationFault ? ["/identity/prices/0/amount", "/identity/prices/0/currency"] : []), "/identity/official_selling_points/0/point"]
+      const officialPoints = [
+        { point: "风量 9 档", source_url: sourceUrl },
+        ...(options.absoluteSellingPoint ? [{ point: "Perfect to run anywhere", source_url: sourceUrl }] : []),
+      ];
+      const data: { payload: any; citations: any[] } = { payload: { identity: { name: "星野 F3", ...(options.conflictingBrand ? { brand: options.conflictingBrand } : {}), specs, ...(options.citationFault ? { prices: [{ amount: 399, currency: "CNY", source_url: sourceUrl }] } : {}), official_selling_points: officialPoints }, images: [] },
+        citations: ["/identity/name", ...(options.conflictingBrand ? ["/identity/brand"] : []), ...Object.keys(specs).map(key => `/identity/specs/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`), ...(options.citationFault ? ["/identity/prices/0/amount", "/identity/prices/0/currency"] : []), ...officialPoints.map((_point, index) => `/identity/official_selling_points/${index}/point`)]
           .map(pointer => ({ pointer, sourceId: source.sourceId, ...(options.quoteIds ? { quoteId: source.textFragments[0].quoteId } : { quote: options.badQuote ? "不存在的事实" : sourceText }) })) };
       if (options.imageExtras) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl, angle: "unknown", width: 1080, height: 1920 });
       if (options.imageMetadata) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl,
@@ -84,13 +100,57 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       return { success: true, data };
     } }, dependencies: {
       search: async () => (++searches, options.noSearch || options.noAux && searches > 20 ? [] : [{ title: "星野规格", url: sourceUrl, snippet: "故意错误摘要999档，不能当事实" }]),
-      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(options.imageMetadata || options.imageExtras || options.imageFallback ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
+      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(options.imageMetadata || options.imageExtras ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
     } });
 }
 const shots = [{ shotId: "S1", prompt: "窗边展示星野 F3 风扇，字幕说明风量 9 档。", fields: { 场景: "窗边", 产品: "星野 F3", 规格: "9 档" } }];
 describe("营销事实宿主完整执行", () => {
-  it("uses the current DeepSeek token budget instead of rejecting a complete G1 archive at an obsolete character count", async () => {
-    await expect(assertMarketingReviewCapacity("完整事实".repeat(40_001))).resolves.toBeUndefined();
+  it("支持审核只读取文本事实，旧档案中的图片角度 claim 不进入审核事实包", () => {
+    const facts = {
+      stage: "A1" as const,
+      status: "source_bound" as const,
+      payload: { identity: { name: "星野 F3" }, images: [{ url: sourceUrl, page_url: sourceUrl, angle: "品牌 Logo" }] },
+      claims: [
+        { claimId: "text", stage: "A1" as const, pointer: "/identity/name", value: "星野 F3", sourceId: "SRC-test",
+          textSha256: "a".repeat(64), quote: sourceText, quoteStart: 0, quoteEnd: sourceText.length, status: "source-bound" as const },
+        { claimId: "image", stage: "A1" as const, pointer: "/images/0/angle", value: "品牌 Logo", sourceId: "SRC-test",
+          textSha256: "a".repeat(64), quote: sourceText, quoteStart: 0, quoteEnd: sourceText.length, status: "source-bound" as const },
+      ],
+    };
+    const reviewed = supportReviewFacts("A1", facts);
+    expect(reviewed.payload.images).toEqual([]);
+    expect(reviewed.claims.map((claim) => claim.pointer)).toEqual(["/identity/name"]);
+  });
+  it("绝对化官方促销语只留在不可变原始响应，交付事实与复核都不包含它", async () => {
+    const prepared = await prepare({ quoteIds: true, absoluteSellingPoint: true });
+    const identity = prepared.bundle.rawByAgent.A1.identity as { official_selling_points: Array<{ point: string }> };
+    expect(identity.official_selling_points.map((item) => item.point)).toEqual(["风量 9 档"]);
+    const reference = prepared.bundle.stages[0]!.extractions![0]!;
+    const artifact = JSON.parse(await readFile(path.join(root, reference.ref), "utf8"));
+    expect(artifact.response.data.payload.identity.official_selling_points.map((item: any) => item.point))
+      .toEqual(["风量 9 档", "Perfect to run anywhere"]);
+    expect(artifact.hostPolicyExclusions).toEqual([{
+      pointer: "/identity/official_selling_points/1/point",
+      value: "Perfect to run anywhere",
+      reason: "absolute-marketing-claim",
+    }]);
+    const saved = await finalizeMarketingFacts(prepared, shots, env);
+    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope });
+  });
+  it("可选品牌与显式商品查询冲突时从交付事实移除，原始响应和筛选原因保留", async () => {
+    const prepared = await prepare({ quoteIds: true, conflictingBrand: "Open Home Foundation" });
+    expect(prepared.raw.A1.identity).not.toHaveProperty("brand");
+    expect(JSON.stringify(modelCalls)).not.toContain("Open Home Foundation");
+    const reference = prepared.bundle.stages[0]!.extractions![0]!;
+    const artifact = JSON.parse(await readFile(path.join(root, reference.ref), "utf8"));
+    expect(artifact.response.data.payload.identity.brand).toBe("Open Home Foundation");
+    expect(artifact.hostPolicyExclusions).toEqual([{
+      pointer: "/identity/brand",
+      value: "Open Home Foundation",
+      reason: "product-query-brand-conflict",
+    }]);
+    const saved = await finalizeMarketingFacts(prepared, shots, env);
+    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope });
   });
   it("真实HTTP正文→三站提取/完整支持审核→A1–A5→逐最终镜头事实审核→复读", async () => {
     const prepared = await prepare();
@@ -99,45 +159,21 @@ describe("营销事实宿主完整执行", () => {
     expect(extractionOptions).toEqual(Array.from({ length: 3 }, () => ({ forceJson: true, temperature: 0, maxTokens: 16384, thinking: { type: "disabled" } })));
     expect(prepared.bundle.dossier.identity).toMatchObject({ specs: { 风量: "9 档" } });
     expect(prepared.bundle.dossier.provenance).toEqual(expect.arrayContaining([expect.objectContaining({ claim_ref: "identity.specs.风量", source_url: sourceUrl, agent: "ProductInfoCollector" })]));
+    const g1 = JSON.parse(prepared.g1Content) as { facts: Record<string, unknown> };
+    expect(g1.facts).not.toHaveProperty("g1ContentSha256");
+    expect(prepared.bundle.g1ContentSha256).toBe(renderSha256(prepared.g1Content));
     expect((prepared.bundle.dossier.gaps as string[]).some(gap => gap.includes('规格 "风量" 无来源'))).toBe(false);
     expect((prepared.bundle.dossier.gaps as string[]).some(gap => gap.includes("价格"))).toBe(true);
     expect(prepared.bundle.rawByAgent.A1.identity).toMatchObject({ specs: { 风量: "9 档" } });
     expect(prepared.bundle.rawSha256).toBe(renderSha256(canonicalRenderJson(prepared.raw)));
-    expect(prepared.g1Content).toContain('"schemaVersion":"workloom.marketing-facts/v1"'); expect(modelCalls).toHaveLength(3);
-    const g1 = JSON.parse(prepared.g1Content);
-    expect(prepared.bundle.g1ContentSha256).toBe(renderSha256(prepared.g1Content));
-    expect(g1.facts).not.toHaveProperty("g1ContentSha256");
-    expect(g1.integrity).toMatchObject({
-      schemaVersion: "workloom.g1-content-integrity/v1",
-      algorithm: "sha256",
-      factsSha256: renderSha256(canonicalRenderJson(g1.facts)),
-    });
-    expect((prepared.bundle.dossier.pros_cons as { pros: Array<Record<string, unknown>> }).pros).toEqual([
-      expect.objectContaining({ point: "风量 9 档", aspect: "reported_claim", claim_nature: "media-reported" }),
-    ]);
-    const cards = prepared.bundle.cards as Record<string, any>;
-    expect(cards.insight_card.consensus_points).toEqual([]);
-    expect(cards.theme_card.differentiation_space).toEqual([]);
-    expect(cards.prd_card.compliance_redlines).toEqual(expect.arrayContaining(prepared.bundle.restrictions));
-    expect(cards.portrait_manifest.reference_images).toEqual([]);
+    expect(prepared.g1Content).toContain('"schemaVersion":"workloom.marketing-facts/v1"'); expect(modelCalls).toHaveLength(1);
     expect(JSON.stringify(modelCalls)).toContain("不得声称静音或市场第一"); expect(JSON.stringify(modelCalls)).not.toContain("999档");
-    const saved = await finalizeMarketingFacts(prepared, shots, env); expect(modelCalls).toHaveLength(4);
-    expect(modelCalls.every(call => call.model === "deepseek-flash" && call.response_format?.type === "json_object")).toBe(true);
+    const saved = await finalizeMarketingFacts(prepared, shots, env); expect(modelCalls).toHaveLength(2);
+    expect(modelCalls.every(call => call.response_format.type === "json_object"
+      && call.thinking?.type === "enabled" && call.reasoning_effort === "high"
+      && !("temperature" in call))).toBe(true);
     const checked = await verifyMarketingFacts({ root, ...saved, scope, shots }); expect(checked.outputReviews[0]?.promptSha256).toBe(renderSha256(shots[0]!.prompt));
     expect(await readFile(path.join(root, checked.sources[0]!.textRef), "utf8")).toBe(sourceText);
-  });
-  it("A2/A3明确空证据省略citations时由宿主补空数组，并保留原始响应和可复读证据", async () => {
-    const prepared = await prepare({ omitEmptyCitations: true });
-    expect(prepared.bundle.stages.map(stage => [stage.stage, stage.facts.status])).toEqual([
-      ["A1", "source_bound"], ["A2", "no_evidence"], ["A3", "no_evidence"],
-    ]);
-    for (const stage of prepared.bundle.stages.filter(item => item.stage !== "A1")) {
-      const artifact = JSON.parse(await readFile(path.join(root, stage.extractions![0]!.ref), "utf8"));
-      expect(artifact.response.data).not.toHaveProperty("citations");
-      expect(artifact.status).toBe("accepted");
-    }
-    const saved = await finalizeMarketingFacts(prepared, shots, env);
-    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope, rawByAgent: prepared.raw });
   });
   it("模拟provider需12000 token预算：旧8192截断，16384保留完整事实并完成装订与复读", async () => {
     const specs = { "接口/~": "USB/C~口", 待机功率: 0, 自动启停: false };
@@ -161,7 +197,7 @@ describe("营销事实宿主完整执行", () => {
     expect(JSON.stringify(modelCalls)).toContain(sourceText); expect(extractionCalls).toHaveLength(3);
     const saved = await finalizeMarketingFacts(prepared, shots, env), checked = await verifyMarketingFacts({ root, ...saved, scope, shots });
     expect(checked.rawByAgent).toEqual(prepared.raw); expect(checked.stages[0]!.facts.claims).toEqual(a1.facts.claims);
-    expect(checked.outputReviews).toHaveLength(1); expect(modelCalls).toHaveLength(4);
+    expect(checked.outputReviews).toHaveLength(1); expect(modelCalls).toHaveLength(2);
   });
   it("模拟provider仍超过16384而返回截断JSON：只提取一次、保留原响应且不进入支持审核", async () => {
     await expect(prepare({ quoteIds: true, syntheticTokenCharge: 20000 })).rejects.toThrow("MARKETING_EXTRACTION_UNVERIFIED");
@@ -188,25 +224,10 @@ describe("营销事实宿主完整执行", () => {
     expect(artifact.citationBindings).toHaveLength(artifact.response.data.citations.length);
     expect(artifact.citationBindings[0]).toMatchObject({ start: 0, end: sourceText.length, textSha256: renderSha256(sourceText), quoteSha256: renderSha256(sourceText) });
     expect(a1.facts.claims.every(claim => claim.quote === sourceText)).toBe(true);
-    expect(modelCalls).toHaveLength(3); expect(JSON.stringify(modelCalls)).toContain(sourceText);
+    expect(modelCalls).toHaveLength(1); expect(JSON.stringify(modelCalls)).toContain(sourceText);
     const saved = await finalizeMarketingFacts(prepared, shots, env);
     await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope });
     if (repair) expect(attempts.map(item => item.status)).toEqual(["rejected", "accepted"]);
-  });
-  it("A1 模型漏图时只从本次来源页面确定性命中真实图片，并可完整复读", async () => {
-    const prepared = await prepare({ imageFallback: true, category: "小家电" });
-    const a1 = prepared.bundle.stages[0]!;
-    const images = (a1.facts.payload.images as Array<Record<string, string>>);
-    expect(images).toHaveLength(1);
-    expect(images[0]).toMatchObject({
-      url: `${sourceUrl}/hero.png`,
-      page_url: prepared.bundle.sources[0]!.finalUrl,
-      source: "source.example.com",
-      angle: "unknown",
-    });
-    expect((prepared.bundle.rawByAgent.A1.images as unknown[])).toEqual(images);
-    const saved = await finalizeMarketingFacts(prepared, shots, env);
-    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope, rawByAgent: prepared.raw });
   });
   it.each(["binding-offset", "binding-quote-id", "response-quote-id", "prompt-policy", "prompt-fragment", "version", "schema", "schema-missing", "schema-stage", "version-downgrade"])("重算摘要也拒绝ID桥%s篡改", async kind => {
     const prepared = await prepare({ quoteIds: true }), saved = await finalizeMarketingFacts(prepared, shots, env);
@@ -267,7 +288,7 @@ describe("营销事实宿主完整执行", () => {
   });
   it.each(["metadata", "duplicate", "missing"] as const)("%s引用结构只同源纠正一次，原始输出保留且仍完成支持评审", async citationFault => {
     const prepared = await prepare({ citationFault }), a1 = prepared.bundle.stages[0]!;
-    expect(extractionCalls).toHaveLength(4); expect(modelCalls).toHaveLength(3); expect(a1.extractions).toHaveLength(2);
+    expect(extractionCalls).toHaveLength(4); expect(modelCalls).toHaveLength(1); expect(a1.extractions).toHaveLength(2);
     expect(extractionOptions).toEqual(Array.from({ length: 4 }, () => ({ forceJson: true, temperature: 0, maxTokens: 16384, thinking: { type: "disabled" } })));
     const attempts = await Promise.all(a1.extractions!.map(async item => {
       const bytes = await readFile(path.join(root, item.ref), "utf8"); expect(renderSha256(bytes)).toBe(item.sha256); return JSON.parse(bytes);

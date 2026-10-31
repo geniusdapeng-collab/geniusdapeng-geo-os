@@ -13,7 +13,19 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("./vendor-requirement-entry.js", () => ({
   acquireVendorRequirementEntry: () => ({
-    exports: { HyperrealitySystem: class { create(...input: unknown[]) { return state.create(...input); } } },
+    exports: { HyperrealitySystem: class {
+      requirementDiscoveryEngine = {
+        agents: {
+          scene: { timeoutMs: 1, maxRetries: 0 },
+          risk: { maxRetries: 0 },
+        },
+        agentTimeoutMs: 0,
+      };
+      creativeThemeGenerator = { generate: async () => ({}) };
+      prdGenerator = { generate: async () => ({}) };
+      durationConstraintManager = {};
+      create(...input: unknown[]) { return state.create(...input); }
+    } },
     identity: { entryPath: "/fixture/vendor/index.js" }, release: () => undefined
   })
 }));
@@ -93,9 +105,9 @@ function fixture() {
     snapshot: () => structuredClone(index), indexPath: () => join(dir, "portrait-index.json")
   };
   const run = () => new VideoStudio({
-    llm: new WorkloomLLMEngine({ baseUrl: "https://example.invalid", apiKey: "test-only", model: "test" }),
+    llm: new WorkloomLLMEngine({ baseUrl: "https://example.invalid", apiKey: "test-only", model: "deepseek-flash" }),
     workDir: dir, log: () => undefined, onApproval: async () => ({ approved: true }),
-    portraits: { apiKey: "test-only", model: "test" }
+    portraits: { apiKey: "test-only", model: "deepseek-flash" }
   }).runPreproduction({ projectId: "P1", intent: "test original character" });
   return { index, entry, run };
 }

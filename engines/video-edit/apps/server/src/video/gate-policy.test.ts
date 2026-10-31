@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSyn
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
-  AUTO_GATES, GATE_PRODUCER_STAGE, gateDeterministicChecks, portraitGateEvidence, portraitReviewManifest,
-  renderSubmitAutoAllowed,
+  AUTO_GATES, GATE_PRODUCER_STAGE, appliedApprovalFeedback, gateDeterministicChecks, portraitGateEvidence, portraitReviewManifest,
+  renderSubmitAutoAllowed, systemAutoApprovalEnabled,
 } from "./gate-policy.js";
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(path.join(tmpdir(), "portrait-proof-")); });
@@ -49,23 +49,25 @@ describe("服务预生产 G5/G7", () => {
   });
 });
 
-describe("默认门策略（T-2026-1001-0007）：机器不替人类做决定", () => {
-  it("G5 定妆照默认人审：不在 AUTO_GATES 默认表里", () => {
-    expect(AUTO_GATES.has("G5_PORTRAIT")).toBe(false);
-    expect(AUTO_GATES.has("G2_THEME")).toBe(true);
+describe("版本化系统自动裁决", () => {
+  it("G1-G8 全部由系统策略裁决，不再进入人工门", () => {
+    expect([...AUTO_GATES]).toEqual([
+      "G1_DOSSIER", "G2_THEME", "G3_INSIGHT", "G4_PRD", "G5_PORTRAIT", "G6_PROMPT", "G7_FINAL", "G8_RENDER",
+    ]);
   });
 
-  it("渲染提交默认人审：只有显式 WORKLOOM_RENDER_AUTO=1 才自动放行", () => {
-    expect(renderSubmitAutoAllowed({})).toBe(false);
-    expect(renderSubmitAutoAllowed({ WORKLOOM_RENDER_AUTO: "0" })).toBe(false);
-    expect(renderSubmitAutoAllowed({ WORKLOOM_RENDER_AUTO: "1" })).toBe(true);
+  it("全局 kill switch 默认启用，显式关闭后全部 review 转 blocked", () => {
+    expect(systemAutoApprovalEnabled({})).toBe(true);
+    expect(renderSubmitAutoAllowed({})).toBe(true);
+    expect(systemAutoApprovalEnabled({ PIPELINE_SYSTEM_AUTO_APPROVAL: "off" })).toBe(false);
+    expect(renderSubmitAutoAllowed({ PIPELINE_SYSTEM_AUTO_APPROVAL: "off" })).toBe(false);
   });
 
-  it("人类验收清单逐张列出定妆照文件与指纹（放行前可核对原图）", () => {
+  it("定妆照证据清单仍逐张列出文件与指纹，供策略和审计回读", () => {
     const f = fixture();
     const manifest = portraitReviewManifest({ workDir: dir, projectId: "P1" });
     expect(manifest.files).toHaveLength(4);
-    expect(manifest.markdown).toContain("放行前请逐张看过原图");
+    expect(manifest.markdown).toContain("定妆照系统裁决证据清单");
     expect(manifest.markdown).toContain("角色 c1（front）");
     expect(manifest.markdown).toContain("sha256");
     expect(manifest.files.every((entry) => entry.sha256.length === 64)).toBe(true);
@@ -74,93 +76,51 @@ describe("默认门策略（T-2026-1001-0007）：机器不替人类做决定", 
 });
 
 it("营销G1允许合法JSON空值，拒绝仅摘要或旧自报档案", () => {
-  const good = {
-    facts: {
-      schemaVersion: "workloom.marketing-facts/v1",
-      stages: [
-        { stage: "A1", facts: { status: "source_bound", claims: [], payload: { identity: { name: "合成服务" }, images: [] } } },
-        { stage: "A2", facts: { status: "no_evidence", claims: [], payload: { reviews: [] } } },
-        { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
-      ],
-      sources: [{ sourceId: "SRC-1" }],
-      restrictions: [],
-      dossier: { identity: {}, provenance: [], pros_cons: { pros: [] } },
-      cards: {
-        insight_card: { consensus_points: [], market_position: { our_opening: [] } },
-        theme_card: { differentiation_space: [] },
-        prd_card: { compliance_redlines: [] },
-        portrait_manifest: { reference_images: [] },
-      },
-    },
-    integrity: { schemaVersion: "workloom.g1-content-integrity/v1", algorithm: "sha256", factsSha256: "a".repeat(64),
-      factsHashScope: "canonical facts", evidenceHashPolicy: "producer evidence binds exact bytes" },
-  };
+  const good = { facts: { schemaVersion: "workloom.marketing-facts/v1", stages: [1, 2, 3], sources: [1], optional: null } };
   expect(gateDeterministicChecks("G1_DOSSIER", JSON.stringify(good)).every(check => check.pass)).toBe(true);
   for (const bad of ["商品事实摘要".repeat(100), JSON.stringify({ ...good, facts: { ...good.facts, stages: [1] } }), "null"]) expect(gateDeterministicChecks("G1_DOSSIER", bad).some(check => check.hard && !check.pass)).toBe(true);
 });
 
-it("营销G1确定性拒绝媒体冒充官方、无证据共识/差异、红线遗漏、图片授权和价格日期缺口", () => {
-  const invalid: any = {
-    facts: {
-      schemaVersion: "workloom.marketing-facts/v1",
-      stages: [
-        { stage: "A1", facts: { status: "source_bound", claims: [], payload: { identity: { name: "合成商品" }, images: [{ url: "https://media.example.com/a.png", page_url: "https://source.example.com", angle: "unknown" }] } } },
-        { stage: "A2", facts: { status: "no_evidence", claims: [], payload: { reviews: [] } } },
-        { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
-      ],
-      sources: [{ sourceId: "SRC-1" }],
-      restrictions: ["没有可核实竞品证据：禁止竞品对比", "不写销量、价格或绝对性能结论"],
-      dossier: {
-        identity: { price_band: "CNY 128000" },
-        provenance: [{ evidence_id: "EV-1", channel_class: "unknown" }],
-        pros_cons: { pros: [{ point: "媒体转述", claim_nature: "official", source_refs: ["EV-1"] }] },
-      },
-      cards: {
-        insight_card: { consensus_points: [{ point: "用户共识" }], market_position: { our_opening: ["差异"] } },
-        theme_card: { differentiation_space: ["差异"] },
-        prd_card: { compliance_redlines: [], hook_candidates: { data_points: ["价格带：CNY 128000"] }, reference_image_policy: { licensed_for_delivery: true } },
-        portrait_manifest: { reference_images: [{ license_risk: "high" }] },
-        brief_card: { productHero: { heroImageId: "x", licensed_for_delivery: true } },
-        router_material: { hook_material: { data_points: ["价格带：CNY 128000"] } },
-      },
-    },
-    integrity: { schemaVersion: "workloom.g1-content-integrity/v1", algorithm: "sha256", factsSha256: "a".repeat(64),
-      factsHashScope: "canonical facts", evidenceHashPolicy: "producer evidence binds exact bytes" },
-  };
-  const check = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(invalid)).find(item => item.id === "marketing-evidence-integrity")!;
-  expect(check.pass).toBe(false);
-  expect(check.detail).toContain("声称official");
-  expect(check.detail).toContain("用户共识");
-  expect(check.detail).toContain("差异化空位");
-  expect(check.detail).toContain("PRD合规红线遗漏");
-  expect(check.detail).toContain("高授权风险图片");
-  expect(check.detail).toContain("图片授权限制未内联");
-  expect(check.detail).toContain("hook/creative字段仍分发价格");
-  expect(check.detail).toContain("价格缺少来源页面日期");
+it("G3允许合同中的合法null，不把协议空值误判成占位符", () => {
+  const contract = [
+    "## 道具（0）",
+    "```json",
+    JSON.stringify({ sceneId: "opening", noPropsReason: "本场只有环境光影变化", optional: null }),
+    "```",
+  ].join("\n").repeat(4);
+  expect(gateDeterministicChecks("G3_INSIGHT", contract).every((check) => check.pass)).toBe(true);
+  expect(gateDeterministicChecks("G3_INSIGHT", `${contract}\nundefined [object Object]`)
+    .some((check) => check.hard && !check.pass)).toBe(true);
 });
 
-it("明确商品时G1必须绑定A1已接受真实图，外观授权由宿主结构化产生", () => {
-  const base: any = {
-    facts: {
-      schemaVersion: "workloom.marketing-facts/v1",
-      stages: [
-        { stage: "A1", facts: { status: "source_bound", payload: { identity: { name: "合成商品" }, images: [] } } },
-        { stage: "A2", facts: { status: "no_evidence" } },
-        { stage: "A3", facts: { status: "no_evidence" } },
-      ],
-      sources: [{ sourceId: "SRC-1" }],
-    },
-    requestedMetadata: { brief: { product: "合成商品" } },
-  };
-  const missing = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(base));
-  expect(missing.find(check => check.id === "product-visual-authority")).toMatchObject({ pass: false, hard: true });
-  base.facts.stages[0]!.facts.payload.images.push({
-    url: "https://media.example.com/product.png",
-    page_url: "https://source.example.com/product",
-    angle: "unknown",
-  });
-  const present = gateDeterministicChecks("G1_DOSSIER", JSON.stringify(base));
-  expect(present.find(check => check.id === "product-visual-authority")).toMatchObject({
-    pass: true, detail: expect.stringContaining("1 张本次 G1 已接受图片"),
-  });
+it("G4允许可解析合同JSON中的合法null，但仍拒绝正文和损坏JSON里的null", () => {
+  const contract = [
+    "# PRD",
+    "```json",
+    JSON.stringify({ cast: { mode: "none", registryPath: null }, ownerAudience: null }),
+    "```",
+  ].join("\n").repeat(8);
+  expect(gateDeterministicChecks("G4_PRD", contract).every((check) => check.pass)).toBe(true);
+  expect(gateDeterministicChecks("G4_PRD", `${contract}\n字段值为 null`)
+    .some((check) => check.hard && !check.pass)).toBe(true);
+  expect(gateDeterministicChecks("G4_PRD", "```json\n{\"field\":null,}\n```".repeat(8))
+    .some((check) => check.hard && !check.pass)).toBe(true);
+});
+
+it("G2允许无人合同的可空字段以旧Markdown措辞出现，但不豁免任意null", () => {
+  const allowed = [
+    "## 创意主题",
+    "本片明确无人；protagonist 为 null，character_consistency 为 null。",
+    "未指定主图时 hero_image_id: null，这是协议空值。",
+    "不得增加未核实事实。".repeat(30),
+  ].join("\n");
+  expect(gateDeterministicChecks("G2_THEME", allowed).every((check) => check.pass)).toBe(true);
+  expect(gateDeterministicChecks("G2_THEME", `${allowed}\n未知字段为 null`)
+    .some((check) => check.hard && !check.pass)).toBe(true);
+});
+
+it("批准后的建议只作审核注解，不得作为改写已批准产物的用户反馈", () => {
+  expect(appliedApprovalFeedback(true, ["建议下一镜优化", 7])).toEqual([]);
+  expect(appliedApprovalFeedback(false, ["修改字段A", " ", 7])).toEqual(["修改字段A"]);
+  expect(appliedApprovalFeedback(false, "not-an-array")).toEqual([]);
 });

@@ -121,14 +121,19 @@ describe("full source contracts reach each review", () => {
     const file = join(directory(), "script.json"); writeFileSync(file, JSON.stringify(s.shots));
     let body = "";
     const v = await reviewFilmStage(s, { ...options(), artifacts: [{ path: file, kind: "json" }],
-      env: { LLM_BASE_URL: "https://api.deepseek.com", LLM_API_KEY: "test", LLM_MODEL: "deepseek-flash" },
+      env: { LLM_BASE_URL: "https://api.deepseek.com", LLM_API_KEY: "test-only", LLM_MODEL: "deepseek-flash" },
       fetchImpl: (async (_url: unknown, init: RequestInit) => {
         body = String(init.body);
         return new Response(JSON.stringify({
-          id: "film-contract-fixture",
+          id: "film-review",
           model: "deepseek-flash",
           choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ approved: true, score: 90, issues: [], suggestions: [], reason: "actual body captured" }) } }],
-          usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+          usage: {
+            prompt_tokens: 100,
+            completion_tokens: 30,
+            total_tokens: 130,
+            completion_tokens_details: { reasoning_tokens: 10 },
+          },
         }));
       }) as typeof fetch });
     expect(v.approved, v.reason).toBe(true); expect(body).toContain("原稿尾部不能遗漏的约束"); expect(body).toContain("authorContracts");
@@ -153,10 +158,7 @@ describe("full source contracts reach each review", () => {
     const v = await reviewFilmStage(s, options(), async (o) => { expect(o.contracts!.shots).toHaveLength(2); return { ...approved(o), approved: false, status: "failed", reason: "original reject" }; });
     expect(v.reason).toBe("original reject"); expect(v.approved).toBe(false);
   });
-  /**
-   * 长合同必须完整进入同一次场景策略调用，不能靠旧的 30k 字符阈值删掉原稿。
-   */
-  it("keeps the complete raw contract beyond the former 30k character threshold", async () => {
+  it("always carries the complete raw contract into review", async () => {
     const s = source();
     const filler = "场景与材质的事实描述".repeat(400);
     s.shots = Array.from({ length: 6 }, (_, index) => ({ ...structuredClone(empty), shotId: `S${index + 1}`, scene: `${empty.scene}；${filler}${index}` }));
@@ -164,6 +166,9 @@ describe("full source contracts reach each review", () => {
     const v = await reviewFilmStage(s, options(), async (o) => { captured = o.context as Record<string, unknown>; return approved(o); });
     expect(v.approved, v.reason).toBe(true);
     expect(captured?.authorContracts).toBeDefined();
-    expect(JSON.stringify(captured?.authorContracts)).toContain("场景与材质的事实描述");
+    expect(captured?.authorContractsOmitted).toBeUndefined();
+    let small: Record<string, unknown> | undefined;
+    await reviewFilmStage(source(), options(), async (o) => { small = o.context as Record<string, unknown>; return approved(o); });
+    expect(small?.authorContracts).toBeDefined();
   });
 });

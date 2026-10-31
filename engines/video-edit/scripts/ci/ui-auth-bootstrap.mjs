@@ -11,12 +11,20 @@ import { fileURLToPath } from 'node:url';
 export const PIN = Object.freeze({
   package: '@workloom/ui', version: '0.1.19', producer: 'workloom-ai/workloom-im',
   tag: 'ui-v0.1.19', assetName: 'workloom-ui-0.1.19.tgz', bytes: 90041,
-  canonicalUrl: 'https://cnb.cool/workloom-ai/workloom-im/-/releases/download/ui-v0.1.19/workloom-ui-0.1.19.tgz',
-  apiUrl: 'https://api.cnb.cool/workloom-ai/workloom-im/-/releases/download/ui-v0.1.19/workloom-ui-0.1.19.tgz',
-  releaseUrl: 'https://api.cnb.cool/workloom-ai/workloom-im/-/releases/tags/ui-v0.1.19',
+  canonicalUrl: 'https://github.com/geniusdapeng-collab/workloom-im/releases/download/ui-v0.1.19/workloom-ui-0.1.19.tgz',
+  apiUrl: 'https://api.github.com/repos/geniusdapeng-collab/workloom-im/releases/assets/670901023',
+  releaseUrl: 'https://api.github.com/repos/geniusdapeng-collab/workloom-im/releases/tags/ui-v0.1.19',
+  releaseId: 422438050, assetId: 670901023,
   sha256: '42bf2e483cbd2665fda74f0e64cff7266184db7844801b27b5078f0082a3b262',
   sri: 'sha512-kplOLAtovega6BLpBwtFM1DfBS3q4ZjLp9yA942o+v9QlbREm/VsYNK/Jz7f/9ytDWSFXCvmh10C3ZHrPHkcSA==',
   pnpmVersion: '10.14.0',
+});
+
+export const LEGACY_PIN = Object.freeze({
+  ...PIN,
+  canonicalUrl: 'https://cnb.cool/workloom-ai/workloom-im/-/releases/download/ui-v0.1.19/workloom-ui-0.1.19.tgz',
+  apiUrl: 'https://api.cnb.cool/workloom-ai/workloom-im/-/releases/download/ui-v0.1.19/workloom-ui-0.1.19.tgz',
+  releaseUrl: 'https://api.cnb.cool/workloom-ai/workloom-im/-/releases/tags/ui-v0.1.19',
 });
 
 export class BootstrapError extends Error {
@@ -24,7 +32,9 @@ export class BootstrapError extends Error {
 }
 function requireFact(condition, code, message) { if (!condition) throw new BootstrapError(code, message); }
 function active(signal) { requireFact(!signal?.aborted, 'UI_BOOTSTRAP_CANCELLED'); }
-function deadline(signal, milliseconds) { return signal ? AbortSignal.any([signal, AbortSignal.timeout(milliseconds)]) : AbortSignal.timeout(milliseconds); }
+function deadline(signal, milliseconds) {
+  return signal ? AbortSignal.any([signal, AbortSignal.timeout(milliseconds)]) : AbortSignal.timeout(milliseconds);
+}
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const sriOf = bytes => 'sha512-' + createHash('sha512').update(bytes).digest('base64');
 function sameDigest(a, b) { const x = Buffer.from(a); const y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); }
@@ -32,7 +42,10 @@ function sameDigest(a, b) { const x = Buffer.from(a); const y = Buffer.from(b); 
 export function validateState(state) {
   requireFact(state?.schemaVersion === 'workloom.ui-consumer-state/v1', 'UI_STATE_SCHEMA');
   requireFact(state.package === PIN.package && state.version === PIN.version && state.source === PIN.producer, 'UI_STATE_IDENTITY');
-  requireFact(state.artifact?.assetName === PIN.assetName && state.artifact.url === PIN.canonicalUrl && state.artifact.sha512 === PIN.sri, 'UI_STATE_ARTIFACT');
+  const artifact = state.artifact;
+  const github = artifact?.platform === 'github' && artifact.url === PIN.canonicalUrl;
+  const legacy = (artifact?.platform === undefined || artifact.platform === 'cnb') && artifact?.url === LEGACY_PIN.canonicalUrl;
+  requireFact(artifact?.type === 'github-release-tarball' && artifact.assetName === PIN.assetName && (github || legacy) && artifact.sha512 === PIN.sri, 'UI_STATE_ARTIFACT');
   requireFact(state.releaseChannel === 'stable' && state.updatePolicy === 'upgrade-pr-only', 'UI_STATE_POLICY');
   return state;
 }
@@ -113,23 +126,57 @@ async function safeFetch(fetchImplementation, url, options, code, signal) {
   try { return await fetchImplementation(url, options); }
   catch { throw new BootstrapError(signal?.aborted ? 'UI_BOOTSTRAP_CANCELLED' : code); }
 }
-export function validateAssetRedirect(location) {
+export function validateAssetRedirect(location, platform = 'cnb') {
   let url;
   try { url = new URL(location); } catch { throw new BootstrapError('UI_ASSET_REDIRECT_URL'); }
-  requireFact(url.protocol === 'https:' && url.hostname === 'asset.cnb.cool' && (!url.port || url.port === '443') && !url.username && !url.password, 'UI_ASSET_REDIRECT_ORIGIN');
+  const host = platform === 'github' ? 'release-assets.githubusercontent.com' : platform === 'cnb' ? 'asset.cnb.cool' : '';
+  requireFact(host && url.protocol === 'https:' && url.hostname === host && (!url.port || url.port === '443') && !url.username && !url.password, 'UI_ASSET_REDIRECT_ORIGIN');
+  if (platform === 'github') requireFact(url.pathname.startsWith('/github-production-release-asset/'), 'UI_ASSET_REDIRECT_PATH');
   return url;
 }
 
-/** Only this function receives the credential. No child process receives it. */
-export async function downloadPinnedArchive({ releaseReadToken, state, fetchImplementation = fetch, signal }) {
-  active(signal);
-  validateState(state);
-  requireFact(typeof releaseReadToken === 'string' && releaseReadToken.length > 0 && releaseReadToken.length < 4096 && !/\s/.test(releaseReadToken), 'MISSING_UI_RELEASE_TOKEN');
-  const headers = { Authorization: 'Bearer ' + releaseReadToken, Accept: 'application/vnd.cnb.api+json' };
-  const releaseResponse = await safeFetch(fetchImplementation, PIN.releaseUrl, { method: 'GET', headers, redirect: 'error', signal: deadline(signal, 30000) }, 'UI_RELEASE_REQUEST', signal);
+async function downloadPublicGithubArchive(fetchImplementation, signal) {
+  // The public GitHub mirror never receives the optional legacy CNB credential.
+  const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10' };
+  const releaseResponse = await safeFetch(fetchImplementation, PIN.releaseUrl, { method: 'GET', headers, credentials: 'omit', redirect: 'error', signal: deadline(signal, 30000) }, 'UI_RELEASE_REQUEST', signal);
   requireFact(releaseResponse.status === 200, 'UI_RELEASE_HTTP_' + releaseResponse.status);
   let release;
   try { release = JSON.parse((await boundedBody(releaseResponse, 512 * 1024, 'UI_RELEASE_BODY_SIZE', signal)).toString('utf8')); }
+  catch (error) { if (error instanceof BootstrapError) throw error; throw new BootstrapError('UI_RELEASE_JSON'); }
+  requireFact(release?.id === PIN.releaseId && release.tag_name === PIN.tag && release.draft === false && release.prerelease === false, 'UI_RELEASE_IDENTITY');
+  requireFact(Array.isArray(release.assets), 'UI_RELEASE_ASSETS');
+  const assets = release.assets.filter(asset => asset?.name === PIN.assetName);
+  requireFact(assets.length === 1, 'UI_RELEASE_ASSET_CARDINALITY');
+  const asset = assets[0];
+  requireFact(asset.id === PIN.assetId && asset.state === 'uploaded' && asset.size === PIN.bytes && asset.digest === 'sha256:' + PIN.sha256, 'UI_RELEASE_ASSET_HASH');
+  requireFact(asset.browser_download_url === PIN.canonicalUrl && asset.url === PIN.apiUrl, 'UI_RELEASE_ASSET_URL');
+  const options = { method: 'GET', headers: { Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2026-03-10' }, credentials: 'omit', redirect: 'manual', signal: deadline(signal, 60000) };
+  let response = await safeFetch(fetchImplementation, PIN.apiUrl, options, 'UI_ASSET_REQUEST', signal);
+  let assetOrigin = 'https://api.github.com';
+  if (response.status === 302) {
+    const url = validateAssetRedirect(response.headers.get('location'), 'github');
+    // The signed CDN URL stays in memory. Neither API credentials nor cookies are forwarded.
+    assetOrigin = url.origin;
+    response = await safeFetch(fetchImplementation, url, { method: 'GET', headers: { Accept: 'application/octet-stream' }, credentials: 'omit', redirect: 'error', signal: deadline(signal, 60000) }, 'UI_ASSET_DOWNLOAD', signal);
+  }
+  requireFact(response.status === 200, 'UI_ASSET_DOWNLOAD_HTTP_' + response.status);
+  const bytes = await boundedBody(response, PIN.bytes, 'UI_ASSET_DOWNLOAD_SIZE', signal);
+  const proof = verifyArchive(bytes);
+  return { bytes, proof: { ...proof, platform: 'github', authenticatedApi: false, credentialsForwardedToCdn: false, apiOrigin: 'https://api.github.com', assetOrigin, releaseId: String(release.id), assetId: String(asset.id) } };
+}
+
+/** Only the explicit legacy CNB branch receives the credential. No child process receives it. */
+export async function downloadPinnedArchive({ releaseReadToken, state, fetchImplementation = fetch, signal }) {
+  active(signal);
+  validateState(state);
+  if (state.artifact.platform === 'github') return downloadPublicGithubArchive(fetchImplementation, signal);
+  const pin = LEGACY_PIN;
+  requireFact(typeof releaseReadToken === 'string' && releaseReadToken.length > 0 && releaseReadToken.length < 4096 && !/\s/.test(releaseReadToken), 'MISSING_UI_RELEASE_TOKEN');
+  const headers = { Authorization: 'Bearer ' + releaseReadToken, Accept: 'application/vnd.cnb.api+json' };
+  const releaseResponse = await safeFetch(fetchImplementation, pin.releaseUrl, { method: 'GET', headers, redirect: 'error', signal: AbortSignal.timeout(30000) }, 'UI_RELEASE_REQUEST');
+  requireFact(releaseResponse.status === 200, 'UI_RELEASE_HTTP_' + releaseResponse.status);
+  let release;
+  try { release = JSON.parse((await boundedBody(releaseResponse, 512 * 1024, 'UI_RELEASE_BODY_SIZE')).toString('utf8')); }
   catch (error) { if (error instanceof BootstrapError) throw error; throw new BootstrapError('UI_RELEASE_JSON'); }
   requireFact(release.tag_name === PIN.tag && release.draft === false && release.prerelease === false, 'UI_RELEASE_IDENTITY');
   requireFact(Array.isArray(release.assets), 'UI_RELEASE_ASSETS');
@@ -137,30 +184,16 @@ export async function downloadPinnedArchive({ releaseReadToken, state, fetchImpl
   requireFact(assets.length === 1, 'UI_RELEASE_ASSET_CARDINALITY');
   const asset = assets[0];
   requireFact(asset.size === PIN.bytes && asset.hash_algo === 'sha256' && sameDigest(String(asset.hash_value), PIN.sha256), 'UI_RELEASE_ASSET_HASH');
-  requireFact(asset.browser_download_url === PIN.canonicalUrl && asset.url === PIN.apiUrl, 'UI_RELEASE_ASSET_URL');
-  const response = await safeFetch(fetchImplementation, PIN.apiUrl, { method: 'GET', headers, redirect: 'manual', signal: deadline(signal, 30000) }, 'UI_ASSET_REQUEST', signal);
+  requireFact(asset.browser_download_url === pin.canonicalUrl && asset.url === pin.apiUrl, 'UI_RELEASE_ASSET_URL');
+  const response = await safeFetch(fetchImplementation, pin.apiUrl, { method: 'GET', headers, redirect: 'manual', signal: AbortSignal.timeout(30000) }, 'UI_ASSET_REQUEST');
   requireFact(response.status === 302, 'UI_ASSET_HTTP_' + response.status);
   const url = validateAssetRedirect(response.headers.get('location'));
   // The signed CDN URL stays only in memory; no Authorization or cookies are forwarded.
-  const archiveResponse = await safeFetch(fetchImplementation, url, { method: 'GET', headers: { Accept: 'application/octet-stream' }, redirect: 'error', signal: deadline(signal, 60000) }, 'UI_ASSET_DOWNLOAD', signal);
+  const archiveResponse = await safeFetch(fetchImplementation, url, { method: 'GET', headers: { Accept: 'application/octet-stream' }, redirect: 'error', signal: AbortSignal.timeout(60000) }, 'UI_ASSET_DOWNLOAD');
   requireFact(archiveResponse.status === 200, 'UI_ASSET_DOWNLOAD_HTTP_' + archiveResponse.status);
-  const bytes = await boundedBody(archiveResponse, PIN.bytes, 'UI_ASSET_DOWNLOAD_SIZE', signal);
+  const bytes = await boundedBody(archiveResponse, PIN.bytes, 'UI_ASSET_DOWNLOAD_SIZE');
   const proof = verifyArchive(bytes);
   return { bytes, proof: { ...proof, authenticatedApi: true, credentialsForwardedToCdn: false, apiOrigin: 'https://api.cnb.cool', assetOrigin: 'https://asset.cnb.cool', releaseId: String(release.id), assetId: String(asset.id) } };
-}
-
-/** Public producer migration changes transport only; the canonical lock identity and original bytes stay pinned. */
-export async function downloadInstallationArchive({transport='official-github',...options}) {
-  active(options.signal);validateState(options.state);
-  if(transport==='legacy-cnb')return downloadPinnedArchive(options);
-  requireFact(transport==='official-github','UI_INSTALL_TRANSPORT_INVALID');
-  try{
-    const {downloadOfficialUi}=await import('./ui-public-release.mjs');
-    const result=await downloadOfficialUi({signal:options.signal,fetchImplementation:options.fetchImplementation});
-    const archive=verifyArchive(result.bytes);
-    requireFact(result.proof?.officialSourceVerified===true&&result.proof?.credentialsForwardedToCdn===false,'UI_PUBLIC_SOURCE_PROOF');
-    return{bytes:result.bytes,proof:{...result.proof,...archive,canonicalPackageId:PIN.canonicalUrl,canonicalLockChanged:false}};
-  }catch(error){if(error instanceof BootstrapError)throw error;throw new BootstrapError(error.code||'UI_PUBLIC_RELEASE_DOWNLOAD');}
 }
 
 function scalar(value) {
@@ -249,8 +282,18 @@ export function runProcess(command, argv, { cwd, env, timeoutMs = 300000, signal
     if (signal?.aborted) abort();
     const collect = bytes => { size += bytes.length; if (size > 32 * 1024 * 1024) stop(); else chunks.push(bytes); };
     child.stdout.on('data', collect); child.stderr.on('data', collect);
-    child.on('error', () => { clearTimeout(timer); clearTimeout(forceTimer); signal?.removeEventListener('abort', abort); reject(new BootstrapError('PNPM_PROCESS_SPAWN')); });
-    child.on('close', (exitCode, exitSignal) => { clearTimeout(timer); clearTimeout(forceTimer); signal?.removeEventListener('abort', abort); if(killed)signalChild('SIGKILL'); if(cancelled)return reject(new BootstrapError('UI_BOOTSTRAP_CANCELLED')); resolveResult({ command, argv, cwd, exitCode, signal:exitSignal, killed, output: Buffer.concat(chunks).toString('utf8') }); });
+    child.on('error', () => {
+      clearTimeout(timer); clearTimeout(forceTimer);
+      signal?.removeEventListener('abort', abort);
+      reject(new BootstrapError('PNPM_PROCESS_SPAWN'));
+    });
+    child.on('close', (exitCode, exitSignal) => {
+      clearTimeout(timer); clearTimeout(forceTimer);
+      signal?.removeEventListener('abort', abort);
+      if (killed) signalChild('SIGKILL');
+      if (cancelled) return reject(new BootstrapError('UI_BOOTSTRAP_CANCELLED'));
+      resolveResult({ command, argv, cwd, exitCode, signal: exitSignal, killed, output: Buffer.concat(chunks).toString('utf8') });
+    });
   });
 }
 async function ordinaryFile(path) { const stat = await lstat(path); requireFact(stat.isFile() && !stat.isSymbolicLink(), 'UI_SOURCE_FILE_TYPE'); return readFile(path); }
@@ -285,7 +328,7 @@ export async function validateCanonicalIndex(storeRoot, archiveBytes) {
   return { path, sha256: digest(bytes), name: index.name, version: index.version, fileCount: Object.keys(index.files).length, manifestIntegrity: index.files['package.json'].integrity, archiveEntriesVerified: Boolean(archiveBytes) };
 }
 
-/** Authenticated bytes use a private loopback transport only while official pnpm fetch runs. */
+/** Verified bytes use a private loopback transport only while official pnpm fetch runs. */
 export async function warmCanonicalStore({ repoRoot, archiveBytes, storeDir, pnpmCommand = 'pnpm', pnpmPrefixArgs = [], stagingRoot = tmpdir(), environment = process.env, signal }) {
   active(signal);
   const repo = await realpath(repoRoot); const files = await sourceSnapshot(repo); const archive = verifyArchive(archiveBytes);
@@ -309,6 +352,7 @@ export async function warmCanonicalStore({ repoRoot, archiveBytes, storeDir, pnp
     await writeFile(join(stage, 'package.json'), files['package.json'], { flag: 'wx', mode: 0o600 });
     await writeFile(join(stage, 'pnpm-workspace.yaml'), files['pnpm-workspace.yaml'], { flag: 'wx', mode: 0o600 });
     const store = resolve(storeDir); await mkdir(store, { recursive: true });
+    const expectedStoreRoot = await realpath(store);
     const fetched = await runProcess(pnpmCommand, [...pnpmPrefixArgs, 'fetch', '--ignore-scripts', '--frozen-lockfile', '--store-dir', store, '--reporter', 'append-only', '--network-concurrency', '16'], { cwd: stage, env, timeoutMs: 900000, signal });
     if (fetched.exitCode !== 0 || fetched.killed) { const error = new BootstrapError('UI_PNPM_FETCH_FAILED'); error.processResult = fetched; throw error; }
     requireFact(digest(await readFile(join(stage, 'pnpm-lock.yaml'))) === transport.sha256, 'UI_PREFETCH_LOCK_CHANGED');
@@ -316,7 +360,7 @@ export async function warmCanonicalStore({ repoRoot, archiveBytes, storeDir, pnp
     const storePath = await runProcess(pnpmCommand, [...pnpmPrefixArgs, 'store', 'path', '--store-dir', store], { cwd: stage, env, timeoutMs: 30000, signal });
     requireFact(storePath.exitCode === 0, 'UI_PNPM_STORE_PATH');
     const storeRoot = await realpath(storePath.output.trim());
-    requireFact(!relative(store, storeRoot).startsWith('..') && !isAbsolute(relative(store, storeRoot)), 'UI_STORE_PATH_BOUNDARY');
+    requireFact(!relative(expectedStoreRoot, storeRoot).startsWith('..') && !isAbsolute(relative(expectedStoreRoot, storeRoot)), 'UI_STORE_PATH_BOUNDARY');
     const index = await validateCanonicalIndex(storeRoot, archiveBytes);
     return { schemaVersion: 'workloom.ui-auth-bootstrap/v1', scope: 'dependency-transport', archive, pnpmVersion: PIN.pnpmVersion, canonicalPackageId: transport.binding.packageId,
       originalLockSha256: transport.binding.originalSha256, temporaryTransportLockSha256: transport.sha256, changedTemporaryFields: ['packages[@workloom/ui@canonical].resolution.tarball'],
@@ -362,7 +406,12 @@ export async function installCanonicalFrozen({ repoRoot, storeDir, warmProof, pn
 
 export async function bootstrapInstall(options) {
   const state = JSON.parse(await readFile(join(options.repoRoot, '.workloom-ui.json'), 'utf8'));
-  const download = await downloadInstallationArchive({ transport:options.transport,releaseReadToken: options.releaseReadToken, state, fetchImplementation: options.fetchImplementation, signal: options.signal });
+  const download = await downloadPinnedArchive({
+    releaseReadToken: options.releaseReadToken,
+    state,
+    fetchImplementation: options.fetchImplementation,
+    signal: options.signal,
+  });
   const warm = await warmCanonicalStore({ ...options, archiveBytes: download.bytes });
   const result = await installCanonicalFrozen({ ...options, warmProof: warm });
   return { ...result, download: download.proof };

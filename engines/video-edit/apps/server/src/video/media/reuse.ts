@@ -45,12 +45,14 @@ export async function findReusable(
   const prompt = input.prompt.trim();
   if (!prompt) return [];
   const params: unknown[] = [scope.workspaceId, prompt, minSimilarity, limit];
+  const substring = "(COALESCE(a.prompt, '') ILIKE '%' || $2 || '%' OR COALESCE(a.title, '') ILIKE '%' || $2 || '%')";
+  const similarityExpr = `CASE WHEN ${substring} THEN 1::real ELSE GREATEST(similarity(COALESCE(a.prompt, ''), $2), similarity(COALESCE(a.title, ''), $2)) END`;
   const clauses = [
     "a.workspace_id = $1",
     "a.kind = 'clip'",
     "a.status <> 'archived'",
     "(COALESCE(a.prompt, '') <> '' OR COALESCE(a.title, '') <> '')",
-    "GREATEST(similarity(COALESCE(a.prompt, ''), $2), similarity(COALESCE(a.title, ''), $2)) > $3",
+    `(${substring} OR GREATEST(similarity(COALESCE(a.prompt, ''), $2), similarity(COALESCE(a.title, ''), $2)) > $3)`,
   ];
   if (input.durationSec !== undefined && input.durationSec !== null) {
     params.push(input.durationSec);
@@ -75,7 +77,7 @@ export async function findReusable(
   }>(app, scope,
     `SELECT a.id, a.title, a.prompt, a.duration_seconds, a.width, a.height, a.project_id, a.created_at,
             a.meta->>'localPath' AS local_path,
-            GREATEST(similarity(COALESCE(a.prompt, ''), $2), similarity(COALESCE(a.title, ''), $2)) AS similarity
+            ${similarityExpr} AS similarity
        FROM video_assets a
       WHERE ${clauses.join(" AND ")}
       ORDER BY similarity DESC, a.created_at DESC

@@ -6,10 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage, ChatOptions, ModelProvider } from "@workloom/base/model-router";
 import { bindRequirementContract, requirementCast, requirementHash, requirementRecord, type RequirementContract, type RequirementRecord } from "./requirement-contract.js";
 import { effectivePrdModelSchema, prdAuthorityPrompt, preparePrdAuthority } from "./prd-authority.js";
-import {
-  assertPrdAuthorityBridge, consumePromptReviewContracts, installPrdAuthorityBridge, installPrdProductionBridge,
-  policyCoveragePlan, productionModelInput, withPrdAuthorityScope
-} from "./prd-authority-bridge.js";
+import { assertPrdAuthorityBridge, installPrdAuthorityBridge, installPrdProductionBridge, productionModelInput, withPrdAuthorityScope } from "./prd-authority-bridge.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -52,55 +49,6 @@ function schemaFromPrompt(prompt: string, kind: "creative" | "production"): Requ
   expect(encoded).toHaveLength(1);
   return JSON.parse(encoded[0]!) as RequirementRecord;
 }
-
-describe("scene policy coverage display", () => {
-  it("states overlapping tag accounting and gives every scene an explicit non-empty shot-card budget", () => {
-    const plan = policyCoveragePlan({
-      brief: { scenePolicyRequirements: { requiredTags: ["product-close", "usage", "host", "ambience", "moving"] } },
-    }, [
-      { sceneId: "opening", duration: 10, purpose: "女车手跨坐整车拧油门冲入赛道",
-        visualRequirements: ["低机位追拍车身与前轮，赛道热浪清晰"], audioRequirements: [], keyProps: ["820RR-RC"] },
-      { sceneId: "middle", duration: 14, purpose: "压弯超车并冲线",
-        visualRequirements: ["低机位跟拍整车高速压弯"], audioRequirements: [], keyProps: ["车辆"] },
-      { sceneId: "ending", duration: 6, purpose: "人物站在最高领奖台，奖杯与整车同框",
-        visualRequirements: ["自然光颁奖环境，人物与车辆稳定构图"], audioRequirements: [], keyProps: ["奖杯", "车辆"] },
-    ], [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }]);
-    expect(plan).toMatchObject({
-      requiredTags: ["product-close", "usage", "host", "ambience", "moving"],
-      totalDuration: 30,
-      requiredSeconds: { "product-close": "10.5–30s", host: "6–9s" },
-      scenes: [{ sceneId: "opening", estimatedShots: 2 }, { sceneId: "middle", estimatedShots: 3 }, { sceneId: "ending", estimatedShots: 1 }],
-    });
-    expect(plan?.feasibility).toEqual({ "product-close": true, usage: true, host: true, ambience: true, moving: true });
-    expect(plan?.allShotsTagged).toBe(true);
-    expect(plan?.hostWithinMaximum).toBe(true);
-    expect(plan?.scenes.every(scene => scene.policyTags.length > 0)).toBe(true);
-    expect(plan?.shots.every(scene => scene.policyTags.length > 0)).toBe(true);
-    expect(plan?.plannedSeconds["product-close"]).toBeGreaterThanOrEqual(10.5);
-    expect(plan?.plannedSeconds.usage).toBeGreaterThanOrEqual(9);
-    expect(plan?.plannedSeconds.host).toBeGreaterThanOrEqual(6);
-    expect(plan?.plannedSeconds.host).toBeLessThanOrEqual(9);
-    expect(plan?.plannedSeconds.ambience).toBeGreaterThanOrEqual(3);
-    expect(plan?.plannedSeconds.moving).toBeGreaterThanOrEqual(9);
-    expect(plan?.accounting).toContain("不把百分比相加");
-    expect(plan?.shotCardRule).toContain("正式镜头卡必须逐镜携带");
-  });
-
-  it("derives product-close and usage from the current product contract and structured actions instead of a fixed film", () => {
-    const plan = policyCoveragePlan({
-      brief: {
-        product: "Aster Mini",
-        scenePolicyRequirements: { requiredTags: ["product-close", "usage"] },
-      },
-    }, [{
-      sceneId: "device", duration: 10, purpose: "Aster Mini 的通电状态与接口近景",
-      visualRequirements: ["Aster Mini 机身与接口清晰可见"], audioRequirements: [], keyProps: ["Aster Mini"],
-      actions: [{ actorId: "$product", description: "Aster Mini 启动后接口指示灯亮起" }],
-    }], [{ sceneId: "device", estimatedShots: 2 }]);
-    expect(plan?.scenes[0]?.policyTags).toEqual(expect.arrayContaining(["product-close", "usage"]));
-    expect(plan?.feasibility).toEqual({ "product-close": true, usage: true });
-  });
-});
 function authorityFromMarkdown(markdown: string): RequirementRecord {
   const pieces = markdown.split("\n\n## 宿主本次权威生产与交付要求\n\n```json\n");
   expect(pieces).toHaveLength(2);
@@ -165,13 +113,32 @@ afterEach(() => {
 function productionAdapter(reply = '{"shotId":"UNCHANGED","fields":{"scene":"模型原始文本"}}') {
   const requests: Array<{ messages: ChatMessage[]; options: ChatOptions }> = [];
   const provider: ModelProvider = {
-    modelId: "deepseek-v4-pro", healthy: async () => true,
+    modelId: "deepseek-flash", healthy: async () => true,
     chat: async (messages, options = {}) => {
       requests.push({ messages, options });
-      return { text: reply, promptTokens: 1, completionTokens: 1 };
+      return {
+        text: reply,
+        promptTokens: 1,
+        completionTokens: 1,
+        modelId: "deepseek-flash",
+        finishReason: "stop",
+        reasoningTokens: 0,
+        requestHash: "a".repeat(64),
+        responseHash: "b".repeat(64),
+        responseId: "fixture-response",
+        scene: options.scene ?? "generic",
+        mode: "enabled",
+        effort: "high",
+        outputCeiling: 393216,
+        inputTokenEstimate: 1,
+        imageCount: 0,
+        policyVersion: "2026-10-30.1",
+        registryVersion: "2026-10-30.1",
+        attempts: [],
+      };
     }
   };
-  const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "stub-main",
+  const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "deepseek-flash",
     router: { providers: new Map([[provider.modelId, provider]]), sink: {
       recordModelTrace: async () => undefined, recordDegradation: async () => undefined, recordCircuitBreak: async () => undefined,
     } } });
@@ -194,6 +161,7 @@ describe("G4-bound authority at the shared real model request boundary", () => {
         thinking: { type: "disabled" }, systemPrompt: "原调用方system" });
       expect(result).toMatchObject({ success: true, content: capture.reply, data: JSON.parse(capture.reply) });
       const request = capture.requests[1]!, prompt = request.messages.at(-1)!.content;
+      if (typeof prompt !== "string") throw new Error("fixture expected text content");
       expect(prompt.startsWith(original + "\n")).toBe(true);
       expect(prompt).toContain(JSON.stringify(schema, null, 2));
       expect(prompt).toContain(JSON.stringify(value.metadata.brief));
@@ -204,9 +172,8 @@ describe("G4-bound authority at the shared real model request boundary", () => {
       expect(prompt).toContain(JSON.stringify(prd));
       expect(prompt).toContain("G4 批准不把 PRD 新增的修辞");
       expect(request.messages[0]).toEqual({ role: "system", content: "原调用方system" });
-      expect(request.options).toMatchObject({ maxTokens: 393216, topP: 0.82, thinking: { type: "enabled" },
-        reasoningEffort: "high", responseFormat: { type: "json_object" } });
-      expect(request.options).not.toHaveProperty("temperature");
+      expect(request.options).toMatchObject({ topP: 0.82, thinking: { type: "enabled", effort: "high" }, responseFormat: { type: "json_object" } });
+      expect(request.options.temperature).toBeUndefined();
       expect(schema).toEqual(before); expect(prd).toEqual(prdBefore);
       return h.success(prd);
     }, validate);
@@ -214,7 +181,7 @@ describe("G4-bound authority at the shared real model request boundary", () => {
     expect(productionModelInput(original).prompt).toBe(original);
   });
 
-  it("covers reason, raw, generate, chat and structured paths while applying the host full-window policy", async () => {
+  it("covers reason, raw, generate, chat and structured paths including vendor-created engines with exactly their original requests", async () => {
     // Use the same tsx CommonJS loading path as the production server. Vite's
     // ESM test loader cannot load the legacy systems/*.js constructor directly.
     const value = fixture("PRODUCTION-PATHS"), script = `${value.workDir}/vendor-context-probe.mts`;
@@ -243,9 +210,15 @@ for (const [key, payload] of [["agent2", fixture.creative], ["agent3", fixture.p
  generator[key]._llmEngine = { reasonStructured: async () => ({ success: true, data: structuredClone(payload) }) };
 }
 const system = new System(generator), requests = [], raw = '{"unchanged":true}';
-const provider = { modelId: "deepseek-v4-pro", healthy: async () => true,
- chat: async (messages, options = {}) => { requests.push({ messages, options }); return { text: raw, promptTokens: 1, completionTokens: 1 }; } };
-const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "stub-main",
+const provider = { modelId: "deepseek-flash", healthy: async () => true,
+ chat: async (messages, options = {}) => { requests.push({ messages, options }); return {
+   text: raw, promptTokens: 1, completionTokens: 1, modelId: "deepseek-flash",
+   finishReason: "stop", reasoningTokens: 0, requestHash: "a".repeat(64), responseHash: "b".repeat(64),
+   responseId: "fixture", scene: options.scene ?? "generic", mode: "enabled", effort: "high",
+   outputCeiling: 393216, inputTokenEstimate: 1, imageCount: 0,
+   policyVersion: "2026-10-30.1", registryVersion: "2026-10-30.1", attempts: []
+ }; } };
+const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "deepseek-flash",
  router: { providers: new Map([[provider.modelId, provider]]), sink: { recordModelTrace: async () => undefined,
  recordDegradation: async () => undefined, recordCircuitBreak: async () => undefined } } });
 restorePrd = installPrdAuthorityBridge(System.prototype, PRDGenerator.prototype, PRDSchema);
@@ -284,10 +257,8 @@ console.log("RESULT " + JSON.stringify({ ...receipt, cleanup: { clearedTimers, h
     const result = JSON.parse(stdout.split("\n").find(line => line.startsWith("RESULT "))!.slice(7));
     expect(result.count).toBe(5);
     expect(result.inputs.every((input: RequirementRecord) => input.prefix === true && input.complete === true)).toBe(true);
-    expect(result.inputs[3]).toMatchObject({ system: { role: "system", content: "原生system" },
-      options: { maxTokens: 393216, thinking: { type: "enabled" }, reasoningEffort: "high", timeoutMs: 180000 } });
-    expect(result.inputs[3].options).not.toHaveProperty("temperature");
-    expect(result.inputs[4].options.maxTokens).toBe(393216);
+    expect(result.inputs[3]).toMatchObject({ system: { role: "system", content: "原生system" }, options: { thinking: { type: "enabled", effort: "high" } } });
+    expect(result.inputs[4].options.maxTokens).toBeUndefined();
     expect(result.results).toMatchObject({ results: [{ success: true, content: result.raw }, { success: true, content: result.raw }, { success: true, content: result.raw }],
       chat: result.raw, structured: { success: true, content: result.raw, data: { unchanged: true } } });
     expect(result.cleanup).toMatchObject({ hookDisabled: true, clearedTimers: expect.any(Number) });
@@ -299,17 +270,28 @@ console.log("RESULT " + JSON.stringify({ ...receipt, cleanup: { clearedTimers, h
     const raw = '{"unchanged":"原始返回"}'; expectedFetchCalls = 1;
     vi.mocked(globalThis.fetch).mockImplementation(async (_url, init) => {
       bodies.push(JSON.parse(String(init?.body)) as RequirementRecord);
-      return new Response(JSON.stringify({ id: "direct-response-1", model: "original-model", choices: [{ finish_reason: "stop",
-        message: { content: raw } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }), { status: 200 });
+      return new Response(JSON.stringify({
+        id: "fixture-direct",
+        model: "deepseek-flash",
+        choices: [{ finish_reason: "stop", message: { content: raw } }],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+          completion_tokens_details: { reasoning_tokens: 0 },
+        },
+      }), { status: 200 });
     });
-    const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "original-model" });
+    const adapter = new WorkloomLLMEngine({ baseUrl: "http://unused.local/v1", apiKey: "test-only", model: "deepseek-flash" });
     await withPrdAuthorityScope(value.authority, async () => {
       const prd = await h.generate(run); await h.review(run, prd);
       expect(await adapter.reasonStructured("直连原始需求", { unchanged: "" }, { maxTokens: 4321 })).toMatchObject({ content: raw, data: JSON.parse(raw) });
       return h.success(prd);
     });
-    expect(bodies).toHaveLength(1); expect(bodies[0]).toMatchObject({ model: "original-model", max_tokens: 393216 });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toMatchObject({ model: "deepseek-flash" });
     const prompt = (bodies[0]!.messages as ChatMessage[]).at(-1)!.content;
+    if (typeof prompt !== "string") throw new Error("fixture expected text content");
     expect(prompt.startsWith("直连原始需求")).toBe(true); expect(prompt).toContain(value.content);
   });
 
@@ -752,7 +734,11 @@ describe("explicit delivery plans through the real native PRD generator", () => 
       expect(String(items.find(item => item.item === "subtitle_sidecar")!.spec)).toContain(text);
       expect(delivery.outputFormat).toMatchObject(value.authority.profile);
       expect(markdown).toContain("**cover**"); expect(markdown).toContain(text);
-      expect(prd.creativeCore).toEqual(creativeBefore); expect(prd.visualSpecification).toEqual(productionBefore.visualSpecification);
+      expect(prd.creativeCore).toEqual(creativeBefore);
+      expect(prd.visualSpecification).toEqual({
+        ...productionBefore.visualSpecification,
+        visualReferences: ["本次已审 G3 场景的画面目的、关键元素与用户 Brief；不引用未获客户提供的外部影片、导演或品牌案例"],
+      });
       expect(prd.audioSpecification).toEqual(productionBefore.audioSpecification);
       const character = (requirementRecord(prd.characterSystem, "characters").characters as RequirementRecord[])[0]!;
       expect(character.consistencyRequirements).toBe(productionBefore.characterSystem.characters[0]!.consistencyRequirements);
@@ -798,6 +784,9 @@ describe("explicit delivery plans through the real native PRD generator", () => 
       expect(call.prompt).toContain("已经给出的档案来源不得写成“待解析”");
       expect(call.prompt).toContain("“待解析和核验”仅适用于输入确实未提供的原始PNG路径");
       expect(call.prompt).toContain("不能提前批准");
+      if (mode === "none") {
+        expect(markdown).toContain("外观锚点与定妆照前置：不适用（cast.mode=none，与出镜角色合同一致）");
+      }
       const characters = requirementRecord(prd.characterSystem, "characters").characters as RequirementRecord[];
       expect(characters.map(character => character.portraitPath)).toEqual(Array(mode === "none" ? 0 : 1).fill(""));
       expect(characters.map(character => character.consistencyRequirements)).toEqual(value.production.characterSystem.characters.map(character => character.consistencyRequirements));
@@ -913,7 +902,10 @@ describe("G4 executable plans and one native quality policy", () => {
       expect(displayQuality).not.toHaveProperty("production"); expect(displayQuality).not.toHaveProperty("nativeAcceptance");
       expect(markdown).toContain('"status": "plan-only-not-executed"');
       expect(prd.audioSpecification).toEqual(before.audioSpecification);
-      expect(prd.visualSpecification).toEqual(before.visualSpecification);
+      expect(prd.visualSpecification).toEqual({
+        ...before.visualSpecification,
+        visualReferences: ["本次已审 G3 场景的画面目的、关键元素与用户 Brief；不引用未获客户提供的外部影片、导演或品牌案例"],
+      });
       expect(value.production).toEqual(before);
       return h.success(prd);
     });
@@ -1053,33 +1045,6 @@ describe("G4 executable plans and one native quality policy", () => {
     expect(run.calls).toHaveLength(2);
   });
 
-  it("passes a model's exact host-owned character projection back into the native parser after structural normalization", async () => {
-    const value = fixture("REDUNDANT-CHARACTER-PROJECTION"), h = harness();
-    const source = value.contract.cast.characters[0]!, character = value.production.characterSystem.characters[0]!;
-    Object.assign(character, {
-      character_id: source.character_id,
-      portraitVersion: source.portraitVersion,
-      builtinCharacterSource: structuredClone(source.builtinCharacterSource),
-    });
-    const run = h.make(value);
-    await withPrdAuthorityScope(value.authority, async () => {
-      const prd = await h.generate(run);
-      const actual = (requirementRecord(prd.characterSystem, "characters").characters as RequirementRecord[])[0]!;
-      expect(actual).not.toHaveProperty("character_id");
-      expect(actual).not.toHaveProperty("portraitVersion");
-      expect(actual).not.toHaveProperty("builtinCharacterSource");
-      expect(actual).toMatchObject({
-        characterId: source.id,
-        name: source.name,
-        portraitPath: "",
-        _workloomCharacterSource: expect.objectContaining({ id: source.id }),
-      });
-      await h.review(run, prd);
-      return h.success(prd);
-    });
-    expect(run.calls).toHaveLength(2);
-  });
-
   it.each([1, 0])("the real G4 deterministic gate accepts the complete rendered plan for %i selected characters without placeholder leakage", async count => {
     const value = fixture(`PLAN-REAL-G4-${count}`, [8, 14, 8], count), h = harness(), run = h.make(value);
     await withPrdAuthorityScope(value.authority, async () => {
@@ -1087,34 +1052,10 @@ describe("G4 executable plans and one native quality policy", () => {
       const checks = actualG4Checks(value, markdown);
       expect(checks.map(check => check.id)).toEqual(["content-present", "no-placeholder", "min-length"]);
       expect(checks.every(check => check.pass === true)).toBe(true);
-      const planning = planningFromMarkdown(markdown);
-      expect(planning.characterPlans).toHaveLength(count);
-      expect(planning.productAndClaimPlan).toMatchObject({ notApplicable: true });
+      expect(planningFromMarkdown(markdown).characterPlans).toHaveLength(count);
       expect(prd).toEqual(before); return h.success(prd);
     });
     expect(run.calls).toHaveLength(2);
-  });
-
-  it("removes model-authored scene tag annotations before hashing and uses only the computed shot budget", async () => {
-    const value = fixture("POLICY-TAG-DISPLAY"), h = harness();
-    const metadata = requirementRecord(value.metadata, "metadata");
-    metadata.brief = {
-      ...requirementRecord(metadata.brief, "metadata.brief"),
-      scenePolicyRequirements: { requiredTags: ["product-close", "usage", "host", "ambience", "moving"] },
-    };
-    value.authority.metadata = structuredClone(value.metadata);
-    const run = h.make(value);
-    const scene = (requirementRecord(value.production.scenePlan, "scenePlan").scenes as RequirementRecord[])[0]!;
-    (scene.visualRequirements as unknown[]).push("标签：host、product-close、moving", "镜头标签：usage、ambience、moving");
-    await withPrdAuthorityScope(value.authority, async () => {
-      const prd = await h.generate(run), markdown = await h.review(run, prd);
-      expect(JSON.stringify(prd.scenePlan)).not.toContain("标签：host");
-      expect(JSON.stringify(prd.scenePlan)).not.toContain("镜头标签");
-      expect(markdown).not.toContain("标签：host、product-close、moving");
-      const planning = planningFromMarkdown(markdown);
-      expect(planning.policyCoveragePlan).toMatchObject({ allShotsTagged: true });
-      return h.success(prd);
-    });
   });
 
   it("does not hide unrelated nullable source data from the real G4 no-placeholder check", async () => {
@@ -1502,10 +1443,8 @@ describe("approved production authority at native technical and title seams", ()
       const call = h.calls.find(call => call.key === "produce")!, input = call.args[0] as RequirementRecord;
       expect(call.receiver).toBe(run.engine); expect(call.args[1]).toBe(argument);
       expect(input).not.toBe(blueprint); expect(input.scenes).toBe(scenes);
-      expect(input.config).not.toBe(config); expect(input.config).toEqual({ ...config, aspectRatio: "9:16", target_duration: 30 });
+      expect(input.config).not.toBe(config); expect(input.config).toEqual({ ...config, aspectRatio: "9:16" });
       expect(input.metadata).toBe(blueprint.metadata);
-      expect(input.meta).toEqual({ target_duration: 30 });
-      expect(input.targetDuration).toBe(30);
       const marker = requirementRecord(input._workloomProductionAuthority, "private production marker");
       expect(marker).toMatchObject({ schemaVersion: "workloom.production-authority/v1", scope: value.scope, profile: value.authority.profile, g4Hash: requirementHash(prd) });
       expect(marker.hash).toBe(requirementHash({ authority: requirementHash(value.authority), g4: requirementHash(prd), scope: value.scope }));
@@ -1669,7 +1608,7 @@ describe("approved production authority at native technical and title seams", ()
   });
 
   it.each([...nativeStandardizer.CRITICAL_FIELDS.p0, ...nativeStandardizer.CRITICAL_FIELDS.p1,
-    ...nativeStandardizer.CRITICAL_FIELDS.p2, ...nativeStandardizer.CRITICAL_FIELDS.p3].filter(key => key !== "portraits"))("requires real %s content across all 25 fields without local defaults", async key => {
+    ...nativeStandardizer.CRITICAL_FIELDS.p2, ...nativeStandardizer.CRITICAL_FIELDS.p3])("requires real %s content across all 25 fields without local defaults", async key => {
     const value = fixture(`MISSING-${key}`), h = productionHarness(), run = h.make(value), shot = productionShot();
     delete shot[key]; delete requirementRecord(shot.fields, "fields")[key];
     const before = structuredClone(shot);
@@ -1681,22 +1620,6 @@ describe("approved production authority at native technical and title seams", ()
       try { invoke(run.fieldGuard, "normalizeAndValidate", [shot], "Final-Export"); } catch { /* must remain sticky */ }
     })).rejects.toThrow(`Production 25 fields missing: ${key}`);
     expect(shot).toEqual(before); expect(shot).not.toHaveProperty("degraded");
-  });
-
-  it("treats portraits as host-bound at final export without synthesizing a path", async () => {
-    const value = fixture("HOST-BOUND-PORTRAITS"), h = productionHarness(), run = h.make(value), shot = productionShot();
-    delete shot.portraits;
-    delete requirementRecord(shot.fields, "fields").portraits;
-    const before = structuredClone(shot);
-    await h.accepted(run, () => {
-      const result = requirementRecord(invoke(run.fieldGuard, "normalizeAndValidate", [shot], "Final-Export"), "validated");
-      expect(requirementRecord(result.report, "report")).toMatchObject({ passed: true, errors: [] });
-      const detail = (requirementRecord(result.report, "report").details as RequirementRecord[])[0]!;
-      expect(detail).toMatchObject({ passed: true, missingSpecFields: [], presentFields: 25 });
-      const portraits = (result.shots as RequirementRecord[])[0]!.portraits;
-      expect(portraits === undefined || portraits === "" || (Array.isArray(portraits) && portraits.length === 0)).toBe(true);
-      expect(shot).toEqual(before);
-    });
   });
 
   it.each(["dialogue-free", "structured-blocks"])("accepts explicit %s dialogue applicability without synthesizing a line", async mode => {
@@ -1739,10 +1662,6 @@ describe("approved production authority at native technical and title seams", ()
       expect(report).toContain("exceeds 12000 char limit"); expect(report).toContain("G6 仍须审核事实用途");
       expect(report).toContain("subtitle 指片头副标题，正式后期字幕仍按 Brief 执行");
       expect(report).not.toContain("待生成"); expect(report).not.toContain("请补充"); expect(shot).toEqual(before);
-      expect(consumePromptReviewContracts(report)?.shots[0]).toMatchObject({
-        shotId: shot.shotId, sceneType: shot.sceneType, duration: shot.duration, prompt: shot.prompt,
-      });
-      expect(consumePromptReviewContracts(report)).toBeUndefined();
     });
     expect(h.calls.some(call => call.key === "_generatePromptsReport")).toBe(false);
   });

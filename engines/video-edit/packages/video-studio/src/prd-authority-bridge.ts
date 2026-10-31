@@ -3,16 +3,16 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import {
-  requirementDisplayContract, requirementHash, requirementRecord, verifiedRequirementContract,
+  requirementHash, requirementRecord, verifiedRequirementContract,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdModelSchema, prdAuthorityPrompt, prdFail,
-  prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
+  validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
 } from "./prd-authority.js";
-import type { ProducerReviewContracts } from "./producer-gate.js";
+import { normalizeMarketingPrdContract } from "./marketing-prd-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
-import { extractProductVisualAuthority } from "./product-visual-authority.js";
+import type { ProducerReviewContracts } from "./producer-gate.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 const QUALITY_KEYS = ["visual", "audio", "narrative", "consistency"] as const;
@@ -60,13 +60,19 @@ const PROMPT_REVIEW_CONTRACT_TTL_MS = 10 * 60 * 1000;
 const PROMPT_REVIEW_CONTRACT_LIMIT = 32;
 const POLICY_TAGS = ["product-close", "usage", "host", "ambience", "moving"] as const;
 
-export function policyCoveragePlan(metadata: RequirementRecord, scenes: RequirementRecord[], mapping: RequirementRecord[]) {
-  const brief = metadata.brief && typeof metadata.brief === "object" ? requirementRecord(metadata.brief, "Brief") : {};
+export function policyCoveragePlan(
+  metadata: RequirementRecord,
+  scenes: RequirementRecord[],
+  mapping: RequirementRecord[],
+) {
+  const brief = metadata.brief && typeof metadata.brief === "object"
+    ? requirementRecord(metadata.brief, "Brief") : {};
   const requirements = brief.scenePolicyRequirements && typeof brief.scenePolicyRequirements === "object"
     ? requirementRecord(brief.scenePolicyRequirements, "scenePolicyRequirements") : null;
   if (!requirements || !Array.isArray(requirements.requiredTags)) return null;
   const requiredTags = [...new Set(requirements.requiredTags.filter(
-    (tag): tag is typeof POLICY_TAGS[number] => typeof tag === "string" && POLICY_TAGS.includes(tag as typeof POLICY_TAGS[number]),
+    (tag): tag is typeof POLICY_TAGS[number] =>
+      typeof tag === "string" && POLICY_TAGS.includes(tag as typeof POLICY_TAGS[number]),
   ))];
   if (!requiredTags.length) return null;
   const ratios: Record<typeof POLICY_TAGS[number], { minimum: number; maximum: number }> = {
@@ -78,9 +84,11 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
   };
   const productValues = [
     brief.product, brief.productName, brief.model, brief.name,
-    brief.brand && typeof brief.brand === "object" ? requirementRecord(brief.brand, "Brief brand").name : brief.brand,
+    brief.brand && typeof brief.brand === "object"
+      ? requirementRecord(brief.brand, "Brief brand").name : brief.brand,
     ...(Array.isArray(metadata.products) ? metadata.products.flatMap(value => {
-      const product = value && typeof value === "object" ? requirementRecord(value, "metadata product") : {};
+      const product = value && typeof value === "object"
+        ? requirementRecord(value, "metadata product") : {};
       return [product.name, product.model, product.brand];
     }) : []),
   ].flatMap(value => typeof value === "string" && value.trim() ? [value.trim()] : []);
@@ -92,35 +100,55 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
   const escapedTerms = productTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const productPattern = escapedTerms.length ? new RegExp(escapedTerms.join("|"), "iu") : null;
   const characters = Array.isArray(metadata.characters)
-    ? metadata.characters.flatMap(value => value && typeof value === "object" ? [requirementRecord(value, "metadata character")] : []) : [];
-  const characterNames = characters.flatMap(value => typeof value.name === "string" && value.name.trim() ? [value.name.trim()] : []);
-  const characterIds = new Set(characters.flatMap(value =>
-    typeof value.id === "string" && value.id.trim() ? [value.id.trim()] : []));
+    ? metadata.characters.flatMap(value =>
+      value && typeof value === "object" ? [requirementRecord(value, "metadata character")] : [])
+    : [];
+  const characterNames = characters.flatMap(value =>
+    typeof value.name === "string" && value.name.trim() ? [value.name.trim()] : []);
   const scenePlan = scenes.map((scene, index) => {
-    const actionRecords = Array.isArray(scene.actions) ? scene.actions.map(value => requirementRecord(value, "policy coverage action")) : [];
-    const actions = actionRecords.map(action => `${String(action.actorId)} ${String(action.description ?? "")}`);
+    const actionRecords = Array.isArray(scene.actions)
+      ? scene.actions.map(value => requirementRecord(value, "policy coverage action")) : [];
+    const actions = actionRecords.map(action =>
+      `${String(action.actorId)} ${String(action.description ?? "")}`);
     const actorIds = [...new Set(actionRecords.map(action => String(action.actorId)))];
-    const text = JSON.stringify({ purpose: scene.purpose, visualRequirements: scene.visualRequirements,
-      audioRequirements: scene.audioRequirements, keyProps: scene.keyProps, actions });
+    const text = JSON.stringify({
+      purpose: scene.purpose,
+      visualRequirements: scene.visualRequirements,
+      audioRequirements: scene.audioRequirements,
+      keyProps: scene.keyProps,
+      actions,
+    });
     const matched = mapping.find(item => item.sceneId === scene.sceneId);
-    return { sceneId: String(scene.sceneId), sequence: index + 1, duration: Number(scene.duration),
-      estimatedShots: Math.max(1, Math.trunc(Number(matched?.estimatedShots ?? 1))), text,
+    return {
+      sceneId: String(scene.sceneId),
+      sequence: index + 1,
+      duration: Number(scene.duration),
+      estimatedShots: Math.max(1, Math.trunc(Number(matched?.estimatedShots ?? 1))),
+      text,
       purpose: String(scene.purpose ?? ""),
-      visualText: JSON.stringify({ visualRequirements: scene.visualRequirements, keyProps: scene.keyProps }),
-      actionText: actions.join("\n"), actorIds };
+      visualText: JSON.stringify({
+        visualRequirements: scene.visualRequirements,
+        keyProps: scene.keyProps,
+      }),
+      actionText: actions.join("\n"),
+      actorIds,
+    };
   });
   const totalDuration = scenePlan.reduce((sum, scene) => sum + scene.duration, 0);
-  const shots = scenePlan.flatMap(scene => Array.from({ length: scene.estimatedShots }, (_, index) => ({
-    shotId: `${scene.sceneId}-S${index + 1}`,
-    sceneId: scene.sceneId,
-    duration: Number((scene.duration / scene.estimatedShots).toFixed(6)),
-    text: scene.text,
-    purpose: scene.purpose,
-    visualText: scene.visualText,
-    actionText: scene.actionText,
-    actorIds: scene.actorIds,
-    policyTags: [] as string[],
-  }))).map((shot, index) => ({ ...shot, sequence: index + 1 }));
+  const shots = scenePlan.flatMap(scene => Array.from(
+    { length: scene.estimatedShots },
+    (_, index) => ({
+      shotId: `${scene.sceneId}-S${index + 1}`,
+      sceneId: scene.sceneId,
+      duration: Number((scene.duration / scene.estimatedShots).toFixed(6)),
+      text: scene.text,
+      purpose: scene.purpose,
+      visualText: scene.visualText,
+      actionText: scene.actionText,
+      actorIds: scene.actorIds,
+      policyTags: [] as string[],
+    }),
+  )).map((shot, index) => ({ ...shot, sequence: index + 1 }));
   const matchesTag = (tag: string, shot: typeof shots[number]) => {
     if (tag === "product-close") {
       const subject = `${shot.purpose}\n${shot.visualText}`;
@@ -130,41 +158,49 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
         || /产品|商品|整车|车身|车头|仪表|外观|材质|涂装|近景|特写/iu.test(shot.purpose);
       const personFocus = /脸|面部|眼睛|眼神|手部|双手|单手|手指|指节|手腕|手套|掌心|手臂|肩|颈|皮肤|汗|头发|呼吸|身体/iu.test(`${shot.purpose}\n${shot.visualText}`);
       const opponentContext = /对手|竞品|另一辆|另一台|并排[^。；\n]{0,12}车/iu.test(subject);
-      return (productNamed || productCue) && !(personFocus && !productInPurpose) && !(opponentContext && !productNamed);
+      return (productNamed || productCue) && !(personFocus && !productInPurpose)
+        && !(opponentContext && !productNamed);
     }
     if (tag === "usage") {
       if (shot.actorIds.includes("$product")) return true;
-      const interaction = /使用|操作|启动|关闭|连接|安装|打开|点击|按压|握持|穿戴|佩戴|驾驶|骑行|控制|调节|切换|输入|跨|坐|拧|按|拉|推|转|骑|压弯|转向|加速|制动|冲线|冲过|越过|超车/iu
+      return /使用|操作|启动|关闭|连接|安装|打开|点击|按压|握持|穿戴|佩戴|驾驶|骑行|控制|调节|切换|输入|跨|坐|拧|按|拉|推|转|骑|压弯|转向|加速|制动|冲线|冲过|越过|超车/iu
         .test(`${shot.purpose}\n${shot.visualText}\n${shot.actionText}`);
-      return interaction;
     }
     if (tag === "host") {
       const subject = `${shot.purpose}\n${shot.visualText}`;
       const named = characterNames.some(name => subject.includes(name));
       const strongIdentity = /脸|面部|眼睛|眼神|正脸|肖像|半身|全身|手部|双手|单手|手指|指节|手腕|手套|掌心|手臂|肩|颈|皮肤|汗|高马尾|发型/iu.test(subject);
       const identity = /人物|角色/iu.test(subject);
-      const anonymous = /全盔|面罩|背影|匿名/iu.test(`${shot.purpose}\n${shot.visualText}`);
+      const anonymous = /全盔|面罩|背影|匿名/iu.test(subject);
       return named || strongIdentity || identity && !anonymous;
     }
-    if (tag === "ambience") return /环境|场地|背景|空间|自然光|光线|天气|室内|户外|街道|赛道|场景|围场|舞台|热浪|颁奖/iu.test(shot.text);
+    if (tag === "ambience") {
+      return /环境|场地|背景|空间|自然光|光线|天气|室内|户外|街道|赛道|场景|围场|舞台|热浪|颁奖/iu.test(shot.text);
+    }
     return /运动|移动|跟拍|摇镜|推近|拉远|高速|追|冲出|掠过|加速|甩|行走|奔跑|飞行|驶过|运镜/iu.test(shot.text);
   };
   const chooseSubset = (candidates: typeof shots, minimum: number, maximum: number) => {
     const pool = candidates.slice(0, 18);
-    let best: typeof shots | null = null, bestScore = Number.POSITIVE_INFINITY;
+    let best: typeof shots | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
     const limit = 1 << pool.length;
     for (let mask = 1; mask < limit; mask += 1) {
       const subset = pool.filter((_, index) => (mask & (1 << index)) !== 0);
       const seconds = subset.reduce((sum, shot) => sum + shot.duration, 0);
       if (seconds < minimum - 1e-9 || seconds > maximum + 1e-9) continue;
       const score = (seconds - minimum) * 100 + subset.length;
-      if (score < bestScore) { best = subset; bestScore = score; }
+      if (score < bestScore) {
+        best = subset;
+        bestScore = score;
+      }
     }
     return best;
   };
   for (const tag of requiredTags) {
     const candidates = shots.filter(shot => matchesTag(tag, shot));
-    const rule = ratios[tag], minimum = totalDuration * rule.minimum, maximum = totalDuration * rule.maximum;
+    const rule = ratios[tag];
+    const minimum = totalDuration * rule.minimum;
+    const maximum = totalDuration * rule.maximum;
     const selected = tag === "host" ? chooseSubset(candidates, minimum, maximum) ?? [] : candidates;
     for (const shot of selected) {
       if (!shot.policyTags.includes(tag)) shot.policyTags.push(tag);
@@ -172,9 +208,12 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
   }
   const fallbackTag = requiredTags.includes("ambience") ? "ambience"
     : requiredTags.find(tag => ratios[tag].maximum === 1) ?? requiredTags[0]!;
-  for (const shot of shots) if (!shot.policyTags.length) shot.policyTags.push(fallbackTag);
+  for (const shot of shots) {
+    if (!shot.policyTags.length) shot.policyTags.push(fallbackTag);
+  }
   const plannedSeconds = Object.fromEntries(requiredTags.map(tag => [tag,
-    Number(shots.filter(shot => shot.policyTags.includes(tag)).reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) as Record<string, number>;
+    Number(shots.filter(shot => shot.policyTags.includes(tag))
+      .reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) as Record<string, number>;
   const feasibility = Object.fromEntries(requiredTags.map(tag => {
     const ratio = ratios[tag];
     return [tag, plannedSeconds[tag]! >= totalDuration * ratio.minimum - 1e-5
@@ -196,98 +235,33 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
       || plannedSeconds.host <= totalDuration * ratios.host.maximum + 1e-5,
     heroShot,
     shotCardRule: "正式镜头卡必须逐镜携带非空 policyTags；此处只给场景级预算，不替代镜头卡，也不证明实际成片已满足。",
-    scenes: scenePlan.map(({ text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText, actorIds: _actorIds, ...scene }) => {
+    scenes: scenePlan.map(({
+      text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText,
+      actorIds: _actorIds, ...scene
+    }) => {
       const sceneShots = shots.filter(shot => shot.sceneId === scene.sceneId);
-      return { ...scene, policyTags: [...new Set(sceneShots.flatMap(shot => shot.policyTags))],
+      return {
+        ...scene,
+        policyTags: [...new Set(sceneShots.flatMap(shot => shot.policyTags))],
         policyTagSeconds: Object.fromEntries(requiredTags.map(tag => [tag,
-          Number(sceneShots.filter(shot => shot.policyTags.includes(tag)).reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) };
+          Number(sceneShots.filter(shot => shot.policyTags.includes(tag))
+            .reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])),
+      };
     }),
-    shots: shots.map(({ text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText, actorIds: _actorIds, ...shot }) => ({ ...shot,
-      shareOfTimeline: Number((shot.duration / totalDuration).toFixed(6)) })),
+    shots: shots.map(({
+      text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText,
+      actorIds: _actorIds, ...shot
+    }) => ({
+      ...shot,
+      shareOfTimeline: Number((shot.duration / totalDuration).toFixed(6)),
+    })),
   };
 }
 
 /**
- * Scene policy tags are host-owned planning metadata. A model-authored line
- * inside visualRequirements is not evidence and can contradict the computed
- * shot budget, so it is removed before hashing and review; the authoritative
- * tags remain in policyCoveragePlan.
- */
-function stripScenePolicyAnnotations(value: RequirementRecord): RequirementRecord {
-  const result = structuredClone(value);
-  const scenePlan = result.scenePlan && typeof result.scenePlan === "object"
-    ? requirementRecord(result.scenePlan, "PRD scenePlan") : null;
-  if (!scenePlan || !Array.isArray(scenePlan.scenes)) return result;
-  scenePlan.scenes = scenePlan.scenes.map(value => {
-    const scene = requirementRecord(value, "PRD scene");
-    if (!Array.isArray(scene.visualRequirements)) return scene;
-    scene.visualRequirements = scene.visualRequirements.flatMap(item => {
-      if (typeof item !== "string") return [item];
-      // "镜头标签：" is model-authored presentation text, not a source fact.
-      // Keep the scene sentence before it, but remove the competing tag list.
-      const clean = item.replace(/(?:^|[，,；;])\s*(?:镜头)?标签\s*[:：].*$/u, "").trim();
-      return clean ? [clean] : [];
-    });
-    return scene;
-  });
-  return result;
-}
-
-function productAndClaimPlan(scope: Scope, coverage: ReturnType<typeof policyCoveragePlan>) {
-  const artifact = JSON.parse(scope.authority.marketing.g1Artifact.content) as RequirementRecord;
-  const facts = requirementRecord(artifact.facts, "G1 facts");
-  const cards = facts.cards && typeof facts.cards === "object" ? requirementRecord(facts.cards, "G1 cards") : {};
-  const prdCard = cards.prd_card && typeof cards.prd_card === "object" ? requirementRecord(cards.prd_card, "G1 PRD card") : {};
-  const briefCard = cards.brief_card && typeof cards.brief_card === "object" ? requirementRecord(cards.brief_card, "G1 Brief card") : {};
-  const evidence = Array.isArray(prdCard.selling_point_evidence)
-    ? prdCard.selling_point_evidence.map(value => requirementRecord(value, "G1 selling point")) : [];
-  const sellingPoints = Array.isArray(briefCard.sellingPoints) ? briefCard.sellingPoints.filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0) : [];
-  const claim = typeof evidence[0]?.point === "string" && evidence[0].point.trim()
-    ? evidence[0].point.trim() : sellingPoints[0] ?? null;
-  const authority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
-  if (!authority.required) return {
-    notApplicable: true,
-    reason: "本次 G1 未声明需要视觉呈现的商品，商品特写与图片权利核验不适用",
-  };
-  const hero = coverage?.heroShot ?? coverage?.shots.find(shot => shot.policyTags.includes("product-close")) ?? null;
-  return {
-    ...(claim ? { claim } : {}),
-    claimShot: hero && claim ? {
-      shotId: hero.shotId,
-      sceneId: hero.sceneId,
-      durationSec: hero.duration,
-      policyTags: [...hero.policyTags, "product-close"].filter((tag, index, list) => list.indexOf(tag) === index),
-      framing: `以${authority.product}为主体，在已接受参考图实际可见的产品主体与获批视觉锚点区域完成一个短特写；不指定图片未确认的部件、局部形态或机位角度。`,
-      verification: [
-        "生成前绑定本次 G1 A1 已接受图片及其 SHA/URL",
-        "首帧、中段与末帧逐项核对商品主体与获批视觉锚点，不补写未见部件",
-        "该镜头只支撑 G1 已接受卖点，不扩张为性能、冠军或竞品结论",
-      ],
-    } : {
-      required: true,
-      blocked: true,
-      reason: claim ? "当前镜头预算没有可执行 product-close 镜头" : "G1 没有已接受卖点可绑定",
-    },
-    rightsReview: {
-      status: authority.images.some(image => /^(high|unknown)$/iu.test(image.licenseRisk ?? ""))
-        ? "unverified-before-publication" : "owner-verification-required",
-      publicationAuthorized: false,
-      images: authority.images.map(image => ({ url: image.url, pageUrl: image.pageUrl,
-        angle: image.angle ?? "unknown", licenseRisk: image.licenseRisk ?? "unknown" })),
-      plan: [
-        "参考图片只用于本次生成与外观一致性核对，不声称已取得商用授权",
-        "对外发布前由产品所有者核对图片、商标、车辆外观与平台授权",
-        "未取得书面授权前只交付本地成片，不执行平台发布",
-      ],
-    },
-  };
-}
-
-/**
- * The vendor creates the G6 review text and the structured prompt cards in the
- * same call. Keep the exact cards in memory by report hash so the host can pass
- * both to the producer gate without reparsing Markdown.
+ * The vendor creates the G6 report and structured prompt cards in the same
+ * call. Keep the exact cards in memory by report hash so the producer gate gets
+ * both representations without reparsing Markdown.
  */
 function rememberPromptReviewContracts(prompts: RequirementRecord[], report: string): void {
   const now = Date.now();
@@ -498,8 +472,6 @@ function productionPlanningPrompt(scope: Scope): string {
   const profile = scope.authority.profile;
   const brief = scope.authority.metadata.brief === undefined ? {} : requirementRecord(scope.authority.metadata.brief, "本次制作计划Brief");
   const contract = scope.contract!;
-  const duration = prdDurationContract(profile, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
-  const productVisualAuthority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
   const declarations = Object.fromEntries(["coverDelivery", "sidecarPolicy", "persistentSubtitleText"]
     .filter(key => Object.hasOwn(profile, key)).map(key => [key, profile[key as keyof typeof profile]]));
   const castAnchors = { selection: contract.cast.selection, characters: contract.cast.characters.map(character =>
@@ -515,20 +487,9 @@ function productionPlanningPrompt(scope: Scope): string {
     + `要求烧录或 sidecar 时说明如何与同一台词、总时长和时间线核对；both 时按明确口径核对烧录与旁挂共有的台词及时间线，台词侧车与完整组合ASS分别说明，不能要求dialogue-only侧车包含持续文字。没有请求的字幕不得额外添加。`
     + `本次 nativeAudio=${profile.nativeAudio === undefined ? "未显式指定" : String(profile.nativeAudio)}；明确保留原生声音时，写出原始片段/音轨来源与时长核对、原速拼接、不加速口播、不静默换声或补 TTS 的后续验证计划；`
     + `枚举 voicePolicy、具体对白和音乐/环境音安排须彼此一致。所有这些是待执行计划，当前没有成片、听音或字幕通过证据。\n`
-    + `本次内容时间线 ${duration.contentDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s，静音封面片头 ${duration.coverIntroSeconds}s，`
-    + `最终成片 ${duration.finalDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s。`
-    + `封面是成片最前片段，不重复加入内容节点；不得把最终片长直接写成内容节点合计。\n`
-    + (productVisualAuthority.required
-      ? `商品片必须在既有场次计划中落实至少一个可执行的 product-close 卖点镜头：以 G1 商品主体为核心，在已接受图片实际可见的主体或获批视觉锚点区域取景，并绑定一个已接受 selling point；不得指定图片未确认的部件、局部形态或机位角度。`
-        + `必须单列图片 URL/页面、angle、licenseRisk 与生成前后核验计划；licenseRisk=high/unknown 时，对外发布前由产品所有者核验授权，当前不声称可商业投放。\n`
-      : "")
-    + `若画面出现虚构竞品或参照物，必须无品牌标识、无可识别真实主体或专属视觉资产，不可辨识为具体竞品；比较场景不得出现比较性文字、旁白或市场领先暗示。\n`
-    + `技术参数即使来自 G1，也不得在创作说明中裸写为可复用卖点；只有 productAndClaimPlan 绑定的 claimShot 可以承载已接受卖点，数字参数默认不上屏、不入台词、不作性能结论。\n`
-    + `人物表现按本次已审服装和平台规范闭合：运动场景护具按项目合同完整；任何服装边界都不得越过已审位置，镜头中心不得下移制造身体局部凝视，不做裸露或低俗特写。\n`
-    + `抖音烧录字幕与完整组合ASS锁定同一样式：Noto Sans SC，74px，4px黑描边，白字，底部安全边距18%（1920高约346px），单行优先、最多两行；实测遮挡或对比不合格时只能加强底衬/上移，不能改变文字与时间区间。\n`
     + `本次明确的独立交付声明（未出现的键没有新增客户承诺）：${JSON.stringify(declarations)}。`
-    + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；独立文件与是否开启片头分别记录，本次openWithCover=${String(profile.openWithCover ?? false)}。`
-    + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字，按内容时间线与静音封面后的最终成片映射核对，`
+    + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；不要把独立交付推断成开启片头封面。`
+    + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字、覆盖实际视频0秒至末帧，`
     + `并规划文字、区间、字体样式及compositionSha256的核对；both时烧录和ASS使用同一组合。没有明确请求的持续文字、封面或其他文字层不得新增。`
     + `将下面原文已给出的字号、边距、描边、墨迹范围、平台遮挡区和字体核验要求落实为本次模型计划，不以泛称“安全区”代替明确数值；未给数值时由本次模型按实际要求规划并标明待验证，不伪称已测量。\n`
     + (typeof brief.description === "string" ? `\n### 客户执行要求原文（Brief.description，保留原文；输入资料，不是完成回执）\n${brief.description}\n` : "")
@@ -852,7 +813,8 @@ export function installPrdAuthorityBridge(
             return guard(scope, () => {
               check(scope);
               const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile);
-              const result = Reflect.apply(parse, this, [kind === "production" ? raw : value, ...args]);
+              const parseInput = typeof value === "string" ? JSON.stringify(raw) : raw;
+              const result = Reflect.apply(parse, this, [parseInput, ...args]);
               if (requirementHash(result) !== requirementHash(kind === "creative" ? { creativeCore: raw } : raw)) {
                 prdFail("PRD_RESPONSE_CHANGED", "原生 parser 用规则修改了真实模型模块，拒绝把补全文字当作模型创作");
               }
@@ -876,13 +838,16 @@ export function installPrdAuthorityBridge(
         view[key] = agentView;
       }
       // Keep the native two real LLM process calls, timeout/retry budget, rule agents and schema pipeline.
-      const original = stripScenePolicyAnnotations(requirementRecord(
-        await Reflect.apply(generate, view, [discovery]),
-        "PRD 原始生成结果",
-      ));
+      const generated = requirementRecord(await Reflect.apply(generate, view, [discovery]), "PRD 生成结果");
       check(scope);
       if (requirementHash(discovery.sceneStructure) !== sourceHash) prdFail("PRD_G3_CHANGED", "PRD 生成修改了已经批准的源场景");
-      const result = bindPrdProvenance(original, scope.authority, contract);
+      const normalized = normalizeMarketingPrdContract(
+        generated,
+        scope.authority.metadata,
+        scope.authority.profile,
+        scope.contract,
+      );
+      const result = bindPrdProvenance(normalized.prd, scope.authority, contract);
       if (!qualityPolicy) prdFail("PRD_QUALITY_INVALID", "本次原生规则调用没有形成质量阈值来源");
       scope.quality.set(result, structuredClone(qualityPolicy));
       scope.generated.add(result);
@@ -899,11 +864,17 @@ export function installPrdAuthorityBridge(
       const original = Reflect.apply(markdown, this, [result]);
       if (typeof original !== "string") prdFail("PRD_VENDOR_UNAVAILABLE", "原始 PRD Markdown 不是文本");
       if (original.split("## 9. 受众定位").length !== 2) prdFail("PRD_VENDOR_UNAVAILABLE", "PRD 受众 Markdown 的受控章节发生变化");
-      const labeled = original.replace("## 9. 受众定位", `## 9. 客户受众与模型细分推测\n\n`
+      let labeled = original.replace("## 9. 受众定位", `## 9. 客户受众与模型细分推测\n\n`
         + `- **客户 Brief 权威受众原文**：${scope.contract!.ownerAudience ?? "客户未显式指定"}\n`
         + `- **以下年龄、性别与兴趣细分仅为模型推测**：不覆盖客户原文，不构成已核实市场事实，仍待本次 G4 独立评审。\n\n### 模型细分原文`);
+      if (scope.contract!.cast.characters.length === 0) {
+        const heading = "## 6. 角色系统\n\n无角色";
+        const explicit = "## 6. 角色系统\n\n外观锚点与定妆照前置：不适用（cast.mode=none，与出镜角色合同一致）";
+        if (labeled.split(heading).length !== 2) prdFail("PRD_VENDOR_UNAVAILABLE", "PRD 无角色 Markdown 的受控章节发生变化");
+        labeled = labeled.replace(heading, explicit);
+      }
       // This field is inapplicable when props exist; retain the canonical contract and hashes.
-      const displayContract = { ...requirementDisplayContract(scope.contract!), scenes: scope.contract!.scenes.map(scene => {
+      const displayContract = { ...scope.contract!, scenes: scope.contract!.scenes.map(scene => {
         if (Array.isArray(scene.props) && scene.props.length > 0 && scene.noPropsReason === null) {
           const { noPropsReason: _inapplicableReason, ...displayScene } = scene;
           return displayScene;
@@ -913,62 +884,16 @@ export function installPrdAuthorityBridge(
       const delivery = requirementRecord(result.deliveryStandard, "G4 原生交付计划");
       const quality = scope.quality.get(result)!;
       const characters = requirementRecord(result.characterSystem, "G4 人物计划").characters as RequirementRecord[];
-      const nativeScenePlan = requirementRecord(result.scenePlan, "G4 场景计划");
-      const scenes = nativeScenePlan.scenes as RequirementRecord[];
-      const nativeShotMapping = requirementRecord(nativeScenePlan, "G4 原始场景计划").shotMapping;
-      const contractScenes = new Map(scope.contract!.scenes.map(scene => [scene.id, scene]));
-      const coverageScenes = scenes.map(scene => ({
-        ...scene,
-        actions: contractScenes.get(String(scene.sceneId))?.actions ?? [],
-      }));
-      const coveragePlan = policyCoveragePlan(scope.authority.metadata, coverageScenes, nativeShotMapping as RequirementRecord[]);
-      const productPlan = productAndClaimPlan(scope, coveragePlan);
-      const durationAuthority = prdDurationContract(scope.authority.profile,
-        scope.contract!.scenes.reduce((sum, scene) => sum + scene.duration, 0));
+      const scenes = requirementRecord(result.scenePlan, "G4 场景计划").scenes as RequirementRecord[];
       const planning = {
         status: "plan-only-not-executed",
-        durationAuthority,
-        subtitleTimeline: {
-          cover: { start: 0, end: durationAuthority.coverIntroSeconds, audio: "silent", carriesPersistentContentText: false },
-          content: {
-            sourceStart: 0,
-            sourceEnd: durationAuthority.contentDurationSeconds,
-            masterStart: durationAuthority.coverIntroSeconds,
-            masterEnd: durationAuthority.finalDurationSeconds,
-            carriesPersistentContentText: true,
-          },
-          ...(scope.authority.profile.persistentSubtitleText
-            ? { persistentText: scope.authority.profile.persistentSubtitleText } : {}),
-          stylePolicy: {
-            fontFamily: "Noto Sans SC",
-            fontSizePx: 74,
-            outlinePx: 4,
-            fillColor: "#FFFFFF",
-            outlineColor: "#000000",
-            borderStyle: 1,
-            shadow: 1,
-            alignment: 2,
-            bottomMarginRatio: 0.18,
-            maxLines: 2,
-            source: "Douyin subtitle policy for 1080x1920; fallback may only add backdrop or move upward without changing text or timing",
-          },
-        },
-        productAndClaimPlan: productPlan,
         characterPlans: characters.map(character => ({ characterId: character.characterId, name: character.name,
           portraitPath: character.portraitPath, consistencyRequirements: character.consistencyRequirements,
-          source: displayContract.cast.characters.find(item => item.id === character.characterId) ?? null,
-          selection: character._workloomCharacterSelection })),
+          source: character._workloomCharacterSource, selection: character._workloomCharacterSelection })),
         audioSpecification: result.audioSpecification,
-        shotMapping: nativeShotMapping,
-        ...(coveragePlan ? { policyCoveragePlan: coveragePlan } : {}),
-        narrativeBoundaries: {
-          competitorVehicles: "no brand mark, no real team livery, no identifiable competitor, and no comparative copy or narration",
-          technicalFacts: "G1 numeric claims are not on-screen facts unless bound to the accepted claim shot; no performance or competitor conclusion",
-          bodyPresentation: "full protective gear while riding; standing neckline stops at the sternum; no nudity, sexualized body close-up, or camera movement below the sternum",
-        },
+        shotMapping: requirementRecord(result.scenePlan, "G4 原始场景计划").shotMapping,
         sceneVerificationPlans: scenes.map(scene => ({ sceneId: scene.sceneId, duration: scene.duration,
-          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue,
-          ...(coveragePlan ? { policyTags: coveragePlan.scenes.find(item => item.sceneId === scene.sceneId)?.policyTags ?? [] } : {}) })),
+          visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue })),
         continuityCheckpoints: delivery.continuityCheckpoints,
         revisionPolicy: delivery.revisionPolicy,
         qualityPolicy: { thresholds: quality.thresholds, fallbackTrigger: quality.fallbackTrigger,
@@ -1060,7 +985,6 @@ export function installVendorPrdAuthorityBridge(constructor: { prototype: object
 
 interface ProductionDependencies {
   systemPrototype: RequirementRecord;
-  scriptGeneratorPrototype?: RequirementRecord;
   productionPrototype: RequirementRecord;
   phase1Prototype: RequirementRecord;
   refinerPrototype: RequirementRecord;
@@ -1141,9 +1065,8 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const base: Method = original?.value ?? function () { return true; };
     changes.push({ owner, key, original, patched: wrap(base) });
   };
-  const inspect = (scope: Scope, shotsValue: unknown, context: unknown, noTitle: boolean) => {
+  const inspect = (shotsValue: unknown, context: unknown, noTitle: boolean) => {
     if (!Array.isArray(shotsValue) || shotsValue.length === 0) prdFail("PRD_PRODUCTION_INVALID", "制作镜头必须为非空数组");
-    const hostBoundPortraits = (scope.contract?.cast.characters.length ?? 0) > 0;
     const shots = (shotsValue as unknown[]).map(value => {
       const raw = requirementRecord(value, "当前制作镜头"), normalized = standardizeShot(raw);
       // Standardization may omit fields/unknown attributes or lose a textual timeline.
@@ -1167,24 +1090,20 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const details = shots.map(shot => {
       const native = validateShot(shot);
       const missing = fields.filter(key => !(key === "dialogue" && (shot.dialogueFree === true
-        || (Array.isArray(shot.dialogueBlocks) && shot.dialogueBlocks.length > 0)))
-        && !(key === "portraits" && hostBoundPortraits) && !hasValue(shot[key]));
+        || (Array.isArray(shot.dialogueBlocks) && shot.dialogueBlocks.length > 0))) && !hasValue(shot[key]));
       const explicitDialogue = !missing.includes("dialogue") && !hasValue(shot.dialogue);
       const filter = (values: unknown): string[] => {
         if (!Array.isArray(values) || values.some(value => typeof value !== "string")) prdFail("PRD_VENDOR_UNAVAILABLE", "原生字段校验结果结构已变化");
         return (values as string[]).filter(value => !(noTitle && retiredTitleIssue(value))
-          && !(explicitDialogue && value === "P0 Missing: dialogue")
-          && !(hostBoundPortraits && value === "P0 Missing: portraits")
-          && !(hostBoundPortraits && value === "Final-Export strict: 1 fields empty: portraits"));
+          && !(explicitDialogue && value === "P0 Missing: dialogue"));
       };
       const errors = filter(native.errors), warnings = filter(native.warnings);
       // The native final-export summary can include an explicitly inapplicable dialogue.
       // Recompute this exact summary without changing any other native validation result.
       for (let index = errors.length - 1; index >= 0; index--) {
         const match = /^Final-Export strict: \d+ fields empty: (.+)$/.exec(errors[index]!);
-        if (match && (explicitDialogue || hostBoundPortraits)) {
-          const remaining = match[1]!.split(", ").filter(key => !(explicitDialogue && key === "dialogue")
-            && !(hostBoundPortraits && key === "portraits"));
+        if (match && explicitDialogue) {
+          const remaining = match[1]!.split(", ").filter(key => key !== "dialogue");
           if (remaining.length) errors[index] = `Final-Export strict: ${remaining.length} fields empty: ${remaining.join(", ")}`;
           else errors.splice(index, 1);
         }
@@ -1211,20 +1130,6 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     productionOwners.set(this, scope);
     return awaited(scope, async () => { check(scope); const result = await Reflect.apply(original, this, args); check(scope); return result; });
   });
-  if (deps.scriptGeneratorPrototype) {
-    add(deps.scriptGeneratorPrototype, "_enforceTargetDuration", original => function (parsed, target, ...args) {
-      const scope = current();
-      const contentDuration = scope?.g4Decision === "approved"
-        ? prdDurationContract(scope.authority.profile).contentDurationSeconds : null;
-      return Reflect.apply(original, this, [parsed, contentDuration ?? target, ...args]);
-    });
-  }
-  add(productionPrototype, "_normalizeDurations", original => function (shots, target, ...args) {
-    const scope = current();
-    const contentDuration = scope?.g4Decision === "approved"
-      ? prdDurationContract(scope.authority.profile).contentDurationSeconds : null;
-    return Reflect.apply(original, this, [shots, contentDuration ?? target, ...args]);
-  }, true);
   add(systemPrototype, "_shouldUseTitleCard", original => function (...args) {
     const scope = productionScope(this);
     if (!scope) return Reflect.apply(original, this, args);
@@ -1303,18 +1208,11 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
       check(scope);
       const blueprint = requirementRecord(blueprintValue, "实际制作蓝图");
       const config = blueprint.config === undefined ? {} : requirementRecord(blueprint.config, "实际制作配置");
-      const meta = blueprint.meta === undefined ? {} : requirementRecord(blueprint.meta, "实际制作元数据");
       const profile = scope.authority.profile;
-      const contentDuration = prdDurationContract(profile).contentDurationSeconds;
       const marker = { schemaVersion: "workloom.production-authority/v1", hash: requirementHash({ authority: scope.authorityHash,
         g4: scope.reviewedHash, scope: scope.authority.marketing.scope }), scope: structuredClone(scope.authority.marketing.scope),
         profile: structuredClone(profile), g4Hash: scope.reviewedHash };
-      const view = { ...blueprint,
-        ...(contentDuration !== null ? { targetDuration: contentDuration } : {}),
-        config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}),
-          ...(contentDuration !== null ? { target_duration: contentDuration } : {}) },
-        meta: { ...meta, ...(contentDuration !== null ? { target_duration: contentDuration } : {}) },
-        _workloomProductionAuthority: marker };
+      const view = { ...blueprint, config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}) }, _workloomProductionAuthority: marker };
       const result = await Reflect.apply(original, this, [view, ...args]);
       check(scope);
       return result;
@@ -1411,7 +1309,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     if (!scope || scope.authority.profile.titleCard !== false) return Reflect.apply(original, this, [shots, context, ...args]);
     return guard(scope, () => {
       check(scope);
-      const result = inspect(scope, shots, context, true);
+      const result = inspect(shots, context, true);
       if (key !== "check" && !result.report.passed) {
         const error = new Error(`PRD_PRODUCTION_FIELDS_INVALID: ${result.report.errors.join("; ")}`);
         Object.assign(error, { report: result.report });
@@ -1425,7 +1323,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     if (!scope || scope.authority.profile.titleCard !== false) return Reflect.apply(original, this, [promptsValue, ...args]);
     return guard(scope, () => {
       check(scope);
-      const { shots, report } = inspect(scope, promptsValue, "G6-Prompt-Review", true);
+      const { shots, report } = inspect(promptsValue, "G6-Prompt-Review", true);
       const prompts = promptsValue as RequirementRecord[];
       const lines = ["# 提示词审核报告", "", `镜头数：${shots.length}；字段合同：25 = P0 ${fieldGroups.p0.length} + P1 ${fieldGroups.p1.length} + P2 ${fieldGroups.p2.length} + P3 ${fieldGroups.p3.length}。`,
         `本次 titleCard=false；以下生成侧标题项 not_applicable：${RETIRED_TITLES.join("、")}。subtitle 指片头副标题，正式后期字幕仍按 Brief 执行。`,
@@ -1490,7 +1388,6 @@ export function installVendorPrdProductionBridge(constructor: { prototype: objec
     const standardizer = require(path.resolve(path.dirname(lease.identity.entryPath), "engines/field-standardizer.js")) as Pick<ProductionDependencies, "standardizeShot" | "validateShot"> & { CRITICAL_FIELDS: ProductionDependencies["fields"] };
     return installPrdProductionBridge({ systemPrototype: requirementRecord(constructor.prototype, "受控 system prototype"),
       productionPrototype: load("engines/production-engine/production-engine.js", "ProductionEngine"),
-      scriptGeneratorPrototype: load("engines/script-engine/core/script-generator.js", "ScriptGenerator"),
       phase1Prototype: load("engines/production-engine/phases/phase-1-scene-design.js", "Phase1SceneDesign"),
       refinerPrototype: load("engines/production-engine/agents/field-content-refiner.js", "FieldContentRefiner"),
       costumePrototype: load("engines/character-system/character-costume-prompter.js", "CharacterCostumePrompter"),

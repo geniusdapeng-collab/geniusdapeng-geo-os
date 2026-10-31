@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import {
   RequirementContractError, bindRequirementContract, renderRequirementContract, requirementCast,
-  normalizeRiskResponseShape, requirementHash, requirementRecord, requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema,
+  normalizeRiskResponseShape, requirementHash, requirementRecord, requirementScenes, structuredRiskFeedback,
+  structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema,
   validateRequirementSchema, verifiedRequirementContract, type RequirementCast, type RequirementRecord
 } from "./requirement-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
@@ -37,7 +38,7 @@ function unsafeProductVisual(text: unknown): boolean {
     UNVERIFIED_PRODUCT_VISUAL.test(clause) && !NEGATIVE_VISUAL_CONSTRAINT.test(clause));
 }
 
-/** Risk advice may suggest camera language, but it cannot smuggle new product appearance facts downstream. */
+/** Risk advice may suggest camera language, but cannot smuggle new product appearance facts downstream. */
 export function sanitizeUnverifiedProductRisk(value: RequirementRecord): RequirementRecord {
   const result = structuredClone(value);
   const risk = result.riskAssessment && typeof result.riskAssessment === "object"
@@ -71,42 +72,65 @@ export function sanitizeUnverifiedProductRisk(value: RequirementRecord): Require
   return result;
 }
 
-/** Materialize the scene-policy budget at G3 so the reviewer can verify it before shot cards exist. */
+/** Materialize the scene-policy budget at G3 so review happens before shot cards exist. */
 export function renderScenePolicyCoverage(metadata: RequirementRecord, contract: RequirementRecord): string {
-  const brief = metadata.brief && typeof metadata.brief === "object" ? requirementRecord(metadata.brief, "Brief") : {};
+  const brief = metadata.brief && typeof metadata.brief === "object"
+    ? requirementRecord(metadata.brief, "Brief") : {};
   if (!brief.scenePolicyRequirements || typeof brief.scenePolicyRequirements !== "object") return "";
-  const scenes = Array.isArray(contract.scenes) ? contract.scenes.map(value => requirementRecord(value, "G3 scene")) : [];
+  const scenes = Array.isArray(contract.scenes)
+    ? contract.scenes.map(value => requirementRecord(value, "G3 scene")) : [];
   const sceneInputs = scenes.map(scene => ({
-    sceneId: String(scene.id), duration: Number(scene.duration), purpose: String(scene.purpose ?? ""),
+    sceneId: String(scene.id),
+    duration: Number(scene.duration),
+    purpose: String(scene.purpose ?? ""),
     visualRequirements: Array.isArray(scene.keyElements) ? scene.keyElements : [],
     audioRequirements: [],
-    keyProps: Array.isArray(scene.props) ? scene.props.map(value => {
-      const prop = requirementRecord(value, "G3 prop");
-      return String(prop.name ?? "");
-    }) : [],
+    keyProps: Array.isArray(scene.props)
+      ? scene.props.map(value => String(requirementRecord(value, "G3 prop").name ?? ""))
+      : [],
     actions: Array.isArray(scene.actions) ? scene.actions : [],
   }));
-  const mapping = sceneInputs.map(scene => ({ sceneId: scene.sceneId,
-    estimatedShots: Math.max(1, Math.min(6, Math.ceil(scene.duration / 3))) }));
+  const mapping = sceneInputs.map(scene => ({
+    sceneId: scene.sceneId,
+    estimatedShots: Math.max(1, Math.min(6, Math.ceil(scene.duration / 3))),
+  }));
   const plan = policyCoveragePlan(metadata, sceneInputs, mapping);
   if (!plan) return "";
   if (!plan.allShotsTagged || Object.values(plan.feasibility).some(ok => !ok) || !plan.hostWithinMaximum) {
     requirementAuthorityFailure("REQUIREMENT_SCENE_UNVERIFIED", "场景级片型标签无法满足 commerce-seeding 时长配比");
   }
-  const tags = plan.requiredTags.join("、");
   const rows = plan.scenes.map(scene =>
     `| ${scene.sequence} | ${scene.sceneId} | ${scene.duration}s | ${scene.policyTags.join("、")} | `
     + `${Object.entries(scene.policyTagSeconds).map(([tag, seconds]) => `${tag}=${seconds}s`).join("；")} |`).join("\n");
   const totals = plan.requiredTags.map(tag =>
     `${tag}: ${plan.plannedSeconds[tag]}s / ${plan.totalDuration}s`).join("；");
   return `\n\n## 七、场景级 policyTags 与配比预算\n\n`
-    + `- 必填标签：${tags}\n`
+    + `- 必填标签：${plan.requiredTags.join("、")}\n`
     + `- 配比口径：${plan.accounting}\n`
     + `- 场景预算：${totals}\n`
     + `- 可执行性：${Object.entries(plan.feasibility).map(([tag, ok]) => `${tag}=${ok ? "通过" : "不足"}`).join("；")}`
     + `${plan.hostWithinMaximum ? "；host≤30%=通过" : "；host≤30%=不足"}\n`
     + `- 下游硬约束：${plan.shotCardRule}\n\n`
     + `| 序号 | 场景 | 时长 | policyTags | 各标签时长 |\n|---:|---|---:|---|---|\n${rows}\n`;
+}
+
+/**
+ * The vendor treats every populated brief as a marketing brief. A host-routed
+ * narrative run must bypass that suffix while retaining duration/platform in
+ * the already-built pipeline intent.
+ */
+export function narrativeThemeInputForRoute(
+  value: unknown,
+  metadataValue: unknown,
+): string | undefined {
+  const metadata = metadataValue && typeof metadataValue === "object" && !Array.isArray(metadataValue)
+    ? metadataValue as Record<string, unknown>
+    : undefined;
+  const route = metadata?.pipelineRoute;
+  const kind = route && typeof route === "object" && !Array.isArray(route)
+    ? (route as Record<string, unknown>).kind
+    : undefined;
+  return kind === "narrative" && typeof value === "string" ? value : undefined;
 }
 
 function fatal(scope: Scope, error: unknown): never {
@@ -160,6 +184,11 @@ function currentScope(): Scope | undefined {
   if (scope) guard(scope, () => undefined);
   return scope;
 }
+/** Read-only snapshot for host bridges that run inside the current preproduction scope. */
+export function currentRequirementMetadata(): RequirementRecord | undefined {
+  const scope = currentScope();
+  return scope ? structuredClone(scope.metadata) : undefined;
+}
 function receiverScope(receiver: object): Scope | undefined {
   const scope = currentScope(), bound = receivers.get(receiver);
   if (bound && bound !== scope) {
@@ -203,11 +232,13 @@ function sceneAuthority(scope: Scope, fallbackDuration: unknown) {
     ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
   return {
     targetContentDurationSeconds,
-    finalDurationSeconds: duration.finalDurationSeconds ?? targetContentDurationSeconds + duration.coverIntroSeconds,
+    finalDurationSeconds: duration.finalDurationSeconds
+      ?? targetContentDurationSeconds + duration.coverIntroSeconds,
     coverIntroSeconds: duration.coverIntroSeconds,
     toleranceSeconds,
     narrativeDisclosure: typeof narrative.statement === "string" ? narrative.statement : undefined,
-    persistentSubtitleText: typeof production.persistentSubtitleText === "string" ? production.persistentSubtitleText : undefined,
+    persistentSubtitleText: typeof production.persistentSubtitleText === "string"
+      ? production.persistentSubtitleText : undefined,
     productVisualAuthority,
   };
 }
@@ -219,8 +250,10 @@ function sceneValidationOptions(scope: Scope, fallbackDuration: unknown) {
     targetDuration: authority?.targetContentDurationSeconds
       ?? (Number.isFinite(fallback) && fallback > 0 ? fallback : undefined),
     options: {
-      ...(authority ? { toleranceSeconds: authority.toleranceSeconds,
-        productVisualAuthority: authority.productVisualAuthority } : {}),
+      ...(authority ? {
+        toleranceSeconds: authority.toleranceSeconds,
+        productVisualAuthority: authority.productVisualAuthority,
+      } : {}),
     },
   };
 }
@@ -232,8 +265,9 @@ function presentationSection(scope: Scope, fallbackDuration: number): string {
     ? requirementRecord(scope.authority!.metadata.brief, "需求 Brief") : {};
   const production = brief.productionRequirements && typeof brief.productionRequirements === "object"
     ? requirementRecord(brief.productionRequirements, "productionRequirements") : {};
-  const restrictions = Array.isArray(brief.restrictions) ? brief.restrictions.filter(
-    (item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  const restrictions = Array.isArray(brief.restrictions)
+    ? brief.restrictions.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
   return `\n\n## 六、宿主权威交付与事实边界（不可被模型改写）\n\n`
     + `- 内容时间线：${authority.targetContentDurationSeconds}s ±${authority.toleranceSeconds}s；`
     + `静音封面片头：${authority.coverIntroSeconds}s；最终成片：${authority.finalDurationSeconds}s ±${authority.toleranceSeconds}s。`
@@ -283,7 +317,9 @@ function applyRequirementProductionAuthority(value: unknown, scope: Scope): Requ
     if (typeof brief.aspectRatio === "string") profile.aspect_ratio = brief.aspectRatio;
     if (typeof brief.platform === "string") profile.platform = brief.platform;
     if (typeof brief.audience === "string") profile.audience = brief.audience;
-    if (typeof brief.voice === "string" && /无对白|no dialogue/iu.test(brief.voice)) profile.dialogue_density = "none";
+    if (typeof brief.voice === "string" && /无对白|no dialogue/iu.test(brief.voice)) {
+      profile.dialogue_density = "none";
+    }
   }
   const keyPoints = Array.isArray(result.keyPoints) ? result.keyPoints : [];
   keyPoints.push(`[本次宿主权威时长与交付边界] ${JSON.stringify({
@@ -297,6 +333,7 @@ function applyRequirementProductionAuthority(value: unknown, scope: Scope): Requ
   result.keyPoints = keyPoints;
   return result;
 }
+
 function method(owner: RequirementRecord, key: string): Method {
   const value = owner[key];
   if (typeof value !== "function") throw new RequirementContractError("REQUIREMENT_VENDOR_UNAVAILABLE", `vendor 缺少 ${key}`);
@@ -354,6 +391,8 @@ export function installRequirementContractBridge(
 
   const qualifiedInput: Method = function (...args) {
     const scope = receiverScope(this);
+    const narrativeInput = narrativeThemeInputForRoute(args[0], args[1] ?? {});
+    if (narrativeInput !== undefined) return narrativeInput;
     if (!scope?.authority) return Reflect.apply(themeInput!, this, args);
     return guard(scope, () => {
       check(scope); bindReceiver(scope, this);
@@ -412,6 +451,11 @@ export function installRequirementContractBridge(
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "转换结束时运行作用域已经关闭");
       const bound = bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
         typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null);
+      if (scope && !scope.authority && bound && typeof bound === "object") {
+        scope.metadata._workloomRequirementContract = structuredClone(
+          (bound as RequirementRecord)._workloomRequirementContract,
+        );
+      }
       return applyRequirementProductionAuthority(bound, scope);
     });
   };
@@ -486,7 +530,9 @@ export function installRequirementContractBridge(
           requireActiveScope();
           finalRiskFailure = undefined;
           const responseSchema = requirementRecord(schema, "RiskAssessor response schema");
-          const allowedRiskFields = Object.keys(requirementRecord(responseSchema.properties, "RiskAssessor response properties"));
+          const allowedRiskFields = Object.keys(
+            requirementRecord(responseSchema.properties, "RiskAssessor response properties"),
+          );
           const runView = Object.create(this) as RequirementRecord;
           let pendingFeedback = "", attemptFeedback = "";
           let currentFailure: { error: unknown } | undefined;
@@ -500,7 +546,9 @@ export function installRequirementContractBridge(
             try {
               const response = await Reflect.apply(callRisk, this, args);
               const normalized = normalizeRiskResponseShape(response);
-              if (normalized.normalization) console.log(`   [RiskAssessor] 结构化响应兼容规范化: ${normalized.normalization}`);
+              if (normalized.normalization) {
+                console.log(`   [RiskAssessor] 结构化响应兼容规范化: ${normalized.normalization}`);
+              }
               return normalized.value;
             }
             catch (error) { currentFailure = { error }; throw error; }
@@ -574,10 +622,17 @@ export function installRequirementContractBridge(
           const original = Reflect.apply(build, this, [input]);
           const upstream = requirementRecord(input, "SceneArchitect 上游输入");
           const target = sceneValidationOptions(scope, upstream.duration_sec);
-          return structuredScenePrompt(original, input, effectiveSchema, target.targetDuration,
-            target.options.toleranceSeconds)
-            + structuredSceneInstructions(cast, audience(scope), sceneAuthority(scope, upstream.duration_sec))
-            + attemptFeedback;
+          return structuredScenePrompt(
+            original,
+            input,
+            effectiveSchema,
+            target.targetDuration,
+            target.options.toleranceSeconds,
+          ) + structuredSceneInstructions(
+            cast,
+            audience(scope),
+            sceneAuthority(scope, upstream.duration_sec),
+          ) + attemptFeedback;
         };
         runView._validateAndFill = function (this: RequirementRecord, response: unknown, responseSchema: unknown) {
           requireActiveScope();
@@ -626,10 +681,15 @@ export function installRequirementContractBridge(
       const upstream = requirementRecord(input, "上游输入");
       const productVisualAuthority = scope.authority
         ? extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content) : null;
-      const safeRecord = productVisualAuthority?.required ? sanitizeUnverifiedProductRisk(record) : record;
+      const safeRecord = productVisualAuthority?.required
+        ? sanitizeUnverifiedProductRisk(record) : record;
       const target = sceneValidationOptions(scope, upstream.duration_sec);
       requirementScenes(safeRecord.sceneStructure, cast, target.targetDuration, target.options);
-      return { ...safeRecord, audienceAuthority: audience(scope) ?? null, audienceProfileStatus: "model-hypothesis" };
+      return {
+        ...safeRecord,
+        audienceAuthority: audience(scope) ?? null,
+        audienceProfileStatus: "model-hypothesis",
+      };
     });
   };
   const noFastFallback: Method = function (...args) {
@@ -648,7 +708,8 @@ export function installRequirementContractBridge(
     const ownerAudience = audience(scope);
     const output = original.replace("### 2.1 目标受众画像", "### 2.1 模型受众细分假设（待审核）")
       .replace("**主要受众**", `**客户 Brief 权威受众原文**\n${typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : "客户未显式指定"}\n\n**模型细分推测（不覆盖客户口径，不是已核实人群事实）**`);
-    const discoveryResult = args[0] && typeof args[0] === "object" ? requirementRecord(args[0], "洞察渲染输入") : {};
+    const discoveryResult = args[0] && typeof args[0] === "object"
+      ? requirementRecord(args[0], "洞察渲染输入") : {};
     const normalization = discoveryResult.productVisualRiskNormalization;
     return output + (normalization && typeof normalization === "object"
       ? `\n\n> 商品外观风险归并：${requirementRecord(normalization, "商品外观归并").rule}`

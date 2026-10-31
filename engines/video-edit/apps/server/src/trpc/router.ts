@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { getAppPool, getGatewayPool, getOwnerPool } from "@workloom/db";
@@ -34,12 +34,8 @@ import {
 } from "@workloom/base/review-console";
 import { routeIntent, runAsk, runQuest } from "@workloom/runtime";
 import { LlmIntentClassifier, type IntentClassifier } from "@workloom/runtime";
-import { providerFromEnv, OpenAiCompatibleProvider } from "@workloom/base/model-router";
-import { routedLlmCall, resetLlmAssembly } from "../service/llm.js";
-import { llmEnvironmentPersistence, persistLlmEnvironment } from "../service/llm-environment.js";
-import { locateHotelBundleDir, locatePrimaryBundle } from "../service/embedded-paths.js";
-import { clearLlmVerification, recordLlmVerification } from "../service/llm-verification.js";
-import { collectNativeOnboardingReadinessOn } from "../service/onboarding-readiness.js";
+import { canonicalDeepSeekModel, OpenAiCompatibleProvider } from "@workloom/base/model-router";
+import { llmCall as defaultLlmCall, routedLlmCall, resetLlmAssembly } from "../service/llm.js";
 import { loadDeploymentToolExecutor } from "../runtime/tool-executor.js";
 import {
   loadGoalArchive,
@@ -162,7 +158,6 @@ import {
 } from "../service/access-authority.js";
 import {
   completeWizardDraft,
-  advanceWizardDraftOn,
   getWizardDraft,
   normalizeWizardDraftPayload,
   replayWelcome,
@@ -216,9 +211,28 @@ const systemRouter = router({
  * 全程五元事件留痕；API Key 只记掩码后 4 位（L6.2 同纪律）。
  */
 
+/** 仓库根 .env 定位（cwd 可能是 apps/server 或仓库根；向上找 pnpm-workspace.yaml） */
+function locateEnvFile(): string {
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return join(dir, ".env");
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return join(process.cwd(), ".env");
+}
+
 /** 行业 bundle 根定位（同 locateEnvFile 纪律：向上找 pnpm-workspace.yaml → bundles/hotel） */
 function locateBundleDir(): string {
-  return locateHotelBundleDir();
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return join(dir, "bundles/hotel");
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return join(process.cwd(), "bundles/hotel");
 }
 
 /**
@@ -227,23 +241,46 @@ function locateBundleDir(): string {
  * 拿不到清单时退回 hotel（酒店垂直是本产品的默认行业）。
  */
 function locateProductPrimaryBundle(): string {
-  return locatePrimaryBundle();
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    const manifest = join(dir, "product.manifest.json");
+    if (existsSync(manifest)) {
+      try {
+        const raw = JSON.parse(readFileSync(manifest, "utf-8")) as { defaultBundle?: unknown };
+        if (typeof raw.defaultBundle === "string" && raw.defaultBundle.trim()) return raw.defaultBundle.trim();
+      } catch { /* 清单损坏不阻断装配：退回酒店垂直 */ }
+    }
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return "hotel";
 }
 
-/** 原生默认持久化四 env；嵌入宿主显式 process-only 时只更新进程。两者均清全部模型缓存。
+/** 四 env 写回 .env（保留其他行）+ 同步 process.env + 清 LLM 缓存（全链即时生效，无需重启）
  * 注意（D26 审计#5）：LLM 装配为进程级全局——部署口径是「一进程一工作区」（local-first 单店），
  * 多工作区共享进程时全租户共用同一装配；按工作区留痕仅为审计归属，不构成隔离。 */
-function persistLlmEnv(cfg: { provider: string; baseUrl: string; apiKey: string; model: string }): "file" | "process-only" {
-  const mode = persistLlmEnvironment(cfg);
-  cachedLlmCall = undefined; // 复位装配缓存（见 llmCall()/intentClassifier()）
+function persistLlmEnv(cfg: { provider: string; baseUrl: string; apiKey: string; model: string }): void {
+  const file = locateEnvFile();
+  const lines = existsSync(file) ? readFileSync(file, "utf8").split("\n") : [];
+  const set = (k: string, v: string) => {
+    const i = lines.findIndex((l) => l.startsWith(`${k}=`));
+    if (i >= 0) lines[i] = `${k}=${v}`;
+    else lines.push(`${k}=${v}`);
+    process.env[k] = v;
+  };
+  set("LLM_PROVIDER", cfg.provider);
+  set("LLM_BASE_URL", cfg.baseUrl);
+  set("LLM_API_KEY", cfg.apiKey);
+  set("LLM_MODEL", cfg.model);
+  writeFileSync(file, lines.filter((l, i) => l !== "" || i < lines.length - 1).join("\n"));
   cachedClassifier = undefined;
   industryCache.clear(); // A-04：行业缓存按工作区分桶后整体复位
   resetLlmAssembly(); // v3.0：模型池与行业策略缓存同步复位（写盘即全链生效免重启）
-  return mode;
 }
 
 /** LLM 装配状态（真实=非 mock 且 baseUrl 齐备；apiKey 可空=免 key 网关） */
-function llmAssembly(): { provider: string; model: string; baseUrl: string; real: boolean; persistence: "file" | "process-only" } {
+function llmAssembly(): { provider: string; model: string; baseUrl: string; real: boolean } {
   const provider = process.env.LLM_PROVIDER ?? "mock";
   const baseUrl = process.env.LLM_BASE_URL ?? "";
   return {
@@ -251,15 +288,21 @@ function llmAssembly(): { provider: string; model: string; baseUrl: string; real
     model: process.env.LLM_MODEL ?? "",
     baseUrl,
     real: provider !== "mock" && baseUrl.length > 0,
-    persistence: llmEnvironmentPersistence(),
   };
 }
 
 /** 真实试调探针（落地向导「测试连接」：真实 round-trip 通过才允许保存） */
 async function probeLlm(cfg: { baseUrl: string; apiKey?: string; model: string }): Promise<{ reply: string; latencyMs: number }> {
-  const provider = new OpenAiCompatibleProvider(cfg.model, { baseUrl: cfg.baseUrl, apiKey: cfg.apiKey || undefined });
+  const model = canonicalDeepSeekModel(cfg.model);
+  const provider = new OpenAiCompatibleProvider(model, {
+    baseUrl: cfg.baseUrl,
+    apiKey: cfg.apiKey || undefined,
+  });
   const t0 = Date.now();
-  const res = await provider.chat([{ role: "user", content: "你是企业经营系统的数字员工。请用一句中文回答：你已在线，可以开始工作。" }], { timeoutMs: 25_000 });
+  const res = await provider.chat(
+    [{ role: "user", content: "你是企业经营系统的数字员工。请用一句中文回答：你已在线，可以开始工作。" }],
+    { scene: "generic", timeoutMs: 25_000, retries: 0 },
+  );
   if (!res.text.trim()) throw new Error("模型返回为空");
   return { reply: res.text.trim().slice(0, 200), latencyMs: Date.now() - t0 };
 }
@@ -301,7 +344,10 @@ const onboardingRouter = router({
       await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-      const readiness = await collectNativeOnboardingReadinessOn(client, scope, { role: ctx.identity.role });
+      const prof = await client.query<{ data_mode: string | null }>(
+        `SELECT archive->>'dataMode' AS data_mode FROM profiles WHERE workspace_id=$1`,
+        [scope.workspaceId],
+      );
       const ws = await client.query<{ name: string; bundle_id: string | null; is_example: boolean }>(
         `SELECT name, bundle_id, is_example FROM workspaces WHERE id=$1`, [scope.workspaceId]);
       const n = async (sql: string) => Number((await client.query<{ n: string }>(sql, [scope.workspaceId])).rows[0]?.n ?? 0);
@@ -313,12 +359,9 @@ const onboardingRouter = router({
       ]);
       await client.query("COMMIT");
       return {
-        dataMode: readiness.dataMode,
-        persistedDataMode: readiness.persistedDataMode,
-        formalActivationRecorded: readiness.formalActivationRecorded,
-        activationGate: readiness.activationGate,
-        business: readiness.business,
-        llm: { ...llmAssembly(), real: readiness.facts.llmReal },
+        // 缺省按模拟态处理（种子库/历史库均无标记时横幅常显，宁可多提示不可漏提示）
+        dataMode: (prof.rows[0]?.data_mode ?? "simulated") as "simulated" | "real",
+        llm: llmAssembly(),
         workspace: { name: ws.rows[0]?.name ?? "", events, members, agents, memories },
         workspaceId: scope.workspaceId,
         bundle: { id: ws.rows[0]?.bundle_id ?? null, isExample: !!ws.rows[0]?.is_example },
@@ -396,27 +439,34 @@ const onboardingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
-      let probeVerified = false;
       if (input.provider !== "mock") {
+        if (input.provider !== "deepseek") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "文本模型只能配置 deepseek，并解析到 text.primary=deepseek-flash",
+          });
+        }
         if (!z.string().url().safeParse(input.baseUrl).success || !input.model) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "真实模型装配需要合法的 baseUrl 与 model" });
         }
         try {
           await probeLlm({ baseUrl: input.baseUrl, apiKey: input.apiKey, model: input.model }); // 真实试调不过 → 拒绝保存（不落半残配置）
-          probeVerified = true;
         } catch (err) {
           throw new TRPCError({ code: "BAD_REQUEST", message: `模型实测未通过，未保存：${err instanceof Error ? err.message : err}` });
         }
       }
-      const persistence = persistLlmEnv(input);
-      clearLlmVerification(scope);
+      const configuredModel = input.provider === "mock" ? "" : canonicalDeepSeekModel(input.model);
+      persistLlmEnv({
+        ...input,
+        model: configuredModel,
+      });
       // D16（#1/A）：事件写入并入显式事务（.env 落盘不可回滚，故事件写在其成功后同一 COMMIT 提交）
       const llmClient = await getAppPool().connect();
       try {
         await llmClient.query("BEGIN");
         await llmClient.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await llmClient.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-        const configurationEvent = await gatewayAppendOnClient(llmClient, {
+        await gatewayAppendOnClient(llmClient, {
           ...scope, actor: { id: ctx.identity.memberNo, type: "human" }, sessionId: `onboarding-${scope.workspaceId}`,
         }, {
           who: { type: "human", id: ctx.identity.memberNo },
@@ -425,28 +475,23 @@ const onboardingRouter = router({
           decision: {
             action: "onboarding.llm_configured",
             params: {
-              provider: input.provider, base_url: input.baseUrl, model: input.model,
+              provider: input.provider, base_url: input.baseUrl, model: configuredModel,
               key_mask: input.apiKey ? `***${input.apiKey.slice(-4)}` : "(免 key 网关)",
-              persistence,
-              probe_verified: probeVerified,
             },
             after: { real: input.provider !== "mock" },
-            basis: [persistence === "process-only"
-              ? "落地向导：真实大模型装配（实测通过后仅本进程生效，重启须重新提供配置）"
-              : "落地向导：真实大模型装配（实测通过后写回 .env 四变量，全链即时生效）"],
+            basis: ["落地向导：真实大模型装配（实测通过后写回 .env 四变量，全链即时生效）"],
           },
           rule_impact: [],
           model_trace: { model_id: "human-operator", tier: "standard" },
         });
         await llmClient.query("COMMIT");
-        if (probeVerified) recordLlmVerification(scope, input, { eventId: configurationEvent.eventId, persistence });
       } catch (err) {
         await llmClient.query("ROLLBACK").catch(() => undefined);
         throw err;
       } finally {
         llmClient.release();
       }
-      return { ok: true, real: input.provider !== "mock", persistence };
+      return { ok: true, real: input.provider !== "mock" };
     }),
 
   /** 第②步：经营主体信息（工作区名 + 行业 + 简介 → 档案；事件留痕） */
@@ -471,8 +516,7 @@ const onboardingRouter = router({
         // 一并抹掉——行业规划器随后取不到价格锚点，调价只能失败关闭（实测踩过）。
         await client.query(
           `UPDATE profiles SET archive = jsonb_set(archive, '{business}', COALESCE(archive->'business', '{}'::jsonb) || $2::jsonb), industry=$3, updated_at=now() WHERE workspace_id=$1`,
-          [scope.workspaceId, JSON.stringify({ name: input.displayName, industry: input.industry, note: input.note,
-            onboarded_at: new Date().toISOString(), configuredAt: new Date().toISOString(), source: "user" }), input.industry],
+          [scope.workspaceId, JSON.stringify({ name: input.displayName, note: input.note, onboarded_at: new Date().toISOString() }), input.industry],
         );
         // D16（#1/A）：档案写与事件留痕同一事务同一 COMMIT
         await gatewayAppendOnClient(client, {
@@ -778,7 +822,6 @@ const onboardingRouter = router({
 
   /** 第④步：启用真实模式（dataMode simulated→real；横幅熄灭；事件留痕。模拟期事件保留为「演示期」历史，可经 reset.sh 整库重建清空） */
   activateRealMode: writeProcedure.mutation(async ({ ctx }) => {
-    if (ctx.identity.role !== "owner") throw new TRPCError({ code: "FORBIDDEN", message: "只有工作区所有者可以启用正式经营模式" });
     const scope = scopeOf(ctx.identity);
     const app = getAppPool();
     const client = await app.connect();
@@ -786,13 +829,6 @@ const onboardingRouter = router({
       await client.query("BEGIN");
       await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
       await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-      const readiness = await collectNativeOnboardingReadinessOn(client, scope, { role: ctx.identity.role, lock: true });
-      if (!readiness.activationGate.canActivate) throw new TRPCError({ code: "PRECONDITION_FAILED",
-        message: `正式运行门禁尚不能通过：${readiness.activationGate.blockers.join("；")}` });
-      if (readiness.dataMode === "real") {
-        await client.query("COMMIT");
-        return { ok: true, dataMode: "real" as const, alreadyActive: true };
-      }
       await client.query(
         `UPDATE profiles SET archive = jsonb_set(archive, '{dataMode}', '"real"'::jsonb), updated_at=now() WHERE workspace_id=$1`,
         [scope.workspaceId],
@@ -807,15 +843,12 @@ const onboardingRouter = router({
         decision: {
           action: "onboarding.real_mode_activated",
           params: { from: "simulated", to: "real" },
-          after: { dataMode: "real", activationFingerprint: readiness.activationFingerprint,
-            modelConfigEventId: readiness.modelVerification?.eventId, installId: readiness.installId,
-            checks: readiness.activationGate.checks },
-          basis: ["落地向导收官：当前经营主体、真实模型试调、已验证装配、员工、围栏、技能与考试绑定全部通过后启用正式模式"],
+          after: { dataMode: "real" },
+          basis: ["落地向导收官：切换真实经营模式，模拟数据横幅熄灭；此后经营动作即真实数据"],
         },
         rule_impact: [],
         model_trace: { model_id: "human-operator", tier: "standard" },
       });
-      await advanceWizardDraftOn(client, scope.workspaceId, ctx.identity.memberId);
       await client.query("COMMIT");
     } catch (err) {
       await client.query("ROLLBACK").catch(() => undefined);
@@ -3331,7 +3364,6 @@ const bundlesRouter = router({
  * 模型出站强制脱敏（L6.2，OpenAiCompatibleProvider 内建不可绕过）。
  * 落地向导契约：写入 LLM_PROVIDER/LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 四 env 即全链真实化。
  */
-let cachedLlmCall: ((prompt: string) => Promise<string>) | null | undefined;
 /**
  * 统一 LLM 调用面（v3.0 收口）：带 scope 时经 routedLlmCall 走 routeSmart 全链路
  * （场景表 × 套餐映射 × 降级链 × 真实计量 × model.call 事件留痕）；
@@ -3345,22 +3377,7 @@ function llmCall(scene = "generic", scope?: { tenantId: string; workspaceId: str
     });
     if (routed) return routed;
   }
-  if (cachedLlmCall !== undefined) return cachedLlmCall ?? undefined;
-  try {
-    if ((process.env.LLM_PROVIDER ?? "mock") === "mock") {
-      cachedLlmCall = null;
-      return undefined;
-    }
-    const provider = providerFromEnv(process.env.LLM_MODEL ?? "deepseek-chat");
-    cachedLlmCall = async (prompt: string) => {
-      const res = await provider.chat([{ role: "user", content: prompt }]);
-      return res.text;
-    };
-    return cachedLlmCall;
-  } catch {
-    cachedLlmCall = null; // 配置缺失 → 兜底（via=rule 留痕）
-    return undefined;
-  }
+  return defaultLlmCall(scene);
 }
 
 /** 工作区行业（bundle 第⑦槽 model-policy.yml 按行业加载；进程级缓存） */

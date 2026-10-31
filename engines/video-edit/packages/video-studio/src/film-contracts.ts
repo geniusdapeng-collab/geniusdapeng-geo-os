@@ -124,10 +124,11 @@ export async function reviewFilmStage(source: FilmContractSource, options: Omit<
   if (requested !== undefined && (typeof requested !== "string" || !requested)) throw new Error("FILM_REVIEW_SCOPE_INVALID");
   const contracts = filmReviewContracts(preRenderReviewSource(source, options), requested as string | undefined);
   // reviewStage performs structured validation and returns failed/unverified with the cause.
-  // Preserve the complete author contracts. reviewStage measures the exact
-  // token window and fails only on the model's real hard limits.
-  const context = { ...options.context, authorContracts: contracts };
-  const verdict = await reviewer({ ...options, contracts, context });
+  const withAuthorContracts = { ...options.context, authorContracts: contracts };
+  // Carry the complete author contract. If the complete request exceeds the
+  // model window, the dispatcher fails closed and requires an explicit
+  // lossless partition; silently dropping the contract is forbidden.
+  const verdict = await reviewer({ ...options, contracts, context: withAuthorContracts });
   if (!verdict.approved) return verdict;
   /**
    * 合同哈希必须在评审**之后**重算：源稿在评审期间被改动时（TOCTOU），裁决不得被采信。

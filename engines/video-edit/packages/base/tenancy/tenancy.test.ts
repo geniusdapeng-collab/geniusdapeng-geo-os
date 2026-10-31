@@ -1,9 +1,8 @@
 /**
  * B5 测试：版本能力矩阵（F7.2 口径）+ 越版守卫（H-10）+ JWT 往返 + 成员读服务（PG 集成 H-9）
  */
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   getCapabilities,
@@ -74,11 +73,14 @@ describe("演示身份 JWT", () => {
     const previous = process.env.JWT_ISSUER;
     try {
       delete process.env.JWT_ISSUER;
-      const repositoryRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-        cwd: process.cwd(),
-        encoding: "utf8",
-      }).trim();
-      const product = JSON.parse(readFileSync(join(repositoryRoot, "product.manifest.json"), "utf8")) as {
+      let productRoot = process.cwd();
+      for (let depth = 0; depth < 8; depth += 1) {
+        if (existsSync(join(productRoot, "product.manifest.json"))) break;
+        const parent = dirname(productRoot);
+        if (parent === productRoot) break;
+        productRoot = parent;
+      }
+      const product = JSON.parse(readFileSync(join(productRoot, "product.manifest.json"), "utf8")) as {
         productId: string;
       };
       expect(sessionTokenIssuer()).toBe(product.productId);

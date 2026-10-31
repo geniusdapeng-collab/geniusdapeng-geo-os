@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
-import { normalizeModelContent, planDeepSeekWindow } from "@workloom/base/model-router";
+import {
+  normalizeModelContent,
+  planDeepSeekWindow,
+  type ModelMessageContent,
+} from "@workloom/base/model-router";
 import {
   DEEPSEEK_FLASH_CONTEXT_TOKENS,
   DEEPSEEK_FLASH_MODEL,
@@ -22,7 +26,7 @@ export interface VideoTextEndpoint {
 
 export interface VideoTextMessage {
   role: "system" | "user" | "assistant";
-  content: unknown;
+  content: ModelMessageContent;
 }
 
 export interface VideoTextUsage {

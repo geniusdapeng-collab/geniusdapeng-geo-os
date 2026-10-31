@@ -37,7 +37,7 @@ import {
   reviewStage, runPortraitAgent
 } from "../../packages/video-studio/src/index.js";
 import { assertPortraitOwnerWritePaths, buildPortraitOwnerAuthorization, EXPLICIT_PORTRAIT_AUTHORIZATION } from "../../packages/video-studio/src/portrait-owner-authorization.js";
-import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
+import { OpenAiCompatibleProvider } from "../../packages/base/model-router/providers.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const LIBRARY_ROOT = resolve(REPO_ROOT, process.env.HR_CHARACTER_LIBRARY ?? "var/media/characters");
@@ -370,6 +370,10 @@ async function main(): Promise<void> {
       if (!Number.isFinite(minLikeness) || minLikeness < 0 || minLikeness > 100) throw new Error("--min-likeness 非法（0–100）");
       const llm = resolveProducerLlm(ENV);
       if (!llm) throw new Error("--with-likeness 需要评审模型（LLM_BASE_URL / LLM_API_KEY 或 DEEPSEEK_*）");
+      const provider = new OpenAiCompatibleProvider(llm.model, {
+        baseUrl: llm.baseUrl,
+        apiKey: llm.apiKey,
+      });
       const tmpDir = mkdtempSync(join(homedir(), ".workloom-portrait-"));
       try {
         /** 基准同样压到可发包再送（真机：5.9MB PNG 直接 base64 会被端点拒或断连） */
@@ -380,23 +384,22 @@ async function main(): Promise<void> {
         for (const [angle, file] of Object.entries(selected!.files)) {
         const jpeg = toJudgeJpeg(file, tmpDir, angle);
         if (!jpeg) throw new Error(`送审图压缩失败：${file}`);
-        const content = [
-          { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 定妆照候选。" +
-            "只判\"是不是同一个人\"：看面孔五官比例、脸型、年龄段；服装/背景/光线差异不影响判定。" +
-            `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
-          { type: "image_url", image_url: { url: anchorDataUrl } },
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${readFileSync(jpeg).toString("base64")}` } }
-        ];
-        const reviewed = await completeVideoTextTask({
-          endpoint: llm,
+        const result = await provider.chat([{
+              role: "user",
+              content: [
+                { type: "text", text: "图1 = 已通过验收的成片帧（认证真人的事实锚）；图2 = 定妆照候选。" +
+                  "只判\"是不是同一个人\"：看面孔五官比例、脸型、年龄段；服装/背景/光线差异不影响判定。" +
+                  `只输出 JSON：{"same":true|false,"score":0-100,"reason":"一句话"}。当前角度：${angle}` },
+                { type: "image_url", image_url: { url: anchorDataUrl } },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${readFileSync(jpeg).toString("base64")}` } }
+              ]
+        }], {
           scene: "video.quality.plausibility-review",
-          messages: [{ role: "user", content }],
-          tokenMessages: [{ role: "user", content: [content[0]!] }],
-          imageTokens: 2 * 1_024,
-          timeoutMs: 180_000,
-          requireJson: true,
+          timeoutMs: 600_000,
+          temperature: 0,
+          retries: 0,
         });
-        const parsed = reviewed.value as { same?: boolean; score?: number; reason?: string };
+        const parsed = JSON.parse(result.text.trim()) as { same?: boolean; score?: number; reason?: string };
         const score = Number.isFinite(Number(parsed.score)) ? Number(parsed.score) : null;
         const same = parsed.same === true;
         const ok = same && (score === null || score >= minLikeness);

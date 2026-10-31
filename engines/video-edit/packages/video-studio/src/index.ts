@@ -4,7 +4,6 @@
 export * from "./gates.js";
 export * from "./llm-adapter.js";
 export * from "./llm-config.js";
-export * from "./video-text-client.js";
 export * from "./material-policy.js";
 export * from "./av-sync.js";
 export * from "./beat-verify.js";
@@ -73,6 +72,10 @@ export * from "./plausibility-review.js";
 export * from "./rendered-shot-acceptance.js";
 export * from "./rhythm-plan.js";
 export * from "./cinematic-contract.js";
+export * from "./bullet-time.js";
+export * from "./bullet-time-qc.js";
 /** 当前真实 G1、客户生产要求和已审 G3 到 PRD 的私有宿主权威边界。 */
 export * from "./prd-authority.js";
 export * from "./product-visual-authority.js";
+export * from "./marketing-prompt-contract.js";
+export * from "./audience-authority.js";

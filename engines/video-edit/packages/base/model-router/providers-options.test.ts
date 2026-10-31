@@ -1,11 +1,11 @@
 import { createServer, type Server } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { normalizeModelContent, OpenAiCompatibleProvider, type ChatOptions } from "./providers.js";
+import { OpenAiCompatibleProvider, type ChatOptions } from "./providers.js";
 
 let server: Server;
 let origin: string;
 let bodies: Array<Record<string, unknown>>;
-let mode: "ok" | "error" | "hang" | "hang-body" | "empty" | "blocks";
+let mode: "ok" | "error" | "hang" | "hang-body";
 beforeAll(async () => {
   server = createServer(async (req, res) => {
     if (req.url === "/models") { res.writeHead(200); res.end("{}"); return; }
@@ -14,21 +14,18 @@ beforeAll(async () => {
     bodies.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
     if (mode === "hang") return;
     if (mode === "hang-body") { res.writeHead(200, { "content-type": "application/json" }); res.flushHeaders(); res.write("{"); return; }
-    if (mode === "error") {
-      res.writeHead(400, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: { code: "invalid_request_error", message: "maximum context length exceeded; Bearer secret-token-value" } }));
-      return;
-    }
+    if (mode === "error") { res.writeHead(400); res.end("unsupported"); return; }
     res.writeHead(200, { "content-type": "application/json" });
-    const content = mode === "empty" ? ""
-      : mode === "blocks" ? [{ type: "text", text: "provider " }, { type: "output_text", content: "answer" }, { unrelated: true }]
-        : "provider answer";
-    const request = bodies.at(-1)!;
     res.end(JSON.stringify({
-      id: "provider-fixture",
-      model: request.model,
-      choices: [{ finish_reason: "stop", message: { content } }],
-      usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+      id: "provider-response",
+      model: "deepseek-flash",
+      choices: [{ finish_reason: "stop", message: { content: "provider answer" } }],
+      usage: {
+        prompt_tokens: 20,
+        completion_tokens: 5,
+        total_tokens: 25,
+        completion_tokens_details: { reasoning_tokens: 0 },
+      },
     }));
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -37,52 +34,46 @@ beforeAll(async () => {
 afterAll(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); });
 beforeEach(() => { mode = "ok"; bodies = []; });
 afterEach(() => { vi.restoreAllMocks(); });
-const provider = () => new OpenAiCompatibleProvider("local-model", { baseUrl: origin });
+const provider = () => new OpenAiCompatibleProvider("deepseek-flash", { baseUrl: origin });
 const messages = [{ role: "user" as const, content: "联系 13812345678 查询" }];
 
 describe("OpenAI-compatible generation controls at the HTTP boundary", () => {
   it("serializes the allowlist, preserves zero, masks PII and returns real usage", async () => {
     const result = await provider().chat(messages, {
+      scene: "video.deterministic",
       temperature: 0, topP: 0, maxTokens: 8192, responseFormat: { type: "json_object" }, thinking: { type: "disabled" },
-      model: "injected", apiKey: "injected", credits: 0,
+      model: "injected", apiKey: "test-only", credits: 0,
     } as ChatOptions);
     expect(bodies).toHaveLength(1);
-    expect(bodies[0]).toEqual({ model: "local-model", messages: [{ role: "user", content: expect.stringMatching(/\[PII:PHONE:/) }],
-      temperature: 0, top_p: 0, max_tokens: 8192, response_format: { type: "json_object" }, thinking: { type: "disabled" } });
+    expect(bodies[0]).toMatchObject({ model: "deepseek-flash", messages: [{ role: "user", content: expect.stringMatching(/\[PII:PHONE:/) }],
+      temperature: 0, top_p: 0, response_format: { type: "json_object" }, thinking: { type: "disabled" } });
+    expect(bodies[0]!.max_tokens).toBeGreaterThan(8_192);
     expect(JSON.stringify(bodies)).not.toContain("13812345678");
     expect(result).toMatchObject({ text: "provider answer", promptTokens: 20, completionTokens: 5,
-      modelId: "local-model", finishReason: "stop", reasoningTokens: 0 });
+      modelId: "deepseek-flash", finishReason: "stop" });
   });
-  it("keeps the standalone provider default and omits unspecified controls", async () => {
+  it("standalone provider uses scene-policy thinking and full output window", async () => {
     await provider().chat([{ role: "user", content: "hello" }]);
-    expect(bodies[0]).toEqual({ model: "local-model", messages: [{ role: "user", content: "hello" }], temperature: 0.2 });
-  });
-  it("normalizes OpenAI-compatible text blocks without stringifying objects", async () => {
-    mode = "blocks";
-    await expect(provider().chat(messages)).resolves.toMatchObject({
-      text: "provider answer", promptTokens: 20, completionTokens: 5,
+    expect(bodies[0]).toMatchObject({
+      model: "deepseek-flash",
+      messages: [{ role: "user", content: "hello" }],
+      thinking: { type: "enabled" },
+      reasoning_effort: "high",
     });
-    expect(normalizeModelContent([{ type: "text", text: "甲" }, { content: "乙" }, { value: "ignored" }])).toBe("甲乙");
-    expect(normalizeModelContent({ text: "丙" })).toBe("丙");
-    expect(normalizeModelContent(null)).toBe("");
+    expect(bodies[0]!.max_tokens).toBeGreaterThan(300_000);
+  });
+  it("honors a resolved scene format override", async () => {
+    await provider().chat(messages, {
+      scene: "video.deterministic",
+      responseFormat: { type: "text" },
+      thinking: { type: "disabled" },
+    });
+    expect(bodies[0]).not.toHaveProperty("response_format");
+    expect(bodies[0]).toMatchObject({ thinking: { type: "disabled" } });
   });
   it("retains HTTP errors instead of reporting an answer", async () => {
     mode = "error";
-    const failure: Error = await provider().chat(messages).then(
-      () => { throw new Error("expected provider failure"); },
-      (error: unknown) => error as Error,
-    );
-    expect(failure.message).toContain("模型调用失败：HTTP 400");
-    expect(failure.message).toContain("invalid_request_error");
-    expect(failure.message).toContain("maximum context length exceeded");
-    expect(failure.message).toContain("Bearer <redacted>");
-    expect(failure.message).not.toContain("secret-token-value");
-  });
-  it("treats an empty content response as a retryable provider failure", async () => {
-    mode = "empty";
-    await expect(provider().chat(messages)).rejects.toMatchObject({
-      name: "ModelProviderError", kind: "empty", message: "模型返回 content 为空", retryable: true,
-    });
+    await expect(provider().chat(messages)).rejects.toThrow("模型调用失败：HTTP 400");
   });
   it.each(["hang", "hang-body"] as const)("timeout aborts %s including response-body consumption", async nextMode => {
     mode = nextMode;

@@ -60,7 +60,7 @@ const guardianSave = PromptGuardian.prototype._saveLog;
 PromptGuardian.prototype._saveLog = function(...args) { this.logPath = join(root, "guardian-log.json"); return guardianSave.apply(this, args); };
 const charactersDir = join(root, "characters", "PROJECT");
 let calls = 0;
-const runtime = createPortraitRuntime({ workDir: root, projectId: "PROJECT", apiKey: "test-only-key", model: "test-model", retries: 0, fetchImpl: async (url) => {
+const runtime = createPortraitRuntime({ workDir: root, projectId: "PROJECT", apiKey: "test-only-key", model: "deepseek-flash", retries: 0, fetchImpl: async (url) => {
   if (String(url).includes("/images/generations")) { calls++; return new Response(JSON.stringify({ data: [{ url: "https://cdn.example.invalid/out" }] })); }
   return new Response(new Uint8Array(4096).fill(calls));
 } });
@@ -208,7 +208,7 @@ const uninstall = installVendorPortraitBindingBridge({ index, maxCharactersPerSh
 const engine = new engineMod.RenderingEngine({
   charactersDir: ${JSON.stringify(workDir)},
   outputDir: ${JSON.stringify(workDir)},
-  apiKey: "test-key",
+  apiKey: "test-only",
   endpoint: "test-model"
 });
 
@@ -832,6 +832,51 @@ console.log("RESULT " + JSON.stringify({ counters, receivedContext: received._sk
     expect(result.qc).toBe("not_applicable");
   }, 90_000);
 
+  it("融合器仅丢失包装 id 且保持输入顺序时按位置恢复原始 shotId", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const output = await makePhase({ process: async shots => {
+ counters.fusion++;
+ return { shots: [{ scene: "手表商品微距", prompt: "【场景】抽象表盘微距与固定机位。", degraded: false }], degraded: false, stats: { failed: 0, total: 1 } };
+} }).execute(makeState());
+uninstall();
+console.log("RESULT " + JSON.stringify({ success: output.success, id: output.shots[0].shotId, prompt: output.shots[0].prompt }));
+`));
+    expect(result).toMatchObject({ success: true, id: "SC-01", prompt: expect.stringContaining("抽象表盘") });
+  }, 90_000);
+
+  it("融合器丢失 prompt 时仍 fail-closed，并报告精确镜头位置", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+let error = null;
+try { await makePhase({ process: async () => ({ shots: [{ shotId: "SC-01", degraded: false }], degraded: false, stats: { failed: 0, total: 1 } }) }).execute(makeState()); }
+catch (e) { error = { code: e.code, message: e.message }; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ error }));
+`));
+    expect(result.error).toMatchObject({ code: "PHASE3_FUSION_UNVERIFIED" });
+    expect(String((result.error as Record<string, unknown>).message)).toContain("prompt=missing");
+  }, 90_000);
+
+  it("区分继承的孤立 degraded 布尔值和带字段证据的真降级", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const inherited = await makePhase({ process: async shots => {
+ counters.fusion++;
+ return { shots: shots.map(s => ({ ...s, prompt: "【场景】合法完整提示词。", degraded: true })), degraded: false, stats: { failed: 0, total: 1 } };
+} }).execute(makeState({ degraded: true }));
+let explicitError = null;
+try { await makePhase({ process: async shots => {
+ counters.fusion++;
+ return { shots: shots.map(s => ({ ...s, prompt: "【场景】合法完整提示词。", degraded: true, degradedFields: ["scene"] })), degraded: false, stats: { failed: 0, total: 1 } };
+} }).execute(makeState()); } catch (e) { explicitError = e.message; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ inheritedSuccess: inherited.success, inheritedDegraded: inherited.shots[0].degraded, explicitError }));
+`));
+    expect(result).toMatchObject({ inheritedSuccess: true, inheritedDegraded: false });
+    expect(String(result.explicitError)).toContain("explicitDegradation=true");
+  }, 90_000);
+
   it("真实 vendor 的融合请求生成器收到实际技能正文，负面禁词不被误判", () => {
     const result = runInChild(phase3Fixture(`
 const uninstall = installVendorPhase3FusionBridge();
@@ -1061,7 +1106,7 @@ let unexpectedModelCalls = 0;
 const noModel = async () => { unexpectedModelCalls++; throw new Error("unexpected offline fixture model call"); };
 const modelMethods = ["reason", "reasonStructured", "reasonRaw", "chat", "generate"];
 const originalModelMethods = modelMethods.map(key => [key, WorkloomLLMEngine.prototype[key]]);
-const llm = new WorkloomLLMEngine({ baseUrl: "https://example.invalid", apiKey: "offline-test-only", model: "offline", fastModel: "offline" });
+const llm = new WorkloomLLMEngine({ baseUrl: "https://example.invalid", apiKey: "offline-test-only", model: "deepseek-flash", fastModel: "deepseek-flash" });
 for (const key of modelMethods) WorkloomLLMEngine.prototype[key] = noModel;
 let installedAtCreate = false;
 let fail = false;
