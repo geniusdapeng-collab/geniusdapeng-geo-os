@@ -20,7 +20,7 @@
 - `packages/pipeline-control/src/auto-approval.ts` 定义策略、检查项、receipt
   和 evidence digest。
 - `packages/video-pipeline/src/auto-approval.ts` 绑定
-  `video-system-auto-approval@2026-10-31.1` 与覆盖门清单。
+  `video-system-auto-approval@2026-11-01.1` 与覆盖门清单。
 - `video_gate_decisions.reviewer` 保存
   `kind=system_auto_approval`、完整 receipt、policy version、检查结果与
   evidence digest。

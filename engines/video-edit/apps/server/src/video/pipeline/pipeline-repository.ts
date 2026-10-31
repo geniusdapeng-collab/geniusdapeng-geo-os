@@ -837,7 +837,7 @@ export class VideoPipelineRepository {
       }
       await client.query(
         `UPDATE video_pipeline_runs
-            SET next_action='run_node',revision=revision+1,updated_at=now()
+            SET next_action='run_node',lease_owner=NULL,lease_expires_at=NULL,revision=revision+1,updated_at=now()
           WHERE workspace_id=$1 AND id=$2`,
         [this.scope.workspaceId, input.runId],
       );
@@ -1203,7 +1203,8 @@ export class VideoPipelineRepository {
       await client.query(
         `UPDATE production_stage_runs
             SET execution_status='interrupted',verification_status='unverified',disposition='reconcile',
-                status='interrupted',error_class='RECONCILE_REQUIRED',error_msg=$4,finished_at=now(),last_heartbeat_at=now()
+                status='interrupted',worker_version=$3,error_class='RECONCILE_REQUIRED',error_msg=$4,
+                finished_at=now(),last_heartbeat_at=now()
           WHERE workspace_id=$1 AND pipeline_run_id=$2 AND execution_status='running'`,
         [this.scope.workspaceId, input.runId, input.owner, input.reason.slice(0, 500)],
       );

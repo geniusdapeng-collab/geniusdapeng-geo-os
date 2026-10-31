@@ -24,6 +24,10 @@ describe("video pipeline compiler", () => {
     expect(assertVideoPipelinePlan(explainer).planHash).toBe(explainer.planHash);
     expect(narrative.nodes.find((node) => node.key === "g6-prompt-confirm")?.kind).toBe("gate");
     expect("checkSetVersion" in (narrative.nodes.find((node) => node.key === "g6-prompt-confirm") ?? {})).toBe(true);
+    expect(narrative.nodes.find((node) => node.key === "micromotion")?.dependsOn).toEqual(["field-check"]);
+    expect(narrative.nodes.find((node) => node.key === "g6-prompt-confirm")?.dependsOn).toEqual(["micromotion"]);
+    expect(narrative.nodes.find((node) => node.key === "portrait")?.dependsOn).toEqual(["g6-prompt-confirm"]);
+    expect(narrative.nodes.find((node) => node.key === "g7-preproduction")?.dependsOn).toEqual(["g5-portrait-confirm"]);
   });
 
   it("rejects cycles and unknown dependencies", () => {

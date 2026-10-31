@@ -5,6 +5,9 @@ import {
   type SystemAutoApprovalEvidence,
 } from "@workloom/pipeline-control";
 import {
+  VIDEO_GATES,
+} from "../adapters.js";
+import {
   evaluateVideoSystemAutoApproval,
   VIDEO_SYSTEM_AUTO_APPROVAL_POLICY,
 } from "../auto-approval.js";
@@ -45,6 +48,12 @@ function evidence(gateKey: string, overrides: Partial<SystemAutoApprovalEvidence
 }
 
 describe("versioned video system auto-approval policy", () => {
+  it("covers every registered video gate used by compiled pipeline plans", () => {
+    expect(VIDEO_GATES.map((gate) => gate.id).filter(
+      (gateKey) => !VIDEO_SYSTEM_AUTO_APPROVAL_POLICY.gates.has(gateKey),
+    )).toEqual([]);
+  });
+
   it.each(["G5", "G8", "G9", "G10", "G11", "G12", "G15"])(
     "%s passes only after every mandatory control is satisfied",
     (gateKey) => {

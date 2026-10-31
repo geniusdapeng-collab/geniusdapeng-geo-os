@@ -190,6 +190,8 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("video pipeline r
       expectedStageRevision: 1,
       actor: { id: "worker-1", type: "worker" },
     });
+    expect(committedSource.run.leaseOwner).toBeNull();
+    expect(committedSource.run.leaseExpiresAt).toBeNull();
     const sourceStage = committedSource.run.stages.find((stage) => stage.key === "source")!;
     expect(sourceStage.executionStatus).toBe("output_ready");
     expect(sourceStage.verificationStatus).toBe("pending");
@@ -544,5 +546,64 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("video pipeline r
     expect(outbox.rows.some((row) => row.event_kind === "system-auto-approval")).toBe(true);
     const approvals = await owner.query("SELECT count(*)::int AS n FROM approvals WHERE workspace_id='W1'");
     expect(approvals.rows[0]?.n).toBe(0);
+  }, 60_000);
+
+  it("marks a running stage as interrupted and exposes it for reconciliation", async () => {
+    await owner.query(`
+      INSERT INTO video_projects (id,workspace_id,title,kind,created_by)
+      VALUES ('P5','W1','reconcile probe','narrative','test')
+    `);
+    const reconcilePlan = compileVideoPipelineDocument({
+      quest: "reconcile-probe",
+      name: "reconcile probe",
+      version: "1",
+      steps: [
+        { step_key: "worker", name: "Worker", owner: "worker", outputs: ["payload"] },
+        {
+          step_key: "g4", name: "G4", owner: "director", gate: "G4",
+          inputs: ["payload"], outputs: ["payload"], depends_on: ["worker"],
+        },
+      ],
+    }, { knownPipelines: ["reconcile-probe"] });
+    const created = await repository.createRun({
+      projectId: "P5",
+      pipelineKind: "narrative",
+      intentContractId: "IC-RECONCILE",
+      intentHash: sha256Json({ intent: "reconcile probe" }),
+      createdBy: "test",
+      plan: reconcilePlan,
+      idempotencyKey: "reconcile-start",
+      commandId: "reconcile-start-command",
+      actor: { id: "test", type: "system" },
+    });
+    const claimed = await repository.claimStage({
+      plan: reconcilePlan,
+      runId: created.runId,
+      stageKey: "worker",
+      owner: "worker-reconcile",
+      commandId: "reconcile-claim",
+      idempotencyKey: "reconcile-claim",
+      expectedRunRevision: created.revision,
+      expectedStageRevision: 1,
+      leaseMs: 30_000,
+    });
+    const interrupted = await repository.markInterrupted({
+      runId: created.runId,
+      reason: "worker stopped before any external operation",
+      owner: "worker-reconcile",
+      commandId: "reconcile-interrupt",
+      idempotencyKey: "reconcile-interrupt",
+      expectedRunRevision: claimed.revision,
+      actor: { id: "test", type: "system" },
+    });
+    expect(interrupted.status).toBe("reconciling");
+    expect(interrupted.nextAction).toBe("reconcile");
+    expect(interrupted.stages.find((stage) => stage.key === "worker")).toMatchObject({
+      executionStatus: "interrupted",
+      verificationStatus: "unverified",
+      disposition: "reconcile",
+    });
+    const candidates = await repository.listReconcileCandidates();
+    expect(candidates.find((candidate) => candidate.runId === created.runId)?.reason).toBe("external_unknown");
   }, 60_000);
 });

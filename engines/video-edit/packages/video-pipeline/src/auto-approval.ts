@@ -7,7 +7,7 @@ import {
 export const VIDEO_SYSTEM_AUTO_APPROVAL_POLICY: SystemAutoApprovalPolicy = Object.freeze({
   schemaVersion: "workloom.system-auto-approval-policy/v1",
   id: "video-system-auto-approval",
-  version: "2026-10-31.1",
+  version: "2026-11-01.1",
   checkSetVersion: "video-system-auto-approval/checks/v1",
   gates: new Set([
     "G1_DOSSIER",
@@ -25,6 +25,8 @@ export const VIDEO_SYSTEM_AUTO_APPROVAL_POLICY: SystemAutoApprovalPolicy = Objec
     "g3-insight",
     "G5",
     "G5_PORTRAIT",
+    "G6",
+    "G7",
     "g5-portrait-human",
     "G8",
     "G8_RENDER",

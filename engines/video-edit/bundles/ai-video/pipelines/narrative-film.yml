@@ -56,25 +56,25 @@ steps:
     inputs: [prompt_package]
     outputs: [prompt_package]       # 25/30 字段规则+LLM 混合质检
     depends_on: [prompt-fuse]
-  - step_key: g6-prompt-confirm
-    name: 提示词审核
-    owner: director
-    inputs: [prompt_package]
-    gate: G6
-    outputs: [prompt_package]       # 含导演评分报告的审批卡
-    depends_on: [field-check]
   - step_key: micromotion
     name: 微动作增强
     owner: micromotion-stylist
     inputs: [prompt_package]
     outputs: [prompt_package]       # 5 路流水线：面部/身体/眼神/呼吸/融合
-    depends_on: [g6-prompt-confirm]
+    depends_on: [field-check]
+  - step_key: g6-prompt-confirm
+    name: 提示词审核
+    owner: director
+    inputs: [prompt_package]
+    gate: G6
+    outputs: [prompt_package]       # 含导演评分报告的审批卡；必须审核已并入微动作的最终稿
+    depends_on: [micromotion]
   - step_key: portrait
     name: 定妆照制作
     owner: portrait-artist
     inputs: [shot_card, prompt_package]
     outputs: [portrait_set]
-    depends_on: [micromotion]
+    depends_on: [g6-prompt-confirm]
   - step_key: g5-portrait-confirm
     name: 定妆照确认
     owner: director
@@ -88,7 +88,7 @@ steps:
     inputs: [prompt_package, portrait_set]
     gate: G7
     outputs: [video_project]
-    depends_on: [g5-portrait-confirm, micromotion]
+    depends_on: [g5-portrait-confirm]
   - step_key: render-script
     name: 渲染脚本生成入 CMS
     owner: render-operator
