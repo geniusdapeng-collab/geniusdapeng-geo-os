@@ -82,10 +82,113 @@ export function gateDeterministicChecks(gate: GateKey, content: string): Array<{
     let valid = false;
     let visualPass = false;
     let visualDetail = "G1 原件不可解析，无法核对商品视觉授权";
+    let evidencePass = false;
+    let evidenceDetail = "G1 原件不可解析，无法核对来源归因、用途限制和摘要完整性";
     try {
-      const value = JSON.parse(trimmed) as { facts?: { schemaVersion?: string; stages?: unknown[]; sources?: unknown[] } };
+      const value = JSON.parse(trimmed) as {
+        facts?: Record<string, unknown> & {
+          schemaVersion?: string; stages?: unknown[]; sources?: unknown[]; restrictions?: unknown[];
+          cards?: Record<string, unknown>; dossier?: Record<string, unknown>; integrity?: Record<string, unknown>;
+        };
+        integrity?: Record<string, unknown>;
+      };
       valid = value.facts?.schemaVersion === "workloom.marketing-facts/v1" && value.facts.stages?.length === 3
         && Array.isArray(value.facts.sources) && value.facts.sources.length > 0;
+      const facts = value.facts;
+      const stages = (facts?.stages ?? []) as Array<Record<string, unknown>>;
+      const stageFact = (stage: string) => {
+        const record = stages.find(item => item.stage === stage)?.facts;
+        return record && typeof record === "object" ? record as Record<string, unknown> : {};
+      };
+      const a2 = stageFact("A2"), a3 = stageFact("A3");
+      const a2Claims = Array.isArray(a2.claims) ? a2.claims : [];
+      const a3Claims = Array.isArray(a3.claims) ? a3.claims : [];
+      const dossier = facts?.dossier && typeof facts.dossier === "object" ? facts.dossier : {};
+      const cards = facts?.cards && typeof facts.cards === "object" ? facts.cards : {};
+      const identity = dossier.identity && typeof dossier.identity === "object" ? dossier.identity as Record<string, unknown> : {};
+      const provenance = Array.isArray(dossier.provenance) ? dossier.provenance as Array<Record<string, unknown>> : [];
+      const officialEvidence = new Set(provenance.filter(item => item.channel_class === "official").map(item => item.evidence_id));
+      const pros = (dossier.pros_cons && typeof dossier.pros_cons === "object"
+        ? (dossier.pros_cons as Record<string, unknown>).pros : []) as Array<Record<string, unknown>>;
+      const issues: string[] = [];
+      for (const [index, pro] of pros.entries()) {
+        if (pro.claim_nature !== "official") continue;
+        const refs = Array.isArray(pro.source_refs) ? pro.source_refs : [];
+        if (!refs.length || !refs.every(ref => officialEvidence.has(ref))) issues.push(`pros[${index}]声称official但证据账本没有官方渠道`);
+      }
+      const insight = cards.insight_card && typeof cards.insight_card === "object"
+        ? cards.insight_card as Record<string, unknown> : {};
+      const consensus = Array.isArray(insight.consensus_points) ? insight.consensus_points : [];
+      if (!a2Claims.length && consensus.length) issues.push("A2无证据但insight_card仍生成用户共识");
+      const theme = cards.theme_card && typeof cards.theme_card === "object"
+        ? cards.theme_card as Record<string, unknown> : {};
+      const market = insight.market_position && typeof insight.market_position === "object"
+        ? insight.market_position as Record<string, unknown> : {};
+      if (!a3Claims.length && (Array.isArray(theme.differentiation_space) && theme.differentiation_space.length
+        || Array.isArray(market.our_opening) && market.our_opening.length)) issues.push("A3无竞品证据但摘要卡生成了差异化空位");
+      const restrictions = Array.isArray(facts?.restrictions) ? facts.restrictions.map(String).filter(Boolean) : [];
+      const prd = cards.prd_card && typeof cards.prd_card === "object" ? cards.prd_card as Record<string, unknown> : {};
+      const redlines = new Set((Array.isArray(prd.compliance_redlines) ? prd.compliance_redlines : []).map(String));
+      for (const restriction of restrictions) if (!redlines.has(restriction)) issues.push(`PRD合规红线遗漏：${restriction}`);
+      const sourceClaims = Array.isArray(identity.official_selling_points) ? identity.official_selling_points as Array<Record<string, unknown>> : [];
+      if (sourceClaims.length) {
+        const expected = Math.min(6, sourceClaims.length);
+        const briefClaims = Array.isArray((cards.brief_card as Record<string, unknown> | undefined)?.sellingPointEvidence)
+          ? ((cards.brief_card as Record<string, unknown>).sellingPointEvidence as unknown[]).length : 0;
+        const prdClaims = Array.isArray(prd.selling_point_evidence) ? (prd.selling_point_evidence as unknown[]).length : 0;
+        if (briefClaims < expected || prdClaims < expected) issues.push(`单源公开主张摘要数量漂移：来源${sourceClaims.length}，brief ${briefClaims}，prd ${prdClaims}`);
+        if (!(cards.brief_card as Record<string, unknown> | undefined)?.sellingPointEvidence
+          || ((cards.brief_card as Record<string, unknown>).sellingPointEvidence as Array<Record<string, unknown>>).some(item => !Array.isArray(item.source_refs) || !item.source_refs.length)) {
+          issues.push("Brief单源公开主张缺少逐条证据编号");
+        }
+        if (typeof identity.selling_points_field_note !== "string" || !identity.selling_points_field_note.includes("不是厂商官方确认")) {
+          issues.push("历史字段official_selling_points缺少媒体来源语义说明");
+        }
+      }
+      const priceForbidden = /(?:不写|不得|禁止|不展示|不出现|不提及|不播报)[^。；\n]{0,100}价格|价格[^。；\n]{0,100}(?:不得|禁止|不展示|不出现|不提及|不播报)/u.test(restrictions.join("\n"));
+      if (priceForbidden) {
+        const router = cards.router_material && typeof cards.router_material === "object"
+          ? cards.router_material as Record<string, unknown> : {};
+        const routerHooks = router.hook_material && typeof router.hook_material === "object"
+          ? router.hook_material as Record<string, unknown> : {};
+        const points = [
+          ...(Array.isArray((prd.hook_candidates as Record<string, unknown> | undefined)?.data_points)
+            ? (prd.hook_candidates as Record<string, unknown>).data_points as unknown[] : []),
+          ...(Array.isArray(routerHooks.data_points) ? routerHooks.data_points : []),
+        ].map(String);
+        if (points.some(point => /(?:^|[：:])\s*(?:价格|售价|指导价)|(?:CNY|RMB|人民币)\s*\d|(?:¥|￥)\s*\d/i.test(point))) {
+          issues.push("客户禁止价格传播，但hook/creative字段仍分发价格");
+        }
+      }
+      const portrait = cards.portrait_manifest && typeof cards.portrait_manifest === "object"
+        ? cards.portrait_manifest as Record<string, unknown> : {};
+      const images = Array.isArray(portrait.reference_images) ? portrait.reference_images as Array<Record<string, unknown>> : [];
+      if (images.some(image => image.license_risk === "high")
+        && (portrait.licensed_for_delivery !== false || typeof portrait.usage_policy !== "string"
+          || !portrait.usage_policy.includes("不得直接用于商业成片"))) issues.push("高授权风险图片未标明仅供外观参考、不得直接商用的边界");
+      if (images.some(image => image.license_risk === "high")) {
+        const briefHero = (cards.brief_card as Record<string, unknown> | undefined)?.productHero as Record<string, unknown> | undefined;
+        const prdImagePolicy = prd.reference_image_policy as Record<string, unknown> | undefined;
+        if (briefHero?.licensed_for_delivery !== false || prdImagePolicy?.licensed_for_delivery !== false) {
+          issues.push("图片授权限制未内联到Brief与PRD消费卡");
+        }
+      }
+      const specs = identity.specs && typeof identity.specs === "object" ? identity.specs as Record<string, unknown> : {};
+      const usage = dossier.usage && typeof dossier.usage === "object" ? dossier.usage as Record<string, unknown> : {};
+      if (Object.keys(specs).some(key => /(使用场景|适用场景|使用定位|用途)/u.test(key))
+        && (!Array.isArray(usage.scenarios) || !usage.scenarios.length)) issues.push("来源使用场景未保留为非用户共识的场景口径");
+      if (typeof identity.price_band === "string" && identity.price_band.trim()
+        && (typeof market.price_reported_at !== "string" || !market.price_reported_at.trim())) issues.push("价格缺少来源页面日期");
+      const integrity = value.integrity;
+      if (!integrity || integrity.schemaVersion !== "workloom.g1-content-integrity/v1" || integrity.algorithm !== "sha256"
+        || typeof integrity.factsSha256 !== "string" || !/^[a-f0-9]{64}$/.test(integrity.factsSha256)
+        || typeof integrity.factsHashScope !== "string" || typeof integrity.evidenceHashPolicy !== "string") {
+        issues.push("G1缺少可复算的事实摘要完整性声明");
+      }
+      evidencePass = issues.length === 0;
+      evidenceDetail = evidencePass
+        ? "来源归因、A2/A3无证据限制、合规红线、图片授权边界、价格日期和G1完整性声明可机器核对"
+        : issues.join("；");
     } catch { valid = false; }
     // Keep the two assertions separate so a missing image is not mislabeled as a
     // missing facts bundle.
@@ -103,6 +206,7 @@ export function gateDeterministicChecks(gate: GateKey, content: string): Array<{
       { id: "marketing-facts-present", pass: valid, hard: true,
         detail: valid ? "完整本次来源/三站事实包可解析；null等JSON值不会当作占位词误杀" : "G1必须读取宿主本次完整来源事实包" },
       { id: "product-visual-authority", pass: visualPass, hard: true, detail: visualDetail },
+      { id: "marketing-evidence-integrity", pass: evidencePass, hard: true, detail: evidenceDetail },
     ];
   }
   const checks = [

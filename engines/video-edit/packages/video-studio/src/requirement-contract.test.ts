@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RequirementContractError, bindRequirementContract, renderRequirementContract, requirementCast, requirementHash, requirementRecord,
-  requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema, structuredSceneTiming,
+  normalizeRiskResponseShape, requirementScenes, structuredRiskFeedback, structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema, structuredSceneTiming,
   validateRequirementSchema, verifiedRequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS, TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
@@ -242,6 +242,66 @@ describe("bounded native RiskAssessor validation facts", () => {
       expect(structuredSceneFeedback(failure)).toBe("");
       expect(requirementHash(source)).toBe(before);
     }
+  });
+
+  it("returns only fixed top-level field names for missing or extra response keys", () => {
+    const schema = {
+      type: "object",
+      required: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+      properties: {
+        technicalRisks: { type: "array", minItems: 1, maxItems: 5 },
+        businessConstraints: { type: "array", minItems: 1, maxItems: 5 },
+        mitigationSuggestions: { type: "array", minItems: 1, maxItems: 5 },
+      },
+      additionalProperties: false,
+    };
+    for (const [value, keyword, missing] of [
+      [{ technicalRisks: [], businessConstraints: [] }, "required", ["mitigationSuggestions"]],
+      [{ technicalRisks: [{ risk: "r", level: "high", impact: "i" }], businessConstraints: ["b"],
+        mitigationSuggestions: ["m"], "PRIVATE-KEY": true }, "additionalProperties", []],
+    ] as const) {
+      let failure: unknown;
+      try { validateRequirementSchema(value, schema, "RiskAssessor response"); }
+      catch (error) { failure = error; }
+      const details = requirementRecord(failure, "risk shape error").details as RequirementRecord;
+      expect(details).toEqual({
+        kind: "schema",
+        path: "RiskAssessor response",
+        keyword,
+        requiredFields: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+        allowedFields: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+        missingFields: missing,
+      });
+      expect(structuredRiskFeedback(failure)).toContain("顶层必须且只能是单个 JSON 对象");
+      expect(structuredRiskFeedback(failure)).not.toContain("PRIVATE");
+    }
+  });
+
+  it("normalizes only exact Risk wrappers and snake_case aliases without changing content", () => {
+    const risk = { technicalRisks: [{ risk: "r", level: "high", impact: "i" }], businessConstraints: ["b"], mitigationSuggestions: ["m"] };
+    expect(normalizeRiskResponseShape({ technical_risks: risk.technicalRisks, business_constraints: risk.businessConstraints,
+      mitigation_suggestions: risk.mitigationSuggestions })).toEqual({ value: risk, normalization: "risk-field-aliases" });
+    expect(normalizeRiskResponseShape({ riskAssessment: risk })).toEqual({ value: risk, normalization: "risk-assessment-wrapper" });
+    expect(normalizeRiskResponseShape({ 风险评估: { 技术风险: risk.technicalRisks, 业务约束: risk.businessConstraints,
+      缓解建议: risk.mitigationSuggestions } })).toEqual({ value: risk, normalization: "risk-assessment-wrapper" });
+    expect(normalizeRiskResponseShape({ risk_analysis: { technical: risk.technicalRisks,
+      business_restrictions: risk.businessConstraints, mitigation: risk.mitigationSuggestions } })).toEqual({
+      value: { technicalRisks: risk.technicalRisks, businessConstraints: risk.businessConstraints,
+        mitigationSuggestions: risk.mitigationSuggestions }, normalization: "risk-assessment-wrapper",
+    });
+    expect(normalizeRiskResponseShape({ success: true, content: JSON.stringify(risk) })).toEqual({
+      value: risk, normalization: "risk-transport-content",
+    });
+    expect(normalizeRiskResponseShape([
+      { technicalRisks: risk.technicalRisks },
+      { businessConstraints: risk.businessConstraints },
+      { mitigationSuggestions: risk.mitigationSuggestions },
+    ])).toEqual({ value: risk, normalization: "risk-section-array" });
+    expect(normalizeRiskResponseShape({ risk_assessment: { ...risk, PRIVATE_KEY: true } })).toEqual({
+      value: { ...risk, PRIVATE_KEY: true }, normalization: "risk-assessment-wrapper",
+    });
+    const mixed = { ...risk, extra: true };
+    expect(normalizeRiskResponseShape(mixed)).toEqual({ value: mixed, normalization: null });
   });
 
   it("rejects forged or relabeled facts, other keywords, response keys, nested paths and unsafe numeric limits", () => {
@@ -558,6 +618,28 @@ async function callConvert(vendor: object, d: unknown, meta: RequirementRecord):
 }
 
 describe("real discovery code with isolated fake LLM", () => {
+  it("aborts the underlying discovery request at the native agent deadline", async () => {
+    let signal: AbortSignal | undefined;
+    const engine = new RequirementDiscoveryEngine({
+      llmEngine: {
+        reasonStructured: vi.fn((_prompt: string, _schema: unknown, options: { signal?: AbortSignal }) => {
+          signal = options.signal;
+          return new Promise((_, reject) => signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }));
+        }),
+      },
+      timeoutMs: 1000,
+      agentTimeoutMs: 100,
+    });
+    const audience = requirementRecord(requirementRecord(engine.agents, "agents").audience, "audience");
+    const pending = (audience._callLLM as (input: unknown, schema: unknown) => Promise<unknown>)(
+      { type: "商业广告", theme: "完整需求洞察", description: "完整来源正文" },
+      { type: "object", required: [] },
+    );
+    const rejected = expect(pending).rejects.toThrow("LLM 调用超时");
+    await vi.advanceTimersByTimeAsync(101);
+    await rejected;
+    expect(signal?.aborted).toBe(true);
+  });
   it.each([null, "被替换的受众"])("rejects rehashed owner audience %s against the frozen run authority", async replacement => {
     const Vendor = vendorClass(); install(Vendor);
     const vendor = new Vendor(), meta = metadata(), d = discovery();

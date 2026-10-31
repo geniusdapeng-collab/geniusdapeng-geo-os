@@ -76,12 +76,38 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
     ambience: { minimum: 0.10, maximum: 1 },
     moving: { minimum: 0.30, maximum: 1 },
   };
+  const productValues = [
+    brief.product, brief.productName, brief.model, brief.name,
+    brief.brand && typeof brief.brand === "object" ? requirementRecord(brief.brand, "Brief brand").name : brief.brand,
+    ...(Array.isArray(metadata.products) ? metadata.products.flatMap(value => {
+      const product = value && typeof value === "object" ? requirementRecord(value, "metadata product") : {};
+      return [product.name, product.model, product.brand];
+    }) : []),
+  ].flatMap(value => typeof value === "string" && value.trim() ? [value.trim()] : []);
+  const productTerms = [...new Set(productValues.flatMap(value => {
+    const compact = value.replace(/\s+/gu, "");
+    const latin = value.match(/[A-Za-z0-9][A-Za-z0-9._-]{2,}/g) ?? [];
+    return [compact, value, ...latin].filter(term => term.length >= 3);
+  }))].sort((left, right) => right.length - left.length);
+  const escapedTerms = productTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const productPattern = escapedTerms.length ? new RegExp(escapedTerms.join("|"), "iu") : null;
+  const characters = Array.isArray(metadata.characters)
+    ? metadata.characters.flatMap(value => value && typeof value === "object" ? [requirementRecord(value, "metadata character")] : []) : [];
+  const characterNames = characters.flatMap(value => typeof value.name === "string" && value.name.trim() ? [value.name.trim()] : []);
+  const characterIds = new Set(characters.flatMap(value =>
+    typeof value.id === "string" && value.id.trim() ? [value.id.trim()] : []));
   const scenePlan = scenes.map((scene, index) => {
+    const actionRecords = Array.isArray(scene.actions) ? scene.actions.map(value => requirementRecord(value, "policy coverage action")) : [];
+    const actions = actionRecords.map(action => `${String(action.actorId)} ${String(action.description ?? "")}`);
+    const actorIds = [...new Set(actionRecords.map(action => String(action.actorId)))];
     const text = JSON.stringify({ purpose: scene.purpose, visualRequirements: scene.visualRequirements,
-      audioRequirements: scene.audioRequirements, keyProps: scene.keyProps });
+      audioRequirements: scene.audioRequirements, keyProps: scene.keyProps, actions });
     const matched = mapping.find(item => item.sceneId === scene.sceneId);
     return { sceneId: String(scene.sceneId), sequence: index + 1, duration: Number(scene.duration),
-      estimatedShots: Math.max(1, Math.trunc(Number(matched?.estimatedShots ?? 1))), text };
+      estimatedShots: Math.max(1, Math.trunc(Number(matched?.estimatedShots ?? 1))), text,
+      purpose: String(scene.purpose ?? ""),
+      visualText: JSON.stringify({ visualRequirements: scene.visualRequirements, keyProps: scene.keyProps }),
+      actionText: actions.join("\n"), actorIds };
   });
   const totalDuration = scenePlan.reduce((sum, scene) => sum + scene.duration, 0);
   const shots = scenePlan.flatMap(scene => Array.from({ length: scene.estimatedShots }, (_, index) => ({
@@ -89,13 +115,40 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
     sceneId: scene.sceneId,
     duration: Number((scene.duration / scene.estimatedShots).toFixed(6)),
     text: scene.text,
+    purpose: scene.purpose,
+    visualText: scene.visualText,
+    actionText: scene.actionText,
+    actorIds: scene.actorIds,
     policyTags: [] as string[],
   }))).map((shot, index) => ({ ...shot, sequence: index + 1 }));
-  const matcherFor = (tag: string) => tag === "product-close" ? /产品|商品|整车|车身|车头|前轮|仪表|奖杯|车辆|漆面/
-    : tag === "usage" ? /骑|驾驶|压弯|冲线|跨坐|拧|油门|操控|使用/
-      : tag === "host" ? /人物|角色|李英子|摘盔|脸|肩|站上|领奖台/
-        : tag === "ambience" ? /赛道|环境|场地|护栏|路肩|热浪|颁奖|灯|围场/
-          : /追|低机位|压弯|冲出|甩|推近|跟拍|运动|高速|越过|冲过|加速|掠过|滑过|切进|擦过|甩出|全油门|车尾.*摆/;
+  const matchesTag = (tag: string, shot: typeof shots[number]) => {
+    if (tag === "product-close") {
+      const subject = `${shot.purpose}\n${shot.visualText}`;
+      const productNamed = Boolean(productPattern?.test(subject));
+      const productCue = /产品|商品|整车|车身|车头|前轮|仪表|面板|按键|接口|包装|瓶身|机身|外观|材质|涂装|近景|特写/iu.test(subject);
+      const productInPurpose = Boolean(productPattern?.test(shot.purpose))
+        || /产品|商品|整车|车身|车头|仪表|外观|材质|涂装|近景|特写/iu.test(shot.purpose);
+      const personFocus = /脸|面部|眼睛|眼神|手部|双手|单手|手指|指节|手腕|手套|掌心|手臂|肩|颈|皮肤|汗|头发|呼吸|身体/iu.test(`${shot.purpose}\n${shot.visualText}`);
+      const opponentContext = /对手|竞品|另一辆|另一台|并排[^。；\n]{0,12}车/iu.test(subject);
+      return (productNamed || productCue) && !(personFocus && !productInPurpose) && !(opponentContext && !productNamed);
+    }
+    if (tag === "usage") {
+      if (shot.actorIds.includes("$product")) return true;
+      const interaction = /使用|操作|启动|关闭|连接|安装|打开|点击|按压|握持|穿戴|佩戴|驾驶|骑行|控制|调节|切换|输入|跨|坐|拧|按|拉|推|转|骑|压弯|转向|加速|制动|冲线|冲过|越过|超车/iu
+        .test(`${shot.purpose}\n${shot.visualText}\n${shot.actionText}`);
+      return interaction;
+    }
+    if (tag === "host") {
+      const subject = `${shot.purpose}\n${shot.visualText}`;
+      const named = characterNames.some(name => subject.includes(name));
+      const strongIdentity = /脸|面部|眼睛|眼神|正脸|肖像|半身|全身|手部|双手|单手|手指|指节|手腕|手套|掌心|手臂|肩|颈|皮肤|汗|高马尾|发型/iu.test(subject);
+      const identity = /人物|角色/iu.test(subject);
+      const anonymous = /全盔|面罩|背影|匿名/iu.test(`${shot.purpose}\n${shot.visualText}`);
+      return named || strongIdentity || identity && !anonymous;
+    }
+    if (tag === "ambience") return /环境|场地|背景|空间|自然光|光线|天气|室内|户外|街道|赛道|场景|围场|舞台|热浪|颁奖/iu.test(shot.text);
+    return /运动|移动|跟拍|摇镜|推近|拉远|高速|追|冲出|掠过|加速|甩|行走|奔跑|飞行|驶过|运镜/iu.test(shot.text);
+  };
   const chooseSubset = (candidates: typeof shots, minimum: number, maximum: number) => {
     const pool = candidates.slice(0, 18);
     let best: typeof shots | null = null, bestScore = Number.POSITIVE_INFINITY;
@@ -110,9 +163,7 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
     return best;
   };
   for (const tag of requiredTags) {
-    const matcher = matcherFor(tag);
-    let candidates = shots.filter(shot => matcher.test(shot.text));
-    if (!candidates.length) candidates = [...shots];
+    const candidates = shots.filter(shot => matchesTag(tag, shot));
     const rule = ratios[tag], minimum = totalDuration * rule.minimum, maximum = totalDuration * rule.maximum;
     const selected = tag === "host" ? chooseSubset(candidates, minimum, maximum) ?? [] : candidates;
     for (const shot of selected) {
@@ -130,7 +181,7 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
       && plannedSeconds[tag]! <= totalDuration * ratio.maximum + 1e-5];
   })) as Record<string, boolean>;
   const heroShot = shots.find(shot => shot.policyTags.includes("product-close")
-    && /整车|车身|漆面|涂装|820RR/.test(shot.text) && !/仪表|面罩/.test(shot.text))
+    && Boolean(productPattern?.test(shot.text)) && !/仪表|面罩|手腕|颈侧|对手/iu.test(shot.text))
     ?? shots.find(shot => shot.policyTags.includes("product-close")) ?? null;
   return {
     accounting: "同一镜头可同时拥有多个 policyTags；每个标签的时长与占比按该标签独立累计，不把百分比相加。host 只累计身份清晰的出镜镜头，不把匿名全盔背影自动计入。",
@@ -145,13 +196,13 @@ export function policyCoveragePlan(metadata: RequirementRecord, scenes: Requirem
       || plannedSeconds.host <= totalDuration * ratios.host.maximum + 1e-5,
     heroShot,
     shotCardRule: "正式镜头卡必须逐镜携带非空 policyTags；此处只给场景级预算，不替代镜头卡，也不证明实际成片已满足。",
-    scenes: scenePlan.map(({ text: _text, ...scene }) => {
+    scenes: scenePlan.map(({ text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText, actorIds: _actorIds, ...scene }) => {
       const sceneShots = shots.filter(shot => shot.sceneId === scene.sceneId);
       return { ...scene, policyTags: [...new Set(sceneShots.flatMap(shot => shot.policyTags))],
         policyTagSeconds: Object.fromEntries(requiredTags.map(tag => [tag,
           Number(sceneShots.filter(shot => shot.policyTags.includes(tag)).reduce((sum, shot) => sum + shot.duration, 0).toFixed(6))])) };
     }),
-    shots: shots.map(({ text: _text, ...shot }) => ({ ...shot,
+    shots: shots.map(({ text: _text, purpose: _purpose, visualText: _visualText, actionText: _actionText, actorIds: _actorIds, ...shot }) => ({ ...shot,
       shareOfTimeline: Number((shot.duration / totalDuration).toFixed(6)) })),
   };
 }
@@ -172,8 +223,10 @@ function stripScenePolicyAnnotations(value: RequirementRecord): RequirementRecor
     if (!Array.isArray(scene.visualRequirements)) return scene;
     scene.visualRequirements = scene.visualRequirements.flatMap(item => {
       if (typeof item !== "string") return [item];
-      const clean = item.replace(/[，,]\s*标签\s*[:：].*$/u, "").trim();
-      return clean && !/^标签\s*[:：]/u.test(clean) ? [clean] : [];
+      // "镜头标签：" is model-authored presentation text, not a source fact.
+      // Keep the scene sentence before it, but remove the competing tag list.
+      const clean = item.replace(/(?:^|[，,；;])\s*(?:镜头)?标签\s*[:：].*$/u, "").trim();
+      return clean ? [clean] : [];
     });
     return scene;
   });
@@ -205,10 +258,10 @@ function productAndClaimPlan(scope: Scope, coverage: ReturnType<typeof policyCov
       sceneId: hero.sceneId,
       durationSec: hero.duration,
       policyTags: [...hero.policyTags, "product-close"].filter((tag, index, list) => list.indexOf(tag) === index),
-      framing: "以整车为主体，在已接受参考图实际可见的车身与涂装区域完成一个低机位短特写；不指定图片未确认的部件、局部形态或机位角度。",
+      framing: `以${authority.product}为主体，在已接受参考图实际可见的产品主体与获批视觉锚点区域完成一个短特写；不指定图片未确认的部件、局部形态或机位角度。`,
       verification: [
         "生成前绑定本次 G1 A1 已接受图片及其 SHA/URL",
-        "首帧、中段与末帧逐项核对整车与涂装，不补写未见部件",
+        "首帧、中段与末帧逐项核对商品主体与获批视觉锚点，不补写未见部件",
         "该镜头只支撑 G1 已接受卖点，不扩张为性能、冠军或竞品结论",
       ],
     } : {
@@ -466,12 +519,16 @@ function productionPlanningPrompt(scope: Scope): string {
     + `最终成片 ${duration.finalDurationSeconds ?? "未指定"}s ±${duration.toleranceSeconds ?? "未指定"}s。`
     + `封面是成片最前片段，不重复加入内容节点；不得把最终片长直接写成内容节点合计。\n`
     + (productVisualAuthority.required
-      ? `商品片必须在既有场次计划中落实至少一个可执行的 product-close 卖点镜头：以整车为主体，在 G1 A1 已接受图片实际可见的车身/涂装区域取景，并绑定一个已接受 selling point；不得指定图片未确认的部件、局部形态或机位角度。`
+      ? `商品片必须在既有场次计划中落实至少一个可执行的 product-close 卖点镜头：以 G1 商品主体为核心，在已接受图片实际可见的主体或获批视觉锚点区域取景，并绑定一个已接受 selling point；不得指定图片未确认的部件、局部形态或机位角度。`
         + `必须单列图片 URL/页面、angle、licenseRisk 与生成前后核验计划；licenseRisk=high/unknown 时，对外发布前由产品所有者核验授权，当前不声称可商业投放。\n`
       : "")
+    + `若画面出现虚构竞品或参照物，必须无品牌标识、无可识别真实主体或专属视觉资产，不可辨识为具体竞品；比较场景不得出现比较性文字、旁白或市场领先暗示。\n`
+    + `技术参数即使来自 G1，也不得在创作说明中裸写为可复用卖点；只有 productAndClaimPlan 绑定的 claimShot 可以承载已接受卖点，数字参数默认不上屏、不入台词、不作性能结论。\n`
+    + `人物表现按本次已审服装和平台规范闭合：运动场景护具按项目合同完整；任何服装边界都不得越过已审位置，镜头中心不得下移制造身体局部凝视，不做裸露或低俗特写。\n`
+    + `抖音烧录字幕与完整组合ASS锁定同一样式：Noto Sans SC，74px，4px黑描边，白字，底部安全边距18%（1920高约346px），单行优先、最多两行；实测遮挡或对比不合格时只能加强底衬/上移，不能改变文字与时间区间。\n`
     + `本次明确的独立交付声明（未出现的键没有新增客户承诺）：${JSON.stringify(declarations)}。`
     + `若明确要求standalone封面，在既有visualRequirements中规划PNG/JPEG独立图、目标画幅/分辨率、来源绑定和文件核验；独立文件与是否开启片头分别记录，本次openWithCover=${String(profile.openWithCover ?? false)}。`
-    + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字、覆盖实际视频0秒至末帧，`
+    + `若明确要求dialogue-and-composite-ass，在既有字段内区分SRT/VTT台词侧车（dialogue-only）与完整组合ASS（complete-composition），说明ASS包含台词及本次请求的持续文字，按内容时间线与静音封面后的最终成片映射核对，`
     + `并规划文字、区间、字体样式及compositionSha256的核对；both时烧录和ASS使用同一组合。没有明确请求的持续文字、封面或其他文字层不得新增。`
     + `将下面原文已给出的字号、边距、描边、墨迹范围、平台遮挡区和字体核验要求落实为本次模型计划，不以泛称“安全区”代替明确数值；未给数值时由本次模型按实际要求规划并标明待验证，不伪称已测量。\n`
     + (typeof brief.description === "string" ? `\n### 客户执行要求原文（Brief.description，保留原文；输入资料，不是完成回执）\n${brief.description}\n` : "")
@@ -795,7 +852,7 @@ export function installPrdAuthorityBridge(
             return guard(scope, () => {
               check(scope);
               const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile);
-              const result = Reflect.apply(parse, this, [value, ...args]);
+              const result = Reflect.apply(parse, this, [kind === "production" ? raw : value, ...args]);
               if (requirementHash(result) !== requirementHash(kind === "creative" ? { creativeCore: raw } : raw)) {
                 prdFail("PRD_RESPONSE_CHANGED", "原生 parser 用规则修改了真实模型模块，拒绝把补全文字当作模型创作");
               }
@@ -859,7 +916,12 @@ export function installPrdAuthorityBridge(
       const nativeScenePlan = requirementRecord(result.scenePlan, "G4 场景计划");
       const scenes = nativeScenePlan.scenes as RequirementRecord[];
       const nativeShotMapping = requirementRecord(nativeScenePlan, "G4 原始场景计划").shotMapping;
-      const coveragePlan = policyCoveragePlan(scope.authority.metadata, scenes, nativeShotMapping as RequirementRecord[]);
+      const contractScenes = new Map(scope.contract!.scenes.map(scene => [scene.id, scene]));
+      const coverageScenes = scenes.map(scene => ({
+        ...scene,
+        actions: contractScenes.get(String(scene.sceneId))?.actions ?? [],
+      }));
+      const coveragePlan = policyCoveragePlan(scope.authority.metadata, coverageScenes, nativeShotMapping as RequirementRecord[]);
       const productPlan = productAndClaimPlan(scope, coveragePlan);
       const durationAuthority = prdDurationContract(scope.authority.profile,
         scope.contract!.scenes.reduce((sum, scene) => sum + scene.duration, 0));
@@ -877,6 +939,19 @@ export function installPrdAuthorityBridge(
           },
           ...(scope.authority.profile.persistentSubtitleText
             ? { persistentText: scope.authority.profile.persistentSubtitleText } : {}),
+          stylePolicy: {
+            fontFamily: "Noto Sans SC",
+            fontSizePx: 74,
+            outlinePx: 4,
+            fillColor: "#FFFFFF",
+            outlineColor: "#000000",
+            borderStyle: 1,
+            shadow: 1,
+            alignment: 2,
+            bottomMarginRatio: 0.18,
+            maxLines: 2,
+            source: "Douyin subtitle policy for 1080x1920; fallback may only add backdrop or move upward without changing text or timing",
+          },
         },
         productAndClaimPlan: productPlan,
         characterPlans: characters.map(character => ({ characterId: character.characterId, name: character.name,
@@ -886,6 +961,11 @@ export function installPrdAuthorityBridge(
         audioSpecification: result.audioSpecification,
         shotMapping: nativeShotMapping,
         ...(coveragePlan ? { policyCoveragePlan: coveragePlan } : {}),
+        narrativeBoundaries: {
+          competitorVehicles: "no brand mark, no real team livery, no identifiable competitor, and no comparative copy or narration",
+          technicalFacts: "G1 numeric claims are not on-screen facts unless bound to the accepted claim shot; no performance or competitor conclusion",
+          bodyPresentation: "full protective gear while riding; standing neckline stops at the sternum; no nudity, sexualized body close-up, or camera movement below the sternum",
+        },
         sceneVerificationPlans: scenes.map(scene => ({ sceneId: scene.sceneId, duration: scene.duration,
           visualRequirements: scene.visualRequirements, audioRequirements: scene.audioRequirements, dialogue: scene.dialogue,
           ...(coveragePlan ? { policyTags: coveragePlan.scenes.find(item => item.sceneId === scene.sceneId)?.policyTags ?? [] } : {}) })),

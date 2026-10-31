@@ -151,7 +151,10 @@ export function sourceDocument(raw: string, contentType: string, finalUrl: strin
   const visible = html ? raw.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<(?:br|\/p|\/div|\/li|\/h[1-6]|\/tr)[^>]*>/gi, "\n").replace(/<[^>]*>/g, " ") : raw;
   const text = decodeEntities(visible).replace(/\r\n?/g, "\n").replace(/[\t \f]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  if (!text || /(?:请输入验证码|访问过于频繁|请完成安全验证|verify you are human|checking your browser)/i.test(text)) throw new Error("SOURCE_UNAVAILABLE：页面为空或是访问验证页");
+  if (!text || /(?:请输入验证码|访问过于频繁|请完成安全验证|verify you are human|checking your browser)/i.test(text)
+    || text.length < 200 && /(?:搜索\s*Agent[，,：:\s]*你的?全能搜索助手|全能搜索助手|search\s*agent.*search assistant)/i.test(text)) {
+    throw new Error("SOURCE_UNAVAILABLE：页面为空、访问验证页或搜索助手占位页");
+  }
   if (text.length > SOURCE_MAX_TEXT_CHARS) throw new Error("SOURCE_TEXT_TOO_LARGE：完整正文超过单来源审核上限，不能截断后作为证据");
   return { text, assetUrls: [...assetUrls] };
 }

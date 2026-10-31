@@ -176,8 +176,14 @@ class CompetitorScout {
 
     // ===== 空位计算 =====
     const competitorPointText = competitors.flatMap(c => c.selling_points).join('|');
-    const our_opening = ourPoints.filter(p => !competitorPointText.includes(p));
-    const crowded_points = ourPoints.filter(p => competitorPointText.includes(p));
+    // 没有可核实竞品时，任何“差异化空位”都是无对照的推断。
+    // 保留商品公开主张供下游引用，但不能把它们伪装成已发现的竞品差异。
+    const our_opening = competitors.length
+      ? ourPoints.filter(p => !competitorPointText.includes(p))
+      : [];
+    const crowded_points = competitors.length
+      ? ourPoints.filter(p => competitorPointText.includes(p))
+      : [];
 
     // 竞品弱点 = 我们的攻击面（挂到空位里）
     const weaknessOpenings = competitors

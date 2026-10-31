@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertRequirementContractBridge, installRequirementContractBridge, installVendorRequirementContractBridge,
-  withRequirementContractScope
+  renderScenePolicyCoverage, sanitizeUnverifiedProductRisk, withRequirementContractScope
 } from "./requirement-contract-bridge.js";
 import { captureRequirementTheme, requirementAuthorityPrompt, type RequirementAuthorityOptions } from "./requirement-authority.js";
 import {
@@ -248,7 +248,7 @@ describe("actual native scene prompt and strict production response", () => {
     { duration: 60, feasibleMiddleCounts: [1, 2, 3, 4, 5, 6, 7, 8] }
   ])("corrects the actual $duration s native contradiction without changing identical customer literals or schema", async ({ duration, feasibleMiddleCounts }) => {
     expect(createHash("sha256").update(readFileSync(nativeDiscoveryFile)).digest("hex"))
-      .toBe("7bae6ad9f6a5950570bcfecc7e8fc0fed3e8e9a55fd510669cd6823d1e375765");
+      .toBe("44ed547fc8b2b14fbc0fdf51d4026311a77df340e23ab491ea40e3b39feaf3e3");
     const input: RequirementRecord = { type: "商业广告", theme: "自主创作", duration_sec: duration, description: "最初的客户描述" };
     const original = await nativePromptParts(input), sample = JSON.parse(original.example) as RequirementRecord;
     const nodes = [sample.opening, ...(sample.scenes as unknown[]), sample.ending].map(value => requirementRecord(value, "sample node"));
@@ -628,13 +628,38 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     const result = await runDiscovery(run, model.engine, discovery), calls = riskCalls(model.calls);
     expect(calls).toHaveLength(1); expect(model.calls).toHaveLength(4);
     expect(requirementHash(result.riskAssessment)).toBe(before);
-    expect(calls[0]!.options).toEqual({ maxTokens: 4000, temperature: 1, timeoutMs: 100 });
+    expect(calls[0]!.options).toMatchObject({ maxTokens: 4000, temperature: 1, timeoutMs: 100, signal: expect.any(AbortSignal) });
     const properties = requirementRecord(requirementRecord(calls[0]!.schema, "risk schema").properties, "risk properties");
     for (const [key, maximum] of [["technicalRisks", 5], ["businessConstraints", 5], ["mitigationSuggestions", 5]] as const) {
       expect(properties[key]).toMatchObject({ type: "array", minItems: 1, maxItems: maximum });
     }
     for (const call of model.calls) { expectCompleteSources(call.prompt, run); expect(call.prompt).not.toContain(riskFeedbackHeading); }
     expect(risk.run).toBe(nativeRun); expect(risk.maxRetries).toBe(1); expect(risk.timeoutMs).toBe(100);
+  });
+
+  it("tells the existing second Risk call the exact fixed top-level shape after missing fields", async () => {
+    installNativeDiscovery();
+    const run = privateRun("risk-shape-feedback", 30, physicalScene([10, 10, 10]));
+    const invalid = { ...riskResponse(run, "technicalRisks", 1), "PRIVATE-EXTRA": true };
+    delete (invalid as RequirementRecord).mitigationSuggestions;
+    const snake = {
+      technical_risks: run.modules.risk.technicalRisks,
+      business_constraints: run.modules.risk.businessConstraints,
+      mitigation_suggestions: run.modules.risk.mitigationSuggestions,
+    };
+    const model = modelFor(run, [run.modules.scene], [invalid, snake]);
+    const result = await runDiscovery(run, model.engine), calls = riskCalls(model.calls);
+    const facts = {
+      kind: "schema", path: "RiskAssessor response", keyword: "required",
+      requiredFields: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+      allowedFields: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+      missingFields: ["mitigationSuggestions"],
+    };
+    expect(requirementHash(result.riskAssessment)).toBe(requirementHash(run.modules.risk));
+    expect(calls).toHaveLength(2);
+    expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(facts);
+    expect(calls[1]!.prompt).toContain("顶层必须且只能包含");
+    expect(calls[1]!.prompt).not.toContain("PRIVATE");
   });
 
   it.each([{ key: "technicalRisks", maximum: 5 }, { key: "businessConstraints", maximum: 5 }, { key: "mitigationSuggestions", maximum: 5 }] as const)
@@ -658,13 +683,15 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
         expect(promptJson(calls[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts(key, count === 0 ? "minItems" : "maxItems", count, count === 0 ? 1 : maximum));
         expect(requirementHash(result.riskAssessment)).toBe(requirementHash(valid));
         expect([run.input, run.authority, run.approvedTheme, invalid, valid].map(requirementHash)).toEqual(hashes);
-        expect(calls[1]!.schema).toBe(calls[0]!.schema); expect(calls[1]!.options).toEqual(calls[0]!.options);
+        expect(calls[1]!.schema).toBe(calls[0]!.schema);
+        expect(calls[1]!.options).toMatchObject({ maxTokens: 4000, temperature: 1, timeoutMs: 100, signal: expect.any(AbortSignal) });
+        expect(requirementRecord(calls[1]!.options, "retry options").signal).not.toBe(requirementRecord(calls[0]!.options, "first options").signal);
         for (const call of model.calls) {
           expectCompleteSources(call.prompt, run);
           expect(call.prompt).not.toContain("PRIVATE-RESPONSE");
           if (!calls.includes(call)) expect(call.prompt).not.toContain(riskFeedbackHeading);
         }
-        for (const call of calls) expect(call.options).toEqual({ maxTokens: 4000, temperature: 1, timeoutMs: 100 });
+        for (const call of calls) expect(call.options).toMatchObject({ maxTokens: 4000, temperature: 1, timeoutMs: 100, signal: expect.any(AbortSignal) });
         expect(JSON.stringify(result)).not.toContain(riskFeedbackHeading);
       }
     });
@@ -711,7 +738,7 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     expect(requirementRecord(failure, "native parser failure").details).toBeUndefined();
     expect(riskRequests).toHaveLength(2); expect(calls).toHaveLength(4);
     expect(promptJson(riskRequests[1]!.prompt, riskFeedbackHeading)).toEqual(riskFacts("mitigationSuggestions", "maxItems", 8, 5));
-    for (const call of calls) { expectCompleteSources(call.prompt, run); expect(call.options).toEqual({ maxTokens: 4000, temperature: 1 }); }
+    for (const call of calls) { expectCompleteSources(call.prompt, run); expect(call.options).toMatchObject({ maxTokens: 4000, temperature: 1, signal: expect.any(AbortSignal) }); }
   });
 
   it.each(["transport", "forged-details"])("does not turn a first %s failure into Risk feedback or sticky schema failure", async kind => {
@@ -842,5 +869,78 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
     expect(requirementHash(result.riskAssessment)).toBe(before);
     expect(requirementRecord(result.riskAssessment, "risk result").businessConstraints).toEqual(businessConstraints);
     expect(calls[0]!.prompt).not.toContain(riskFeedbackHeading);
+  });
+});
+
+describe("host-owned G3 visual and scene-policy normalization", () => {
+  it("removes only positive unverified product-part suggestions from risk advice", () => {
+    const source = {
+      riskAssessment: {
+        technicalRisks: [
+          { risk: "高速压弯时轮胎接地局部关系可能穿模", level: "high", impact: "后视镜与座椅接缝可能漂移" },
+          { risk: "不得新增轮胎接地局部等未确认外观", level: "medium", impact: "保留否定约束，不据此扩写" },
+        ],
+        businessConstraints: ["不虚构商品事实"],
+        mitigationSuggestions: ["用后视镜与刹车卡钳微距凑产品特写", "不得新增轮辋或排气口局部"],
+      },
+    };
+    const safe = sanitizeUnverifiedProductRisk(source);
+    const risk = safe.riskAssessment as RequirementRecord;
+    expect((risk.technicalRisks as RequirementRecord[])[0]).toMatchObject({ risk: "已核实商品参考区域的一致性", level: "high" });
+    expect((risk.technicalRisks as RequirementRecord[])[1]).toEqual(source.riskAssessment.technicalRisks[1]);
+    expect((risk.mitigationSuggestions as string[])[0]).toContain("只使用本次 G1 已接受图片中明确可见的区域");
+    expect((risk.mitigationSuggestions as string[])[1]).toBe("不得新增轮辋或排气口局部");
+    expect(safe.productVisualRiskNormalization).toMatchObject({ applied: true, normalizedEntries: 2 });
+    expect(risk.businessConstraints).toEqual(["不虚构商品事实"]);
+  });
+
+  it("renders a feasible scene-level policyTags and duration budget before formal shot cards", () => {
+    const metadata = { brief: { scenePolicyRequirements: {
+      requiredTags: ["product-close", "usage", "host", "ambience", "moving"],
+    } } };
+    const contract = { scenes: [
+      { id: "opening", duration: 3.8, purpose: "商品车头起步，人物骑行进入赛道", keyElements: ["车身", "赛道"], props: [], actions: [] },
+      { id: "scene-1", duration: 5.6, purpose: "车辆压弯", keyElements: ["车身"], props: [], actions: [] },
+      { id: "scene-2", duration: 8.4, purpose: "连续超车并高速追拍", keyElements: ["车辆", "赛道", "人物"], props: [], actions: [] },
+      { id: "scene-3", duration: 5.2, purpose: "冲线后高速运动收车", keyElements: ["车辆", "赛道"], props: [], actions: [] },
+      { id: "ending", duration: 6.4, purpose: "李英子站上领奖台，整车同框", keyElements: ["人物", "车辆", "颁奖"], props: [], actions: [] },
+    ] };
+    const section = renderScenePolicyCoverage(metadata, contract);
+    expect(section).toContain("场景级 policyTags 与配比预算");
+    expect(section).toContain("product-close=通过");
+    expect(section).toContain("usage=通过");
+    expect(section).toContain("host=通过");
+    expect(section).toContain("ambience=通过");
+    expect(section).toContain("moving=通过");
+    expect(section).toContain("正式镜头卡必须逐镜携带非空 policyTags");
+  });
+
+  it("uses structured actions and planning shots to satisfy host and usage budgets without lowering ratios", () => {
+    const metadata = { brief: { scenePolicyRequirements: {
+      requiredTags: ["product-close", "usage", "host", "ambience", "moving"],
+    } } };
+    const nodes = [
+      { id: "opening", duration: 3.2, purpose: "车库里手套拧下油门", elements: ["全盔面罩冷反射", "手套"], prop: "820RR-RC整车",
+        action: "右手扣紧820RR-RC油门握把并拧下第一格" },
+      { id: "scene-1", duration: 5, purpose: "整车压弯", elements: ["弯中倾倒的820RR-RC整车", "赛道边线"], prop: "820RR-RC整车",
+        action: "车身向弯心倾倒" },
+      { id: "scene-2", duration: 5, purpose: "仪表特写拉出", elements: ["TFT仪表", "整车侧面"], prop: "820RR-RC车身整体",
+        action: "左手搭在车把拉杆上完成换挡" },
+      { id: "scene-3", duration: 6.9, purpose: "连续超车冲过终点线", elements: ["终点线", "高速赛道"], prop: "820RR-RC整车",
+        action: "连续切入内线并冲过终点线" },
+      { id: "scene-4", duration: 5, purpose: "摘下全盔、高马尾甩开", elements: ["摘下的全盔", "黑色高马尾"], prop: "停稳的820RR-RC",
+        action: "单手摘下全盔，高马尾自然垂下" },
+      { id: "ending", duration: 4.3, purpose: "她站在领奖台最高一级", elements: ["奖杯", "领奖台", "820RR-RC整车"], prop: "820RR-RC整车",
+        action: "单手持奖杯站在领奖台" },
+    ];
+    const contract = { scenes: nodes.map(node => ({
+      id: node.id, duration: node.duration, purpose: node.purpose, keyElements: node.elements,
+      props: [{ name: node.prop, description: "本场实际可见道具" }],
+      actions: [{ actorId: "young-rider-01", description: node.action }],
+    })) };
+    const section = renderScenePolicyCoverage(metadata, contract);
+    expect(section).toContain("usage=通过");
+    expect(section).toContain("host=通过");
+    expect(section).toContain("host≤30%=通过");
   });
 });

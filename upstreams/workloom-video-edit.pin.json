@@ -2,7 +2,7 @@
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
   "commit": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
   "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208",
-  "verifiedAt": "2026-10-30T02:42:21.000Z",
+  "verifiedAt": "2026-10-30T10:03:03.590Z",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
@@ -10,7 +10,7 @@
   "sourceFileCount": 3561,
   "sourceBytes": 329633748,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "bf65c47d15bc9f5abf190d97b37c6bbf91cdbe76d6deb23b379a7d8df644f51d",
+  "snapshotSha256": "1f739fb2786b1702f4568a0824e4a6829a8d0dc0404d031fabe1edab18d09f50",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -24,7 +24,7 @@
   ],
   "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
   "targetOwnedFileCount": 56,
-  "sourceOverlayCount": 91,
+  "sourceOverlayCount": 110,
   "pendingAfterV1": [],
   "assetOverlays": [],
   "compatibilityOverlays": [],
@@ -98,6 +98,14 @@
       "receipt": "upstreams/requirement-duration-and-visual-authority.target-overlay.json",
       "receiptSha256": "bb0b1efa002afefd391b6098f661ebf475f2a109340adfbb5f83a4a5ddc28948",
       "scope": "G3 derives content duration behind a silent cover, rejects invented product parts while allowing negative omission constraints, uses the selected project wardrobe, and carries image-rights and subtitle timing into review.",
+      "upstreamUpgradeClaimed": false,
+      "wholeEngineUpgradeClaimed": false
+    },
+    {
+      "id": "marketing-evidence-and-risk-feedback",
+      "receipt": "upstreams/marketing-evidence-and-risk-feedback.target-overlay.json",
+      "receiptSha256": "9d394a165cc4a0a82e5fc511e72216fb8cebece0f6d3ded7d6ecec6ce65b07b3",
+      "scope": "G1 preserves complete source evidence and uses the model token budget; G3 and PRD policy tags use product, cast, actions and approved claims from the current contract rather than a fixed film; model-authored tag annotations are removed; discovery deadlines cancel live requests; subtitle timing/style, cover rights, competitor isolation and character presentation boundaries are deterministic; unknown evidence and structures fail closed.",
       "upstreamUpgradeClaimed": false,
       "wholeEngineUpgradeClaimed": false
     }

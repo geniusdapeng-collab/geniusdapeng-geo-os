@@ -1637,10 +1637,27 @@ ${text}`;
    * 【v2.1.15-fix 确认单截断】长文本智能换行显示完整内容，不再硬截断36字符
    *   原实现 description/visual_style 等只显示前36字符，用户无法审阅完整内容
    */
+  _formatSummaryValue(value) {
+    if (value === undefined || value === null) return '';
+    if (Array.isArray(value)) return value.map(item => this._formatSummaryValue(item)).filter(Boolean).join('；');
+    if (typeof value !== 'object') return String(value);
+    const labels = {
+      voice: '声音', original_requirement: '原始要求', lines: '台词', speakers: '说话人',
+      audio_layers: '音频层', note: '说明',
+    };
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const text = this._formatSummaryValue(item);
+        return text ? `${labels[key] || key}：${text}` : '';
+      })
+      .filter(Boolean)
+      .join('；');
+  }
+
   generateConfirmationSummary(result) {
     const task = result.tasks[0];
     // 盒内可用宽度 40 字符（中文按 2 宽度计）
-    const wrap = (text) => this._wrapBoxLines(String(text ?? ''), 38);
+    const wrap = (text) => this._wrapBoxLines(this._formatSummaryValue(text), 38);
     const box = (label, text) => {
       const lines = wrap(text);
       return lines.map(l => `║ ${l}║`).join('\n');

@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { constants } from "node:fs";
 import { mkdir, open, realpath, writeFile } from "node:fs/promises";
+import {
+  DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
+  countDeepSeekTokens,
+  deepSeekInputTokenBudget,
+} from "@workloom/base/model-router";
 import { reviewStage, type ProducerVerdict } from "@hyperreality/video-studio";
 import { createDataMiningExecutor, type DataMiningStagePlan, type ExecutorLlm, type IntelStage, type SearchFn, type SearchHit } from "./data-mining-executor.js";
 import { fetchMarketingSource, type SourceSnapshot } from "./marketing-source-fetcher.js";
@@ -92,6 +97,87 @@ function productInput(metadata: RecordValue): RecordValue {
   }
   if (!input.name) fail("MARKETING_PRODUCT_REQUIRED", "营销预生产需要明确商品名，不能把自由文本猜成已核实商品事实");
   return input;
+}
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.flatMap(item => typeof item === "string" && item.trim() ? [item.trim()] : [])
+    : [];
+}
+function explicitRestrictions(metadata: RecordValue): string[] {
+  const brief = metadata.brief && typeof metadata.brief === "object" ? object(metadata.brief, "Brief") : {};
+  return stringList(brief.restrictions);
+}
+function sourceRestrictions(payload: RecordValue): string[] {
+  const identity = payload.identity && typeof payload.identity === "object" ? payload.identity as RecordValue : {};
+  const specs = identity.specs && typeof identity.specs === "object" && !Array.isArray(identity.specs)
+    ? identity.specs as RecordValue : {};
+  const limits: string[] = [];
+  const limitPattern = /不具备|不可|不得|禁止|仅限|只适用|限制|not eligible|not for/i;
+  for (const [key, value] of Object.entries(specs)) {
+    const text = String(value ?? "").trim();
+    if (text && limitPattern.test(`${key}${text}`)) limits.push(`必须保留来源限定：${key}：${text}`);
+  }
+  const points = Array.isArray(identity.official_selling_points) ? identity.official_selling_points : [];
+  for (const item of points) {
+    const point = typeof item === "string" ? item : item && typeof item === "object" ? String((item as RecordValue).point ?? "") : "";
+    if (point.trim() && limitPattern.test(point)) limits.push(`必须保留来源限定：${point.trim()}`);
+  }
+  return limits;
+}
+function reportedDate(text: string): string | null {
+  const patterns = [
+    /(?:^|\D)(20\d{2})\s*[年/.-]\s*(\d{1,2})\s*[月/.-]\s*(\d{1,2})\s*日?/g,
+    /(?:^|\D)(20\d{2})(\d{2})(\d{2})(?:\D|$)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+      const check = new Date(Date.UTC(year, month - 1, day));
+      if (check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day) {
+        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      }
+    }
+  }
+  return null;
+}
+function marketingPolicy(input: {
+  metadata: RecordValue; stages: StageFactsReport[]; sources: SourceSnapshot[];
+}): { restrictions: string[]; priceContext: RecordValue | null } {
+  const noEvidence = input.stages.filter(report => report.facts.status === "no_evidence").map(report => report.stage === "A2"
+    ? "没有可核实用户评价：禁止用户口碑、评分、人数、销量或使用效果共识主张"
+    : "没有可核实竞品证据：禁止对比、竞品弱点或市场领先主张");
+  const a1 = input.stages.find(report => report.stage === "A1");
+  const researchLimits = a1 ? sourceRestrictions(a1.facts.payload) : [];
+  const restrictions = [...new Set([...noEvidence, ...explicitRestrictions(input.metadata), ...researchLimits])];
+  const priceClaim = a1?.facts.claims.find(claim => claim.pointer.startsWith("/identity/prices/"));
+  const source = priceClaim ? input.sources.find(item => item.sourceId === priceClaim.sourceId) : undefined;
+  const priceContext = priceClaim && source ? {
+    reportedAt: reportedDate(source.text), retrievedAt: source.fetchedAt, sourceUrl: source.finalUrl,
+    claimIds: a1!.facts.claims.filter(claim => claim.pointer.startsWith("/identity/prices/")).map(claim => claim.claimId),
+  } : null;
+  return { restrictions, priceContext };
+}
+function g1ReviewContent(bundle: MarketingFactsBundle, input: { intent: string; metadata: RecordValue }): string {
+  const facts = structuredClone(bundle);
+  delete (facts as Partial<MarketingFactsBundle>).g1ContentSha256;
+  return canonicalRenderJson({
+    facts,
+    requestedIntent: input.intent,
+    requestedMetadata: input.metadata,
+    instruction: "用户意图与Brief仅是需求，事实只能来自已核实claims；客户 Brief 的 restrictions 优先于所有审阅建议。审阅建议只用于证据修订，不是下游文案授权；若建议与客户禁令冲突，必须忽略该建议，不得写入 hook、字幕、台词、镜头或交付描述。",
+    integrity: {
+      schemaVersion: "workloom.g1-content-integrity/v1",
+      algorithm: "sha256",
+      factsSha256: renderSha256(canonicalRenderJson(facts)),
+      factsHashScope: "canonical facts object with facts.g1ContentSha256 omitted",
+      evidenceHashPolicy: "the exact G1 artifact SHA-256 is persisted as bundle.g1ContentSha256 and must match the producer gate evidence",
+    },
+  });
+}
+export async function assertMarketingReviewCapacity(g1Content: string): Promise<void> {
+  const actual = await countDeepSeekTokens(g1Content);
+  const budget = deepSeekInputTokenBudget(DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS);
+  if (actual > budget) fail("MARKETING_REVIEW_TOO_LARGE", "完整事实档案超过G1模型输入容量，不能只审摘要");
 }
 const NON_PHYSICAL_CATEGORY = /软件|服务|课程|培训|咨询|订阅|会员|(?:^|\W)saas(?:$|\W)|application|platform|software|service|course|consult|subscription/i;
 const SMALL_IMAGE_ASSET = /(?:^|[/_.-])(logo|icon|favicon|avatar|sprite|placeholder|spacer|loading|badge|qr)(?:[/_.-]|$)/i;
@@ -387,19 +473,18 @@ export async function prepareMarketingFacts(input: {
     raw[stage] = payload;
   }
   const rawSha256 = renderSha256(canonicalRenderJson(raw));
-  const assembled = collector.assemble(plan.trace_id, product, toJennyMarketingRaw(raw, { rawSha256, sources, stages: reports }));
+  const policy = marketingPolicy({ metadata: input.metadata, stages: reports, sources: [...cache.values()] });
+  const assembled = collector.assemble(plan.trace_id, { ...product, ...policy }, toJennyMarketingRaw(raw, { rawSha256, sources, stages: reports }));
   if (assembled.ok !== true || assembled.chain?.ok !== true || !assembled.dossier || !assembled.cards) fail("MARKETING_DOSSIER_UNVERIFIED", "情报五站未完成有效档案装订");
   if (canonicalRenderJson(object(assembled.dossier.identity, "已装订商品身份").specs)
     !== canonicalRenderJson(object(raw.A1.identity, "已审核商品身份").specs)) fail("MARKETING_DOSSIER_UNVERIFIED", "情报装订改变了已审核规格值");
-  const restrictions = reports.filter(report => report.facts.status === "no_evidence").map(report => report.stage === "A2"
-    ? "没有可核实用户评价：禁止用户口碑、评分、人数、销量或使用效果共识主张" : "没有可核实竞品证据：禁止对比、竞品弱点或市场领先主张");
   const bundle: MarketingFactsBundle = { schemaVersion: "workloom.marketing-facts/v1", issuer: "workloom.marketing-authority", scope,
     collectedAt: new Date().toISOString(), policyVersion: "source-claims/v1", productQuery: product, sources, stages: reports, rawByAgent: raw,
     rawSha256, dossier: assembled.dossier, cards: assembled.cards,
-    dossierSha256: renderSha256(canonicalRenderJson(assembled.dossier)), restrictions, g1ContentSha256: "", outputReviews: [] };
-  const g1Content = canonicalRenderJson({ facts: bundle, requestedIntent: input.intent, requestedMetadata: input.metadata,
-    instruction: "用户意图与Brief仅是需求，事实只能来自已核实claims；下游创意必须遵守restrictions" });
-  if (g1Content.length > 100_000) fail("MARKETING_REVIEW_TOO_LARGE", "完整事实档案超过G1评审容量，不能只审摘要");
+    dossierSha256: renderSha256(canonicalRenderJson(assembled.dossier)), restrictions: policy.restrictions,
+    g1ContentSha256: "", outputReviews: [] };
+  const g1Content = g1ReviewContent(bundle, input);
+  await assertMarketingReviewCapacity(g1Content);
   bundle.g1ContentSha256 = renderSha256(g1Content);
   return { bundle, g1Content, raw: structuredClone(raw), storeRoot, root, prefix };
 }

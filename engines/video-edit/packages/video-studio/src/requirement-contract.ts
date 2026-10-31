@@ -22,6 +22,41 @@ const riskValidationFacts = new WeakMap<RequirementContractError, Readonly<Requi
 const finiteNumber = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? value : null;
 const schemaPath = /^SceneArchitect response(?:\/(?:opening|scenes|ending|duration|purpose|keyElements|index|emotionalBeat|productionContract|props|actions|name|description|actorId|noPropsReason|totalDuration|sceneCount|narrativeArc|\d{1,6}))*$/;
 const riskArrayPath = /^RiskAssessor response\/(?:technicalRisks|businessConstraints|mitigationSuggestions)$/;
+const RISK_TOP_LEVEL_FIELDS = ["technicalRisks", "businessConstraints", "mitigationSuggestions"] as const;
+const RISK_FIELD_ALIASES: Record<string, typeof RISK_TOP_LEVEL_FIELDS[number]> = {
+  technical: "technicalRisks",
+  technical_risks: "technicalRisks",
+  technicalRisk: "technicalRisks",
+  technical_risk: "technicalRisks",
+  technicalRiskItems: "technicalRisks",
+  technical_risk_items: "technicalRisks",
+  business: "businessConstraints",
+  business_constraints: "businessConstraints",
+  businessConstraint: "businessConstraints",
+  business_constraint: "businessConstraints",
+  businessRestrictions: "businessConstraints",
+  business_restrictions: "businessConstraints",
+  mitigation_suggestions: "mitigationSuggestions",
+  mitigation: "mitigationSuggestions",
+  mitigations: "mitigationSuggestions",
+  mitigationSuggestion: "mitigationSuggestions",
+  mitigation_suggestion: "mitigationSuggestions",
+  suggestions: "mitigationSuggestions",
+  技术风险: "technicalRisks",
+  技术风险清单: "technicalRisks",
+  技术风险评估: "technicalRisks",
+  业务约束: "businessConstraints",
+  业务限制: "businessConstraints",
+  缓解建议: "mitigationSuggestions",
+  风险缓解建议: "mitigationSuggestions",
+  风险应对建议: "mitigationSuggestions",
+};
+const RISK_WRAPPER_KEYS = new Set([
+  "risk", "risks", "riskAssessment", "risk_assessment", "riskAnalysis", "risk_analysis",
+  "riskSummary", "risk_summary", "riskProfile", "risk_profile", "风险评估", "风险分析", "风险清单",
+  "风险", "风险项", "风险结果", "data", "result",
+]);
+const RISK_TRANSPORT_KEYS = new Set(["success", "content", "error", "retryable", "data"]);
 
 function withValidationFacts(error: RequirementContractError, details: RequirementRecord,
   registry = validationFacts): RequirementContractError {
@@ -53,7 +88,83 @@ export function structuredSceneFeedback(error: unknown): string {
 /** Risk retries receive only our exact array-bound facts, never the prior response. */
 export function structuredRiskFeedback(error: unknown): string {
   const facts = error instanceof RequirementContractError ? riskValidationFacts.get(error) : undefined;
-  return facts ? `\n\n## 上一次原生风险校验反馈\n${JSON.stringify(facts)}\n仅依据这些数组数量校验事实重新生成完整合法响应；不截取、补填或复用上次风险文本，不改变原有 schema 与完整来源约束。` : "";
+  if (!facts) return "";
+  const shape = facts.keyword === "required" || facts.keyword === "additionalProperties";
+  const exactShape = shape
+    ? `\nRiskAssessor response 顶层必须且只能是单个 JSON 对象，且只包含 ${JSON.stringify(facts.allowedFields)}；不得增加解释、包装层或其他字段。`
+    : "";
+  return `\n\n## 上一次原生风险校验反馈\n${JSON.stringify(facts)}\n仅依据这些结构校验事实重新生成完整合法响应；不截取、补填或复用上次风险文本，不改变原有 schema 与完整来源约束。${exactShape}`;
+}
+
+/**
+ * Normalize only exact structural aliases emitted by compatible JSON models.
+ * Values, array order and text stay byte-for-byte equivalent; unknown fields or
+ * mixed unexplained wrappers remain untouched for the strict validator to reject.
+ */
+export function normalizeRiskResponseShape(value: unknown): { value: unknown; normalization: string | null } {
+  const parseContainer = (input: unknown): RequirementRecord | null => {
+    if (input && typeof input === "object" && !Array.isArray(input)) return input as RequirementRecord;
+    if (typeof input !== "string") return null;
+    const clean = input.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/u, "");
+    try {
+      const parsed = JSON.parse(clean) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as RequirementRecord : null;
+    } catch { return null; }
+  };
+  const mappedFields = (candidate: RequirementRecord): RequirementRecord | null => {
+    const mapped: RequirementRecord = {};
+    for (const key of Object.keys(candidate)) {
+      const target = RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number])
+        ? key as typeof RISK_TOP_LEVEL_FIELDS[number] : RISK_FIELD_ALIASES[key];
+      if (!target || Object.prototype.hasOwnProperty.call(mapped, target)) return null;
+      mapped[target] = candidate[key];
+    }
+    return RISK_TOP_LEVEL_FIELDS.every(key => Object.prototype.hasOwnProperty.call(mapped, key)) ? mapped : null;
+  };
+  const unwrap = (candidateValue: unknown, seen: Set<object>, depth = 0): { value: RequirementRecord; normalization: string | null } | null => {
+    if (!candidateValue || typeof candidateValue !== "object" || Array.isArray(candidateValue) || seen.has(candidateValue) || depth > 3) return null;
+    const candidate = candidateValue as RequirementRecord;
+    seen.add(candidate);
+    const mapped = mappedFields(candidate);
+    if (mapped) {
+      const direct = Object.keys(candidate).length === RISK_TOP_LEVEL_FIELDS.length
+        && RISK_TOP_LEVEL_FIELDS.every(key => Object.hasOwn(candidate, key));
+      return { value: direct ? candidate : mapped, normalization: direct ? null : "risk-field-aliases" };
+    }
+    const keys = Object.keys(candidate);
+    if (keys.length === 1 && RISK_WRAPPER_KEYS.has(keys[0]!)) {
+      const inner = parseContainer(candidate[keys[0]!]);
+      if (inner) {
+        const normalized = unwrap(inner, seen, depth + 1);
+        return { value: normalized?.value ?? inner, normalization: "risk-assessment-wrapper" };
+      }
+    }
+    if (candidate.success === true && typeof candidate.content === "string" && keys.every(key => RISK_TRANSPORT_KEYS.has(key))) {
+      const inner = parseContainer(candidate.content);
+      if (inner) {
+        const normalized = unwrap(inner, seen, depth + 1);
+        return { value: normalized?.value ?? inner, normalization: "risk-transport-content" };
+      }
+    }
+    return null;
+  };
+  const normalized = unwrap(value, new Set());
+  if (normalized) return normalized;
+  if (Array.isArray(value) && value.length > 0 && value.every(item => item && typeof item === "object" && !Array.isArray(item))) {
+    const merged: RequirementRecord = {};
+    for (const item of value as RequirementRecord[]) {
+      for (const key of Object.keys(item)) {
+        const target = RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number])
+          ? key as typeof RISK_TOP_LEVEL_FIELDS[number] : RISK_FIELD_ALIASES[key];
+        if (!target || Object.prototype.hasOwnProperty.call(merged, target)) return { value, normalization: null };
+        merged[target] = item[key];
+      }
+    }
+    if (RISK_TOP_LEVEL_FIELDS.every(key => Object.prototype.hasOwnProperty.call(merged, key))) {
+      return { value: merged, normalization: "risk-section-array" };
+    }
+  }
+  return { value, normalization: null };
 }
 
 export function requirementRecord(value: unknown, label: string): RequirementRecord {
@@ -113,6 +224,18 @@ export function validateRequirementSchema(value: unknown, schemaValue: unknown, 
         && typeof observed === "number" && Number.isSafeInteger(observed) && observed >= 0
         && typeof limit === "number" && Number.isSafeInteger(limit) && limit >= 0) {
         const details = { kind: "schema", path: location, keyword, observed, limit };
+        error.message += `；validation ${JSON.stringify(details)}`;
+        throw withValidationFacts(error, details, riskValidationFacts);
+      }
+      if (risk && location === "RiskAssessor response" && ["required", "additionalProperties"].includes(keyword)) {
+        const requiredFields = Array.isArray(schema.required)
+          ? schema.required.filter((key): key is string => typeof key === "string" && RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number]))
+          : [];
+        const allowedFields = schema.properties && typeof schema.properties === "object"
+          ? Object.keys(schema.properties as RequirementRecord).filter(key => RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number])) : [];
+        const record = item && typeof item === "object" && !Array.isArray(item) ? item as RequirementRecord : {};
+        const missingFields = requiredFields.filter(key => !Object.prototype.hasOwnProperty.call(record, key));
+        const details = { kind: "schema", path: location, keyword, requiredFields, allowedFields, missingFields };
         error.message += `；validation ${JSON.stringify(details)}`;
         throw withValidationFacts(error, details, riskValidationFacts);
       }

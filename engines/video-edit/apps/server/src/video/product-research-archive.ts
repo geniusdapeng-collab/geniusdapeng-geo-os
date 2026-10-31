@@ -82,8 +82,13 @@ function checkedResearch(file: string): { prepared: PreparedMarketingFacts; sour
     || !Array.isArray(b.outputReviews) || b.outputReviews.length !== 0 || !same(prepared.raw, b.rawByAgent)
     || sha(canonicalRenderJson(b.rawByAgent)) !== b.rawSha256 || sha(canonicalRenderJson(b.dossier)) !== b.dossierSha256) fail("research raw payload or dossier binding changed");
   if (sha(prepared.g1Content) !== b.g1ContentSha256) fail("G1 review content SHA changed");
-  const g1 = JSON.parse(prepared.g1Content) as { facts?: unknown; instruction?: unknown; requestedIntent?: unknown; requestedMetadata?: unknown };
-  if (!same(g1.facts, { ...b, g1ContentSha256: "" }) || typeof g1.instruction !== "string" || typeof g1.requestedIntent !== "string"
+  const { g1ContentSha256: _g1ContentSha256, ...reviewedFacts } = b;
+  const g1 = JSON.parse(prepared.g1Content) as { facts?: unknown; instruction?: unknown; requestedIntent?: unknown; requestedMetadata?: unknown;
+    integrity?: { schemaVersion?: unknown; algorithm?: unknown; factsSha256?: unknown; factsHashScope?: unknown; evidenceHashPolicy?: unknown } };
+  if (!same(g1.facts, reviewedFacts) || typeof g1.instruction !== "string" || typeof g1.requestedIntent !== "string"
+    || g1.integrity?.schemaVersion !== "workloom.g1-content-integrity/v1" || g1.integrity.algorithm !== "sha256"
+    || g1.integrity.factsSha256 !== sha(canonicalRenderJson(reviewedFacts))
+    || typeof g1.integrity.factsHashScope !== "string" || typeof g1.integrity.evidenceHashPolicy !== "string"
     || !g1.requestedMetadata || !same(JSON.parse(prepared.g1Content), g1)) fail("research content is not bound to its complete facts bundle");
   const sourceIds = new Set<string>();
   const sources = b.sources.map(source => {
