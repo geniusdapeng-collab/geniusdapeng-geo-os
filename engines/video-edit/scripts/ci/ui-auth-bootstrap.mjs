@@ -196,6 +196,45 @@ export async function downloadPinnedArchive({ releaseReadToken, state, fetchImpl
   return { bytes, proof: { ...proof, authenticatedApi: true, credentialsForwardedToCdn: false, apiOrigin: 'https://api.cnb.cool', assetOrigin: 'https://asset.cnb.cool', releaseId: String(release.id), assetId: String(asset.id) } };
 }
 
+/**
+ * Canonical installation transport facade. Official GitHub is the default and
+ * never receives a release token; the legacy CNB branch is explicit only.
+ */
+export async function downloadInstallationArchive({
+  transport = "official-github",
+  ...options
+}) {
+  active(options.signal);
+  validateState(options.state);
+  if (transport === "legacy-cnb") return downloadPinnedArchive(options);
+  requireFact(transport === "official-github", "UI_INSTALL_TRANSPORT_INVALID");
+  try {
+    const { downloadOfficialUi } = await import("./ui-public-release.mjs");
+    const result = await downloadOfficialUi({
+      signal: options.signal,
+      fetchImplementation: options.fetchImplementation,
+    });
+    const archive = verifyArchive(result.bytes);
+    requireFact(
+      result.proof?.officialSourceVerified === true
+        && result.proof?.credentialsForwardedToCdn === false,
+      "UI_PUBLIC_SOURCE_PROOF",
+    );
+    return {
+      bytes: result.bytes,
+      proof: {
+        ...result.proof,
+        ...archive,
+        canonicalPackageId: PIN.canonicalUrl,
+        canonicalLockChanged: false,
+      },
+    };
+  } catch (error) {
+    if (error instanceof BootstrapError) throw error;
+    throw new BootstrapError(error.code || "UI_PUBLIC_RELEASE_DOWNLOAD");
+  }
+}
+
 function scalar(value) {
   const text = value.trim();
   if (text.startsWith("'")) { requireFact(text.endsWith("'"), 'UI_LOCK_SCALAR'); return text.slice(1, -1).replaceAll("''", "'"); }
