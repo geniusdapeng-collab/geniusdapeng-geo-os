@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { parseArguments, externalOutput, installPrivateUi } from './install-private-ui.mjs';
 import { PIN, LEGACY_PIN, BootstrapError, digest, verifyArchive } from './ui-auth-bootstrap.mjs';
+import { OFFICIAL_UI } from './ui-public-release.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = resolve(here, '../..');
@@ -33,8 +34,20 @@ function mockFetch({ denied = false } = {}) {
   const calls = [];
   const fetchImplementation = async (url, options) => {
     calls.push({ url: String(url), options });
-    if (calls.length === 1) return new Response(JSON.stringify({ tag_name: PIN.tag, draft: false, prerelease: false, id: PIN.releaseId, assets: [{ name: PIN.assetName, state: 'uploaded', size: PIN.bytes, digest: 'sha256:' + PIN.sha256, browser_download_url: PIN.canonicalUrl, url: PIN.apiUrl, id: PIN.assetId }] }), { status: denied ? 401 : 200 });
-    if (calls.length === 2) return new Response(null, { status: 302, headers: { Location: 'https://release-assets.githubusercontent.com/github-production-release-asset/wrapper-fixture/asset?signature=synthetic' } });
+    if (calls.length === 1) {
+      const release = {
+        id: OFFICIAL_UI.releaseId, url: OFFICIAL_UI.releaseIdentityUrl, html_url: OFFICIAL_UI.releasePage,
+        tag_name: OFFICIAL_UI.tag, target_commitish: OFFICIAL_UI.sourceCommit,
+        draft: false, prerelease: false, immutable: true,
+        assets: [{
+          id: OFFICIAL_UI.assetId, name: OFFICIAL_UI.assetName, state: 'uploaded',
+          size: OFFICIAL_UI.bytes, digest: 'sha256:' + OFFICIAL_UI.sha256,
+          browser_download_url: OFFICIAL_UI.browserUrl, url: OFFICIAL_UI.assetUrl,
+        }],
+      };
+      return new Response(JSON.stringify(release), { status: denied ? 401 : 200 });
+    }
+    if (calls.length === 2) return new Response(null, { status: 302, headers: { Location: `https://release-assets.githubusercontent.com/github-production-release-asset/${OFFICIAL_UI.repositoryId}/wrapper-fixture/asset?signature=synthetic` } });
     assert.equal(calls.length, 3, 'an unexpected fourth network call is a failure');
     return new Response(archive, { status: 200 });
   };
@@ -49,8 +62,8 @@ async function boundaryFixture() {
   await writeFile(join(modules, 'install-private-ui.mjs'), wrapperBytes);
   assert.equal(digest(await readFile(join(modules, 'install-private-ui.mjs'))), digest(wrapperBytes));
   await writeFile(join(modules, 'ui-auth-bootstrap.mjs'), `
-import { PIN, BootstrapError, downloadPinnedArchive, digest } from ${JSON.stringify(coreUrl)};
-export { PIN, BootstrapError, downloadPinnedArchive };
+import { PIN, BootstrapError, downloadInstallationArchive, digest } from ${JSON.stringify(coreUrl)};
+export { PIN, BootstrapError, downloadInstallationArchive };
 export const control = { trace: [], failure: null };
 export async function warmCanonicalStore(options) {
   control.trace.push({ phase: 'warm', repoRoot: options.repoRoot, storeDir: options.storeDir, stagingRoot: options.stagingRoot, archiveSha256: digest(options.archiveBytes) });
@@ -120,7 +133,7 @@ test('real CLI reports a safe explicit credential failure without creating outpu
   const state = JSON.parse(stateBytes);
   state.artifact = { ...state.artifact, platform: 'cnb', url: LEGACY_PIN.canonicalUrl };
   await writeFile(join(f.repo, '.workloom-ui.json'), JSON.stringify(state));
-  const result = spawnSync(process.execPath, [wrapperPath, ...f.args], { cwd: source, env: { PATH: process.env.PATH ?? '', HOME: f.outside }, encoding: 'utf8', timeout: 10000 });
+  const result = spawnSync(process.execPath, [wrapperPath, ...f.args], { cwd: source, env: { PATH: process.env.PATH ?? '', HOME: f.outside, WORKLOOM_UI_RELEASE_TRANSPORT: 'legacy-cnb' }, encoding: 'utf8', timeout: 10000 });
   assert.equal(result.error, undefined); assert.equal(result.status, 1); assert.equal(result.stdout, '');
   assert.deepEqual(JSON.parse(result.stderr), { code: 'MISSING_UI_RELEASE_TOKEN', message: 'MISSING_UI_RELEASE_TOKEN' });
   await absent(f.archive); await absent(f.report);
@@ -129,7 +142,7 @@ test('invalid consumer identity and denied download leave no archive or report',
   for (const mode of ['state', 'denied']) {
     const f = await fixture(); const mock = mockFetch({ denied: mode === 'denied' });
     if (mode === 'state') { const state = JSON.parse(stateBytes); state.version = 'wrong'; await writeFile(join(f.repo, '.workloom-ui.json'), JSON.stringify(state)); }
-    await assert.rejects(installPrivateUi({ args: f.args, environment: syntheticEnvironment, ...mock }), errorCode(mode === 'state' ? 'UI_STATE_IDENTITY' : 'UI_RELEASE_HTTP_401'));
+    await assert.rejects(installPrivateUi({ args: f.args, environment: syntheticEnvironment, ...mock }), errorCode(mode === 'state' ? 'UI_STATE_IDENTITY' : 'UI_PUBLIC_RELEASE_HTTP_401'));
     assert.equal(mock.calls.length, mode === 'state' ? 0 : 1); await absent(f.archive); await absent(f.report);
   }
 });
