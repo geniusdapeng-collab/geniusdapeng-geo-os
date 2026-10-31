@@ -10,7 +10,7 @@
   "sourceFileCount": 3650,
   "sourceBytes": 336706560,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "f0e4542ce35da0a32c5fac7b828ad2d10236494f7ce29d943322d753f35b18a1",
+  "snapshotSha256": "937b5437100c0de6d2e8e135844d1f4dab7496b06ee415dd0a3f7f0bc35132db",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -24,7 +24,7 @@
   ],
   "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
   "targetOwnedFileCount": 53,
-  "sourceOverlayCount": 83,
+  "sourceOverlayCount": 84,
   "pendingAfterV1": [],
   "assetOverlays": [],
   "compatibilityOverlays": [],
