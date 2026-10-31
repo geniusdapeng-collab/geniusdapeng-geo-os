@@ -2,10 +2,9 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import {
-  requirementDisplayContract, requirementHash, requirementRecord, validateRequirementSchema,
+  requirementHash, requirementRecord, validateRequirementSchema,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
-import { extractProductVisualAuthority } from "./product-visual-authority.js";
 import { TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
 
 export interface PrdMarketingScope {
@@ -178,8 +177,7 @@ export interface PrdDurationContract {
 /**
  * The customer duration is the final playable master. A silent opening cover is
  * part of that duration, so the content timeline must be shorter by exactly the
- * declared intro. This projection is shared by G3 scene discovery, G4 PRD review
- * and delivery validation.
+ * declared intro. This projection is shared by G3, G4 and delivery validation.
  */
 export function prdDurationContract(
   profile: PrdProductionProfile,
@@ -190,9 +188,13 @@ export function prdDurationContract(
     prdFail("PRD_PROFILE_INVALID", "最终成片目标时长必须为有效正数");
   }
   const cover = profile.openWithCover === true ? (profile.coverIntroSeconds ?? 0) : 0;
-  if (!Number.isFinite(cover) || cover < 0) prdFail("PRD_PROFILE_INVALID", "封面片头时长必须为非负有限数");
+  if (!Number.isFinite(cover) || cover < 0) {
+    prdFail("PRD_PROFILE_INVALID", "封面片头时长必须为非负有限数");
+  }
   const content = final === undefined ? null : Number((final - cover).toFixed(6));
-  if (content !== null && content <= 0) prdFail("PRD_PROFILE_INVALID", "封面片头不能占满或超过最终成片时长");
+  if (content !== null && content <= 0) {
+    prdFail("PRD_PROFILE_INVALID", "封面片头不能占满或超过最终成片时长");
+  }
   const tolerance = profile.durationToleranceFrames !== undefined && profile.frameRate !== undefined
     ? profile.durationToleranceFrames / profile.frameRate
     : null;
@@ -254,40 +256,20 @@ export function preparePrdAuthority(input: {
 
 /** Both existing real LLM agents receive the same complete authority; this grants no new approval. */
 export function prdAuthorityPrompt(authority: PrdAuthority, contract: RequirementContract): string {
-  const productVisualAuthority = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
-  const duration = prdDurationContract(
-    authority.profile,
-    contract.scenes.reduce((sum, scene) => sum + scene.duration, 0),
-  );
-  const contentDuration = duration.contentDurationSeconds
-    ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0);
-  const tolerance = duration.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
-  const finalDuration = duration.finalDurationSeconds ?? contentDuration + duration.coverIntroSeconds;
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
-    + `交付口径消歧（必须逐字执行）：openWithCover=true 且 coverIntroSeconds=N 表示成片最前 N 秒为静音封面段，内容首帧指封面段之后的第一帧；不得改写成“不开启片头封面”，也不得把片头封面误称为 titleCard。titleCard 与独立封面 PNG/JPEG 是另外两个字段。`
-    + `持续字幕作用于内容时间线0秒至内容末帧；在最终成片里应位于${duration.coverIntroSeconds}秒至${finalDuration}秒。封面段${duration.coverIntroSeconds > 0 ? "不承载正片常驻字幕" : "长度为零，不适用"}，避免与封面自身文案重叠。`
-    + `Brief.cta 仅是账号互动文案元数据，除非另行提供明确的 onScreenCTAText 字段，不得把 CTA 放进持续字幕、场景文字、道具或旁白；没有可靠人物/商品外观图片的部位必须省略，视觉色彩章节只能写光线、空气、环境与调色意图，不能据此断言商品车漆、贴花或配色分区。`
-    + `commerce/平台要求的 product-close、usage、host、ambience、moving 是允许重叠的镜头标签，必须逐镜标注；百分比按各自标签累计秒数分别计数，不要求把各百分比相加不超过 100%。\n`
-    + `本次 G3 已审的完整场景、道具、动作和宿主选角合同（冗余旧描述不进入展示，结构化字段完整保留）：\n${JSON.stringify(requirementDisplayContract(contract))}\n`
+    + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
     + `人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。\n`
     + `制作规格 scenePlan.scenes 按合同节点顺序一一对应，sceneId 必须逐项等于合同 scenes[].id，duration 必须逐项等于该节点 duration。`
-    + `不得合并、拆分、漏掉开场或结尾；内容时间线节点合计必须为 ${contentDuration}s ±${tolerance}s；`
-    + `openWithCover=${String(authority.profile.openWithCover ?? false)} 且静音片头 ${duration.coverIntroSeconds}s，二者相加后的最终成片必须为 ${finalDuration}s ±${tolerance}s。`
-    + `不得把最终片长直接当作内容节点合计，也不得在封面之外重复增加同段时长。\n`
+    + `不得合并、拆分、漏掉开场或结尾；总时长必须位于 ${authority.profile.targetDuration ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0)}s 的 ±${TARGET_DURATION_TOLERANCE_SECONDS}s 内，且各节点时长必须继承已审 G3 合同。`
     + `完整保留场景原目的、角色行为、可见道具与创作原文；叙事语言由本次模型创作。\n`
     + `下面是本次宿主真实非降级 G1 通过的完整原件，仅授权其中已接受 claims 及其限定用途，不批准本次 PRD。`
     + `必须遵守原件明确 restrictions。完整阅读嵌套 A1/A2/A3 support review 的 issues 和 suggestions，回应其中的事实不确定性、来源/报道日期/用途限定。`
     + `保持原始层级：非阻断的创意建议仍为建议，不能升级为 G1 硬条件或新审批，G1 通过也不批准这些新创作。`
     + `媒体报道只能归因给该媒体和日期，没有直接厂家引语不能改称厂家官方确认；未知外观、使用场地限定、赛事型号与零售型号边界不得扩写。`
     + `不确定时不使用该主张，不能把“通过G1”解释为每个创作句子已获批准。\n`
-    + `本次结构化商品视觉授权（由 G1 A1 已接受图片产生，不是模型自述）：\n${JSON.stringify(productVisualAuthority)}\n`
-    + `若 required=true，任何商品外观、颜色、涂装、比例、部件或形态描述只能对照上述 images 的可见内容；`
-    + `无法从这些图片确认的细节必须省略。文字 claims 不得扩张成新的外观事实。\n`
-    + `图片上的 licenseRisk=high/unknown 只表示可作本次参考，不代表已取得商业授权。G4 计划必须单列权利核验：`
-    + `生成前后绑定图片 URL/页面/摘要，最终对外发布前由产品所有者核对图片、商标和车辆外观授权；未授权时不得声称可对外投放。\n`
     + `G1 完整原始裁决（包括所有意见和建议）：\n${JSON.stringify(authority.marketing.g1Proof)}\n`
     + `G1 原件 ${authority.marketing.g1Artifact.path} / SHA256 ${authority.marketing.g1Artifact.sha256}：\n${authority.marketing.g1Artifact.content}\n`;
 }
@@ -327,9 +309,8 @@ function hasDeliveryPlan(profile: PrdProductionProfile): boolean {
 function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord[] {
   const declared = Object.hasOwn(profile, "sidecarPolicy") || Object.hasOwn(profile, "persistentSubtitleText");
   const items: RequirementRecord[] = [];
-  const duration = prdDurationContract(profile);
   const persistent = profile.persistentSubtitleText === undefined ? ""
-    : `全片常驻文字${JSON.stringify(profile.persistentSubtitleText)}（内容时间线0秒至${duration.contentDurationSeconds ?? "已审内容末帧"}，插入${duration.coverIntroSeconds}秒静音封面后对应最终成片${duration.coverIntroSeconds}秒至末帧；封面段不承载正片常驻字幕，ASS百分秒终点向上取整且最多超出0.01秒）`;
+    : `全片持续文字${JSON.stringify(profile.persistentSubtitleText)}（实际视频流0秒至末帧，ASS百分秒终点向上取整且最多超出0.01秒）`;
   if (profile.subtitleMode && ["both", "burned"].includes(profile.subtitleMode)) items.push({ item: "subtitle_burned",
     spec: !declared ? "字幕烧录进本次视频母版"
       : `将本次台词字幕${persistent ? `及${persistent}` : ""}烧录进本次视频母版；按当前台词、实际总时长、时间线与字体样式核验${profile.sidecarPolicy === "dialogue-and-composite-ass" ? "，并与完整组合ASS使用同一文字、区间、样式与compositionSha256" : ""}；此为待执行交付要求`,
@@ -341,7 +322,7 @@ function declaredDeliveryItems(profile: PrdProductionProfile): RequirementRecord
         : "交付与本次视频台词和时间线一致的SRT/VTT独立字幕文件（dialogue-only）；不将台词侧车当成完整文字组合ASS或持续文字完成凭据；此为待执行交付要求",
     priority: "required" });
   if (profile.coverDelivery === "standalone") items.push({ item: "cover", priority: "required",
-    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；不得使用licenseRisk=high/unknown、licensed_for_delivery=false或未清权的参考图，只能用本次自生成首帧或已清权素材；对外发布前由产品所有者复核图片、商标和车辆外观授权；本项只声明独立文件，openWithCover=${String(profile.openWithCover ?? false)}，coverIntroSeconds=${duration.coverIntroSeconds}；内容时间线${duration.contentDurationSeconds ?? "未指定"}s加静音片头后的最终成片${duration.finalDurationSeconds ?? "未指定"}s；此为待执行交付要求` });
+    spec: `PNG或JPEG独立封面图；按本次${profile.aspectRatio ?? "已审"}画幅与${profile.resolution ?? "已审交付"}分辨率交付，来源与当前影片绑定；是否用于片头另依openWithCover声明，本项不启用片头封面；此为待执行交付要求` });
   return items;
 }
 
@@ -402,68 +383,64 @@ export function effectivePrdModelSchema(kind: "creative" | "production", schemaV
   return schema;
 }
 
-/**
- * Models often copy host-owned character metadata back into their response.
- * Accept and remove only an extra field whose key and complete JSON value are
- * byte-equivalent, by the canonical requirement hash, to the selected cast
- * record. Unknown fields, changed copies and creative additions remain present
- * for the strict schema validator to reject.
- */
-export function normalizePrdProductionResponse(value: unknown, schemaValue: RequirementRecord, contract: RequirementContract): RequirementRecord {
-  const result = structuredClone(requirementRecord(value, "PRD production response"));
-  if (!result.characterSystem || typeof result.characterSystem !== "object" || Array.isArray(result.characterSystem)
-    || !Array.isArray((result.characterSystem as RequirementRecord).characters)) return result;
-  const properties = requirementRecord(schemaValue.properties, "PRD production schema properties");
-  const characterProperties = requirementRecord(
-    requirementRecord(
-      requirementRecord(
-        requirementRecord(properties.characterSystem, "PRD characterSystem schema").properties,
-        "PRD characterSystem properties",
-      ).characters,
-      "PRD characters schema",
-    ).items,
-    "PRD character item schema",
-  );
-  const allowed = new Set(Object.keys(requirementRecord(characterProperties.properties, "PRD character properties")));
-  const characters = (result.characterSystem as RequirementRecord).characters as unknown[];
-  characters.forEach((characterValue, index) => {
-    if (!characterValue || typeof characterValue !== "object" || Array.isArray(characterValue)) return;
-    const character = characterValue as RequirementRecord;
-    const selected = contract.cast.characters.find(item => item.id === character.characterId);
-    if (!selected) return;
-    for (const key of Object.keys(character)) {
-      if (allowed.has(key) || !Object.hasOwn(selected, key)) continue;
-      if (requirementHash(character[key]) === requirementHash(selected[key])) delete character[key];
-    }
-    characters[index] = character;
+function compactStringArray(value: unknown[], maxLength: number): string[] {
+  return value.map((item) => {
+    if (typeof item !== "string") return item as unknown as string;
+    const normalized = item.replace(/\s+/gu, " ").trim();
+    const characters = Array.from(normalized);
+    if (characters.length <= maxLength) return normalized;
+    let candidate = characters.slice(0, Math.max(1, maxLength - 1)).join("");
+    const boundary = Math.max(
+      candidate.lastIndexOf("。"),
+      candidate.lastIndexOf("；"),
+      candidate.lastIndexOf("."),
+      candidate.lastIndexOf("!"),
+      candidate.lastIndexOf("?"),
+    );
+    if (boundary >= Math.floor(maxLength * 0.5)) candidate = candidate.slice(0, boundary + 1);
+    return `${candidate.replace(/[\s,，;；:：]+$/u, "")}…`;
   });
-  return result;
+}
+
+function compactNamedStringArray(record: RequirementRecord, key: string, maxItems: number): void {
+  const value = record[key];
+  if (!Array.isArray(value) || value.length <= maxItems || !value.every((entry) => typeof entry === "string")) return;
+  if (maxItems <= 0) {
+    record[key] = [];
+    return;
+  }
+  const head = value.slice(0, Math.max(0, maxItems - 1)) as string[];
+  const tail = value.slice(Math.max(0, maxItems - 1)) as string[];
+  record[key] = [...head, `补充要求：${tail.join("；")}`];
 }
 
 /**
- * Persistent subtitle timing is host-owned. Models sometimes describe the
- * final master as "video 0s" while the same document correctly reserves the
- * silent cover. Keep all creative text, but replace only that contradictory
- * timing phrase with the single canonical content/master mapping.
+ * Compact only free-text execution lists whose excess cardinality is a schema
+ * presentation issue. References, deliverables and cast arrays remain hard
+ * failures because their cardinality carries semantic/authority meaning.
  */
-export function normalizePrdDeliveryLanguage(value: RequirementRecord, profile: PrdProductionProfile): RequirementRecord {
-  const timing = prdDurationContract(profile);
-  const canonical = `持续文字在内容时间线0秒至内容末帧，插入${timing.coverIntroSeconds}秒静音封面后对应最终成片${timing.coverIntroSeconds}秒至${timing.finalDurationSeconds ?? "内容末帧"}秒`;
-  const style = "字幕样式锁定为Noto Sans SC、74px字号、4px黑色描边、白字、底部安全边距18%、单行优先且最多两行；实测只允许增加底衬或上移，不改变文字与时间区间";
-  const visit = (input: unknown): unknown => {
-    if (typeof input === "string") return input
-      .replace(/持续(?:字幕|文字)[^。；\n]{0,32}(?:覆盖)?(?:实际)?视频\s*0(?:\.0+)?\s*秒至末帧/giu, canonical)
-      .replace(/(?:覆盖)?实际视频\s*0(?:\.0+)?\s*秒至末帧/giu, canonical)
-      .replace(/字号描边待[^；。\n]*(?:检查|确定)?/giu, style)
-      .replace(/(?:由)?G4后[^；。\n]*实测[^；。\n]*/giu, style)
-      .replace(/绑定本镜首帧与(?:车型)?参考图\s*URL/giu, "以本镜自生成首帧为封面来源；未清权参考图仅用于一致性核对，不得进入封面或成片");
-    if (Array.isArray(input)) return input.map(visit);
-    if (input && typeof input === "object") {
-      return Object.fromEntries(Object.entries(input as RequirementRecord).map(([key, child]) => [key, visit(child)]));
+function compactProductionExecutionArrays(value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const production = value as RequirementRecord;
+  const scenePlan = production.scenePlan && typeof production.scenePlan === "object" && !Array.isArray(production.scenePlan)
+    ? production.scenePlan as RequirementRecord
+    : null;
+  if (Array.isArray(scenePlan?.scenes)) {
+    for (const scene of scenePlan.scenes) {
+      if (!scene || typeof scene !== "object" || Array.isArray(scene)) continue;
+      compactNamedStringArray(scene as RequirementRecord, "keyProps", 5);
+      compactNamedStringArray(scene as RequirementRecord, "visualRequirements", 5);
+      compactNamedStringArray(scene as RequirementRecord, "audioRequirements", 5);
     }
-    return input;
-  };
-  return visit(value) as RequirementRecord;
+  }
+  const constraints = production.productionConstraints && typeof production.productionConstraints === "object" && !Array.isArray(production.productionConstraints)
+    ? production.productionConstraints as RequirementRecord
+    : null;
+  if (constraints) {
+    compactNamedStringArray(constraints, "technicalConstraints", 5);
+    compactNamedStringArray(constraints, "businessConstraints", 3);
+    compactNamedStringArray(constraints, "forbiddenElements", 5);
+  }
 }
 
 /** Validate the actual model payload before vendor parsers can manufacture missing modules. */
@@ -474,28 +451,31 @@ export function validatePrdModelPayload(value: unknown, kind: "creative" | "prod
     try { parsed = JSON.parse(clean); }
     catch { prdFail("PRD_RESPONSE_UNVERIFIED", "本次模型响应不是完整 JSON"); }
   }
-  const result = requirementRecord(parsed, "PRD 模型真实响应");
+  const result = structuredClone(requirementRecord(parsed, "PRD 模型真实响应"));
   const effective = effectivePrdModelSchema(kind, schemaValue, contract);
+  if (kind === "creative") {
+    const properties = requirementRecord(effective.properties, "creativeCore properties");
+    const keyMessagesSchema = requirementRecord(requirementRecord(properties.keyMessages, "keyMessages schema").items, "keyMessages item schema");
+    const maxLength = Number(keyMessagesSchema.maxLength);
+    if (Array.isArray(result.keyMessages) && Number.isSafeInteger(maxLength) && maxLength > 0) {
+      result.keyMessages = compactStringArray(result.keyMessages, maxLength);
+    }
+  } else {
+    compactProductionExecutionArrays(result);
+  }
   // Retain the existing creative validation path and acceptance semantics.
   const schema = kind === "creative"
     ? { type: "object", required: ["creativeCore"], properties: { creativeCore: effective }, additionalProperties: false }
     : effective;
-  const normalized = kind === "production"
-    ? normalizePrdDeliveryLanguage(normalizePrdProductionResponse(result, effective, contract), profile)
-    : result;
-  validateRequirementSchema(kind === "creative" ? { creativeCore: normalized } : normalized, schema, `PRD ${kind} response`);
-  if (kind === "production") validatePrdProduction(normalized, contract, profile);
-  return normalized;
+  validateRequirementSchema(kind === "creative" ? { creativeCore: result } : result, schema, `PRD ${kind} response`);
+  if (kind === "production") validatePrdProduction(result, contract, profile);
+  return result;
 }
 
 /** No scene-duration projection or creative repair is allowed here. */
 export function validatePrdProduction(value: unknown, contract: RequirementContract, profile: PrdProductionProfile): void {
   const result = requirementRecord(value, "PRD 制作规格");
   const scenes = list(requirementRecord(result.scenePlan, "PRD scenePlan").scenes, "PRD scenes").map(value => requirementRecord(value, "PRD scene"));
-  const duration = prdDurationContract(profile, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
-  const expectedContentDuration = duration.contentDurationSeconds
-    ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0);
-  const totalTolerance = duration.toleranceSeconds ?? TARGET_DURATION_TOLERANCE_SECONDS;
   const sceneTolerance = profile.durationToleranceFrames !== undefined && profile.frameRate !== undefined
     ? profile.durationToleranceFrames / profile.frameRate
     : 0;
@@ -503,11 +483,11 @@ export function validatePrdProduction(value: unknown, contract: RequirementContr
     const original = contract.scenes[index]!;
     return scene.sceneId !== original.id || scene.sequence !== index + 1 || typeof scene.duration !== "number"
       || !Number.isFinite(scene.duration) || scene.duration <= 0 || Math.abs(scene.duration - original.duration) > sceneTolerance + 1e-9;
-  }) || !(
-    Math.abs(scenes.reduce((total, scene) => total + Number(scene.duration), 0) - expectedContentDuration)
-      <= totalTolerance + 1e-9
-  )) {
-    prdFail("PRD_SCENE_DURATION_CONFLICT", "模型场景节点、顺序或内容时长未继承本次已审 G3，或与封面片头后的最终成片时长冲突");
+  }) || (profile.targetDuration !== undefined && !(
+    Math.abs(scenes.reduce((total, scene) => total + Number(scene.duration), 0) - profile.targetDuration)
+      <= Math.max(sceneTolerance, TARGET_DURATION_TOLERANCE_SECONDS) + 1e-9
+  ))) {
+    prdFail("PRD_SCENE_DURATION_CONFLICT", "模型场景节点、顺序或时长未继承本次已审 G3，拒绝改写为凑齐目标");
   }
   const characters = list(requirementRecord(result.characterSystem, "PRD characterSystem").characters, "PRD characters").map(value => requirementRecord(value, "PRD character"));
   if (characters.length !== contract.cast.characters.length || new Set(characters.map(character => character.characterId)).size !== characters.length

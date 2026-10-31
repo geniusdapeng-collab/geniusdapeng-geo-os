@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   DEEPSEEK_FLASH_CONTEXT_TOKENS,
+  DEEPSEEK_FLASH_INPUT_TOKEN_BUDGET,
   DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
   DEEPSEEK_FLASH_MODEL,
   DEEPSEEK_VIDEO_JSON_OUTPUT_TOKENS,
   estimateDeepSeekTokens,
-  planDeepSeekWindow,
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
   resolveVideoModel,
-  resolveVideoNonThinking,
-  resolveVideoScene,
 } from "./llm-config.js";
 
 describe("video model configuration", () => {
@@ -18,12 +16,10 @@ describe("video model configuration", () => {
     expect(DEEPSEEK_FLASH_MODEL).toBe("deepseek-flash");
     expect(DEEPSEEK_FLASH_CONTEXT_TOKENS).toBe(1_048_576);
     expect(DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS).toBe(393_216);
+    expect(DEEPSEEK_FLASH_INPUT_TOKEN_BUDGET).toBe(655_360);
     expect(DEEPSEEK_VIDEO_JSON_OUTPUT_TOKENS).toBe(393_216);
     expect(resolveVideoModel({ LLM_BASE_URL: "https://api.deepseek.com" })).toBe("deepseek-flash");
-    expect(resolveVideoModel({ DEEPSEEK_MODEL: "deepseek-v4-flash" })).toBe("deepseek-flash");
-    expect(resolveVideoModel({ LLM_PROVIDER: "mock", LLM_MODEL: "deepseek-flash" })).toBe("");
-    expect(() => resolveVideoModel({ LLM_PROVIDER: "openai", LLM_MODEL: "deepseek-flash" }))
-      .toThrow("VIDEO_TEXT_PROVIDER_NOT_REGISTERED");
+    expect(resolveVideoModel({ DEEPSEEK_MODEL: "deepseek-flash" })).toBe("deepseek-flash");
   });
 
   it("uses DeepSeek's documented token ratios instead of treating characters as tokens", () => {
@@ -47,25 +43,8 @@ describe("video model configuration", () => {
       .toBe("generic-key");
   });
 
-  it("selects thinking by scene and retains the explicit deployment rollback", () => {
-    expect(resolveVideoScene("video.preproduction.plan").thinking).toEqual({ type: "enabled", effort: "high" });
-    expect(resolveVideoScene("video.quality.producer-review").thinking).toEqual({ type: "enabled", effort: "high" });
-    expect(resolveVideoScene("video.quality.final-review").thinking).toEqual({ type: "enabled", effort: "high" });
-    expect(resolveVideoScene("video.deterministic").thinking).toEqual({ type: "disabled" });
-    expect(resolveVideoScene("video.preproduction.plan", { LLM_THINKING_TYPE: "disabled" }).thinking).toEqual({ type: "disabled" });
-    expect(resolveVideoNonThinking("deepseek-flash", {})).toBe(false);
-    expect(resolveVideoNonThinking("deepseek-v4-flash", {})).toBe(false);
-    expect(resolveVideoNonThinking("deepseek-flash", { LLM_NON_THINKING: "0" })).toBe(false);
-    expect(resolveVideoNonThinking("custom-model", {})).toBe(false);
-    expect(resolveVideoNonThinking("custom-model", { LLM_NON_THINKING: "1" })).toBe(true);
-  });
-
-  it("uses the official tokenizer to maximize the legal output window", async () => {
-    const plan = await planDeepSeekWindow({
-      messages: [{ role: "user", content: "完整任务" }],
-      responseFormat: { type: "json_object" },
-    });
-    expect(plan.inputTokens).toBeGreaterThan(0);
-    expect(plan.outputCeiling).toBe(DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS);
+  it("rejects legacy model pins; thinking is owned by scene policy", () => {
+    expect(() => resolveVideoModel({ LLM_MODEL: "custom-model" })).toThrow("MODEL_ID_NOT_ALLOWED");
+    expect(() => resolveVideoModel({ DEEPSEEK_MODEL: "deepseek-v4-flash" })).toThrow("MODEL_ID_NOT_ALLOWED");
   });
 });

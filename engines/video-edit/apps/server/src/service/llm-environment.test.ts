@@ -10,7 +10,7 @@ import { llmCall, resetLlmAssembly } from "./llm.js";
 const roots: string[] = [];
 const servers: Server[] = [];
 const original = { ...process.env };
-const fixture = { provider: "fixture-provider", baseUrl: "http://127.0.0.1:1/v1", apiKey: "fixture-key-only", model: "fixture-model" };
+const fixture = { provider: "deepseek", baseUrl: "http://127.0.0.1:1/v1", apiKey: "fixture-key-only", model: "deepseek-flash" };
 function temp(): string { const root = mkdtempSync(join(tmpdir(), "pengmanager-model-config-")); roots.push(root); return root; }
 afterEach(async () => {
   for (const key of Object.keys(process.env)) if (!(key in original)) delete process.env[key];
@@ -55,7 +55,7 @@ describe("explicit process-only model configuration", () => {
     const env: NodeJS.ProcessEnv = {};
     expect(persistLlmEnvironment(fixture, { cwd, env })).toBe("file");
     const lines = readFileSync(join(root, ".env"), "utf8");
-    expect(lines).toContain("UNRELATED=keep"); expect(lines).toContain("LLM_MODEL=fixture-model");
+    expect(lines).toContain("UNRELATED=keep"); expect(lines).toContain("LLM_MODEL=deepseek-flash");
     for (const [key, value] of Object.entries(env)) expect(lines).toContain(`${key}=${value}`);
     expect(existsSync(join(cwd, ".env"))).toBe(false);
   });

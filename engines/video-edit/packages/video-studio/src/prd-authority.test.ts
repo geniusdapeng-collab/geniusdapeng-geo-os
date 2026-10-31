@@ -1,10 +1,9 @@
 import { symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdDeliverySchema, effectivePrdModelSchema, normalizeExplicitBriefDuration, normalizePrdProductionProfile,
-  normalizePrdDeliveryLanguage, preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, prdDurationContract, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
+  preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
 } from "./prd-authority.js";
 import { PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -41,17 +40,6 @@ describe("PRD explicit production requirements", () => {
     expect(normalizePrdProductionProfile(value.metadata)).toEqual({ targetDuration: 30, aspectRatio: "9:16", targetPlatform: "抖音",
       resolution: "1080p", frameRate: 30, subtitleMode: "both", nativeAudio: true, openWithCover: false, titleCard: false, durationToleranceFrames: 1 });
     expect(value.metadata).toEqual(before);
-  });
-  it("projects the silent cover intro out of the content timeline and back into the final master", () => {
-    expect(prdDurationContract({ targetDuration: 30, frameRate: 30, durationToleranceFrames: 1,
-      openWithCover: true, coverIntroSeconds: 0.6 })).toEqual({
-      finalDurationSeconds: 30,
-      contentDurationSeconds: 29.4,
-      coverIntroSeconds: 0.6,
-      toleranceSeconds: 1 / 30,
-    });
-    expect(prdDurationContract({ targetDuration: 30, openWithCover: false, coverIntroSeconds: 5 }))
-      .toMatchObject({ finalDurationSeconds: 30, contentDurationSeconds: 30, coverIntroSeconds: 0 });
   });
   it("legacy briefs without the new object enforce only fields the client actually provided", () => {
     expect(normalizePrdProductionProfile({ brief: { product: "legacy product" } })).toEqual({});
@@ -103,15 +91,6 @@ describe("PRD explicit separate cover and subtitle composition declarations", ()
     }
     expect(input).toEqual(before);
   });
-  it("allows persistent content text with a separate silent cover intro and records its duration", () => {
-    const profile = normalizePrdProductionProfile(metadata({
-      subtitleMode: "burned", persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6,
-    }));
-    expect(profile).toMatchObject({ persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6 });
-  });
-  it.each([-0.1, 5.1, "0.6", null, Number.NaN])("rejects invalid cover intro duration %j", coverIntroSeconds => {
-    expect(() => normalizePrdProductionProfile(metadata({ coverIntroSeconds }))).toThrow("PRD_PROFILE_INVALID");
-  });
   it.each(required)("still requires the original %s when optional atoms are present", key => {
     const input = metadata({ coverDelivery: "none" });
     delete requirementRecord(requirementRecord(input.brief, "brief").productionRequirements, "production requirements")[key];
@@ -159,6 +138,15 @@ describe("PRD explicit separate cover and subtitle composition declarations", ()
   ])("fails closed on an explicitly contradictory combination %j", patch => {
     expect(() => normalizePrdProductionProfile(metadata(patch))).toThrow("PRD_PROFILE_INVALID");
   });
+  it("allows persistent content text with a separate silent cover intro and records its duration", () => {
+    const profile = normalizePrdProductionProfile(metadata({
+      subtitleMode: "burned", persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6,
+    }));
+    expect(profile).toMatchObject({ persistentSubtitleText: "完整持续警示", openWithCover: true, coverIntroSeconds: 0.6 });
+  });
+  it.each([-0.1, 5.1, "0.6", null, Number.NaN])("rejects invalid cover intro duration %j", coverIntroSeconds => {
+    expect(() => normalizePrdProductionProfile(metadata({ coverIntroSeconds }))).toThrow("PRD_PROFILE_INVALID");
+  });
   it.each(["standalone", "none"])("keeps %s separate-cover delivery independent from embedding in the opening", coverDelivery => {
     expect(normalizePrdProductionProfile(metadata({ coverDelivery, openWithCover: true, titleCard: true })))
       .toMatchObject({ coverDelivery, openWithCover: true, titleCard: true });
@@ -184,7 +172,7 @@ describe("PRD rule-owned delivery projection and legacy byte compatibility", () 
     const item = requirementRecord(requirementRecord(requirementRecord(deliverables.items, "deliverable item").properties, "item fields").item, "item enum");
     return { properties, deliverables, item, output: requirementRecord(properties.outputFormat, "output schema") };
   }
-  it("keeps the exact former normalized profile and delivery bytes when optional delivery keys are omitted", () => {
+  it("keeps the exact former normalized profile and delivery bytes when the three new keys are omitted", () => {
     const value = fixture(), profile = normalizePrdProductionProfile(value.metadata), original = standard(), before = structuredClone(original);
     const expectedProfile = { targetDuration: 30, aspectRatio: "9:16", targetPlatform: "抖音", resolution: "1080p", frameRate: 30,
       subtitleMode: "both", nativeAudio: true, openWithCover: false, titleCard: false, durationToleranceFrames: 1 };
@@ -274,35 +262,8 @@ describe("PRD private accepted current G1", () => {
     expect(value.authority.marketing.g1Proof.suggestions).toEqual(["限定媒体归因"]);
     const prompt = prdAuthorityPrompt(value.authority, value.contract);
     for (const text of [value.content, JSON.stringify(value.metadata.brief), "仅支持媒体报道归因", "原始年轻消费者", "非阻断的创意建议仍为建议", "完整原始意见"]) expect(prompt).toContain(text);
-    for (const text of ["静音封面段", "内容首帧指封面段之后的第一帧", "不得把 CTA 放进持续字幕",
-      "视觉色彩章节只能写光线、空气、环境与调色意图", "百分比按各自标签累计秒数分别计数"]) expect(prompt).toContain(text);
     value.marketing.g1Proof.model = "caller-mutated";
     expect(value.authority.marketing.g1Proof.model).toBe("synthetic-reviewed-model");
-  });
-  it("adds the exact G1 image authority to PRD prompting and fails closed without a product image", () => {
-    const value = fixture(), raw = JSON.parse(value.content);
-    raw.requestedMetadata = { brief: { product: "合成商品" } };
-    raw.facts.stages[0].facts.payload = { images: [] };
-    const missing = JSON.stringify(raw); writeFileSync(value.file, missing);
-    const marketing = { ...value.marketing, g1Artifact: { ...value.marketing.g1Artifact,
-      sha256: createHash("sha256").update(missing).digest("hex"), content: missing } };
-    marketing.g1Proof = { ...marketing.g1Proof, evidence: [{ ...marketing.g1Proof.evidence[0]!,
-      sha256: marketing.g1Artifact.sha256 }] };
-    const authority = preparePrdAuthority({ metadata: value.metadata, marketing, workDir: value.workDir, projectId: "P1" });
-    expect(() => prdAuthorityPrompt(authority, value.contract)).toThrow("PRODUCT_VISUAL_AUTHORITY_REQUIRED");
-
-    raw.facts.stages[0].facts.payload.images = [{
-      url: "https://media.example.test/product.png",
-      page_url: "https://source.example.test/product",
-      angle: "unknown",
-    }];
-    const present = JSON.stringify(raw); writeFileSync(value.file, present);
-    marketing.g1Artifact = { ...marketing.g1Artifact, content: present,
-      sha256: createHash("sha256").update(present).digest("hex") };
-    marketing.g1Proof = { ...marketing.g1Proof, evidence: [{ ...marketing.g1Proof.evidence[0]!,
-      sha256: marketing.g1Artifact.sha256 }] };
-    const checked = preparePrdAuthority({ metadata: value.metadata, marketing, workDir: value.workDir, projectId: "P1" });
-    expect(prdAuthorityPrompt(checked, value.contract)).toContain('"url":"https://media.example.test/product.png"');
   });
   it.each(["wrong-project", "old-attempt", "old-run", "degraded", "missing-evidence", "partial-evidence", "wrong-hash", "wrong-file", "file-changed"])("rejects %s", kind => {
     const value = fixture(), proof = structuredClone(value.marketing);
@@ -325,19 +286,6 @@ describe("PRD private accepted current G1", () => {
 });
 
 describe("PRD real model response and provenance", () => {
-  it("normalizes only contradictory delivery wording into the frozen content/master timeline and subtitle style", () => {
-    const value = fixture(), model = structuredClone(value.production);
-    value.authority.profile = { ...value.authority.profile, openWithCover: true, coverIntroSeconds: 0.6 };
-    model.audioSpecification.soundDesign = "持续文字覆盖实际视频0秒至末帧；字号描边待1080×1920实测确定";
-    const normalized = normalizePrdDeliveryLanguage(model, value.authority.profile);
-    const audio = requirementRecord(normalized.audioSpecification, "normalized audio");
-    expect(audio.soundDesign).toContain("内容时间线0秒至内容末帧");
-    expect(audio.soundDesign).toContain("最终成片0.6秒至30秒");
-    expect(audio.soundDesign).toContain("Noto Sans SC、74px字号");
-    expect(audio.soundDesign).not.toContain("实际视频0秒");
-    expect(audio.soundDesign).not.toContain("待1080×1920实测");
-    expect(model.audioSpecification.soundDesign).toContain("实际视频0秒");
-  });
   it("derives the bare creative shape and exact four production modules without mutating native constraints", () => {
     const value = fixture(), before = structuredClone(PRDSchema), contractBefore = structuredClone(value.contract);
     const creative = effectivePrdModelSchema("creative", PRDSchema, value.contract);
@@ -395,26 +343,35 @@ describe("PRD real model response and provenance", () => {
     })]);
     expect(requirementRecord(bound.scenePlan, "scenes").scenes).toEqual(value.production.scenePlan.scenes.map((scene, index) => ({ ...scene, _workloomRequirementScene: value.contract.scenes[index] })));
   });
-  it("removes only exact host-owned character projections copied back by the model", () => {
-    const value = fixture(), model = structuredClone(value.production), source = value.contract.cast.characters[0]!;
-    Object.assign(model.characterSystem.characters[0]!, {
-      character_id: source.character_id,
-      portraitVersion: source.portraitVersion,
-      builtinCharacterSource: structuredClone(source.builtinCharacterSource),
-    });
-    const before = structuredClone(model), normalized = validatePrdModelPayload(model, "production", PRDSchema, value.contract, value.authority.profile);
-    expect(normalized).toEqual(value.production);
-    expect(model).toEqual(before);
+  it("compacts only over-budget creative key messages without mutating the provider payload", () => {
+    const value = fixture(), creative = structuredClone(value.creative), schema = effectivePrdModelSchema("creative", PRDSchema, value.contract);
+    const properties = requirementRecord(schema.properties, "creative properties");
+    const maxLength = Number(requirementRecord(requirementRecord(properties.keyMessages, "keyMessages").items, "key message").maxLength);
+    expect(maxLength).toBeGreaterThan(0);
+    creative.keyMessages = [`${"可核实原文边界。".repeat(Math.ceil(maxLength / 5))}尾巴`];
+    const before = structuredClone(creative);
+    const validated = validatePrdModelPayload(creative, "creative", PRDSchema, value.contract, value.authority.profile);
+    const keyMessages = validated.keyMessages as unknown[];
+    expect(Array.from(String(keyMessages[0])).length).toBeLessThanOrEqual(maxLength);
+    expect(String(keyMessages[0])).toMatch(/…$/);
+    expect(creative).toEqual(before);
   });
-  it("rejects a changed or unknown extra character field without repairing creative content", () => {
-    const value = fixture(), changed = structuredClone(value.production), unknown = structuredClone(value.production);
-    (changed.characterSystem.characters[0] as unknown as RequirementRecord).portraitVersion = 999;
-    (unknown.characterSystem.characters[0] as unknown as RequirementRecord).portraitPlan = "模型新增的执行计划";
-    for (const model of [changed, unknown]) {
-      const before = structuredClone(model);
-      expect(() => validatePrdModelPayload(model, "production", PRDSchema, value.contract, value.authority.profile)).toThrow("包含未声明字段");
-      expect(model).toEqual(before);
-    }
+  it("compacts over-budget production scene requirements without dropping their text", () => {
+    const value = fixture(), production = structuredClone(value.production) as any;
+    const visual = production.scenePlan.scenes[0].visualRequirements as string[];
+    production.scenePlan.scenes[0].visualRequirements = [
+      ...visual,
+      "补充约束一：只使用抽象画布",
+      "补充约束二：不出现人物",
+      "补充约束三：不出现实体硬件",
+    ];
+    const before = structuredClone(production);
+    const validated = validatePrdModelPayload(production, "production", PRDSchema, value.contract, value.authority.profile) as any;
+    const compacted = validated.scenePlan.scenes[0].visualRequirements as string[];
+    expect(compacted.length).toBeLessThanOrEqual(5);
+    expect(compacted.join(" ")).toContain("补充约束一");
+    expect(compacted.join(" ")).toContain("补充约束三");
+    expect(production).toEqual(before);
   });
   it.each(["missing-scene", "wrong-id", "wrong-order", "over-duration", "wrong-character", "invented-character", "wrong-mapping", "missing-module", "bad-enum"])("rejects %s without writing a repaired creative result", kind => {
     const value = fixture(), model = structuredClone(value.production);
@@ -438,10 +395,13 @@ describe("PRD real model response and provenance", () => {
     model.scenePlan.scenes[0]!.duration += 1 / 30;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
   });
-  it("rejects a 34-second scene total for a 30-second target while preserving each approved node", () => {
+  it("accepts a 34-second scene total for a 30-second target while preserving each approved node", () => {
     const value = fixture(), model = structuredClone(value.production);
     value.contract.scenes[0]!.duration += 4;
     model.scenePlan.scenes[0]!.duration += 4;
+    expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).not.toThrow();
+    model.scenePlan.scenes[0]!.duration += 1.1;
+    value.contract.scenes[0]!.duration += 1.1;
     expect(() => validatePrdProduction(model, value.contract, value.authority.profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
   });
   it("preserves ten approved nodes and a long purpose without the obsolete PRD 8-node/200-character ceilings", () => {

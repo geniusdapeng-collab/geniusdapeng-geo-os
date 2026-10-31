@@ -251,8 +251,9 @@ export function installVendorPortraitBindingBridge(options: PortraitBindingBridg
     boundSnapshots.set(prompt, snapshot);
     prompt._workloomBoundCharacters = keys;
     prompt.characterRef = entries.map((entry) => `${entry.id}: image://characters/${entry.portraits.front}`).join("; ");
-    // vendor 优先读取 portraits / fields.portraits。宿主一旦按当前索引完成精确绑定，
-    // 融合阶段留下的空数组、默认路径或模型猜测都不能覆盖真实 characterRef。
+    // Vendor prefers portraits / fields.portraits over characterRef. Once the
+    // host has bound the exact current index bytes, stale model values must not
+    // override that binding or reach the render payload.
     delete prompt.portraits;
     if (isPlainObject(prompt.fields)) delete prompt.fields.portraits;
     return entries;
@@ -477,12 +478,16 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
         clone[key] = toText(value);
       }
       const characters = Array.isArray(clone.characters) ? clone.characters : [];
-      if (characters.length > 0 && !/\/characters\/[\w_]+\/portrait_v\d+\.(png|jpg)/.test(toText(clone.portraits))) {
+      if (characters.length > 0
+        && !/\/characters\/[\w_]+\/portrait_v\d+\.(png|jpg)/.test(toText(clone.portraits))) {
         const first = characters[0];
-        const rawId = typeof first === "string" ? first
-          : first && typeof first === "object" && "id" in first ? (first as Record<string, unknown>).id
-          : first && typeof first === "object" && "characterId" in first ? (first as Record<string, unknown>).characterId
-          : "host_character";
+        const rawId = typeof first === "string"
+          ? first
+          : first && typeof first === "object" && "id" in first
+            ? (first as Record<string, unknown>).id
+            : first && typeof first === "object" && "characterId" in first
+              ? (first as Record<string, unknown>).characterId
+              : "host_character";
         const id = String(rawId).replace(/[^A-Za-z0-9_]/g, "_") || "host_character";
         const probe = `/characters/${id}/portrait_v1.png`;
         clone.portraits = probe;
@@ -549,7 +554,9 @@ export function installVendorFieldQualityBridge(options: { log?: (line: string) 
     if (pipelineProto && typeof pipelineProto.runAll === "function") {
       const originalRunAll = pipelineProto.runAll as (shots: unknown[]) => Promise<unknown>;
       pipelineProto.runAll = async function patchedRunAll(this: unknown, shots: unknown[]) {
-        return clearPortraitProbe(await originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot))));
+        return clearPortraitProbe(
+          await originalRunAll.call(this, (shots ?? []).map((shot) => normalizeShot(shot))),
+        );
       };
       restores.push(() => { pipelineProto.runAll = originalRunAll; });
     }
@@ -1785,7 +1792,6 @@ export function installVendorDurationProjectionBridge(options: DurationProjectio
 
 /** Phase3 宿主执行契约。vendor 源保持只读，失败不得退成成功的规则 prompt。 */
 export const PHASE3_FUSION_POLICY_VERSION = "workloom.phase3-fusion/v1";
-const HOST_PORTRAIT_BINDING_PROBE = "image://characters/__host_bound_at_render__";
 type FusionRecord = Record<string, unknown>;
 interface FusionAgent extends FusionRecord {
   process(shots: FusionRecord[], blueprint: FusionRecord, options: FusionRecord): Promise<FusionRecord>;
@@ -1812,6 +1818,7 @@ const FUSION_MERGE_FIELDS = [
   "action", "props", "portraits", "dialogue", "timeline", "mood", "pacing", "transition",
   "audio", "negative", "bright_constraint", "character_constraint", "consistency", "semanticRefinement",
 ];
+const HOST_PORTRAIT_BINDING_PROBE = "image://characters/__host_bound_at_render__";
 
 function fusionRecord(value: unknown, label: string): FusionRecord {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -1882,7 +1889,10 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     const engineModule = vendorRequire(resolvePath(vendorRoot, "engines/production-engine/production-engine.js")) as {
       ProductionEngine: { prototype: FusionRecord };
     };
-    const fusionAgentModule = vendorRequire(resolvePath(vendorRoot, "engines/production-engine/agents/prompt-fusion-agent.js")) as {
+    const fusionAgentModule = vendorRequire(resolvePath(
+      vendorRoot,
+      "engines/production-engine/agents/prompt-fusion-agent.js",
+    )) as {
       PromptFusionAgent: { prototype: FusionRecord };
     };
     const router = vendorRequire(resolvePath(vendorRoot, "skills/hollywood-cinematography/cinematography-skill-router.js")) as CinematicSkillRouter;
@@ -1908,33 +1918,54 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     const prototype = phaseModule.Phase3PromptFusion?.prototype;
     const enginePrototype = engineModule.ProductionEngine?.prototype;
     const fusionAgentPrototype = fusionAgentModule.PromptFusionAgent?.prototype;
-    if (!prototype || typeof prototype.execute !== "function" || !enginePrototype || typeof enginePrototype.produce !== "function"
+    if (!prototype || typeof prototype.execute !== "function"
+      || !enginePrototype || typeof enginePrototype.produce !== "function"
       || !fusionAgentPrototype || typeof fusionAgentPrototype._ensureFieldCompleteness !== "function") {
       throw new CinematicSkillError("PHASE3_BRIDGE_UNAVAILABLE", "vendor Phase3/ProductionEngine 接口不可用", "unverified");
     }
     const originalExecute = prototype.execute;
     const originalProduce = enginePrototype.produce as (blueprint: FusionRecord, ...args: unknown[]) => Promise<FusionRecord>;
     const originalEnsureFieldCompleteness = fusionAgentPrototype._ensureFieldCompleteness as (
-      this: FusionRecord, shot: FusionRecord, fields: FusionRecord, ratio: unknown, characters: unknown, trackCall?: unknown
+      this: FusionRecord,
+      shot: FusionRecord,
+      fields: FusionRecord,
+      ratio: unknown,
+      characters: unknown,
+      trackCall?: unknown,
     ) => Promise<FusionRecord>;
 
     /**
-     * 定妆照由渲染桥按当前宿主索引和真实字节绑定。融合阶段只判断“宿主将在渲染前绑定”，
-     * 不让模型伪造路径或让空值把其余字段已完整的镜头误判成规则降级。
+     * The render bridge binds the exact current host portrait after fusion.
+     * During field-completeness QC, use a transparent probe so an empty model
+     * value cannot mark an otherwise complete shot as a rule fallback.
      */
     fusionAgentPrototype._ensureFieldCompleteness = async function ensureHostPortraitCompleteness(
-      this: FusionRecord, shot: FusionRecord, fields: FusionRecord, ratio: unknown, characters: unknown, trackCall?: unknown
+      this: FusionRecord,
+      shot: FusionRecord,
+      fields: FusionRecord,
+      ratio: unknown,
+      characters: unknown,
+      trackCall?: unknown,
     ) {
       const selected = Array.isArray(characters) && characters.length > 0;
       const priorPortrait = fields.portraits;
       if (selected) fields.portraits = HOST_PORTRAIT_BINDING_PROBE;
       try {
-        const result = await originalEnsureFieldCompleteness.call(this, shot, fields, ratio, characters, trackCall);
+        const result = await originalEnsureFieldCompleteness.call(
+          this,
+          shot,
+          fields,
+          ratio,
+          characters,
+          trackCall,
+        );
         const resultFields = fusionRecord(result.fields, "字段补齐结果");
         if (selected && resultFields.portraits === HOST_PORTRAIT_BINDING_PROBE) resultFields.portraits = "";
         return result;
       } finally {
-        if (fields.portraits === HOST_PORTRAIT_BINDING_PROBE) fields.portraits = selected ? "" : priorPortrait;
+        if (fields.portraits === HOST_PORTRAIT_BINDING_PROBE) {
+          fields.portraits = selected ? "" : priorPortrait;
+        }
       }
     };
 
@@ -2008,24 +2039,41 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
         }
         const expectedIds = new Set(shots.map((shot) => String(shot.shotId ?? shot.shot_id)));
         const outputIds = new Set<string>();
-        for (const [index, row] of updated.entries()) {
+        const normalizedUpdated = updated.map((row, index) => {
           const shot = fusionRecord(row, "融合镜头");
-          const id = String(shot.shotId ?? shot.shot_id ?? "");
-          if (!expectedIds.has(id) || outputIds.has(id) || shot.degraded === true || typeof shot.prompt !== "string" || !shot.prompt.trim()) {
-            const diagnostic = {
-              index,
-              id: id || null,
-              unexpectedId: !expectedIds.has(id),
-              duplicateId: outputIds.has(id),
-              degraded: shot.degraded === true,
-              promptType: typeof shot.prompt,
-              promptChars: typeof shot.prompt === "string" ? shot.prompt.length : null,
-            };
-            throw new CinematicSkillError("PHASE3_FUSION_UNVERIFIED", `融合镜头 id、提示词或降级状态无效；${JSON.stringify(diagnostic)}`, "unverified");
+          const explicitId = String(shot.shotId ?? shot.shot_id ?? "").trim();
+          // The vendor fusion result may strip the wrapper id while preserving
+          // input order. Positional recovery is allowed only when the id is
+          // absent; an explicitly wrong id is never silently remapped.
+          const expectedId = String(shots[index]?.shotId ?? shots[index]?.shot_id ?? "").trim();
+          const id = explicitId || expectedId;
+          const prompt = typeof shot.prompt === "string" && shot.prompt.trim()
+            ? shot.prompt
+            : typeof shot.enhanced_prompt === "string" && shot.enhanced_prompt.trim()
+              ? shot.enhanced_prompt
+              : "";
+          const degradedFields = shot.degradedFields ?? shot.degraded_fields ?? shot._degradedFields;
+          const explicitDegradation = Boolean(shot.degradedReason ?? shot.degraded_reason ?? shot.error)
+            || (Array.isArray(degradedFields) && degradedFields.length > 0)
+            || (degradedFields && typeof degradedFields === "object" && Object.keys(degradedFields).length > 0);
+          if (!id || !expectedIds.has(id) || outputIds.has(id) || explicitDegradation || !prompt) {
+            throw new CinematicSkillError(
+              "PHASE3_FUSION_UNVERIFIED",
+              `融合镜头合同无效：index=${index} expected=${expectedId || "?"} actual=${explicitId || "missing"} `
+              + `prompt=${prompt ? "present" : "missing"} degraded=${String(shot.degraded)} `
+              + `explicitDegradation=${String(explicitDegradation)} diagnostic=${JSON.stringify({
+                index,
+                expectedId: expectedId || null,
+                actualId: explicitId || null,
+                promptChars: typeof shot.prompt === "string" ? shot.prompt.length : null,
+              })}`,
+              "unverified",
+            );
           }
           outputIds.add(id);
-        }
-        const merged = this.mergeShots(shots, updated as FusionRecord[], FUSION_MERGE_FIELDS);
+          return { ...shot, shotId: id, prompt, degraded: false };
+        });
+        const merged = this.mergeShots(shots, normalizedUpdated, FUSION_MERGE_FIELDS);
         const timed = await this._checkDialogueTiming(merged, blueprint);
         if (remaining() <= 0) throw new CinematicSkillError("PHASE3_BUDGET_EXHAUSTED", "台词检查后阶段预算已耗尽");
         if (!Array.isArray(timed) || timed.length !== shots.length

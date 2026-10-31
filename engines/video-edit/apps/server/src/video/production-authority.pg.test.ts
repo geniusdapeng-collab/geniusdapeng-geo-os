@@ -36,11 +36,19 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
   beforeEach(async () => {
     projectId = `P-${suffix}-${++seq}`; sourceId = `SR-${suffix}-${seq}`;
     env = { HR_WORK_DIR: dir, WORKLOOM_RENDER_SIGNING_SECRET: "pg-test-render-signing-secret-more-than-32-bytes",
-      VOLCENGINE_ARK_API_KEY: "pg-test-provider", LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "pg-test-judge", LLM_MODEL: "test-judge" };
+      VOLCENGINE_ARK_API_KEY: "pg-test-provider", LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "pg-test-judge", LLM_MODEL: "deepseek-flash" };
     approved = true; providerCalls = 0; calls = [];
     vi.stubGlobal("fetch", vi.fn(async (url, init) => {
       calls.push({ url: String(url), body: String(init.body) });
-      if (String(url).endsWith("/chat/completions")) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ approved, score: approved ? 95 : 30, issues: approved ? [] : ["不合格"], suggestions: [], reason: "测试裁决" }) } }] }));
+      if (String(url).endsWith("/chat/completions")) return new Response(JSON.stringify({
+        id: `judge-${suffix}-${seq}`,
+        model: "deepseek-flash",
+        choices: [{
+          finish_reason: "stop",
+          message: { content: JSON.stringify({ approved, score: approved ? 95 : 30, issues: approved ? [] : ["不合格"], suggestions: [], reason: "测试裁决" }) },
+        }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2, completion_tokens_details: { reasoning_tokens: 0 } },
+      }));
       providerCalls++;
       return new Response(JSON.stringify({ id: `provider-${suffix}-${seq}` }));
     }));
@@ -99,7 +107,8 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
   async function marketingSource() {
     const root = path.join(dir, "archive", scope.workspaceId, projectId);
     const body = "星野 F3 风扇支持 9 档风量；9 档不是能耗等级。", sourceUrl = "https://source.example.com/f3";
-    const snapshot = { sourceId: "SRC-pg", requestedUrl: sourceUrl, finalUrl: sourceUrl, redirectChain: [], fetchedAt: new Date().toISOString(), contentType: "text/plain", rawSha256: renderSha256(body), textSha256: renderSha256(body), bytes: Buffer.byteLength(body), text: body, assetUrls: [] };
+    const marketingSourceId = `SRC-${renderSha256(`${sourceUrl}\n${renderSha256(body)}`).slice(0, 24)}`;
+    const snapshot = { sourceId: marketingSourceId, requestedUrl: sourceUrl, finalUrl: sourceUrl, redirectChain: [], fetchedAt: new Date().toISOString(), contentType: "text/plain", rawSha256: renderSha256(body), textSha256: renderSha256(body), bytes: Buffer.byteLength(body), text: body, assetUrls: [] };
     const prepared = await prepareMarketingFacts({ scope: { ...scope, projectId, runId: `RUN-${seq}`, attempt: 1 }, root, env,
       intent: "介绍星野 F3 的风量档位", metadata: { brief: { product: "星野 F3" } },
       llm: { reason: async prompt => {

@@ -1,20 +1,20 @@
 /**
  * Video-pipeline model policy.
  *
- * DeepSeek currently serves `deepseek-v4-flash` as a compatibility alias for
- * `deepseek-flash` (V4.1-Flash-1017). New code must use the canonical name so
- * routing, evidence budgets and traces all identify the same live model.
+ * `deepseek-flash` is the only accepted model identity. Dated and legacy
+ * aliases fail closed so routing, evidence budgets and traces cannot drift.
  */
 import {
+  canonicalDeepSeekModel,
   DEEPSEEK_FLASH_CONTEXT_TOKENS,
   DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
   DEEPSEEK_FLASH_MODEL_ID,
   VIDEO_SCENE_POLICY_VERSION,
+  deepSeekInputTokenBudget,
   estimateDeepSeekTokens,
-  planDeepSeekWindow,
   resolveVideoScenePolicy,
-  type VideoScene,
   videoThinkingBody,
+  type VideoScene,
 } from "@workloom/base/model-router";
 
 export {
@@ -22,13 +22,13 @@ export {
   DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
   VIDEO_SCENE_POLICY_VERSION,
   estimateDeepSeekTokens,
-  planDeepSeekWindow,
   videoThinkingBody,
 };
 export type { VideoScene };
 export const DEEPSEEK_FLASH_MODEL = DEEPSEEK_FLASH_MODEL_ID;
-/** @deprecated Scene calls compute their own maximum legal output budget. */
+/** @deprecated The dispatcher uses the complete legal remaining window. */
 export const DEEPSEEK_VIDEO_JSON_OUTPUT_TOKENS = DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS;
+export const DEEPSEEK_FLASH_INPUT_TOKEN_BUDGET = deepSeekInputTokenBudget(DEEPSEEK_VIDEO_JSON_OUTPUT_TOKENS);
 
 type Env = Record<string, string | undefined>;
 
@@ -46,17 +46,10 @@ function isDeepSeekEndpoint(value: string): boolean {
 
 /** Canonical model used by every video-pipeline call. Explicit pins win. */
 export function resolveVideoModel(env: Env = process.env): string {
-  const provider = clean(env.LLM_PROVIDER).toLowerCase();
-  if (provider === "mock") return "";
-  if (provider && provider !== "deepseek") throw new Error("VIDEO_TEXT_PROVIDER_NOT_REGISTERED");
   const configured = clean(env.LLM_FORCE_MODEL)
     || clean(env.LLM_MODEL)
     || clean(env.DEEPSEEK_MODEL);
-  if (configured) {
-    if (configured === "deepseek-v4-flash") return DEEPSEEK_FLASH_MODEL;
-    if (configured !== DEEPSEEK_FLASH_MODEL) throw new Error("VIDEO_TEXT_MODEL_NOT_REGISTERED");
-    return configured;
-  }
+  if (configured) return canonicalDeepSeekModel(configured);
   const endpoint = clean(env.LLM_BASE_URL) || clean(env.DEEPSEEK_BASE_URL);
   return isDeepSeekEndpoint(endpoint) || clean(env.DEEPSEEK_API_KEY)
     ? DEEPSEEK_FLASH_MODEL
@@ -78,22 +71,8 @@ export function resolveVideoApiKey(env: Env = process.env): string {
 }
 
 /**
- * Legacy deployment-level comprehension of LLM_NON_THINKING. Scene policy is
- * authoritative; an explicit value is retained only as a reviewed rollback
- * switch and is not the old default-off reasoning behavior.
- */
-export function resolveVideoNonThinking(_model: string, env: Env = process.env): boolean {
-  const flag = clean(env.LLM_NON_THINKING).toLowerCase();
-  if (["0", "false", "off", "no"].includes(flag)) return false;
-  if (["1", "true", "on", "yes"].includes(flag)) return true;
-  // Thinking is selected by scene policy. This legacy deployment switch only
-  // forces a global override when explicitly configured.
-  return false;
-}
-
-/**
- * Scene policy is the source of truth. LLM_THINKING_TYPE is only a deployment
- * rollback switch and is intentionally global when set explicitly.
+ * Scene policy is authoritative. LLM_THINKING_TYPE is retained only as an
+ * explicit deployment rollback switch, never as a silent default-off override.
  */
 export function resolveVideoScene(scene: VideoScene, env: Env = process.env) {
   const base = resolveVideoScenePolicy(scene);

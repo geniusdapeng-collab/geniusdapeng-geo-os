@@ -31,7 +31,7 @@ import {
   resolveVideoApiKey,
   resolveVideoModel,
 } from "../../packages/video-studio/src/llm-config.js";
-import { completeVideoTextTask } from "../../packages/video-studio/src/video-text-client.js";
+import { OpenAiCompatibleProvider } from "../../packages/base/model-router/providers.js";
 
 function arg(name: string, fallback = ""): string {
   const index = process.argv.indexOf(name);
@@ -92,16 +92,15 @@ if (flag("--llm")) {
   const baseUrl = resolveOpenAiCompatibleBaseUrl(combined) || "https://api.deepseek.com";
   const model = resolveVideoModel(combined) || "deepseek-flash";
   if (!key) {
-    llmNote = `未启用（${envFile} 里没有 DEEPSEEK_API_KEY → 降级为纯规则）`;
+    throw new Error(`--llm 已启用，但 ${envFile} 与当前进程都没有 DEEPSEEK_API_KEY；拒绝静默退回规则`);
   } else {
     llmNote = `已启用（${model}）`;
+    const provider = new OpenAiCompatibleProvider(model, { baseUrl, apiKey: key });
     llmCall = async (prompt: string): Promise<string> => {
-      const result = await completeVideoTextTask({
-        endpoint: { baseUrl, apiKey: key, model },
-        scene: "video.deterministic",
-        messages: [{ role: "user", content: prompt }],
-        timeoutMs: 20_000,
-      });
+      const result = await provider.chat(
+        [{ role: "user", content: prompt }],
+        { scene: "video.pipeline.route", timeoutMs: 20_000, temperature: 0, retries: 0 },
+      );
       return result.text;
     };
   }

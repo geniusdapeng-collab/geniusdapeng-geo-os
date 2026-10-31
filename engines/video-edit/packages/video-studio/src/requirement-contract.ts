@@ -96,11 +96,7 @@ export function structuredRiskFeedback(error: unknown): string {
   return `\n\n## 上一次原生风险校验反馈\n${JSON.stringify(facts)}\n仅依据这些结构校验事实重新生成完整合法响应；不截取、补填或复用上次风险文本，不改变原有 schema 与完整来源约束。${exactShape}`;
 }
 
-/**
- * Normalize only exact structural aliases emitted by compatible JSON models.
- * Values, array order and text stay byte-for-byte equivalent; unknown fields or
- * mixed unexplained wrappers remain untouched for the strict validator to reject.
- */
+/** Normalize only exact structural aliases; unknown wrappers remain for strict validation. */
 export function normalizeRiskResponseShape(value: unknown): { value: unknown; normalization: string | null } {
   const parseContainer = (input: unknown): RequirementRecord | null => {
     if (input && typeof input === "object" && !Array.isArray(input)) return input as RequirementRecord;
@@ -108,7 +104,8 @@ export function normalizeRiskResponseShape(value: unknown): { value: unknown; no
     const clean = input.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/u, "");
     try {
       const parsed = JSON.parse(clean) as unknown;
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as RequirementRecord : null;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as RequirementRecord : null;
     } catch { return null; }
   };
   const mappedFields = (candidate: RequirementRecord): RequirementRecord | null => {
@@ -119,10 +116,16 @@ export function normalizeRiskResponseShape(value: unknown): { value: unknown; no
       if (!target || Object.prototype.hasOwnProperty.call(mapped, target)) return null;
       mapped[target] = candidate[key];
     }
-    return RISK_TOP_LEVEL_FIELDS.every(key => Object.prototype.hasOwnProperty.call(mapped, key)) ? mapped : null;
+    return RISK_TOP_LEVEL_FIELDS.every(key => Object.prototype.hasOwnProperty.call(mapped, key))
+      ? mapped : null;
   };
-  const unwrap = (candidateValue: unknown, seen: Set<object>, depth = 0): { value: RequirementRecord; normalization: string | null } | null => {
-    if (!candidateValue || typeof candidateValue !== "object" || Array.isArray(candidateValue) || seen.has(candidateValue) || depth > 3) return null;
+  const unwrap = (
+    candidateValue: unknown,
+    seen: Set<object>,
+    depth = 0,
+  ): { value: RequirementRecord; normalization: string | null } | null => {
+    if (!candidateValue || typeof candidateValue !== "object" || Array.isArray(candidateValue)
+      || seen.has(candidateValue) || depth > 3) return null;
     const candidate = candidateValue as RequirementRecord;
     seen.add(candidate);
     const mapped = mappedFields(candidate);
@@ -139,7 +142,8 @@ export function normalizeRiskResponseShape(value: unknown): { value: unknown; no
         return { value: normalized?.value ?? inner, normalization: "risk-assessment-wrapper" };
       }
     }
-    if (candidate.success === true && typeof candidate.content === "string" && keys.every(key => RISK_TRANSPORT_KEYS.has(key))) {
+    if (candidate.success === true && typeof candidate.content === "string"
+      && keys.every(key => RISK_TRANSPORT_KEYS.has(key))) {
       const inner = parseContainer(candidate.content);
       if (inner) {
         const normalized = unwrap(inner, seen, depth + 1);
@@ -150,13 +154,16 @@ export function normalizeRiskResponseShape(value: unknown): { value: unknown; no
   };
   const normalized = unwrap(value, new Set());
   if (normalized) return normalized;
-  if (Array.isArray(value) && value.length > 0 && value.every(item => item && typeof item === "object" && !Array.isArray(item))) {
+  if (Array.isArray(value) && value.length > 0
+    && value.every(item => item && typeof item === "object" && !Array.isArray(item))) {
     const merged: RequirementRecord = {};
     for (const item of value as RequirementRecord[]) {
       for (const key of Object.keys(item)) {
         const target = RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number])
           ? key as typeof RISK_TOP_LEVEL_FIELDS[number] : RISK_FIELD_ALIASES[key];
-        if (!target || Object.prototype.hasOwnProperty.call(merged, target)) return { value, normalization: null };
+        if (!target || Object.prototype.hasOwnProperty.call(merged, target)) {
+          return { value, normalization: null };
+        }
         merged[target] = item[key];
       }
     }
@@ -173,6 +180,41 @@ export function requirementRecord(value: unknown, label: string): RequirementRec
     throw new RequirementContractError("REQUIREMENT_CONTRACT_INVALID", `${label} 必须为已完成的普通对象`);
   }
   return value as RequirementRecord;
+}
+
+/**
+ * Project a strict top-level object response onto the declared schema keys.
+ * Missing required keys remain missing and still fail validation; undeclared
+ * model chatter is dropped instead of being reinterpreted as production facts.
+ */
+export function projectDeclaredFields(value: unknown, schemaValue: unknown): unknown {
+  if (!schemaValue || typeof schemaValue !== "object" || Array.isArray(schemaValue)) return value;
+  const schema = schemaValue as RequirementRecord;
+  if (Array.isArray(value) && schema.type === "array") {
+    const max = typeof schema.maxItems === "number" && Number.isSafeInteger(schema.maxItems) && schema.maxItems >= 0
+      ? schema.maxItems
+      : value.length;
+    const projected = value.map(item => projectDeclaredFields(item, schema.items));
+    if (projected.length <= max) return projected;
+    const itemSchema = schema.items && typeof schema.items === "object" && !Array.isArray(schema.items)
+      ? schema.items as RequirementRecord
+      : {};
+    if (max > 0 && itemSchema.type === "string") {
+      const kept = projected.slice(0, max - 1);
+      const merged = projected.slice(max - 1).filter((item): item is string => typeof item === "string" && Boolean(item.trim())).join("；");
+      if (merged) kept.push(merged);
+      return kept;
+    }
+    return projected.slice(0, max);
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const properties = schema.properties;
+  if (schema.type !== "object" || schema.additionalProperties !== false
+    || !properties || typeof properties !== "object" || Array.isArray(properties)) return value;
+  const source = value as RequirementRecord;
+  return Object.fromEntries(Object.keys(properties as RequirementRecord)
+    .filter((key) => Object.prototype.hasOwnProperty.call(source, key))
+    .map((key) => [key, projectDeclaredFields(source[key], (properties as RequirementRecord)[key])]));
 }
 
 function text(value: unknown, label: string, minimum = 1): string {
@@ -227,14 +269,20 @@ export function validateRequirementSchema(value: unknown, schemaValue: unknown, 
         error.message += `；validation ${JSON.stringify(details)}`;
         throw withValidationFacts(error, details, riskValidationFacts);
       }
-      if (risk && location === "RiskAssessor response" && ["required", "additionalProperties"].includes(keyword)) {
+      if (risk && location === "RiskAssessor response"
+        && ["required", "additionalProperties"].includes(keyword)) {
         const requiredFields = Array.isArray(schema.required)
-          ? schema.required.filter((key): key is string => typeof key === "string" && RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number]))
+          ? schema.required.filter((key): key is string =>
+            typeof key === "string" && RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number]))
           : [];
         const allowedFields = schema.properties && typeof schema.properties === "object"
-          ? Object.keys(schema.properties as RequirementRecord).filter(key => RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number])) : [];
-        const record = item && typeof item === "object" && !Array.isArray(item) ? item as RequirementRecord : {};
-        const missingFields = requiredFields.filter(key => !Object.prototype.hasOwnProperty.call(record, key));
+          ? Object.keys(schema.properties as RequirementRecord)
+            .filter(key => RISK_TOP_LEVEL_FIELDS.includes(key as typeof RISK_TOP_LEVEL_FIELDS[number]))
+          : [];
+        const record = item && typeof item === "object" && !Array.isArray(item)
+          ? item as RequirementRecord : {};
+        const missingFields = requiredFields.filter(key =>
+          !Object.prototype.hasOwnProperty.call(record, key));
         const details = { kind: "schema", path: location, keyword, requiredFields, allowedFields, missingFields };
         error.message += `；validation ${JSON.stringify(details)}`;
         throw withValidationFacts(error, details, riskValidationFacts);
@@ -388,6 +436,102 @@ export interface RequirementContract {
   hash: string;
 }
 
+export interface DiscoveryTimingNormalization {
+  changes: string[];
+  previousDuration: number | null;
+  normalizedDuration: number | null;
+}
+
+function sceneNodes(structure: RequirementRecord): RequirementRecord[] {
+  return [
+    requirementRecord(structure.opening, "SceneArchitect opening"),
+    ...array(structure.scenes, "SceneArchitect scenes").map((scene, index) =>
+      requirementRecord(scene, `SceneArchitect scenes/${index}`)),
+    requirementRecord(structure.ending, "SceneArchitect ending"),
+  ];
+}
+
+/**
+ * G3 accepts a small model timing tolerance, but the customer's exact duration
+ * remains authoritative. Reconcile the small residual before hashing the
+ * requirement contract, while preserving node count/order and every minimum of
+ * three seconds supported by the pinned SceneArchitect schema.
+ */
+export function normalizeDiscoveryTiming(
+  targetValue: unknown,
+  structureValue: unknown,
+  audienceValue: unknown,
+  restrictions: string[] = [],
+): DiscoveryTimingNormalization {
+  const target = Number(targetValue);
+  if (!Number.isFinite(target) || target <= 0 || !structureValue || typeof structureValue !== "object" || Array.isArray(structureValue)) {
+    return { changes: [], previousDuration: null, normalizedDuration: null };
+  }
+  const structure = structureValue as RequirementRecord;
+  const nodes = sceneNodes(structure);
+  const durations = nodes.map((node) => Number(node.duration));
+  if (durations.some((value) => !Number.isFinite(value) || value <= 0)) {
+    return { changes: [], previousDuration: null, normalizedDuration: null };
+  }
+  const previousDuration = Math.round(durations.reduce((sum, value) => sum + value, 0) * 10) / 10;
+  const changes: string[] = [];
+  let residual = Math.round((previousDuration - target) * 10) / 10;
+  if (Math.abs(residual) > TARGET_DURATION_TOLERANCE_SECONDS) {
+    return { changes, previousDuration, normalizedDuration: null };
+  }
+  if (residual !== 0) {
+    const adjustable = nodes.map((node, index) => ({ node, index, duration: durations[index]! }))
+      .sort((left, right) => right.duration - left.duration);
+    for (const item of adjustable) {
+      if (residual === 0) break;
+      if (residual > 0) {
+        const removable = Math.max(0, Math.floor((item.duration - 3) * 10) / 10);
+        if (removable <= 0) continue;
+        const delta = Math.min(removable, residual);
+        item.node.duration = Math.round((item.duration - delta) * 10) / 10;
+        residual = Math.round((residual - delta) * 10) / 10;
+      } else {
+        const delta = Math.abs(residual);
+        item.node.duration = Math.round((item.duration + delta) * 10) / 10;
+        residual = 0;
+      }
+    }
+    if (residual === 0) {
+      structure.totalDuration = target;
+      structure.sceneCount = nodes.length;
+      changes.push("scene-duration-reconciled");
+    }
+  }
+  const audience = audienceValue && typeof audienceValue === "object" && !Array.isArray(audienceValue)
+    ? audienceValue as RequirementRecord
+    : null;
+  const noCompetitorEvidence = restrictions.some((restriction) => /竞品|对比|市场领先/u.test(restriction));
+  const normalizeAudienceText = (value: unknown): unknown => {
+    if (typeof value !== "string") return value;
+    let next = value.replace(/第\s*\d+(?:\.\d+)?\s*秒/gu, "已审场景节点");
+    if (noCompetitorEvidence && /竞品|其他产品|别人|市场|首创|首次|第一次|领先|唯一|满屏.*话术|没在吹|吹/u.test(next)) {
+      return "创作假设，待验证：只依据已审官方原文描述本品；不推断竞品、市场首创、领先地位或其他产品的表现";
+    }
+    if (noCompetitorEvidence && !/^创作假设|^待验证/u.test(next)) next = `创作假设，待验证：${next}`;
+    return next;
+  };
+  if (audience && Array.isArray(audience.emotionTriggers)) {
+    const triggers = audience.emotionTriggers.map(normalizeAudienceText);
+    if (JSON.stringify(triggers) !== JSON.stringify(audience.emotionTriggers)) {
+      audience.emotionTriggers = triggers;
+      changes.push("audience-timing-projected-to-scenes");
+    }
+  }
+  if (audience && noCompetitorEvidence && Array.isArray(audience.contentExpectations)) {
+    const expectations = audience.contentExpectations.map(normalizeAudienceText);
+    if (JSON.stringify(expectations) !== JSON.stringify(audience.contentExpectations)) {
+      audience.contentExpectations = expectations;
+      changes.push("unsupported-audience-market-claims-removed");
+    }
+  }
+  return { changes, previousDuration, normalizedDuration: target };
+}
+
 export interface RequirementSceneValidationOptions {
   toleranceSeconds?: number;
   productVisualAuthority?: ProductVisualAuthority;
@@ -399,7 +543,10 @@ const UNVERIFIED_PRODUCT_VISUAL_PATTERNS: Array<[string, RegExp]> = [
   ["view", /(?:侧前角度|侧后角度|正侧视|前\s*45\s*度?|后\s*45\s*度?|轮胎接地局部|轮辋与轮胎接地)/u],
 ];
 
-function assertProductVisualScenes(scenes: RequirementScene[], authority?: ProductVisualAuthority): void {
+function assertProductVisualScenes(
+  scenes: RequirementScene[],
+  authority?: ProductVisualAuthority,
+): void {
   if (!authority?.required || !authority.images.length) return;
   for (const scene of scenes) {
     const fields = [
@@ -411,7 +558,9 @@ function assertProductVisualScenes(scenes: RequirementScene[], authority?: Produ
     for (const [index, field] of fields.entries()) {
       for (const [category, pattern] of UNVERIFIED_PRODUCT_VISUAL_PATTERNS) {
         if (!pattern.test(field)
-          || /(?:无法确认|无法核实|未确认|不得|禁止|省略|不要写|不作|不扩写|只引用已确认|仅引用已确认)/u.test(field)) continue;
+          || /(?:无法确认|无法核实|未确认|不得|禁止|省略|不要写|不作|不扩写|只引用已确认|仅引用已确认)/u.test(field)) {
+          continue;
+        }
         const details = Object.freeze({ kind: "product-visual", sceneId: scene.id, fieldIndex: index, category });
         throw withValidationFacts(new RequirementContractError(
           "REQUIREMENT_PRODUCT_VISUAL_UNVERIFIED",
@@ -496,11 +645,33 @@ export function bindRequirementContract(
   expectedOwnerAudience: string | null
 ): RequirementRecord {
   const original = requirementRecord(originalValue, "ProfileResolver 完成后的需求清单");
-  const discovery = requirementRecord(discoveryValue, "需求洞察结果");
+  const originalDiscovery = requirementRecord(discoveryValue, "需求洞察结果");
+  const discovery = structuredClone(originalDiscovery);
   const upstream = requirementRecord(upstreamValue, "上游创意字段");
   const metadata = requirementRecord(metadataValue, "当前运行 metadata");
   const cast = requirementCast(metadata);
   if (cast.hash !== expectedCastHash) throw new RequirementContractError("REQUIREMENT_CAST_CHANGED", "洞察前后权威人物合同发生变化");
+  const timing = normalizeDiscoveryTiming(
+    upstream.duration_sec,
+    discovery.sceneStructure,
+    discovery.audienceProfile,
+    Array.isArray(metadata.marketingRestrictions)
+      ? metadata.marketingRestrictions.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+      : [],
+  );
+  if (timing.changes.length > 0) {
+    metadata._workloomDiscoveryTimingNormalization = {
+      schemaVersion: "workloom.discovery-timing-normalization/v1",
+      previousDuration: timing.previousDuration,
+      normalizedDuration: timing.normalizedDuration,
+      changes: timing.changes,
+    };
+    // The vendor reuses this same discovery object when rendering G3 and when
+    // constructing the PRD. Publish the normalized authority back to the live
+    // run object instead of leaving a corrected clone behind.
+    originalDiscovery.sceneStructure = structuredClone(discovery.sceneStructure);
+    originalDiscovery.audienceProfile = structuredClone(discovery.audienceProfile);
+  }
   const scenes = requirementScenes(discovery.sceneStructure, cast, upstream.duration_sec);
   const brief = metadata.brief === undefined ? {} : requirementRecord(metadata.brief, "客户 Brief");
   const ownerAudience = expectedOwnerAudience;
@@ -553,11 +724,7 @@ export function verifiedRequirementContract(listValue: unknown, metadataValue: u
   return contract;
 }
 
-/**
- * The profile `description` is a legacy aggregate that can repeat an older
- * wardrobe. Every field represented by it remains authoritative in the
- * structured cast/copy above, so display surfaces omit only that duplicate.
- */
+/** Omit only the legacy aggregate that can repeat an older wardrobe version. */
 export function requirementDisplayContract(contract: RequirementContract): RequirementContract {
   const display = structuredClone(contract);
   display.cast.characters = display.cast.characters.map(character => {

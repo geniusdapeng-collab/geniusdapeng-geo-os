@@ -6,8 +6,8 @@ import { createRequire } from 'node:module';
 import { MODEL_POLICY } from '../model-routing/policy.mjs';
 import { DEEPSEEK_FLASH_MODEL_ID, normalizeTextModelId } from '../model-routing/registry.mjs';
 
-export const SOURCE_MAIN = 'c0aca4a62a1d53fd4eccab7865668b7250c22ebc';
-export const SOURCE_FILE_COUNT = 3561;
+export const SOURCE_MAIN = 'a544ab8b068790bfb14b7977efc81b33897fc9de';
+export const SOURCE_FILE_COUNT = 3650;
 export const SCOPE = Object.freeze({ tenantId: 'tenant-pengmanager-video', workspaceId: 'ws-pengmanager-video', slug: 'pengmanager-video', memberNo: 'MEM-001', memberId: 'mem-pengmanager-video-owner' });
 export class VideoRuntimeError extends Error {
   constructor(code, message, options) { super(message, options); this.name = 'VideoRuntimeError'; this.code = code; }
