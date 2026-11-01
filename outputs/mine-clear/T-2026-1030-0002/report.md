@@ -48,6 +48,8 @@
 | GEO / integrated engine | 14/14 通过 |
 | smoke | health/dashboard/GEO/media 均 200，账号 16、内容 120 |
 | security scan | 3999 文件，0 问题 |
+| bundle governance | AI Video / GEO Growth 资产索引与包摘要刷新后通过 |
+| CI 失败复现 | 原失败步骤修正后 Vitest 145/145、Node 工具 12/12、Python ASR 9/9 |
 | snapshot / pin | 上游 `a544ab8b068790bfb14b7977efc81b33897fc9de`，3650 文件、336,706,560 字节，pin 与快照字节一致 |
 
 ## 4. 证据分级

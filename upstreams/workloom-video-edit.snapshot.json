@@ -6704,7 +6704,7 @@
       "bytes": 143105,
       "targetBytes": 143105,
       "sourceSha256": "1ccefd2276959ccdc06ec6dc95a7b5c45ec14a0f94d4c30406b3b92a6bd58983",
-      "targetSha256": "eafb1d95e28d2899dba8f8ac8574479efcf1ffc93b384c89228dbe6acffffda8",
+      "targetSha256": "5cc2c41f88332df03929acc458b0ff3aa80593ee84100f88edac970d6cddbc96",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
@@ -15618,8 +15618,9 @@
       "bytes": 14222,
       "targetBytes": 14222,
       "sourceSha256": "d13538cec70df9198ca89f441377441e891d615995cef3c12fc7557db1d1a1f4",
-      "targetSha256": "d13538cec70df9198ca89f441377441e891d615995cef3c12fc7557db1d1a1f4",
-      "evidence": "B"
+      "targetSha256": "1b373f898f3f18bdcc3f5a14a77116789a36df2c4a581fb0139fbfe6ec48da76",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "bundles/geo-growth/capabilities/post-quality.mjs",
