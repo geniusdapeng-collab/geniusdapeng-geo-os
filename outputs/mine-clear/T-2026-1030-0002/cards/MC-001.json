@@ -1,0 +1,48 @@
+{
+  "id": "MC-001",
+  "kind": "problem",
+  "level": "L1",
+  "severity": "P0",
+  "title": "跨 bundle 管线计划没有统一的 gate registry、policy 与死锁门禁",
+  "state": "open",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-pipeline/src/adapters.ts:38@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "sha256": "b8cde51f225b0d4ccfc6517be4d1412465fef0177dc42ea7c913e267689c77b5",
+      "note": "VIDEO_GATES 只登记 AI Video 子集；全 bundle 扫描发现 G-GEO1/G-GEO2/G-VIS1 缺失。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/video-pipeline/src/adapters.ts",
+    "line": 38,
+    "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+    "symbol": "VIDEO_GATES"
+  },
+  "trigger_path": "编译 bundles/geo-growth/pipelines/dual-content-factory.yml 时 fact-check/G-GEO2 不在默认 gate registry；未来新增门或改别名仍会再次漂移。",
+  "fix_plan": "把 gate 注册表、policy 覆盖和拓扑可执行性统一成一个管线目录校验器，CI 编译所有 bundle YAML 并拒绝未知门、未覆盖门及运行期等待环。",
+  "regression": {
+    "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode catalog --plans 13 --cases 64",
+    "expect": "13/13 管线编译通过，gate registry/policy 无缺口，wait/call cycle 为 0"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "编译 bundles/{ai-video,geo-growth,hotel,video-edit}/pipelines 下的全部 YAML",
+      "expect": "13/13 可编译，所有实际 gate 同时存在于 registry 和 policy，且没有运行期死锁候选",
+      "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode catalog --plans 13 --cases 64",
+      "exec": {
+        "file": "/bin/zsh",
+        "args": [
+          "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+          "--mode",
+          "catalog",
+          "--plans",
+          "13",
+          "--cases",
+          "64"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{"schemaVersion":"workloom.pipeline-control-stress/v1","mode":"flags","startedAt":"2026-11-01T08:43:12.328Z","passed":true,"flags":{"accepted":9,"rejected":3,"defaults":{"coordinator":"off","managedCli":false,"repair":"off","autoPaidRepair":false,"legacyProjection":true,"promptPrespendGuard":"off","systemAutoApproval":"enforce","scope":"marketing"}},"finishedAt":"2026-11-01T08:43:12.328Z"}
+
+ RUN  v4.1.11 /Users/mac/Documents/Codex/2026-10-30/pengmanager-system-https-github-com-geniusdapeng/work/pipeline-coordinator-baseline/engines/video-edit
+
+
+ Test Files  5 passed (5)
+      Tests  18 passed (18)
+   Start at  16:43:12
+   Duration  3.15s (transform 531ms, setup 0ms, import 1.66s, tests 1.15s, environment 0ms)
+
+
+
+exit_code=0 signal=none error=none
+assertion_validation={"ok":true,"errors":[]}

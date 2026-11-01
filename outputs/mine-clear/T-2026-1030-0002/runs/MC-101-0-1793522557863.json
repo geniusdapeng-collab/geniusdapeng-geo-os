@@ -1,0 +1,41 @@
+{
+  "schema": "workloom.evidence-run/v1",
+  "id": "MC-101-0-1793522557863",
+  "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+  "exec": {
+    "file": "/bin/zsh",
+    "args": [
+      "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+      "--mode",
+      "all",
+      "--plans",
+      "13",
+      "--cases",
+      "64"
+    ]
+  },
+  "actor": "codex-repair-T-2026-1030-0002",
+  "role": "repair",
+  "subject": {
+    "card_id": "MC-101",
+    "assertion_index": 0
+  },
+  "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+  "working_tree_dirty": false,
+  "started_at": "2026-11-01T08:42:37.863Z",
+  "finished_at": "2026-11-01T08:42:43.550Z",
+  "exit_code": 0,
+  "signal": null,
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "result": "pass",
+  "outputs": [
+    {
+      "path": "evidence/MC-101-0-1793522557863.txt",
+      "sha256": "31a3eafe249be72c546cdc0e93b9c8604d586585c3f8b7e03419d99fc8d244c7",
+      "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+    }
+  ]
+}

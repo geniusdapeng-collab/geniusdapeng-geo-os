@@ -1,0 +1,48 @@
+{
+  "id": "MC-004",
+  "kind": "problem",
+  "level": "L2",
+  "severity": "P1",
+  "title": "管线 coordinator 存在两套 feature flag 名称与默认值",
+  "state": "open",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/pipeline-control/src/feature-flags.ts:47@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "sha256": "7530c76822cf90cce4cf4dea610b3da44f207a874c33d8f5d2c4244c2ef2a241",
+      "note": "受控加载器读取 PIPELINE_COORDINATOR，而 shadow.ts 读取 PIPELINE_CONTROL_PLANE。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/pipeline-control/src/feature-flags.ts",
+    "line": 47,
+    "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+    "symbol": "loadPipelineFeatureFlags"
+  },
+  "trigger_path": "运维只设置其中一个环境变量时，两个模块得出不同 coordinator mode，可能出现 shadow 与 enforce 混跑。",
+  "fix_plan": "统一由 loadPipelineFeatureFlags 提供 coordinator mode；shadow/studio-worker/router 全部消费同一结果，并对旧变量做一次性显式兼容或拒绝。",
+  "regression": {
+    "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode flags --plans 13 --cases 12",
+    "expect": "canonical/legacy 同值共用同一结果，冲突和非法值 fail closed"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "PIPELINE_COORDINATOR/PIPELINE_CONTROL_PLANE 单设、同设、冲突或非法值",
+      "expect": "所有入口解析出同一 mode；冲突和非法值 fail closed 并给出明确错误",
+      "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode flags --plans 13 --cases 12",
+      "exec": {
+        "file": "/bin/zsh",
+        "args": [
+          "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+          "--mode",
+          "flags",
+          "--plans",
+          "13",
+          "--cases",
+          "12"
+        ]
+      }
+    }
+  ]
+}
