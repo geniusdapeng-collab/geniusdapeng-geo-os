@@ -3,6 +3,7 @@ import {
   parseArtifactEnvelope,
   parseGateDecision,
   parsePipelineCommand,
+  parsePipelineOperationRecord,
   parsePipelineOutboxItem,
   parsePipelineRunState,
 } from "../schema.js";
@@ -86,5 +87,30 @@ describe("runtime contracts", () => {
   it("keeps the artifact schema strict", () => {
     expect(parseArtifactEnvelope(artifact).id).toBe("A1");
     expect(() => parseArtifactEnvelope({ ...artifact, unexpected: true })).toThrow();
+  });
+
+  it("validates durable external operation records", () => {
+    const record = parsePipelineOperationRecord({
+      id: "OP-1",
+      runId: "R1",
+      stageRunId: "SR-1",
+      operationKey: "provider-submit",
+      kind: "provider.submit",
+      state: "dispatched",
+      idempotencyKey: "I-OP-1",
+      requestHash: "d".repeat(64),
+      request: { promptSha256: "a".repeat(64) },
+      externalId: "provider-task-1",
+      receipt: null,
+      cost: {},
+      error: null,
+      createdBy: "worker",
+      createdAt: "2026-10-30T00:00:00.000Z",
+      dispatchedAt: "2026-10-30T00:00:01.000Z",
+      finishedAt: null,
+      updatedAt: "2026-10-30T00:00:01.000Z",
+    });
+    expect(record.state).toBe("dispatched");
+    expect(() => parsePipelineOperationRecord({ ...record, state: "unknown" })).toThrow();
   });
 });

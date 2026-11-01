@@ -69,6 +69,7 @@ import { createExplainerDraft } from "./explainer/db.js";
 import { VideoPipelineRepository } from "./pipeline/pipeline-repository.js";
 import { VideoPipelineQueryService } from "./pipeline/query-service.js";
 import { scanVideoPipelinesOnStartup, VideoPipelineReconciler } from "./pipeline/reconciler.js";
+import { pipelineControlMode } from "./pipeline/shadow.js";
 import {
   DeliveryError, buildVariantPreferenceContent, deliveryJobStatus, deliveryPreferenceConfidence,
   deliveryPreferenceMemoryId, listDeliveryJobs, listDeliveryPackages, readDeliveryArtifact,
@@ -1933,7 +1934,7 @@ if ((process.env.ARCHIVE_AUTO_RESUME ?? "0") === "1") {
     });
 }
 
-if ((process.env.PIPELINE_CONTROL_PLANE ?? "off") !== "off") {
+if (pipelineControlMode() !== "off") {
   void scanVideoPipelinesOnStartup()
     .then((outcomes) => {
       console.log(

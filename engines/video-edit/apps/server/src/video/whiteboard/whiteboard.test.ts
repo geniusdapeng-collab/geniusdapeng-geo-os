@@ -526,7 +526,7 @@ describe("白板 render 路由提交脚本的数据库版本", () => {
         eventId: "EV-whiteboard-auto",
         receipt: {
           policyId: "video-system-auto-approval",
-          policyVersion: "2026-10-31.1",
+          policyVersion: "2026-11-01.1",
           evidenceDigest: "a".repeat(64),
         },
       }),

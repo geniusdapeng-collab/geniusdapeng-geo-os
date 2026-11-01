@@ -21,6 +21,9 @@
   和 evidence digest。
 - `packages/video-pipeline/src/auto-approval.ts` 绑定
   `video-system-auto-approval@2026-11-01.1` 与覆盖门清单。
+- `packages/video-pipeline/src/catalog.ts` 在 CI/压测中统一编译全部 shipped
+  pipeline，校验 gate registry、policy 覆盖、wait-cycle、call-cycle 和 child
+  target。纯 gate 不得声明新产物或副作用；必须先过 gate，再进入独立 action stage。
 - `video_gate_decisions.reviewer` 保存
   `kind=system_auto_approval`、完整 receipt、policy version、检查结果与
   evidence digest。
@@ -28,6 +31,9 @@
   `0060_video_system_auto_approval.sql` 收紧 receipt 绑定的 gate、outcome、
   artifact hash、fact hash 与 checks 结构。
 - 每次裁决同时写 `gate.decided` 与 `system-auto-approval` outbox 事件。
+- `0061_video_pipeline_operations.sql` 为 provider/public 等外部动作提供
+  `reserved → dispatched → accepted|failed|unknown` 持久状态。provider/public
+  action 没有已接受 operation receipt 时不得提交产物。
 
 ## 关键边界
 
@@ -52,3 +58,15 @@
 - `apps/server/src/video/production-router.test.ts`
 - `apps/server/src/video/pipeline/pipeline-repository.pg.test.ts`
 - `packages/base/{asset-cms,publish-rpa,social-listening}/**/*.test.ts`
+- `packages/video-pipeline/src/test/catalog.test.ts`
+- `apps/server/src/video/pipeline/pipeline-control-stress.pg.test.ts`
+
+## 压测
+
+```bash
+zsh scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64
+```
+
+该入口启动临时 PG17，执行 64 个迁移后的控制面压测：13 条计划目录验证、
+64 个合成 DAG、flag 冲突、8 worker/run 的 50-run 竞争，以及 50 个 unknown
+operation 的对账状态。它不调用任何模型或渲染供应商。

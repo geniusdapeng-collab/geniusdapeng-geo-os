@@ -298,7 +298,7 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("video pipeline r
         runId: created.runId,
         stageRunId: prdStage.stageRunId,
         gateId: "G4",
-        artifactManifestHash: artifactManifestHash([prdArtifact]),
+        artifactManifestHash: artifactManifestHash([sourceArtifact, prdArtifact]),
         planHash: plan.planHash,
         checkSetVersion: "g4/v1",
         rubricVersion: "g4/v1",
@@ -332,7 +332,7 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("video pipeline r
         repairClass: "deterministic",
         blocking: true,
       }],
-      manifestArtifacts: [prdArtifact],
+      manifestArtifacts: [sourceArtifact, prdArtifact],
       commandId: "gate-g4-rejected",
       idempotencyKey: "gate-g4-rejected",
       expectedRunRevision: g4Ready.revision,
@@ -605,5 +605,364 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("video pipeline r
     });
     const candidates = await repository.listReconcileCandidates();
     expect(candidates.find((candidate) => candidate.runId === created.runId)?.reason).toBe("external_unknown");
+  }, 60_000);
+
+  it("requires every declared output slot and freezes the complete ancestor input closure", async () => {
+    await owner.query(`
+      INSERT INTO video_projects (id,workspace_id,title,kind,created_by)
+      VALUES ('P6','W1','artifact closure','narrative','test')
+    `);
+    const closurePlan = compileVideoPipelineDocument({
+      quest: "artifact-closure",
+      name: "artifact closure",
+      version: "1",
+      steps: [
+        {
+          step_key: "source", name: "Source", owner: "worker",
+          outputs: ["alpha", "beta"],
+        },
+        {
+          step_key: "consume", name: "Consume", owner: "worker",
+          inputs: ["alpha", "beta"], outputs: ["gamma"], depends_on: ["source"],
+        },
+        {
+          step_key: "g4", name: "G4", owner: "director", gate: "G4",
+          inputs: ["gamma"], outputs: ["gamma"], depends_on: ["consume"],
+        },
+      ],
+    }, { knownPipelines: ["artifact-closure"] });
+    const run = await repository.createRun({
+      projectId: "P6",
+      pipelineKind: "narrative",
+      intentContractId: "IC-CLOSURE",
+      intentHash: sha256Json({ intent: "artifact closure" }),
+      createdBy: "test",
+      plan: closurePlan,
+      idempotencyKey: "closure-start",
+      commandId: "closure-start-command",
+      actor: { id: "test", type: "system" },
+    });
+    const claimed = await repository.claimStage({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "source",
+      owner: "closure-worker",
+      commandId: "closure-claim",
+      idempotencyKey: "closure-claim",
+      expectedRunRevision: run.revision,
+      expectedStageRevision: 1,
+      leaseMs: 30_000,
+    });
+    const artifactRoot = join(workDir, "archive", "W1", "P6", "artifacts");
+    mkdirSync(artifactRoot, { recursive: true });
+    const alphaBytes = Buffer.from('{"alpha":"current"}\n');
+    const betaBytes = Buffer.from('{"beta":"current"}\n');
+    writeFileSync(join(artifactRoot, "alpha.json"), alphaBytes);
+    writeFileSync(join(artifactRoot, "beta.json"), betaBytes);
+    const alpha = artifact(
+      "A-ALPHA",
+      "alpha",
+      createHash("sha256").update(alphaBytes).digest("hex"),
+      alphaBytes.length,
+      "artifacts/alpha.json",
+    );
+    const beta = artifact(
+      "A-BETA",
+      "beta",
+      createHash("sha256").update(betaBytes).digest("hex"),
+      betaBytes.length,
+      "artifacts/beta.json",
+    );
+    await expect(repository.commitArtifact({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "source",
+      artifact: alpha,
+      artifacts: [alpha],
+      manifestArtifacts: [alpha],
+      commandId: "closure-incomplete",
+      idempotencyKey: "closure-incomplete",
+      expectedRunRevision: claimed.revision,
+      expectedStageRevision: 1,
+      actor: { id: "closure-worker", type: "worker" },
+    })).rejects.toThrow(/required output beta/);
+    const sourceCommitted = await repository.commitArtifact({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "source",
+      artifacts: [alpha, beta],
+      manifestArtifacts: [alpha, beta],
+      commandId: "closure-source-complete",
+      idempotencyKey: "closure-source-complete",
+      expectedRunRevision: claimed.revision,
+      expectedStageRevision: 1,
+      actor: { id: "closure-worker", type: "worker" },
+    });
+    const sourceRun = sourceCommitted.run;
+    const consumedReady = await repository.refreshFrontier({
+      plan: closurePlan,
+      runId: run.runId,
+      commandId: "closure-refresh-consume",
+      idempotencyKey: "closure-refresh-consume",
+      expectedRunRevision: sourceRun.revision,
+      actor: { id: "test", type: "system" },
+    });
+    const inputManifest = await repository.getStageInputManifest({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "consume",
+    });
+    expect(inputManifest.refs.map((item) => item.logicalId)).toEqual(["alpha", "beta"]);
+    const claimedConsumer = await repository.claimStage({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "consume",
+      owner: "closure-worker",
+      commandId: "closure-claim-consume",
+      idempotencyKey: "closure-claim-consume",
+      expectedRunRevision: consumedReady.revision,
+      expectedStageRevision: 1,
+      leaseMs: 30_000,
+    });
+    const gammaBytes = Buffer.from('{"gamma":"derived"}\n');
+    writeFileSync(join(artifactRoot, "gamma.json"), gammaBytes);
+    const gamma = artifact(
+      "A-GAMMA",
+      "gamma",
+      createHash("sha256").update(gammaBytes).digest("hex"),
+      gammaBytes.length,
+      "artifacts/gamma.json",
+      [
+        { artifactId: alpha.id, sha256: alpha.sha256, role: alpha.role },
+        { artifactId: beta.id, sha256: beta.sha256, role: beta.role },
+      ],
+    );
+    const completeManifest = [alpha, beta, gamma];
+    const consumed = await repository.commitArtifact({
+      plan: closurePlan,
+      runId: run.runId,
+      stageKey: "consume",
+      artifact: gamma,
+      artifacts: [gamma],
+      manifestArtifacts: completeManifest,
+      commandId: "closure-commit-consume",
+      idempotencyKey: "closure-commit-consume",
+      expectedRunRevision: claimedConsumer.revision,
+      expectedStageRevision: 1,
+      actor: { id: "closure-worker", type: "worker" },
+    });
+    expect(consumed.run.stages.find((stage) => stage.key === "consume")?.artifact?.id).toBe(gamma.id);
+  }, 60_000);
+
+  it("persists reserve, dispatch and terminal external operation receipts without replaying unknown work", async () => {
+    await owner.query(`
+      INSERT INTO video_projects (id,workspace_id,title,kind,created_by)
+      VALUES
+        ('P7','W1','unknown operation','narrative','test'),
+        ('P8','W1','accepted operation','narrative','test')
+    `);
+    const operationPlan = compileVideoPipelineDocument({
+      quest: "operation-fixture",
+      name: "operation fixture",
+      version: "1",
+      steps: [{
+        step_key: "provider",
+        name: "Provider action",
+        owner: "provider-worker",
+        outputs: ["provider_asset"],
+        side_effect: "provider",
+      }],
+    }, { knownPipelines: ["operation-fixture"] });
+
+    const startAndClaim = async (projectId: string) => {
+      const run = await repository.createRun({
+        projectId,
+        pipelineKind: "narrative",
+        intentContractId: `IC-${projectId}`,
+        intentHash: sha256Json({ projectId }),
+        createdBy: "test",
+        plan: operationPlan,
+        idempotencyKey: `start-${projectId}`,
+        commandId: `start-${projectId}`,
+        actor: { id: "test", type: "system" },
+      });
+      return repository.claimStage({
+        plan: operationPlan,
+        runId: run.runId,
+        stageKey: "provider",
+        owner: `worker-${projectId}`,
+        commandId: `claim-${projectId}`,
+        idempotencyKey: `claim-${projectId}`,
+        expectedRunRevision: run.revision,
+        expectedStageRevision: 1,
+        leaseMs: 60_000,
+      });
+    };
+
+    const unknownRun = await startAndClaim("P7");
+    const reserved = await repository.reserveOperation({
+      plan: operationPlan,
+      runId: unknownRun.runId,
+      stageKey: "provider",
+      operationKey: "provider-submit",
+      kind: "provider.submit",
+      request: { projectId: "P7", promptSha256: "a".repeat(64) },
+      commandId: "reserve-P7",
+      idempotencyKey: "reserve-P7",
+      expectedRunRevision: unknownRun.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P7", type: "worker" },
+    });
+    const dispatched = await repository.dispatchOperation({
+      plan: operationPlan,
+      runId: unknownRun.runId,
+      operationId: reserved.operation.id,
+      externalId: "provider-unknown",
+      commandId: "dispatch-P7",
+      idempotencyKey: "dispatch-P7",
+      expectedRunRevision: reserved.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P7", type: "worker" },
+    });
+    await expect(repository.reserveOperation({
+      plan: operationPlan,
+      runId: unknownRun.runId,
+      stageKey: "provider",
+      operationKey: "provider-submit",
+      kind: "provider.submit",
+      request: { projectId: "P7", promptSha256: "a".repeat(64) },
+      commandId: "reserve-P7-duplicate",
+      idempotencyKey: "reserve-P7-duplicate",
+      expectedRunRevision: dispatched.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P7", type: "worker" },
+    })).rejects.toThrow(/operationKey|already/);
+    const unknown = await repository.settleOperation({
+      plan: operationPlan,
+      runId: unknownRun.runId,
+      operationId: reserved.operation.id,
+      outcome: "unknown",
+      receipt: { responseLost: true },
+      error: { code: "PROVIDER_RESULT_UNKNOWN" },
+      cost: { cny: null },
+      commandId: "unknown-P7",
+      idempotencyKey: "unknown-P7",
+      expectedRunRevision: dispatched.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P7", type: "worker" },
+    });
+    expect(unknown.operation).toMatchObject({ state: "unknown", externalId: "provider-unknown" });
+    expect(unknown.run).toMatchObject({ status: "reconciling", nextAction: "reconcile" });
+    expect(unknown.run.leaseOwner).toBeNull();
+    expect(unknown.run.leaseExpiresAt).toBeNull();
+    expect(unknown.run.stages.find((stage) => stage.key === "provider")).toMatchObject({
+      executionStatus: "interrupted",
+      verificationStatus: "unverified",
+      disposition: "reconcile",
+    });
+    const unknownEvents = await owner.query<{ event_kind: string }>(
+      "SELECT event_kind FROM video_pipeline_outbox WHERE run_id=$1 ORDER BY created_at",
+      [unknownRun.runId],
+    );
+    expect(unknownEvents.rows.map((row) => row.event_kind)).toEqual(expect.arrayContaining([
+      "operation.reserved", "operation.dispatched", "operation.unknown",
+    ]));
+    await expect(repository.dispatchOperation({
+      plan: operationPlan,
+      runId: unknownRun.runId,
+      operationId: reserved.operation.id,
+      externalId: "duplicate-dispatch",
+      commandId: "dispatch-again-P7",
+      idempotencyKey: "dispatch-again-P7",
+      expectedRunRevision: unknown.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P7", type: "worker" },
+    })).rejects.toThrow(/dispatched operation|reserved operation/);
+
+    const acceptedRun = await startAndClaim("P8");
+    const acceptedRoot = join(workDir, "archive", "W1", "P8", "artifacts");
+    mkdirSync(acceptedRoot, { recursive: true });
+    const acceptedBytes = Buffer.from('{"provider_asset":"accepted"}\n');
+    writeFileSync(join(acceptedRoot, "provider.json"), acceptedBytes);
+    const providerArtifact = artifact(
+      "A-PROVIDER",
+      "provider_asset",
+      createHash("sha256").update(acceptedBytes).digest("hex"),
+      acceptedBytes.length,
+      "artifacts/provider.json",
+    );
+    await expect(repository.commitArtifact({
+      plan: operationPlan,
+      runId: acceptedRun.runId,
+      stageKey: "provider",
+      artifact: providerArtifact,
+      manifestArtifacts: [providerArtifact],
+      commandId: "commit-before-operation",
+      idempotencyKey: "commit-before-operation",
+      expectedRunRevision: acceptedRun.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P8", type: "worker" },
+    })).rejects.toThrow(/operation receipt/);
+    const acceptedReserved = await repository.reserveOperation({
+      plan: operationPlan,
+      runId: acceptedRun.runId,
+      stageKey: "provider",
+      operationKey: "provider-submit",
+      kind: "provider.submit",
+      request: { projectId: "P8", promptSha256: "b".repeat(64) },
+      commandId: "reserve-P8",
+      idempotencyKey: "reserve-P8",
+      expectedRunRevision: acceptedRun.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P8", type: "worker" },
+    });
+    const acceptedDispatched = await repository.dispatchOperation({
+      plan: operationPlan,
+      runId: acceptedRun.runId,
+      operationId: acceptedReserved.operation.id,
+      externalId: "provider-accepted",
+      commandId: "dispatch-P8",
+      idempotencyKey: "dispatch-P8",
+      expectedRunRevision: acceptedReserved.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P8", type: "worker" },
+    });
+    const accepted = await repository.settleOperation({
+      plan: operationPlan,
+      runId: acceptedRun.runId,
+      operationId: acceptedReserved.operation.id,
+      outcome: "accepted",
+      receipt: { taskId: "provider-accepted", sha256: "c".repeat(64) },
+      cost: { cny: 0, paidCalls: 1 },
+      commandId: "accepted-P8",
+      idempotencyKey: "accepted-P8",
+      expectedRunRevision: acceptedDispatched.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P8", type: "worker" },
+    });
+    expect(accepted.operation.state).toBe("accepted");
+    expect(accepted.run.status).toBe("running");
+    expect(accepted.run.leaseOwner).toBe("worker-P8");
+    await expect(owner.query(
+      "UPDATE video_pipeline_operations SET receipt=$2::jsonb WHERE id=$1",
+      [acceptedReserved.operation.id, JSON.stringify({ forged: true })],
+    )).rejects.toThrow(/terminal video operation receipt is immutable/);
+    await expect(owner.query(
+      "DELETE FROM video_pipeline_operations WHERE id=$1",
+      [acceptedReserved.operation.id],
+    )).rejects.toThrow(/append-only/);
+    const committed = await repository.commitArtifact({
+      plan: operationPlan,
+      runId: acceptedRun.runId,
+      stageKey: "provider",
+      artifact: providerArtifact,
+      manifestArtifacts: [providerArtifact],
+      commandId: "commit-P8",
+      idempotencyKey: "commit-P8",
+      expectedRunRevision: accepted.run.revision,
+      expectedStageRevision: 1,
+      actor: { id: "worker-P8", type: "worker" },
+    });
+    expect(committed.run.stages.find((stage) => stage.key === "provider")?.artifact?.id).toBe(providerArtifact.id);
   }, 60_000);
 });

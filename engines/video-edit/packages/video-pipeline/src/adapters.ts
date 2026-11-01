@@ -37,12 +37,12 @@ export const VIDEO_ADAPTERS: VideoAdapterRegistration[] = [
 
 export const VIDEO_GATES: VideoGateRegistration[] = [
   "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G12", "G13",
-  "G-MAT1", "G-DLV1",
+  "G-GEO1", "G-GEO2", "G-VIS1", "G-MAT1", "G-DLV1",
 ].map((id) => ({
   id,
   checkSetVersion: `${id.toLowerCase()}/v1`,
   rubricVersion: `${id.toLowerCase()}/v1`,
-  authority: ["G5", "G7", "G8", "G9", "G10", "G12", "G13"].includes(id)
+  authority: ["G5", "G7", "G8", "G9", "G10", "G12", "G13", "G-GEO1", "G-VIS1"].includes(id)
     ? "human_approval"
     : "host_rule",
 }));

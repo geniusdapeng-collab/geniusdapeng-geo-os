@@ -87,31 +87,45 @@ steps:
     owner: director
     inputs: [prompt_package, portrait_set]
     gate: G7
-    outputs: [video_project]
+    outputs: [prompt_package, portrait_set]
     depends_on: [g5-portrait-confirm]
+  - step_key: preproduction-finalize
+    name: 冻结预生产工程
+    owner: director
+    inputs: [prompt_package, portrait_set]
+    outputs: [video_project]
+    depends_on: [g7-preproduction]
+    side_effect: local
   - step_key: render-script
     name: 渲染脚本生成入 CMS
     owner: render-operator
     inputs: [video_project]
     outputs: [render_script]        # MD 正文 + 25/30 字段 JSON + 字符数校验快照，v1 起版本链
-    depends_on: [g7-preproduction]
+    depends_on: [preproduction-finalize]
+  - step_key: material-authorize
+    name: 素材用途与生成方式授权
+    owner: render-operator
+    inputs: [render_script]
+    gate: G-MAT1                    # 新提交前的用途/参考形态/授权门；成功渲染后只保存任务与来源字节回执
+    outputs: [render_script]
+    depends_on: [render-script]
   - step_key: material-generate
     name: 真实素材 → 构建视频场景（素材只作实景依据）
     owner: render-operator
     inputs: [render_script]
-    gate: G-MAT1                    # 新提交前的用途/参考形态/授权门；成功渲染后只保存任务与来源字节回执
     outputs: [render_job, video_asset]   # 真实实拍素材只作**实景依据**（reference_image，不作 first_frame）：
                                          # 由生成模型构建**完整视频场景**（自有机位/视差/环境运动），
                                          # **严禁把素材当镜头直接入时间线**，也**严禁把参考图做成"被推动的照片"**
                                          # （产品所有者 2026-09-25 三轮口径：素材是场景参考，成片必须是视频）
-    depends_on: [render-script]
+    depends_on: [material-authorize]
+    side_effect: provider
   - step_key: g8-render-submit
     name: 渲染提交审批
     owner: director
     inputs: [render_script, render_job]
     gate: G8
     outputs: [render_job]
-    depends_on: [material-generate, render-script]
+    depends_on: [material-generate]
   - step_key: render
     name: Seedance 渲染与回填
     owner: render-operator
@@ -148,13 +162,20 @@ steps:
     inputs: [final_video, voice_track]
     outputs: [bgm_track, bgm_report, final_video]   # 后期音频链路收口：原声保留策略 + BGM 让位 + 实际响度/真峰值；默认 report，明确 block 合同才按其阈值阻断
     depends_on: [voice]
+  - step_key: delivery-authorize
+    name: 交付包完整性授权
+    owner: post-editor
+    inputs: [final_video, subtitle_track, bgm_track]
+    gate: G-DLV1                  # 核对请求的变体文件、目标规格、来源与实际工具执行，不做品质差异评分
+    outputs: [final_video, subtitle_track, bgm_track]
+    depends_on: [bgm]
   - step_key: deliver
     name: 多风格交付包
     owner: post-editor
     inputs: [final_video, subtitle_track, bgm_track]
-    gate: G-DLV1                  # 核对请求的变体文件、目标规格、来源与实际工具执行，不做品质差异评分
     outputs: [delivery_package, final_video, subtitle_track]   # 干净母版 + 旁挂字幕 + 2–3 个风格变体（封面/文案/BGM/调色/转场）+ 软字幕轨版 + 交付清单 + 工程文件；quality=uhd 按目标画布编码；仅显式增强请求才调用本地模型并核对来源（G-DLV8/9）；镜头只生成一次，变体零 token
-    depends_on: [bgm]
+    depends_on: [delivery-authorize]
+    side_effect: local
   - step_key: post-quality
     name: 交付前后期技术质检
     owner: post-quality-inspector

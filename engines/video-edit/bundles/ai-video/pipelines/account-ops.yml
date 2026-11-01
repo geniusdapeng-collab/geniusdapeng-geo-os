@@ -14,12 +14,16 @@ steps:
   - step_key: threshold-check
     name: 阈值检查与告警
     owner: metrics-watcher
+    inputs: [account_metric]
     outputs: [account_metric]       # 越限即告警事件，不擅自处置
+    depends_on: [metrics-collect]
   - step_key: daily-brief
     name: 早八点日报
     owner: metrics-watcher
     cron: "0 8 * * *"
+    inputs: [account_metric]
     outputs: [account_metric]       # 日报推送至经营群
+    depends_on: [threshold-check]
   - step_key: comment-collect
     name: 评论采集
     owner: comment-operator
@@ -28,16 +32,30 @@ steps:
   - step_key: comment-classify
     name: 评论意图分类
     owner: comment-operator
+    inputs: [comment]
     outputs: [comment]              # praise/thanks/consult/after_sale/negative/crisis/sensitive
+    depends_on: [comment-collect]
   - step_key: g10-dispatch
     name: G10 三级分流
     owner: comment-operator
     gate: G10
+    inputs: [comment]
+    outputs: [comment]
+    depends_on: [comment-classify]
+  - step_key: comment-dispatch
+    name: 按 G10 结论生成回复或转人工
+    owner: comment-operator
+    inputs: [comment]
     outputs: [comment_reply]        # 夸赞 auto / 咨询 review / 负面 review+告警 / 敏感 block
+    depends_on: [g10-dispatch]
+    side_effect: public
   - step_key: comment-reply
     name: 回复外发或转人工
     owner: comment-operator
+    inputs: [comment_reply]
     outputs: [comment_reply]        # 外发回执落账；block 只写「需介入」事件
+    depends_on: [comment-dispatch]
+    side_effect: public
   - step_key: trend-scan
     name: 趋势/竞品/爆款扫描
     owner: trend-researcher

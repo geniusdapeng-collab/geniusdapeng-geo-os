@@ -23,9 +23,13 @@ steps:
     name: 差异超 ±10% 告警
     owner: settlement-clerk
     gate: G13
+    inputs: [settlement_statement]
     outputs: [settlement_statement] # auto 告警不阻断；附双方口径快照，处置建议交主理人
+    depends_on: [diff-mark]
   - step_key: monthly-close
     name: 月度结账汇总
     owner: settlement-clerk
     cron: "0 2 1 * *"               # 每月 1 日 02:00
+    inputs: [settlement_statement]
     outputs: [settlement_statement] # 月结对账汇总入 budget_ledger，供季度宪章复核引用
+    depends_on: [g13-diff-alert]

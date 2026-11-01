@@ -88,4 +88,21 @@ describe("video pipeline compiler", () => {
       ],
     })).toThrow(/没有上游 producer/);
   });
+
+  it("rejects a step that mixes a gate with new outputs or external side effects", () => {
+    expect(() => compileVideoPipelineDocument({
+      quest: "bad",
+      name: "bad",
+      version: "1",
+      steps: [{
+        step_key: "publish-gate",
+        name: "Publish gate",
+        owner: "director",
+        gate: "G9",
+        inputs: ["publish_task"],
+        outputs: ["publish_receipt"],
+        side_effect: "public",
+      }],
+    }, { knownPipelines: ["bad"] })).toThrow(/必须拆成纯 gate 和独立 action stage/);
+  });
 });
