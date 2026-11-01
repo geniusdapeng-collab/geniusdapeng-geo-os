@@ -29,7 +29,9 @@ steps:
     name: 加投审批
     owner: director
     gate: G12
+    inputs: [ads_campaign]
     outputs: [ads_campaign]         # 任何追加预算必审，涉预算不可降级 auto
+    depends_on: [launch-bind]
   - step_key: elimination-list
     name: 淘汰清单
     owner: ads-optimizer

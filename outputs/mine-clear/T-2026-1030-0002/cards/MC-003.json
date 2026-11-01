@@ -1,0 +1,48 @@
+{
+  "id": "MC-003",
+  "kind": "problem",
+  "level": "L3",
+  "severity": "P0",
+  "title": "gate 与副作用动作混型，call/subgraph 和 operation ledger 没有执行闭环",
+  "state": "open",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts:333@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "sha256": "e2ee22fff1774d8e680d3f619a14e239f884453a461752bb3171aeb2aa91cb1d",
+      "note": "带 gate 的步骤一律编译为 sideEffect=none；material-generate 声明 render_job/video_asset，但不会执行动作。call/subgraph 也只通过 knownPipelines 校验。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+    "line": 333,
+    "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+    "symbol": "compileVideoPipelineDocument"
+  },
+  "trigger_path": "执行 material-generate、render 或 marketing production 子图时，控制面显示推进但没有对应副作用执行器/operation receipt，容易把无执行当成完成。",
+  "fix_plan": "引入 gateAndAction 或显式 gate→stage 拆分；为 call 节点编译可执行子计划；增加 opaque operation 状态机接口并要求 reserve/dispatch/unknown/terminal receipt 后才能完成。",
+  "regression": {
+    "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode execution --plans 13 --cases 32",
+    "expect": "纯 gate/action、child call、operation receipt、终态不可篡改和 recovery lease 全部通过"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "任意 gate 带副作用输出、任意 subgraph call、任意外部 operation 结果",
+      "expect": "无副作用执行器或 operation receipt 时不得完成；call 必须有可解析 child plan；未知结果进入 reconcile 且绝不自动重派",
+      "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode execution --plans 13 --cases 32",
+      "exec": {
+        "file": "/bin/zsh",
+        "args": [
+          "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+          "--mode",
+          "execution",
+          "--plans",
+          "13",
+          "--cases",
+          "32"
+        ]
+      }
+    }
+  ]
+}

@@ -13,42 +13,84 @@ steps:
   - step_key: production-split
     name: 实拍/AI 生成分流编排
     owner: production-planner
+    inputs: [script_package]
     outputs: [shoot_list]             # 拍摄清单（渠道拍摄日）+AI 素材任务（渲染队列）
+    depends_on: [script-package]
+    side_effect: local
   - step_key: human-review
     name: 脚本人审（G9 系列前置）
     owner: company-ceo
     gate: G9
+    inputs: [script_package]
     outputs: [script_package]         # 人审通过才进 GEO 改写与发布队列
+    depends_on: [production-split]
   - step_key: geo-rewrite
     name: GEO 六段式改写（AI 答案版）
     owner: geo-content-planner
+    inputs: [script_package]
     outputs: [geo_content]            # 问题前置→直接答案→参数表格→清单建议→实体锚点→信源引用
+    depends_on: [human-review]
+    side_effect: model
   - step_key: fact-check
     name: 事实红线校验
     owner: entity-inspector
     gate: G-GEO2
+    inputs: [geo_content]
     outputs: [geo_content]            # 与实体卡逐字一致；不符一票否决
+    depends_on: [geo-rewrite]
   - step_key: geo-review
     name: GEO 外发必审
     owner: company-ceo
     gate: G-GEO1
+    inputs: [geo_content]
     outputs: [geo_content]            # 双审制：社媒审传播力，GEO 审事实与结构
+    depends_on: [fact-check]
+  - step_key: visual-authorize
+    name: 视觉素材授权
+    owner: visual-designer
+    gate: G-VIS1
+    inputs: [geo_content]
+    outputs: [geo_content]
+    depends_on: [geo-review]
   - step_key: visual-package
     name: 视觉素材成套（封面/图文/信源配图）
     owner: visual-designer
-    gate: G-VIS1
+    inputs: [geo_content]
     outputs: [visual_asset]            # 平台规格封面+图文；标题/价格走预渲染文字层，事实与实体卡逐字一致
+    depends_on: [visual-authorize]
+    side_effect: local
+  - step_key: social-publish-confirm
+    name: 社媒组分发授权
+    owner: publish-operator
+    gate: G9
+    inputs: [visual_asset]
+    outputs: [visual_asset]
+    depends_on: [visual-package]
   - step_key: social-publish
     name: 社媒组分发
     owner: publish-operator
-    gate: G9
+    inputs: [visual_asset]
     outputs: [publish_task]           # 抖音/TikTok/小红书/YouTube/Meta 错峰发布
+    depends_on: [social-publish-confirm]
+    side_effect: public
+  - step_key: source-publish-confirm
+    name: 信源组分发授权
+    owner: source-distributor
+    gate: G-GEO1
+    inputs: [visual_asset]
+    outputs: [visual_asset]
+    depends_on: [visual-package]
   - step_key: source-publish
     name: 信源组分发
     owner: source-distributor
-    gate: G-GEO1
+    inputs: [visual_asset]
     outputs: [source_task]            # 知乎/公众号/百家号/头条号/垂媒/百科/新闻稿
+    depends_on: [source-publish-confirm]
+    side_effect: public
   - step_key: write-back
     name: 结果回写一客一档
     owner: publish-operator
+    inputs: [publish_task, source_task]
     outputs: [client_archive]         # 发布/分发结果统一回写，失败重试 3 次挂起转人工
+    depends_on: [social-publish, source-publish]
+    side_effect: local

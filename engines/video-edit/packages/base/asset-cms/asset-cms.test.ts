@@ -263,7 +263,7 @@ describe("渲染脚本管理（版本即审批对象，G8 联动）", () => {
     const result = await systemAutoApprove(app, gateway, scope, "rs-auto", 1, {
       decisionEventId: "EV-auto-approval",
       policyId: "video-system-auto-approval",
-      policyVersion: "2026-10-31.1",
+      policyVersion: "2026-11-01.1",
       evidenceDigest: "a".repeat(64),
       checks: [{ id: "qualification", status: "passed" }],
     });

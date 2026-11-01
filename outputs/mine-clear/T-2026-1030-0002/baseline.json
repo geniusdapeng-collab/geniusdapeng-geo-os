@@ -1,0 +1,24 @@
+{
+  "schema": "workloom.mine-clear/baseline@1",
+  "task_id": "T-2026-1030-0002",
+  "repo": "pipeline-coordinator-baseline",
+  "repo_path": "/Users/mac/Documents/Codex/2026-10-30/pengmanager-system-https-github-com-geniusdapeng/work/pipeline-coordinator-baseline",
+  "remote": "origin",
+  "audit": {
+    "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+    "branch": "task/T-2026-1030-0002-real-case",
+    "remote": "origin",
+    "remote_main": "e593f3617aae1c628b1546f566bac5750479d577",
+    "fetched_at": null,
+    "fetch_status": "skipped",
+    "dirty_count": 0,
+    "notes": [
+      "本地 HEAD 不是 origin/main 最新（云端 e593f361 / 本地 3951b7d3）——按 §1.2 先对齐基线"
+    ]
+  },
+  "smoke": {
+    "status": "not-run",
+    "notes": "M0 冒烟：健康检查 + 一条核心业务链路，跑完回填这里"
+  },
+  "created_at": "2026-10-31T23:56:34.957Z"
+}

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   artifactManifestHash,
+  loadPipelineFeatureFlags,
   sha256Json,
   sha256Text,
   type ArtifactEnvelope,
@@ -20,8 +21,7 @@ import { VideoPipelineRepository } from "./pipeline-repository.js";
 export type PipelineControlMode = "off" | "shadow" | "enforce";
 
 export function pipelineControlMode(env: NodeJS.ProcessEnv = process.env): PipelineControlMode {
-  const value = (env.PIPELINE_CONTROL_PLANE ?? "off").trim().toLowerCase();
-  return value === "shadow" || value === "enforce" ? value : "off";
+  return loadPipelineFeatureFlags(env).coordinator;
 }
 
 export function compileLegacyShadowPlan(): CompiledVideoPipelinePlan {
@@ -35,15 +35,24 @@ export function compileLegacyShadowPlan(): CompiledVideoPipelinePlan {
         name: "Legacy preproduction",
         owner: "video-studio",
         inputs: ["shadow_intent"],
-        outputs: ["preproduction_observation"],
+        outputs: [{
+          role: "preproduction_observation",
+          schema: "workloom.legacy-preproduction-shadow/v1",
+        }],
       },
       {
         step_key: "legacy-gates",
         name: "Legacy gate observations",
         owner: "video-studio",
         gate: "G4",
-        inputs: ["preproduction_observation"],
-        outputs: ["preproduction_observation"],
+        inputs: [{
+          role: "preproduction_observation",
+          schema: "workloom.legacy-preproduction-shadow/v1",
+        }],
+        outputs: [{
+          role: "preproduction_observation",
+          schema: "workloom.legacy-preproduction-shadow/v1",
+        }],
         depends_on: ["legacy-preproduction"],
       },
     ],

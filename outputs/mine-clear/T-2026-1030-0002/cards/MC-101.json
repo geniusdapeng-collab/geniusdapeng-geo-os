@@ -1,0 +1,50 @@
+{
+  "id": "MC-101",
+  "kind": "fix",
+  "batch": 1,
+  "title": "收口管线目录、artifact closure、执行语义和 feature flag",
+  "state": "open",
+  "covers": ["MC-001", "MC-002", "MC-003", "MC-004"],
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts:256@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "sha256": "e2ee22fff1774d8e680d3f619a14e239f884453a461752bb3171aeb2aa91cb1d",
+      "note": "compileVideoPipelineDocument 是统一收口点。"
+    }
+  ],
+  "fix_plan": "扩展 compiler/catalog 校验；增加 gateAndAction 与 child-plan 契约；在 repository 强制 output slots 和递归 input closure；实现 operation ledger 命令；统一 feature flag loader；加入静态、PG、并发、故障注入压测。",
+  "rollback": "revert 本任务提交；隐藏开关保持 coordinator off，数据库只新增可回滚字段/表，不修改既有迁移。",
+  "conflict_paths": [
+    "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+    "engines/video-edit/packages/video-pipeline/src/adapters.ts",
+    "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+    "engines/video-edit/packages/pipeline-control/src/feature-flags.ts",
+    "engines/video-edit/apps/server/src/video/pipeline/shadow.ts"
+  ],
+  "blast_radius": "改变所有视频计划的编译语义、阶段完成条件、子图入口和 coordinator 启停配置；迁移期保留旧计划兼容并默认 off，全部测试通过后才启用。",
+  "regression": {
+    "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+    "expect": "目录、artifact 闭包、执行语义、flag、真实 PG 并发和故障注入全部通过"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "静态目录、artifact closure、执行契约、feature flag 四组断言",
+      "expect": "全计划编译与静态度量通过，64 组 contract、32 组 execution、12 组 flag 及真实 PG 并发/故障注入全部通过",
+      "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+      "exec": {
+        "file": "/bin/zsh",
+        "args": [
+          "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+          "--mode",
+          "all",
+          "--plans",
+          "13",
+          "--cases",
+          "64"
+        ]
+      }
+    }
+  ]
+}

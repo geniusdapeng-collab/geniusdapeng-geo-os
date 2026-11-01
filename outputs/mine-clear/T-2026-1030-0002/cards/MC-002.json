@@ -1,0 +1,48 @@
+{
+  "id": "MC-002",
+  "kind": "problem",
+  "level": "L1",
+  "severity": "P0",
+  "title": "阶段完成没有强制全部 required outputs 与递归 input closure",
+  "state": "open",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts:685@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "sha256": "b21b0382056309a964ee5af6f7c09de065b684ceb17177444f869334daacc68c",
+      "note": "commitArtifact 只提交一个 artifact；19-node 营销计划中的 production 声明 3 个 outputs，实测仅提交 video_project 仍可完成。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+    "line": 685,
+    "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+    "symbol": "VideoPipelineRepository.commitArtifact"
+  },
+  "trigger_path": "节点声明多个 required outputs，但 worker 只提交一个 artifact；或节点声明多个输入，实际只冻结直接 depends_on artifact。",
+  "fix_plan": "为每节点建立 required output slot 契约；完成前要求全部 required outputs 进入 immutable manifest，并把所有声明输入的递归 closure 绑定到 input manifest。",
+  "regression": {
+    "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode contract --plans 13 --cases 64",
+    "expect": "多输出槽位和递归 input closure 的真实 PG 正反例全部通过"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "任意多输出计划节点及任意缺槽、多槽、错 role/schema 的 artifact 提交",
+      "expect": "缺任一 required output 或输入 closure 不一致时提交/完成被拒绝；完整槽位提交后 manifest 可复算",
+      "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode contract --plans 13 --cases 64",
+      "exec": {
+        "file": "/bin/zsh",
+        "args": [
+          "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+          "--mode",
+          "contract",
+          "--plans",
+          "13",
+          "--cases",
+          "64"
+        ]
+      }
+    }
+  ]
+}

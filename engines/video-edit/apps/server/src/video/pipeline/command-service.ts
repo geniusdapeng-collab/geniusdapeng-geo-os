@@ -36,7 +36,8 @@ export class VideoPipelineCommandService {
     runId: string;
     stageKey: string;
     itemKey?: string | null;
-    artifact: ArtifactEnvelope;
+    artifact?: ArtifactEnvelope;
+    artifacts?: ArtifactEnvelope[];
     manifestArtifacts: ArtifactRef[];
     expectedStageRevision: number;
   }): Promise<{ run: PipelineRunView; artifactManifestHash: string }> {
@@ -60,6 +61,18 @@ export class VideoPipelineCommandService {
     runId: string;
   }): Promise<PipelineRunView> {
     return this.repository.refreshFrontier(input);
+  }
+
+  reserveOperation(input: Parameters<VideoPipelineRepository["reserveOperation"]>[0]) {
+    return this.repository.reserveOperation(input);
+  }
+
+  dispatchOperation(input: Parameters<VideoPipelineRepository["dispatchOperation"]>[0]) {
+    return this.repository.dispatchOperation(input);
+  }
+
+  settleOperation(input: Parameters<VideoPipelineRepository["settleOperation"]>[0]) {
+    return this.repository.settleOperation(input);
   }
 
   markInterrupted(input: CommandEnvelopeInput & {

@@ -24,6 +24,10 @@ describe("video pipeline compiler", () => {
     expect(assertVideoPipelinePlan(explainer).planHash).toBe(explainer.planHash);
     expect(narrative.nodes.find((node) => node.key === "g6-prompt-confirm")?.kind).toBe("gate");
     expect("checkSetVersion" in (narrative.nodes.find((node) => node.key === "g6-prompt-confirm") ?? {})).toBe(true);
+    expect(narrative.nodes.find((node) => node.key === "micromotion")?.dependsOn).toEqual(["field-check"]);
+    expect(narrative.nodes.find((node) => node.key === "g6-prompt-confirm")?.dependsOn).toEqual(["micromotion"]);
+    expect(narrative.nodes.find((node) => node.key === "portrait")?.dependsOn).toEqual(["g6-prompt-confirm"]);
+    expect(narrative.nodes.find((node) => node.key === "g7-preproduction")?.dependsOn).toEqual(["g5-portrait-confirm"]);
   });
 
   it("rejects cycles and unknown dependencies", () => {
@@ -83,5 +87,22 @@ describe("video pipeline compiler", () => {
         },
       ],
     })).toThrow(/没有上游 producer/);
+  });
+
+  it("rejects a step that mixes a gate with new outputs or external side effects", () => {
+    expect(() => compileVideoPipelineDocument({
+      quest: "bad",
+      name: "bad",
+      version: "1",
+      steps: [{
+        step_key: "publish-gate",
+        name: "Publish gate",
+        owner: "director",
+        gate: "G9",
+        inputs: ["publish_task"],
+        outputs: ["publish_receipt"],
+        side_effect: "public",
+      }],
+    }, { knownPipelines: ["bad"] })).toThrow(/必须拆成纯 gate 和独立 action stage/);
   });
 });

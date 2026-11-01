@@ -1,0 +1,543 @@
+{
+  "schema": "workloom.mine-clear/ledger@1",
+  "task_id": "T-2026-1030-0002",
+  "repo": "pipeline-coordinator-baseline",
+  "repo_path": "/Users/mac/Documents/Codex/2026-10-30/pengmanager-system-https-github-com-geniusdapeng/work/pipeline-coordinator-baseline",
+  "title": "Video pipeline control-plane deep stress and remediation",
+  "created_at": "2026-10-31T23:56:34.960Z",
+  "updated_at": "2026-11-01T08:43:49.175Z",
+  "baseline": {
+    "audit": {
+      "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+      "branch": "task/T-2026-1030-0002-real-case",
+      "remote": "origin",
+      "fetched_at": null,
+      "fetch_status": "skipped",
+      "notes": "本地 HEAD 不是 origin/main 最新（云端 e593f361 / 本地 3951b7d3）——按 §1.2 先对齐基线"
+    },
+    "repair": {
+      "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+      "reverified_problem_ids": []
+    },
+    "acceptance": {
+      "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+      "is_descendant_of_repair": true
+    }
+  },
+  "environment": {
+    "kind": "local-preview",
+    "notes": ""
+  },
+  "invariants": [
+    {
+      "id": "INV-1",
+      "text": "租户边界覆盖数据库 RLS、运行时上下文、事件、缓存和外部连接器。",
+      "source": "AGENTS.md#4.1"
+    },
+    {
+      "id": "INV-2",
+      "text": "经营事件、审批和关键回执只增不改；纠正通过新事件表达，不静默覆盖证据。",
+      "source": "AGENTS.md#4.2"
+    },
+    {
+      "id": "INV-3",
+      "text": "所有外部或变更性动作及其子调用，统一经过权限、PII、围栏和审批链路。",
+      "source": "AGENTS.md#4.3"
+    },
+    {
+      "id": "INV-4",
+      "text": "涉钱、敏感数据、群发、公开发布、交易和破坏性变更必须按高风险处理并由人审批。",
+      "source": "AGENTS.md#4.4"
+    },
+    {
+      "id": "INV-5",
+      "text": "没有真实回执就不能标记完成；mock、模拟和体验模式在数据结构与界面上都要明确区分。",
+      "source": "AGENTS.md#4.5"
+    },
+    {
+      "id": "INV-6",
+      "text": "客户原始经营数据不得上行；蜂群只接受白名单化、最小化、匿名化且可审计的元数据或派生经验。",
+      "source": "AGENTS.md#4.6"
+    },
+    {
+      "id": "INV-7",
+      "text": "租户覆盖层只能收紧围栏，不能放宽平台不可变红线。",
+      "source": "AGENTS.md#4.7"
+    },
+    {
+      "id": "INV-8",
+      "text": "模型、提示词、技能、bundle、策略和热更新必须先评测再灰度，且始终可回滚。",
+      "source": "AGENTS.md#4.8"
+    },
+    {
+      "id": "INV-9",
+      "text": "platform-ops、平台账户运营和平台秘密只属于 Andromeda。",
+      "source": "AGENTS.md#4.9"
+    },
+    {
+      "id": "INV-10",
+      "text": "Tiger 在获得单独的合规审查和用户明确授权前，只能模拟或纸面交易。",
+      "source": "AGENTS.md#4.10"
+    },
+    {
+      "id": "INV-11",
+      "text": "令牌、密码、API key、私钥、客户凭证和私密客户数据不得进入源码、文档、上下文、提示词、日志或提交。",
+      "source": "AGENTS.md#4.11"
+    },
+    {
+      "id": "INV-12",
+      "text": "个性化与行业扩展不得形成公共机制的第二事实源。",
+      "source": "AGENTS.md#4.12"
+    }
+  ],
+  "cards": [
+    {
+      "id": "MC-001",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P0",
+      "title": "跨 bundle 管线计划没有统一的 gate registry、policy 与死锁门禁",
+      "state": "verified",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-pipeline/src/adapters.ts:38@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+          "sha256": "b8cde51f225b0d4ccfc6517be4d1412465fef0177dc42ea7c913e267689c77b5",
+          "note": "VIDEO_GATES 只登记 AI Video 子集；全 bundle 扫描发现 G-GEO1/G-GEO2/G-VIS1 缺失。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-pipeline/src/adapters.ts",
+        "line": 38,
+        "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+        "symbol": "VIDEO_GATES"
+      },
+      "trigger_path": "编译 bundles/geo-growth/pipelines/dual-content-factory.yml 时 fact-check/G-GEO2 不在默认 gate registry；未来新增门或改别名仍会再次漂移。",
+      "fix_plan": "把 gate 注册表、policy 覆盖和拓扑可执行性统一成一个管线目录校验器，CI 编译所有 bundle YAML 并拒绝未知门、未覆盖门及运行期等待环。",
+      "regression": {
+        "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode catalog --plans 13 --cases 64",
+        "expect": "13/13 管线编译通过，gate registry/policy 无缺口，wait/call cycle 为 0"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "编译 bundles/{ai-video,geo-growth,hotel,video-edit}/pipelines 下的全部 YAML",
+          "expect": "13/13 可编译，所有实际 gate 同时存在于 registry 和 policy，且没有运行期死锁候选",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode catalog --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "catalog",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-001-0-1793522576026.json",
+            "sha256": "62d72d8761e4c559186d7bbe2dcd679c84f748cb6f7c6cd6afa3f10865439e03",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "evidence": {
+            "path": "evidence/MC-001-0-1793522576026.txt",
+            "sha256": "f76d45fb65b7e94ed28a588d9d12f82b97cf24d591b7fcdaa47d3b760a3cb708",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ],
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:42:56.390Z",
+      "verification_evidence": {
+        "path": "runs/MC-001-0-1793522576026.json",
+        "sha256": "62d72d8761e4c559186d7bbe2dcd679c84f748cb6f7c6cd6afa3f10865439e03",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-01T08:42:56.025Z",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+        "finished_at": "2026-11-01T08:42:56.390Z"
+      },
+      "fixed_by": "codex-repair-T-2026-1030-0002",
+      "last_verification_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "result": "pass",
+        "at": "2026-11-01T08:42:56.390Z",
+        "runs": [
+          {
+            "path": "runs/MC-001-0-1793522576026.json",
+            "sha256": "62d72d8761e4c559186d7bbe2dcd679c84f748cb6f7c6cd6afa3f10865439e03",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-002",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P0",
+      "title": "阶段完成没有强制全部 required outputs 与递归 input closure",
+      "state": "verified",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts:685@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+          "sha256": "b21b0382056309a964ee5af6f7c09de065b684ceb17177444f869334daacc68c",
+          "note": "commitArtifact 只提交一个 artifact；19-node 营销计划中的 production 声明 3 个 outputs，实测仅提交 video_project 仍可完成。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+        "line": 685,
+        "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+        "symbol": "VideoPipelineRepository.commitArtifact"
+      },
+      "trigger_path": "节点声明多个 required outputs，但 worker 只提交一个 artifact；或节点声明多个输入，实际只冻结直接 depends_on artifact。",
+      "fix_plan": "为每节点建立 required output slot 契约；完成前要求全部 required outputs 进入 immutable manifest，并把所有声明输入的递归 closure 绑定到 input manifest。",
+      "regression": {
+        "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode contract --plans 13 --cases 64",
+        "expect": "多输出槽位和递归 input closure 的真实 PG 正反例全部通过"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "任意多输出计划节点及任意缺槽、多槽、错 role/schema 的 artifact 提交",
+          "expect": "缺任一 required output 或输入 closure 不一致时提交/完成被拒绝；完整槽位提交后 manifest 可复算",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode contract --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "contract",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-002-0-1793522576545.json",
+            "sha256": "13e79bc3bba58e65915c0d681b4af2300d9635204da2604b35b4f3e8320d5dc9",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "evidence": {
+            "path": "evidence/MC-002-0-1793522576545.txt",
+            "sha256": "8ec9d5ff38ae106ad432616b1eae504cc8ccfde34dbfb26edb77cd6b44f9c3e8",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ],
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:03.204Z",
+      "verification_evidence": {
+        "path": "runs/MC-002-0-1793522576545.json",
+        "sha256": "13e79bc3bba58e65915c0d681b4af2300d9635204da2604b35b4f3e8320d5dc9",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-01T08:42:56.544Z",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+        "finished_at": "2026-11-01T08:43:03.204Z"
+      },
+      "fixed_by": "codex-repair-T-2026-1030-0002",
+      "last_verification_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "result": "pass",
+        "at": "2026-11-01T08:43:03.204Z",
+        "runs": [
+          {
+            "path": "runs/MC-002-0-1793522576545.json",
+            "sha256": "13e79bc3bba58e65915c0d681b4af2300d9635204da2604b35b4f3e8320d5dc9",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-003",
+      "kind": "problem",
+      "level": "L3",
+      "severity": "P0",
+      "title": "gate 与副作用动作混型，call/subgraph 和 operation ledger 没有执行闭环",
+      "state": "verified",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts:333@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+          "sha256": "e2ee22fff1774d8e680d3f619a14e239f884453a461752bb3171aeb2aa91cb1d",
+          "note": "带 gate 的步骤一律编译为 sideEffect=none；material-generate 声明 render_job/video_asset，但不会执行动作。call/subgraph 也只通过 knownPipelines 校验。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+        "line": 333,
+        "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+        "symbol": "compileVideoPipelineDocument"
+      },
+      "trigger_path": "执行 material-generate、render 或 marketing production 子图时，控制面显示推进但没有对应副作用执行器/operation receipt，容易把无执行当成完成。",
+      "fix_plan": "引入 gateAndAction 或显式 gate→stage 拆分；为 call 节点编译可执行子计划；增加 opaque operation 状态机接口并要求 reserve/dispatch/unknown/terminal receipt 后才能完成。",
+      "regression": {
+        "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode execution --plans 13 --cases 32",
+        "expect": "纯 gate/action、child call、operation receipt、终态不可篡改和 recovery lease 全部通过"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "任意 gate 带副作用输出、任意 subgraph call、任意外部 operation 结果",
+          "expect": "无副作用执行器或 operation receipt 时不得完成；call 必须有可解析 child plan；未知结果进入 reconcile 且绝不自动重派",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode execution --plans 13 --cases 32",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "execution",
+              "--plans",
+              "13",
+              "--cases",
+              "32"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-003-0-1793522583388.json",
+            "sha256": "0ded5c97be397df8114ba0fd4d7e0bfebb2b5d1c34a1165cadf2f0b90a8ba90f",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "evidence": {
+            "path": "evidence/MC-003-0-1793522583388.txt",
+            "sha256": "b08f1bb231be13dba0c43cabc6012f90b71f10700e0a326a5dddd03883d2fc4a",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ],
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:11.062Z",
+      "verification_evidence": {
+        "path": "runs/MC-003-0-1793522583388.json",
+        "sha256": "0ded5c97be397df8114ba0fd4d7e0bfebb2b5d1c34a1165cadf2f0b90a8ba90f",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-01T08:43:03.387Z",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+        "finished_at": "2026-11-01T08:43:11.062Z"
+      },
+      "fixed_by": "codex-repair-T-2026-1030-0002",
+      "last_verification_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "result": "pass",
+        "at": "2026-11-01T08:43:11.062Z",
+        "runs": [
+          {
+            "path": "runs/MC-003-0-1793522583388.json",
+            "sha256": "0ded5c97be397df8114ba0fd4d7e0bfebb2b5d1c34a1165cadf2f0b90a8ba90f",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-004",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P1",
+      "title": "管线 coordinator 存在两套 feature flag 名称与默认值",
+      "state": "verified",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/pipeline-control/src/feature-flags.ts:47@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+          "sha256": "7530c76822cf90cce4cf4dea610b3da44f207a874c33d8f5d2c4244c2ef2a241",
+          "note": "受控加载器读取 PIPELINE_COORDINATOR，而 shadow.ts 读取 PIPELINE_CONTROL_PLANE。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/pipeline-control/src/feature-flags.ts",
+        "line": 47,
+        "commit": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+        "symbol": "loadPipelineFeatureFlags"
+      },
+      "trigger_path": "运维只设置其中一个环境变量时，两个模块得出不同 coordinator mode，可能出现 shadow 与 enforce 混跑。",
+      "fix_plan": "统一由 loadPipelineFeatureFlags 提供 coordinator mode；shadow/studio-worker/router 全部消费同一结果，并对旧变量做一次性显式兼容或拒绝。",
+      "regression": {
+        "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode flags --plans 13 --cases 12",
+        "expect": "canonical/legacy 同值共用同一结果，冲突和非法值 fail closed"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "PIPELINE_COORDINATOR/PIPELINE_CONTROL_PLANE 单设、同设、冲突或非法值",
+          "expect": "所有入口解析出同一 mode；冲突和非法值 fail closed 并给出明确错误",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode flags --plans 13 --cases 12",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "flags",
+              "--plans",
+              "13",
+              "--cases",
+              "12"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-004-0-1793522591367.json",
+            "sha256": "671115cbb8026cc5f1d79e86d356e506985c61324a61ca3ca6195a73f6e1790c",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "evidence": {
+            "path": "evidence/MC-004-0-1793522591367.txt",
+            "sha256": "f0e05e501442ab78a408ea2756a3249139a18880fe13ed4bb6fe4c91c071f89b",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ],
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:18.324Z",
+      "verification_evidence": {
+        "path": "runs/MC-004-0-1793522591367.json",
+        "sha256": "671115cbb8026cc5f1d79e86d356e506985c61324a61ca3ca6195a73f6e1790c",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-01T08:43:11.367Z",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+        "finished_at": "2026-11-01T08:43:18.324Z"
+      },
+      "fixed_by": "codex-repair-T-2026-1030-0002",
+      "last_verification_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "result": "pass",
+        "at": "2026-11-01T08:43:18.324Z",
+        "runs": [
+          {
+            "path": "runs/MC-004-0-1793522591367.json",
+            "sha256": "671115cbb8026cc5f1d79e86d356e506985c61324a61ca3ca6195a73f6e1790c",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-101",
+      "kind": "fix",
+      "batch": 1,
+      "title": "收口管线目录、artifact closure、执行语义和 feature flag",
+      "state": "verified",
+      "covers": [
+        "MC-001",
+        "MC-002",
+        "MC-003",
+        "MC-004"
+      ],
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts:256@3951b7d3e13eeba315e599ad50c17486d112a6bc",
+          "sha256": "e2ee22fff1774d8e680d3f619a14e239f884453a461752bb3171aeb2aa91cb1d",
+          "note": "compileVideoPipelineDocument 是统一收口点。"
+        }
+      ],
+      "fix_plan": "扩展 compiler/catalog 校验；增加 gateAndAction 与 child-plan 契约；在 repository 强制 output slots 和递归 input closure；实现 operation ledger 命令；统一 feature flag loader；加入静态、PG、并发、故障注入压测。",
+      "rollback": "revert 本任务提交；隐藏开关保持 coordinator off，数据库只新增可回滚字段/表，不修改既有迁移。",
+      "conflict_paths": [
+        "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+        "engines/video-edit/packages/video-pipeline/src/adapters.ts",
+        "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+        "engines/video-edit/packages/pipeline-control/src/feature-flags.ts",
+        "engines/video-edit/apps/server/src/video/pipeline/shadow.ts"
+      ],
+      "blast_radius": "改变所有视频计划的编译语义、阶段完成条件、子图入口和 coordinator 启停配置；迁移期保留旧计划兼容并默认 off，全部测试通过后才启用。",
+      "regression": {
+        "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+        "expect": "目录、artifact 闭包、执行语义、flag、真实 PG 并发和故障注入全部通过"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "静态目录、artifact closure、执行契约、feature flag 四组断言",
+          "expect": "全计划编译与静态度量通过，64 组 contract、32 组 execution、12 组 flag 及真实 PG 并发/故障注入全部通过",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "all",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-101-0-1793522598479.json",
+            "sha256": "543760e8b7785d2e4d4e64ede3afb9aad69e1de1d73e93e40e45e0c2977103d1",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "evidence": {
+            "path": "evidence/MC-101-0-1793522598479.txt",
+            "sha256": "d151fa30374c6fa7c67d8cd32cf225bd9168f1288e06586e84ce22f308be1dbc",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ],
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:24.949Z",
+      "verification_evidence": {
+        "path": "runs/MC-101-0-1793522598479.json",
+        "sha256": "543760e8b7785d2e4d4e64ede3afb9aad69e1de1d73e93e40e45e0c2977103d1",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-01T08:43:18.477Z",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+        "finished_at": "2026-11-01T08:43:24.949Z"
+      },
+      "fixed_by": "codex-repair-T-2026-1030-0002",
+      "last_verification_attempt": {
+        "actor": "codex-acceptance-T-2026-1030-0002",
+        "result": "pass",
+        "at": "2026-11-01T08:43:24.949Z",
+        "runs": [
+          {
+            "path": "runs/MC-101-0-1793522598479.json",
+            "sha256": "543760e8b7785d2e4d4e64ede3afb9aad69e1de1d73e93e40e45e0c2977103d1",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        ]
+      }
+    }
+  ],
+  "gates": [],
+  "handoff": {
+    "generated_at": "2026-11-01T08:43:49.174Z",
+    "acceptance_command": "node scripts/acceptance/fleet-run.mjs --repo pipeline-coordinator-baseline --env local-preview",
+    "open_problem_ids": []
+  }
+}

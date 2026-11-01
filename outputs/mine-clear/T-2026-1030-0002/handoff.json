@@ -1,0 +1,291 @@
+{
+  "schema": "workloom.mine-clear/handoff@1",
+  "task_id": "T-2026-1030-0002",
+  "repo": "pipeline-coordinator-baseline",
+  "generated_at": "2026-11-01T08:43:49.174Z",
+  "audit_baseline": "3951b7d3e13eeba315e599ad50c17486d112a6bc",
+  "repair_baseline": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+  "acceptance_baseline": "50e232cb41cedb9bb9c13c795b7695d890ebf47b",
+  "environment_claim": "local-preview",
+  "invariants": [
+    {
+      "id": "INV-1",
+      "text": "租户边界覆盖数据库 RLS、运行时上下文、事件、缓存和外部连接器。",
+      "source": "AGENTS.md#4.1"
+    },
+    {
+      "id": "INV-2",
+      "text": "经营事件、审批和关键回执只增不改；纠正通过新事件表达，不静默覆盖证据。",
+      "source": "AGENTS.md#4.2"
+    },
+    {
+      "id": "INV-3",
+      "text": "所有外部或变更性动作及其子调用，统一经过权限、PII、围栏和审批链路。",
+      "source": "AGENTS.md#4.3"
+    },
+    {
+      "id": "INV-4",
+      "text": "涉钱、敏感数据、群发、公开发布、交易和破坏性变更必须按高风险处理并由人审批。",
+      "source": "AGENTS.md#4.4"
+    },
+    {
+      "id": "INV-5",
+      "text": "没有真实回执就不能标记完成；mock、模拟和体验模式在数据结构与界面上都要明确区分。",
+      "source": "AGENTS.md#4.5"
+    },
+    {
+      "id": "INV-6",
+      "text": "客户原始经营数据不得上行；蜂群只接受白名单化、最小化、匿名化且可审计的元数据或派生经验。",
+      "source": "AGENTS.md#4.6"
+    },
+    {
+      "id": "INV-7",
+      "text": "租户覆盖层只能收紧围栏，不能放宽平台不可变红线。",
+      "source": "AGENTS.md#4.7"
+    },
+    {
+      "id": "INV-8",
+      "text": "模型、提示词、技能、bundle、策略和热更新必须先评测再灰度，且始终可回滚。",
+      "source": "AGENTS.md#4.8"
+    },
+    {
+      "id": "INV-9",
+      "text": "platform-ops、平台账户运营和平台秘密只属于 Andromeda。",
+      "source": "AGENTS.md#4.9"
+    },
+    {
+      "id": "INV-10",
+      "text": "Tiger 在获得单独的合规审查和用户明确授权前，只能模拟或纸面交易。",
+      "source": "AGENTS.md#4.10"
+    },
+    {
+      "id": "INV-11",
+      "text": "令牌、密码、API key、私钥、客户凭证和私密客户数据不得进入源码、文档、上下文、提示词、日志或提交。",
+      "source": "AGENTS.md#4.11"
+    },
+    {
+      "id": "INV-12",
+      "text": "个性化与行业扩展不得形成公共机制的第二事实源。",
+      "source": "AGENTS.md#4.12"
+    }
+  ],
+  "closed_problems": [
+    {
+      "id": "MC-001",
+      "title": "跨 bundle 管线计划没有统一的 gate registry、policy 与死锁门禁",
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:42:56.390Z",
+      "verification_evidence": {
+        "path": "runs/MC-001-0-1793522576026.json",
+        "sha256": "62d72d8761e4c559186d7bbe2dcd679c84f748cb6f7c6cd6afa3f10865439e03",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "编译 bundles/{ai-video,geo-growth,hotel,video-edit}/pipelines 下的全部 YAML",
+          "expect": "13/13 可编译，所有实际 gate 同时存在于 registry 和 policy，且没有运行期死锁候选",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode catalog --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "catalog",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "evidence": {
+            "path": "evidence/MC-001-0-1793522576026.txt",
+            "sha256": "f76d45fb65b7e94ed28a588d9d12f82b97cf24d591b7fcdaa47d3b760a3cb708",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "run": {
+            "path": "runs/MC-001-0-1793522576026.json",
+            "sha256": "62d72d8761e4c559186d7bbe2dcd679c84f748cb6f7c6cd6afa3f10865439e03",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "MC-002",
+      "title": "阶段完成没有强制全部 required outputs 与递归 input closure",
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:03.204Z",
+      "verification_evidence": {
+        "path": "runs/MC-002-0-1793522576545.json",
+        "sha256": "13e79bc3bba58e65915c0d681b4af2300d9635204da2604b35b4f3e8320d5dc9",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "任意多输出计划节点及任意缺槽、多槽、错 role/schema 的 artifact 提交",
+          "expect": "缺任一 required output 或输入 closure 不一致时提交/完成被拒绝；完整槽位提交后 manifest 可复算",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode contract --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "contract",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "evidence": {
+            "path": "evidence/MC-002-0-1793522576545.txt",
+            "sha256": "8ec9d5ff38ae106ad432616b1eae504cc8ccfde34dbfb26edb77cd6b44f9c3e8",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "run": {
+            "path": "runs/MC-002-0-1793522576545.json",
+            "sha256": "13e79bc3bba58e65915c0d681b4af2300d9635204da2604b35b4f3e8320d5dc9",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "MC-003",
+      "title": "gate 与副作用动作混型，call/subgraph 和 operation ledger 没有执行闭环",
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:11.062Z",
+      "verification_evidence": {
+        "path": "runs/MC-003-0-1793522583388.json",
+        "sha256": "0ded5c97be397df8114ba0fd4d7e0bfebb2b5d1c34a1165cadf2f0b90a8ba90f",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "任意 gate 带副作用输出、任意 subgraph call、任意外部 operation 结果",
+          "expect": "无副作用执行器或 operation receipt 时不得完成；call 必须有可解析 child plan；未知结果进入 reconcile 且绝不自动重派",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode execution --plans 13 --cases 32",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "execution",
+              "--plans",
+              "13",
+              "--cases",
+              "32"
+            ]
+          },
+          "last_result": "pass",
+          "evidence": {
+            "path": "evidence/MC-003-0-1793522583388.txt",
+            "sha256": "b08f1bb231be13dba0c43cabc6012f90b71f10700e0a326a5dddd03883d2fc4a",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "run": {
+            "path": "runs/MC-003-0-1793522583388.json",
+            "sha256": "0ded5c97be397df8114ba0fd4d7e0bfebb2b5d1c34a1165cadf2f0b90a8ba90f",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "MC-004",
+      "title": "管线 coordinator 存在两套 feature flag 名称与默认值",
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:18.324Z",
+      "verification_evidence": {
+        "path": "runs/MC-004-0-1793522591367.json",
+        "sha256": "671115cbb8026cc5f1d79e86d356e506985c61324a61ca3ca6195a73f6e1790c",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "PIPELINE_COORDINATOR/PIPELINE_CONTROL_PLANE 单设、同设、冲突或非法值",
+          "expect": "所有入口解析出同一 mode；冲突和非法值 fail closed 并给出明确错误",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode flags --plans 13 --cases 12",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "flags",
+              "--plans",
+              "13",
+              "--cases",
+              "12"
+            ]
+          },
+          "last_result": "pass",
+          "evidence": {
+            "path": "evidence/MC-004-0-1793522591367.txt",
+            "sha256": "f0e05e501442ab78a408ea2756a3249139a18880fe13ed4bb6fe4c91c071f89b",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "run": {
+            "path": "runs/MC-004-0-1793522591367.json",
+            "sha256": "671115cbb8026cc5f1d79e86d356e506985c61324a61ca3ca6195a73f6e1790c",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "MC-101",
+      "title": "收口管线目录、artifact closure、执行语义和 feature flag",
+      "verified_by": "codex-acceptance-T-2026-1030-0002",
+      "verified_at": "2026-11-01T08:43:24.949Z",
+      "verification_evidence": {
+        "path": "runs/MC-101-0-1793522598479.json",
+        "sha256": "543760e8b7785d2e4d4e64ede3afb9aad69e1de1d73e93e40e45e0c2977103d1",
+        "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "静态目录、artifact closure、执行契约、feature flag 四组断言",
+          "expect": "全计划编译与静态度量通过，64 组 contract、32 组 execution、12 组 flag 及真实 PG 并发/故障注入全部通过",
+          "command": "zsh engines/video-edit/scripts/tools/pipeline-control-stress.sh --mode all --plans 13 --cases 64",
+          "exec": {
+            "file": "/bin/zsh",
+            "args": [
+              "engines/video-edit/scripts/tools/pipeline-control-stress.sh",
+              "--mode",
+              "all",
+              "--plans",
+              "13",
+              "--cases",
+              "64"
+            ]
+          },
+          "last_result": "pass",
+          "evidence": {
+            "path": "evidence/MC-101-0-1793522598479.txt",
+            "sha256": "d151fa30374c6fa7c67d8cd32cf225bd9168f1288e06586e84ce22f308be1dbc",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          },
+          "run": {
+            "path": "runs/MC-101-0-1793522598479.json",
+            "sha256": "543760e8b7785d2e4d4e64ede3afb9aad69e1de1d73e93e40e45e0c2977103d1",
+            "commit": "50e232cb41cedb9bb9c13c795b7695d890ebf47b"
+          }
+        }
+      ]
+    }
+  ],
+  "open_problems": [],
+  "acceptance_commands": [
+    "pnpm acceptance:profile:check",
+    "node scripts/acceptance/fleet-run.mjs --repo pipeline-coordinator-baseline --env local-preview",
+    "node scripts/acceptance/fleet-run.mjs --repo pipeline-coordinator-baseline --env local-preview --live-only   # 生产最小侵入档"
+  ],
+  "notes": "环境档位为 local-preview：报告只能写『本机预览结构验收』，不得写『生产实测通过』（RDAS v3.1 §0）"
+}

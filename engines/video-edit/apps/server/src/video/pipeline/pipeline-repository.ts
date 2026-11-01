@@ -10,6 +10,7 @@ import {
   assertSystemAutoApprovalReceipt,
   commandRequestHash,
   parseGateDecision,
+  parsePipelineOperationRecord,
   sha256Json,
   type ArtifactEnvelope,
   type ArtifactRef,
@@ -18,11 +19,13 @@ import {
   type GateDecision,
   type GateFinding,
   type PipelineRunState,
+  type PipelineOperationRecord,
   type StageRuntimeState,
   type VerificationStatus,
 } from "@workloom/pipeline-control";
 import {
   assertVideoPipelinePlan,
+  pipelineAncestorKeys,
   VIDEO_SYSTEM_AUTO_APPROVAL_POLICY,
   type CompiledNode,
   type CompiledVideoPipelinePlan,
@@ -77,6 +80,27 @@ interface StageRow extends pg.QueryResultRow {
   artifact_sha256: string | null;
   artifact_bytes: string | number | null;
   artifact_media_type: string | null;
+}
+
+interface OperationRow extends pg.QueryResultRow {
+  id: string;
+  pipeline_run_id: string;
+  stage_run_id: string;
+  operation_key: string;
+  kind: string;
+  state: PipelineOperationRecord["state"];
+  idempotency_key: string;
+  request_hash: string;
+  request: Record<string, unknown>;
+  external_id: string | null;
+  receipt: Record<string, unknown> | null;
+  cost: Record<string, unknown>;
+  error: Record<string, unknown> | null;
+  created_by: string;
+  created_at: Date | string;
+  dispatched_at: Date | string | null;
+  finished_at: Date | string | null;
+  updated_at: Date | string;
 }
 
 export interface PipelineRunView {
@@ -152,9 +176,9 @@ function contractHashOf(node: CompiledNode): string {
 }
 
 function inputManifestHashOf(plan: CompiledVideoPipelinePlan, node: CompiledNode, intentHash: string): string {
-  const parents = plan.edges.filter((edge) => edge.to === node.key);
-  if (parents.length === 0) return hash({ intentHash });
-  return hash(parents.map((edge) => ({ from: edge.from, roles: edge.artifactRoles })));
+  const ancestors = pipelineAncestorKeys(plan, node.key);
+  if (ancestors.length === 0) return hash({ intentHash });
+  return hash({ intentHash, ancestors });
 }
 
 function stageState(row: StageRow): StageRuntimeState {
@@ -190,6 +214,29 @@ function stageState(row: StageRow): StageRuntimeState {
     gateDecisionId: row.gate_decision_id,
     staleReason: null,
   };
+}
+
+function operationRecord(row: OperationRow): PipelineOperationRecord {
+  return parsePipelineOperationRecord({
+    id: row.id,
+    runId: row.pipeline_run_id,
+    stageRunId: row.stage_run_id,
+    operationKey: row.operation_key,
+    kind: row.kind,
+    state: row.state,
+    idempotencyKey: row.idempotency_key,
+    requestHash: row.request_hash,
+    request: row.request,
+    externalId: row.external_id,
+    receipt: row.receipt,
+    cost: row.cost,
+    error: row.error,
+    createdBy: row.created_by,
+    createdAt: iso(row.created_at)!,
+    dispatchedAt: iso(row.dispatched_at),
+    finishedAt: iso(row.finished_at),
+    updatedAt: iso(row.updated_at)!,
+  });
 }
 
 const STAGE_SELECT = `
@@ -620,8 +667,8 @@ export class VideoPipelineRepository {
     plan: CompiledVideoPipelinePlan,
     intentHash: string,
   ): Promise<{ refs: ArtifactRef[]; manifestHash: string }> {
-    const parentKeys = plan.edges.filter((edge) => edge.to === stageKey).map((edge) => edge.from);
-    if (parentKeys.length === 0) return { refs: [], manifestHash: hash({ intentHash }) };
+    const ancestorKeys = pipelineAncestorKeys(plan, stageKey);
+    if (ancestorKeys.length === 0) return { refs: [], manifestHash: hash({ intentHash }) };
     const result = await client.query<{
       id: string;
       logical_id: string;
@@ -633,15 +680,24 @@ export class VideoPipelineRepository {
       bytes: string;
       media_type: string;
     }>(
-      `SELECT DISTINCT ON (s.stage_key)
+      `WITH latest AS (
+         SELECT DISTINCT ON (stage_key)
+                id,stage_key,revision,output_artifact_id
+           FROM production_stage_runs
+          WHERE workspace_id=$1 AND pipeline_run_id=$2 AND stage_key=ANY($3::text[])
+            AND execution_status='completed'
+            AND verification_status IN ('passed','not_applicable')
+            AND disposition NOT IN ('blocked','repair','reconcile','wait_human')
+          ORDER BY stage_key,revision DESC
+       )
+       SELECT DISTINCT
               a.id,a.logical_id,a.role,a.revision,a.schema_version,a.storage_ref,a.sha256,a.bytes,a.media_type
-         FROM production_stage_runs s
-         JOIN video_artifacts a ON a.id=s.output_artifact_id
-        WHERE s.workspace_id=$1 AND s.pipeline_run_id=$2 AND s.stage_key=ANY($3::text[])
-          AND s.execution_status='completed'
-          AND s.verification_status IN ('passed','not_applicable')
-        ORDER BY s.stage_key,s.revision DESC`,
-      [this.scope.workspaceId, runId, parentKeys],
+         FROM latest s
+         JOIN video_artifacts a
+           ON a.stage_run_id=s.id OR a.id=s.output_artifact_id
+        WHERE a.workspace_id=$1 AND a.pipeline_run_id=$2
+        ORDER BY a.logical_id,a.role,a.revision`,
+      [this.scope.workspaceId, runId, ancestorKeys],
     );
     const refs = result.rows.map((row): ArtifactRef => ({
       id: row.id,
@@ -655,6 +711,28 @@ export class VideoPipelineRepository {
       mediaType: row.media_type,
     }));
     return { refs, manifestHash: refs.length > 0 ? artifactManifestHash(refs) : hash({ intentHash }) };
+  }
+
+  async getStageInputManifest(input: {
+    plan: CompiledVideoPipelinePlan;
+    runId: string;
+    stageKey: string;
+  }): Promise<{ refs: ArtifactRef[]; manifestHash: string }> {
+    const plan = assertVideoPipelinePlan(input.plan);
+    return this.transaction(async (client) => {
+      const run = await client.query<{ intent_hash: string }>(
+        "SELECT intent_hash FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2",
+        [this.scope.workspaceId, input.runId],
+      );
+      if (!run.rows[0]) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 不存在");
+      return this.currentInputArtifacts(
+        client,
+        input.runId,
+        input.stageKey,
+        plan,
+        run.rows[0].intent_hash,
+      );
+    });
   }
 
   private async assertDependenciesSatisfied(
@@ -687,7 +765,8 @@ export class VideoPipelineRepository {
     runId: string;
     stageKey: string;
     itemKey?: string | null;
-    artifact: ArtifactEnvelope;
+    artifact?: ArtifactEnvelope;
+    artifacts?: ArtifactEnvelope[];
     manifestArtifacts: ArtifactRef[];
     commandId: string;
     idempotencyKey: string;
@@ -707,7 +786,8 @@ export class VideoPipelineRepository {
         runId: input.runId,
         stageKey: input.stageKey,
         itemKey: input.itemKey ?? null,
-        artifact: input.artifact,
+        artifact: input.artifact ?? null,
+        artifacts: input.artifacts ?? null,
         manifestArtifacts: input.manifestArtifacts,
         planHash: plan.planHash,
       },
@@ -729,48 +809,54 @@ export class VideoPipelineRepository {
       if (positiveInt(runRow.revision, "run.revision") !== input.expectedRunRevision) {
         throw new PipelineControlError("PIPELINE_REVISION_CONFLICT", "run revision 已变化");
       }
-      const artifact = this.verifyArtifact(runRow.project_id, input.artifact);
-      const manifestHash = artifactManifestHash(input.manifestArtifacts);
-      if (!input.manifestArtifacts.some((item) => item.sha256 === artifact.sha256 && item.logicalId === artifact.logicalId)) {
-        throw new PipelineControlError("ARTIFACT_MANIFEST_MISSING", "提交产物未包含在 manifest 中");
+      const node = plan.nodes.find((item) => item.key === input.stageKey);
+      if (!node || node.kind === "gate") {
+        throw new PipelineControlError("PIPELINE_STAGE_UNKNOWN", "commit 目标不是可执行节点");
       }
-      const parentRows = await client.query<{
-        id: string;
-        logical_id: string;
-        role: string;
-        revision: number;
-        schema_version: string;
-        storage_ref: string;
-        sha256: string;
-        bytes: string;
-        media_type: string;
-      }>(
-        `SELECT id,logical_id,role,revision,schema_version,storage_ref,sha256,bytes,media_type
-           FROM video_artifacts
-          WHERE workspace_id=$1 AND pipeline_run_id=$2 AND id=ANY($3::text[])`,
-        [this.scope.workspaceId, input.runId, artifact.parents.map((parent) => parent.artifactId)],
-      );
-      const parentsById = new Map(parentRows.rows.map((row) => [row.id, row]));
-      if (parentRows.rows.length !== new Set(artifact.parents.map((parent) => parent.artifactId)).size) {
-        throw new PipelineControlError("ARTIFACT_PARENT_UNKNOWN", "artifact parent 不属于当前 run");
+      const submittedRaw = input.artifacts ?? (input.artifact ? [input.artifact] : []);
+      if (submittedRaw.length === 0) {
+        throw new PipelineControlError("ARTIFACT_OUTPUT_MISSING", "至少需要一个输出 artifact");
       }
-      const parentRefs = artifact.parents.map((parent): ArtifactRef => {
-        const row = parentsById.get(parent.artifactId);
-        if (!row || row.sha256 !== parent.sha256) {
-          throw new PipelineControlError("ARTIFACT_PARENT_MISMATCH", `parent ${parent.artifactId} 摘要不一致`);
+      const artifacts = submittedRaw.map((artifact) => this.verifyArtifact(runRow.project_id, artifact));
+      const byRole = new Map<string, ArtifactEnvelope[]>();
+      for (const artifact of artifacts) {
+        const matches = node.outputs.filter((port) => port.role === artifact.role && port.schema === artifact.schema);
+        if (matches.length !== 1) {
+          throw new PipelineControlError("ARTIFACT_OUTPUT_UNEXPECTED", `${artifact.role}/${artifact.schema} 不是 ${node.key} 的唯一输出槽位`);
         }
-        return {
-          id: row.id,
-          logicalId: row.logical_id,
-          role: row.role,
-          revision: Number(row.revision),
-          schema: row.schema_version,
-          storageRef: row.storage_ref,
-          sha256: row.sha256,
-          bytes: Number(row.bytes),
-          mediaType: row.media_type,
-        };
-      });
+        byRole.set(artifact.role, [...(byRole.get(artifact.role) ?? []), artifact]);
+      }
+      for (const port of node.outputs.filter((item) => item.required)) {
+        if ((byRole.get(port.role)?.length ?? 0) !== 1) {
+          throw new PipelineControlError("ARTIFACT_OUTPUT_MISSING", `${node.key} 缺少 required output ${port.role}`);
+        }
+      }
+      for (const [role, values] of byRole) {
+        if (values.length !== 1) throw new PipelineControlError("ARTIFACT_OUTPUT_DUPLICATE", `${node.key}.${role} 重复`);
+      }
+      const closure = await this.currentInputArtifacts(client, input.runId, input.stageKey, plan, runRow.intent_hash);
+      const closureById = new Map(closure.refs.map((artifact) => [artifact.id, artifact]));
+      for (const artifact of artifacts) {
+        const parentIds = artifact.parents.map((parent) => parent.artifactId).sort();
+        const expectedIds = [...closureById.keys()].sort();
+        if (hash(parentIds) !== hash(expectedIds)) {
+          throw new PipelineControlError("PIPELINE_INPUT_CLOSURE_MISMATCH", `${node.key} artifact parents 未覆盖完整输入闭包`);
+        }
+        for (const parent of artifact.parents) {
+          const current = closureById.get(parent.artifactId);
+          if (!current || current.sha256 !== parent.sha256 || current.role !== parent.role) {
+            throw new PipelineControlError("ARTIFACT_PARENT_MISMATCH", `parent ${parent.artifactId} 与当前输入闭包不一致`);
+          }
+        }
+      }
+      const orderedArtifacts = node.outputs.flatMap((port) => byRole.get(port.role) ?? []);
+      const primaryArtifact: ArtifactEnvelope | undefined = orderedArtifacts[0];
+      if (!primaryArtifact) throw new PipelineControlError("ARTIFACT_OUTPUT_MISSING", "没有可提交的 canonical output");
+      const completeManifest = [...closure.refs, ...orderedArtifacts];
+      const manifestHash = artifactManifestHash(completeManifest);
+      if (artifactManifestHash(input.manifestArtifacts) !== manifestHash) {
+        throw new PipelineControlError("ARTIFACT_MANIFEST_MISMATCH", "调用方 manifest 必须精确包含输入闭包与全部输出制品");
+      }
       const stage = await client.query<StageRow>(
         `${STAGE_SELECT}
           WHERE s.workspace_id=$1 AND s.pipeline_run_id=$2 AND s.stage_key=$3 AND COALESCE(s.item_key,'')=$4
@@ -781,41 +867,39 @@ export class VideoPipelineRepository {
       if (!stageRow) throw new PipelineControlError("PIPELINE_STAGE_NOT_FOUND", "stage 不存在");
       if (stageRow.revision !== input.expectedStageRevision) throw new PipelineControlError("PIPELINE_STAGE_REVISION_CONFLICT", "stage revision 已变化");
       if (stageRow.execution_status !== "running") throw new PipelineControlError("PIPELINE_STAGE_NOT_RUNNING", "stage 不在运行态");
-      const expectedInputManifest = parentRefs.length > 0
-        ? artifactManifestHash(parentRefs)
-        : hash({ intentHash: runRow.intent_hash });
-      if (stageRow.input_manifest_hash !== expectedInputManifest) {
+      if (stageRow.input_manifest_hash !== closure.manifestHash) {
         throw new PipelineControlError("PIPELINE_INPUT_MANIFEST_MISMATCH", "输入 manifest 与 StageRun 冻结值不一致");
       }
-      const otherManifestRefs = input.manifestArtifacts.filter((item) => item.id !== artifact.id);
-      if (otherManifestRefs.length > 0) {
-        const manifestCheck = await client.query<{ id: string; sha256: string }>(
-          `SELECT id,sha256 FROM video_artifacts
-            WHERE workspace_id=$1 AND pipeline_run_id=$2 AND id=ANY($3::text[])`,
-          [this.scope.workspaceId, input.runId, otherManifestRefs.map((item) => item.id)],
+      if (node.sideEffect === "provider" || node.sideEffect === "public") {
+        const acceptedOperation = await client.query<{ n: string }>(
+          `SELECT count(*)::text AS n
+             FROM video_pipeline_operations
+            WHERE workspace_id=$1 AND stage_run_id=$2 AND state='accepted'`,
+          [this.scope.workspaceId, stageRow.id],
         );
-        const byId = new Map(manifestCheck.rows.map((row) => [row.id, row.sha256]));
-        if (otherManifestRefs.some((item) => byId.get(item.id) !== item.sha256)) {
-          throw new PipelineControlError("ARTIFACT_MANIFEST_SCOPE_MISMATCH", "manifest 引用不属于当前 run 或摘要已漂移");
+        if (Number(acceptedOperation.rows[0]?.n ?? 0) === 0) {
+          throw new PipelineControlError("OPERATION_RECEIPT_REQUIRED", `${node.key} 必须先取得已接受的 operation receipt`);
         }
       }
-      await client.query(
-        `INSERT INTO video_artifacts
-          (id,tenant_id,workspace_id,project_id,pipeline_run_id,stage_run_id,logical_id,revision,role,
-           schema_version,storage_ref,sha256,bytes,media_type,creator,metadata)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb)`,
-        [artifact.id, this.scope.tenantId, this.scope.workspaceId, runRow.project_id, input.runId, stageRow.id,
-          artifact.logicalId, artifact.revision, artifact.role, artifact.schema, artifact.storageRef, artifact.sha256,
-          artifact.bytes, artifact.mediaType, JSON.stringify(artifact.creator), JSON.stringify(artifact.metadata)],
-      );
-      for (const parent of artifact.parents) {
+      for (const artifact of orderedArtifacts) {
         await client.query(
-          `INSERT INTO video_artifact_edges
-            (tenant_id,workspace_id,pipeline_run_id,parent_artifact_id,parent_sha256,child_artifact_id,child_sha256,input_role)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [this.scope.tenantId, this.scope.workspaceId, input.runId, parent.artifactId, parent.sha256,
-            artifact.id, artifact.sha256, parent.role],
+          `INSERT INTO video_artifacts
+            (id,tenant_id,workspace_id,project_id,pipeline_run_id,stage_run_id,logical_id,revision,role,
+             schema_version,storage_ref,sha256,bytes,media_type,creator,metadata)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb)`,
+          [artifact.id, this.scope.tenantId, this.scope.workspaceId, runRow.project_id, input.runId, stageRow.id,
+            artifact.logicalId, artifact.revision, artifact.role, artifact.schema, artifact.storageRef, artifact.sha256,
+            artifact.bytes, artifact.mediaType, JSON.stringify(artifact.creator), JSON.stringify(artifact.metadata)],
         );
+        for (const parent of artifact.parents) {
+          await client.query(
+            `INSERT INTO video_artifact_edges
+              (tenant_id,workspace_id,pipeline_run_id,parent_artifact_id,parent_sha256,child_artifact_id,child_sha256,input_role)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [this.scope.tenantId, this.scope.workspaceId, input.runId, parent.artifactId, parent.sha256,
+              artifact.id, artifact.sha256, parent.role],
+          );
+        }
       }
       await client.query(
         `UPDATE production_stage_runs
@@ -823,7 +907,7 @@ export class VideoPipelineRepository {
                 execution_status='output_ready',status='running',verification_status='pending',disposition='continue',
                 last_heartbeat_at=now()
           WHERE workspace_id=$1 AND pipeline_run_id=$2 AND id=$3`,
-        [this.scope.workspaceId, input.runId, stageRow.id, artifact.storageRef, artifact.sha256, manifestHash, artifact.id],
+        [this.scope.workspaceId, input.runId, stageRow.id, primaryArtifact.storageRef, primaryArtifact.sha256, manifestHash, primaryArtifact.id],
       );
       const hasDownstreamGate = plan.nodes.some((node) =>
         node.kind === "gate" && node.dependsOn.includes(input.stageKey));
@@ -837,12 +921,15 @@ export class VideoPipelineRepository {
       }
       await client.query(
         `UPDATE video_pipeline_runs
-            SET next_action='run_node',revision=revision+1,updated_at=now()
+            SET next_action='run_node',lease_owner=NULL,lease_expires_at=NULL,revision=revision+1,updated_at=now()
           WHERE workspace_id=$1 AND id=$2`,
         [this.scope.workspaceId, input.runId],
       );
       await this.appendOutbox(client, input.runId, "artifact.committed", {
-        stageRunId: stageRow.id, artifactId: artifact.id, artifactSha256: artifact.sha256, artifactManifestHash: manifestHash,
+        stageRunId: stageRow.id,
+        artifactIds: orderedArtifacts.map((artifact) => artifact.id),
+        artifactSha256: primaryArtifact.sha256,
+        artifactManifestHash: manifestHash,
       });
       const response = { runId: input.runId, artifactManifestHash: manifestHash };
       await this.recordCommand(client, {
@@ -958,9 +1045,17 @@ export class VideoPipelineRepository {
       if (producerRow.execution_status !== "output_ready") {
         throw new PipelineControlError("GATE_TARGET_NOT_OUTPUT_READY", "GateDecision 目标 stage 不是 output_ready");
       }
+      if (manifestHash !== producerRow.output_manifest_hash) {
+        throw new PipelineControlError("GATE_ARTIFACT_MANIFEST_MISMATCH", "门只能消费目标阶段完整的输入闭包与输出 manifest");
+      }
       if (!input.manifestArtifacts.some((artifact) => artifact.id === producerRow.output_artifact_id
         && artifact.sha256 === producerRow.artifact_sha256)) {
         throw new PipelineControlError("GATE_DECISION_SCOPE_MISMATCH", "GateDecision manifest 不包含目标 stage 当前产物");
+      }
+      const primaryArtifact = input.manifestArtifacts.find((artifact) =>
+        artifact.id === producerRow.output_artifact_id && artifact.sha256 === producerRow.artifact_sha256);
+      if (!primaryArtifact) {
+        throw new PipelineControlError("GATE_DECISION_SCOPE_MISMATCH", "GateDecision 缺少目标 stage canonical output");
       }
       if (decision.authority === "system_auto_approval") {
         if (input.actor.type !== "system" || decision.reviewer.kind !== "system_auto_approval"
@@ -977,8 +1072,7 @@ export class VideoPipelineRepository {
           gateKey: decision.gateId,
           outcome,
         });
-        const primaryArtifact = input.manifestArtifacts.find((artifact) => artifact.id === producerRow.output_artifact_id);
-        if (!primaryArtifact || receipt.artifactSha256 !== primaryArtifact.sha256) {
+        if (receipt.artifactSha256 !== primaryArtifact.sha256) {
           throw new PipelineControlError("GATE_AUTO_ARTIFACT_MISMATCH", "system auto-approval receipt is bound to another artifact");
         }
       } else if (decision.authority === "human_approval" || decision.reviewer.kind === "human_approval") {
@@ -1007,7 +1101,6 @@ export class VideoPipelineRepository {
             JSON.stringify(finding.actual ?? null), JSON.stringify(finding.evidenceRefs), finding.repairClass, finding.blocking],
         );
       }
-      const primaryArtifact = input.manifestArtifacts[0]!;
       const execution = "completed";
       const disposition = decision.status === "passed" || decision.status === "not_applicable"
         ? "continue" : decision.status === "blocked" ? "blocked" : decision.status === "rejected" ? "repair" : "wait_human";
@@ -1176,6 +1269,352 @@ export class VideoPipelineRepository {
     });
   }
 
+  async reserveOperation(input: CommandEnvelopeInput & {
+    plan: CompiledVideoPipelinePlan;
+    runId: string;
+    stageKey: string;
+    itemKey?: string | null;
+    operationKey: string;
+    kind: string;
+    request: Record<string, unknown>;
+    expectedStageRevision: number;
+  }): Promise<{ operation: PipelineOperationRecord; run: PipelineRunView }> {
+    const plan = assertVideoPipelinePlan(input.plan);
+    if (!input.operationKey.trim() || !input.kind.trim()) {
+      throw new PipelineControlError("OPERATION_IDENTITY_INVALID", "operationKey 与 kind 必填");
+    }
+    const requestHash = commandRequestHash({
+      commandId: input.commandId,
+      idempotencyKey: input.idempotencyKey,
+      actor: input.actor,
+      expectedRunRevision: input.expectedRunRevision,
+      expectedStageRevision: input.expectedStageRevision,
+      payload: {
+        kind: "reserveOperation",
+        runId: input.runId,
+        stageKey: input.stageKey,
+        itemKey: input.itemKey ?? null,
+        operationKey: input.operationKey,
+        operationKind: input.kind,
+        request: input.request,
+        planHash: plan.planHash,
+      },
+    });
+    return this.transaction(async (client) => {
+      const replay = await this.commandReplay<{ operation: PipelineOperationRecord; run: PipelineRunView }>(
+        client,
+        input.idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay;
+      const run = await client.query<RunRow>(
+        "SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE",
+        [this.scope.workspaceId, input.runId],
+      );
+      const runRow = run.rows[0];
+      if (!runRow) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 不存在");
+      if (positiveInt(runRow.revision, "run.revision") !== input.expectedRunRevision) {
+        throw new PipelineControlError("PIPELINE_REVISION_CONFLICT", "run revision 已变化");
+      }
+      if (runRow.plan_hash !== plan.planHash) {
+        throw new PipelineControlError("PIPELINE_PLAN_NOT_CURRENT", "operation 使用的 plan 与 run 不一致");
+      }
+      const node = plan.nodes.find((item) => item.key === input.stageKey);
+      if (!node || node.kind === "gate" || node.sideEffect === "none") {
+        throw new PipelineControlError("OPERATION_STAGE_INVALID", "operation 只能绑定当前 plan 的有副作用 stage");
+      }
+      const stage = await client.query<StageRow>(
+        `${STAGE_SELECT}
+          WHERE s.workspace_id=$1 AND s.pipeline_run_id=$2 AND s.stage_key=$3 AND COALESCE(s.item_key,'')=$4
+          ORDER BY s.revision DESC LIMIT 1 FOR UPDATE OF s`,
+        [this.scope.workspaceId, input.runId, input.stageKey, input.itemKey ?? ""],
+      );
+      const stageRow = stage.rows[0];
+      if (!stageRow) throw new PipelineControlError("PIPELINE_STAGE_NOT_FOUND", "stage 不存在");
+      if (stageRow.revision !== input.expectedStageRevision) {
+        throw new PipelineControlError("PIPELINE_STAGE_REVISION_CONFLICT", "stage revision 已变化");
+      }
+      if (stageRow.execution_status !== "running") {
+        throw new PipelineControlError("PIPELINE_STAGE_NOT_RUNNING", "只有运行中的 stage 可以预留操作");
+      }
+      const duplicate = await client.query<{ id: string }>(
+        "SELECT id FROM video_pipeline_operations WHERE stage_run_id=$1 AND operation_key=$2",
+        [stageRow.id, input.operationKey],
+      );
+      if (duplicate.rows[0]) {
+        throw new PipelineControlError("OPERATION_ALREADY_RESERVED", `operationKey ${input.operationKey} 已绑定 ${duplicate.rows[0].id}`);
+      }
+      const operationId = `OP-${hash({
+        runId: input.runId,
+        stageRunId: stageRow.id,
+        operationKey: input.operationKey,
+        requestHash,
+      }).slice(0, 24)}`;
+      const inserted = await client.query<OperationRow>(
+        `INSERT INTO video_pipeline_operations
+          (id,tenant_id,workspace_id,project_id,pipeline_run_id,stage_run_id,operation_key,kind,state,
+           idempotency_key,request_hash,request,created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'reserved',$9,$10,$11::jsonb,$12)
+         RETURNING *`,
+        [operationId, this.scope.tenantId, this.scope.workspaceId, runRow.project_id, input.runId,
+          stageRow.id, input.operationKey, input.kind, input.idempotencyKey, requestHash,
+          JSON.stringify(input.request), input.actor.id],
+      );
+      await client.query(
+        `UPDATE video_pipeline_runs
+            SET next_action='run_node',revision=revision+1,updated_at=now()
+          WHERE workspace_id=$1 AND id=$2`,
+        [this.scope.workspaceId, input.runId],
+      );
+      await this.appendOutbox(client, input.runId, "operation.reserved", {
+        operationId,
+        stageRunId: stageRow.id,
+        operationKey: input.operationKey,
+        kind: input.kind,
+        requestHash,
+      });
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
+      const operation = operationRecord(inserted.rows[0]!);
+      const response = { operation, run: view };
+      await this.recordCommand(client, {
+        id: input.commandId,
+        runId: input.runId,
+        kind: "reserveOperation",
+        idempotencyKey: input.idempotencyKey,
+        requestHash,
+        actor: input.actor,
+        expectedRunRevision: input.expectedRunRevision,
+        expectedStageRevision: input.expectedStageRevision,
+        response,
+      });
+      return response;
+    });
+  }
+
+  async dispatchOperation(input: CommandEnvelopeInput & {
+    plan: CompiledVideoPipelinePlan;
+    runId: string;
+    operationId: string;
+    externalId?: string | null;
+    expectedStageRevision: number;
+  }): Promise<{ operation: PipelineOperationRecord; run: PipelineRunView }> {
+    const plan = assertVideoPipelinePlan(input.plan);
+    const requestHash = commandRequestHash({
+      commandId: input.commandId,
+      idempotencyKey: input.idempotencyKey,
+      actor: input.actor,
+      expectedRunRevision: input.expectedRunRevision,
+      expectedStageRevision: input.expectedStageRevision,
+      payload: { kind: "dispatchOperation", runId: input.runId, operationId: input.operationId, externalId: input.externalId ?? null, planHash: plan.planHash },
+    });
+    return this.transaction(async (client) => {
+      const replay = await this.commandReplay<{ operation: PipelineOperationRecord; run: PipelineRunView }>(
+        client,
+        input.idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay;
+      const run = await client.query<RunRow>(
+        "SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE",
+        [this.scope.workspaceId, input.runId],
+      );
+      const runRow = run.rows[0];
+      if (!runRow) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 不存在");
+      if (positiveInt(runRow.revision, "run.revision") !== input.expectedRunRevision) {
+        throw new PipelineControlError("PIPELINE_REVISION_CONFLICT", "run revision 已变化");
+      }
+      if (runRow.plan_hash !== plan.planHash) throw new PipelineControlError("PIPELINE_PLAN_NOT_CURRENT", "plan 不一致");
+      const operationRows = await client.query<OperationRow>(
+        "SELECT * FROM video_pipeline_operations WHERE workspace_id=$1 AND id=$2 FOR UPDATE",
+        [this.scope.workspaceId, input.operationId],
+      );
+      const existing = operationRows.rows[0];
+      if (!existing || existing.pipeline_run_id !== input.runId) {
+        throw new PipelineControlError("OPERATION_NOT_FOUND", "operation 不存在");
+      }
+      if (existing.state !== "reserved") throw new PipelineControlError("OPERATION_STATE_INVALID", "只有 reserved operation 可以 dispatch");
+      const stage = await client.query<StageRow>(
+        `${STAGE_SELECT} WHERE s.workspace_id=$1 AND s.id=$2 FOR UPDATE OF s`,
+        [this.scope.workspaceId, existing.stage_run_id],
+      );
+      const stageRow = stage.rows[0];
+      if (!stageRow || stageRow.revision !== input.expectedStageRevision) {
+        throw new PipelineControlError("PIPELINE_STAGE_REVISION_CONFLICT", "stage revision 已变化");
+      }
+      if (stageRow.execution_status !== "running") throw new PipelineControlError("PIPELINE_STAGE_NOT_RUNNING", "stage 不在运行态");
+      const updated = await client.query<OperationRow>(
+        `UPDATE video_pipeline_operations
+            SET state='dispatched',external_id=$3,dispatched_at=now()
+          WHERE workspace_id=$1 AND id=$2
+          RETURNING *`,
+        [this.scope.workspaceId, input.operationId, input.externalId ?? null],
+      );
+      await client.query(
+        `UPDATE video_pipeline_runs SET revision=revision+1,updated_at=now()
+          WHERE workspace_id=$1 AND id=$2`,
+        [this.scope.workspaceId, input.runId],
+      );
+      await this.appendOutbox(client, input.runId, "operation.dispatched", {
+        operationId: input.operationId,
+        stageRunId: existing.stage_run_id,
+        externalId: input.externalId ?? null,
+      });
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
+      const operation = operationRecord(updated.rows[0]!);
+      const response = { operation, run: view };
+      await this.recordCommand(client, {
+        id: input.commandId,
+        runId: input.runId,
+        kind: "dispatchOperation",
+        idempotencyKey: input.idempotencyKey,
+        requestHash,
+        actor: input.actor,
+        expectedRunRevision: input.expectedRunRevision,
+        expectedStageRevision: input.expectedStageRevision,
+        response,
+      });
+      return response;
+    });
+  }
+
+  async settleOperation(input: CommandEnvelopeInput & {
+    plan: CompiledVideoPipelinePlan;
+    runId: string;
+    operationId: string;
+    outcome: "accepted" | "failed" | "unknown";
+    receipt?: Record<string, unknown> | null;
+    error?: Record<string, unknown> | null;
+    cost?: Record<string, unknown>;
+    externalId?: string | null;
+    expectedStageRevision: number;
+  }): Promise<{ operation: PipelineOperationRecord; run: PipelineRunView }> {
+    const plan = assertVideoPipelinePlan(input.plan);
+    if (input.outcome === "accepted" && (!input.receipt || Object.keys(input.receipt).length === 0)) {
+      throw new PipelineControlError("OPERATION_RECEIPT_REQUIRED", "accepted operation 必须提供真实 receipt");
+    }
+    if (input.outcome === "failed" && (!input.error || Object.keys(input.error).length === 0)) {
+      throw new PipelineControlError("OPERATION_ERROR_REQUIRED", "failed operation 必须提供错误回执");
+    }
+    const requestHash = commandRequestHash({
+      commandId: input.commandId,
+      idempotencyKey: input.idempotencyKey,
+      actor: input.actor,
+      expectedRunRevision: input.expectedRunRevision,
+      expectedStageRevision: input.expectedStageRevision,
+      payload: {
+        kind: "settleOperation",
+        runId: input.runId,
+        operationId: input.operationId,
+        outcome: input.outcome,
+        receipt: input.receipt ?? null,
+        error: input.error ?? null,
+        cost: input.cost ?? {},
+        externalId: input.externalId ?? null,
+        planHash: plan.planHash,
+      },
+    });
+    return this.transaction(async (client) => {
+      const replay = await this.commandReplay<{ operation: PipelineOperationRecord; run: PipelineRunView }>(
+        client,
+        input.idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay;
+      const run = await client.query<RunRow>(
+        "SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE",
+        [this.scope.workspaceId, input.runId],
+      );
+      const runRow = run.rows[0];
+      if (!runRow) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 不存在");
+      if (positiveInt(runRow.revision, "run.revision") !== input.expectedRunRevision) {
+        throw new PipelineControlError("PIPELINE_REVISION_CONFLICT", "run revision 已变化");
+      }
+      if (runRow.plan_hash !== plan.planHash) throw new PipelineControlError("PIPELINE_PLAN_NOT_CURRENT", "plan 不一致");
+      const operationRows = await client.query<OperationRow>(
+        "SELECT * FROM video_pipeline_operations WHERE workspace_id=$1 AND id=$2 FOR UPDATE",
+        [this.scope.workspaceId, input.operationId],
+      );
+      const existing = operationRows.rows[0];
+      if (!existing || existing.pipeline_run_id !== input.runId) {
+        throw new PipelineControlError("OPERATION_NOT_FOUND", "operation 不存在");
+      }
+      if (existing.state !== "dispatched") throw new PipelineControlError("OPERATION_STATE_INVALID", "只有 dispatched operation 可以结束");
+      const stage = await client.query<StageRow>(
+        `${STAGE_SELECT} WHERE s.workspace_id=$1 AND s.id=$2 FOR UPDATE OF s`,
+        [this.scope.workspaceId, existing.stage_run_id],
+      );
+      const stageRow = stage.rows[0];
+      if (!stageRow || stageRow.revision !== input.expectedStageRevision) {
+        throw new PipelineControlError("PIPELINE_STAGE_REVISION_CONFLICT", "stage revision 已变化");
+      }
+      const updated = await client.query<OperationRow>(
+        `UPDATE video_pipeline_operations
+            SET state=$3,external_id=COALESCE($4,external_id),receipt=$5::jsonb,cost=$6::jsonb,
+                error=$7::jsonb,finished_at=now()
+          WHERE workspace_id=$1 AND id=$2
+          RETURNING *`,
+        [this.scope.workspaceId, input.operationId, input.outcome, input.externalId ?? null,
+          input.receipt ? JSON.stringify(input.receipt) : null, JSON.stringify(input.cost ?? {}),
+          input.error ? JSON.stringify(input.error) : null],
+      );
+      if (input.outcome === "failed") {
+        await client.query(
+          `UPDATE production_stage_runs
+              SET execution_status='failed',verification_status='not_run',disposition='repair',
+                  status='failed',error_class='EXTERNAL_OPERATION_FAILED',error_msg=$3,finished_at=now()
+            WHERE workspace_id=$1 AND id=$2`,
+          [this.scope.workspaceId, existing.stage_run_id, String(input.error?.code ?? "EXTERNAL_OPERATION_FAILED")],
+        );
+      } else if (input.outcome === "unknown") {
+        await client.query(
+          `UPDATE production_stage_runs
+              SET execution_status='interrupted',verification_status='unverified',disposition='reconcile',
+                  status='interrupted',error_class='EXTERNAL_OPERATION_UNKNOWN',error_msg='external operation outcome unknown',finished_at=now()
+            WHERE workspace_id=$1 AND id=$2`,
+          [this.scope.workspaceId, existing.stage_run_id],
+        );
+      }
+      const runStatus = input.outcome === "failed" ? "waiting" : input.outcome === "unknown" ? "reconciling" : "running";
+      const nextAction = input.outcome === "failed" ? "repair" : input.outcome === "unknown" ? "reconcile" : "run_node";
+      await client.query(
+        `UPDATE video_pipeline_runs
+            SET status=$3,next_action=$4,
+                lease_owner=CASE WHEN $5::boolean THEN lease_owner ELSE NULL END,
+                lease_expires_at=CASE WHEN $5::boolean THEN lease_expires_at ELSE NULL END,
+                revision=revision+1,updated_at=now()
+          WHERE workspace_id=$1 AND id=$2`,
+        [this.scope.workspaceId, input.runId, runStatus, nextAction, input.outcome === "accepted"],
+      );
+      const eventKind = input.outcome === "accepted" ? "operation.accepted"
+        : input.outcome === "failed" ? "operation.failed" : "operation.unknown";
+      await this.appendOutbox(client, input.runId, eventKind, {
+        operationId: input.operationId,
+        stageRunId: existing.stage_run_id,
+        receipt: input.receipt ?? null,
+        error: input.error ?? null,
+        cost: input.cost ?? {},
+      });
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
+      const operation = operationRecord(updated.rows[0]!);
+      const response = { operation, run: view };
+      await this.recordCommand(client, {
+        id: input.commandId,
+        runId: input.runId,
+        kind: "settleOperation",
+        idempotencyKey: input.idempotencyKey,
+        requestHash,
+        actor: input.actor,
+        expectedRunRevision: input.expectedRunRevision,
+        expectedStageRevision: input.expectedStageRevision,
+        response,
+      });
+      return response;
+    });
+  }
+
   async markInterrupted(input: CommandEnvelopeInput & {
     runId: string;
     reason: string;
@@ -1203,7 +1642,8 @@ export class VideoPipelineRepository {
       await client.query(
         `UPDATE production_stage_runs
             SET execution_status='interrupted',verification_status='unverified',disposition='reconcile',
-                status='interrupted',error_class='RECONCILE_REQUIRED',error_msg=$4,finished_at=now(),last_heartbeat_at=now()
+                status='interrupted',worker_version=$3,error_class='RECONCILE_REQUIRED',error_msg=$4,
+                finished_at=now(),last_heartbeat_at=now()
           WHERE workspace_id=$1 AND pipeline_run_id=$2 AND execution_status='running'`,
         [this.scope.workspaceId, input.runId, input.owner, input.reason.slice(0, 500)],
       );

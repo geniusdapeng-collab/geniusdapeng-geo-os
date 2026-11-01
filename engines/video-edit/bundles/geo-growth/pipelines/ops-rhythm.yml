@@ -17,7 +17,15 @@ steps:
     owner: private-domain-operator
     cron: "*/30 * * * *"
     gate: G10
+    inputs: [comment]
+    outputs: [comment]
+  - step_key: comment-route
+    name: 按分类生成回复或转人工
+    owner: private-domain-operator
+    inputs: [comment]
     outputs: [comment_reply]          # 夸赞 auto/咨询 review/负面 review+告警/敏感 block
+    depends_on: [comment-30m]
+    side_effect: public
   - step_key: inquiry-tag
     name: 询盘双入口打标
     owner: private-domain-operator

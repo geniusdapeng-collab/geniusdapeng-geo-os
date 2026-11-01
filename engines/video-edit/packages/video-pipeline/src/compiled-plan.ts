@@ -59,8 +59,9 @@ export interface CompiledGateNode {
   invalidates: string[];
   sideEffect: "none";
   costClass: "none";
+  action: null;
   repair: RepairPolicy;
-  budgetMs: null;
+  budgetMs: number | null;
 }
 
 export interface CompiledCallNode {
@@ -69,6 +70,7 @@ export interface CompiledCallNode {
   name: string;
   owner: string;
   pipelineKey: string;
+  adapterId: string;
   inputs: ArtifactPort[];
   outputs: ArtifactPort[];
   dependsOn: string[];
@@ -253,6 +255,53 @@ function ancestorsOf(nodes: CompiledNode[]): Map<string, string[]> {
   return result;
 }
 
+export function pipelineAncestorKeys(
+  plan: CompiledVideoPipelinePlan,
+  nodeKey: string,
+): string[] {
+  if (!plan.nodes.some((node) => node.key === nodeKey)) {
+    fail("PIPELINE_PLAN_NODE_UNKNOWN", `未知节点 ${nodeKey}`);
+  }
+  return [...(ancestorsOf(plan.nodes).get(nodeKey) ?? [])];
+}
+
+export interface VideoPipelineWaitCycle {
+  gate: string;
+  heldStage: string;
+  waitsForStage: string;
+}
+
+/**
+ * A gate may consume an output_ready stage, but another pending stage cannot.
+ * If a gate directly waits for both a stage S and a later stage T that depends
+ * on S, S is held for the gate while T is held for S: the run cannot advance.
+ */
+export function findVideoPipelineWaitCycles(nodes: CompiledNode[]): VideoPipelineWaitCycle[] {
+  const byId = new Map(nodes.map((node) => [node.key, node]));
+  const ancestors = ancestorsOf(nodes);
+  const downstreamGates = new Map<string, string[]>();
+  for (const gate of nodes.filter((node) => node.kind === "gate")) {
+    for (const dependency of gate.dependsOn) {
+      downstreamGates.set(dependency, [...(downstreamGates.get(dependency) ?? []), gate.key]);
+    }
+  }
+  const cycles: VideoPipelineWaitCycle[] = [];
+  for (const gate of nodes.filter((node) => node.kind === "gate")) {
+    for (const heldStage of gate.dependsOn) {
+      if (!downstreamGates.has(heldStage)) continue;
+      for (const waitsForStage of gate.dependsOn) {
+        if (waitsForStage === heldStage) continue;
+        const later = byId.get(waitsForStage);
+        if (!later || later.kind === "gate") continue;
+        if ((ancestors.get(waitsForStage) ?? []).includes(heldStage)) {
+          cycles.push({ gate: gate.key, heldStage, waitsForStage });
+        }
+      }
+    }
+  }
+  return cycles;
+}
+
 function validateContracts(nodes: CompiledNode[], options: {
   adapterRegistry: Record<string, VideoAdapterRegistration>;
   gateRegistry: Record<string, VideoGateRegistration>;
@@ -272,8 +321,13 @@ function validateContracts(nodes: CompiledNode[], options: {
     if (node.kind === "gate" && !options.gateRegistry[node.gateId]) {
       fail("PIPELINE_PLAN_GATE_UNKNOWN", `${node.key} 使用未知 gate ${node.gateId}`);
     }
-    if (node.kind === "call" && !options.knownPipelines.has(node.pipelineKey)) {
-      fail("PIPELINE_PLAN_CALL_UNKNOWN", `${node.key} 调用未知 pipeline ${node.pipelineKey}`);
+    if (node.kind === "call") {
+      if (!options.knownPipelines.has(node.pipelineKey)) {
+        fail("PIPELINE_PLAN_CALL_UNKNOWN", `${node.key} 调用未知 pipeline ${node.pipelineKey}`);
+      }
+      if (!options.adapterRegistry[node.adapterId]) {
+        fail("PIPELINE_PLAN_ADAPTER_UNKNOWN", `${node.key} 使用未知 child pipeline adapter ${node.adapterId}`);
+      }
     }
     for (const invalidated of node.invalidates) {
       if (invalidated === node.key || !byId.has(invalidated)) {
@@ -342,15 +396,28 @@ export function compileVideoPipelineDocument(
     if (kind === "gate") {
       const gate = gateRegistry[gateId!];
       if (!gate) fail("PIPELINE_PLAN_GATE_UNKNOWN", `${nodeKey} 使用未知 gate ${gateId}`);
+      const declaresNewOutput = outputs.some((output) =>
+        !inputs.some((input) => input.role === output.role && input.schema === output.schema));
+      const actionRequired = declaresNewOutput
+        || (explicitSideEffect !== null && explicitSideEffect !== "none");
+      if (actionRequired) {
+        fail(
+          "PIPELINE_PLAN_GATE_ACTION_AMBIGUOUS",
+          `${nodeKey} 同时声明 gate 与副作用/新产物；必须拆成纯 gate 和独立 action stage`,
+        );
+      }
       return {
         key: nodeKey, kind, name: text(step.name, `${nodeKey}.name`), owner, gateId: gateId!,
         checkSetVersion: gate.checkSetVersion, rubricVersion: gate.rubricVersion, authority: gate.authority,
-        inputs, outputs, dependsOn, invalidates, sideEffect: "none", costClass: "none", repair, budgetMs: null,
+        inputs, outputs, dependsOn, invalidates, sideEffect: "none", costClass: "none",
+        action: null,
+        repair, budgetMs: null,
       };
     }
     if (kind === "call") {
       return {
         key: nodeKey, kind, name: text(step.name, `${nodeKey}.name`), owner, pipelineKey: pipelineKey!,
+        adapterId: optionalText(step.adapter, `${nodeKey}.adapter`) ?? "pipeline.child",
         inputs, outputs, dependsOn, invalidates, sideEffect: sideEffect as SideEffect, costClass: cost, repair, budgetMs,
       };
     }
@@ -372,6 +439,14 @@ export function compileVideoPipelineDocument(
   }
 
   const ordered = topoSort(nodes);
+  const waitCycles = findVideoPipelineWaitCycles(ordered);
+  const firstWaitCycle = waitCycles[0];
+  if (firstWaitCycle) {
+    fail(
+      "PIPELINE_PLAN_WAIT_CYCLE",
+      `${firstWaitCycle.gate} waits for ${firstWaitCycle.heldStage} and ${firstWaitCycle.waitsForStage}, but ${firstWaitCycle.waitsForStage} depends on ${firstWaitCycle.heldStage}`,
+    );
+  }
   validateContracts(ordered, { adapterRegistry, gateRegistry, knownPipelines });
   const edges = nodes.flatMap((node) => node.dependsOn.map((from) => ({
     from,

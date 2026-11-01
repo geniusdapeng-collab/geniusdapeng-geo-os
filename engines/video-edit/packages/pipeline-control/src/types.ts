@@ -246,3 +246,31 @@ export interface PipelineOutboxItem {
   lastError: string | null;
   createdAt: string;
 }
+
+export type PipelineOperationState =
+  | "reserved"
+  | "dispatched"
+  | "accepted"
+  | "failed"
+  | "unknown";
+
+export interface PipelineOperationRecord {
+  id: string;
+  runId: string;
+  stageRunId: string;
+  operationKey: string;
+  kind: string;
+  state: PipelineOperationState;
+  idempotencyKey: string;
+  requestHash: string;
+  request: Record<string, unknown>;
+  externalId: string | null;
+  receipt: Record<string, unknown> | null;
+  cost: Record<string, unknown>;
+  error: Record<string, unknown> | null;
+  createdBy: string;
+  createdAt: string;
+  dispatchedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string;
+}

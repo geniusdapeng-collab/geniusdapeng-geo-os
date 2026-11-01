@@ -7,6 +7,7 @@ import {
   type GateDecision,
   type PipelineCommand,
   type PipelineOutboxItem,
+  type PipelineOperationRecord,
   type PipelineRunState,
   type RepairPlan,
   type StageRuntimeState,
@@ -230,6 +231,38 @@ export const pipelineOutboxItemSchema = z.object({
   createdAt: z.iso.datetime(),
 }).strict();
 
+export const pipelineOperationRecordSchema = z.object({
+  id,
+  runId: nonEmpty,
+  stageRunId: nonEmpty,
+  operationKey: nonEmpty,
+  kind: nonEmpty,
+  state: z.enum(["reserved", "dispatched", "accepted", "failed", "unknown"]),
+  idempotencyKey: nonEmpty,
+  requestHash: sha256,
+  request: jsonObject,
+  externalId: nonEmpty.nullable(),
+  receipt: jsonObject.nullable(),
+  cost: jsonObject,
+  error: jsonObject.nullable(),
+  createdBy: nonEmpty,
+  createdAt: z.iso.datetime(),
+  dispatchedAt: z.iso.datetime().nullable(),
+  finishedAt: z.iso.datetime().nullable(),
+  updatedAt: z.iso.datetime(),
+}).strict().superRefine((value, context) => {
+  if (value.state === "reserved" && (value.dispatchedAt !== null || value.finishedAt !== null)) {
+    context.addIssue({ code: "custom", path: ["state"], message: "reserved operation 不得有 dispatch/finish 时间" });
+  }
+  if (value.state === "dispatched" && (value.dispatchedAt === null || value.finishedAt !== null)) {
+    context.addIssue({ code: "custom", path: ["state"], message: "dispatched operation 必须有 dispatch 时间且无 finish 时间" });
+  }
+  if (["accepted", "failed", "unknown"].includes(value.state)
+    && (value.dispatchedAt === null || value.finishedAt === null)) {
+    context.addIssue({ code: "custom", path: ["state"], message: "terminal operation 必须有 dispatch/finish 时间" });
+  }
+});
+
 export function parseArtifactEnvelope(value: unknown): ArtifactEnvelope {
   return artifactEnvelopeSchema.parse(value);
 }
@@ -256,4 +289,8 @@ export function parsePipelineCommand(value: unknown): PipelineCommand {
 
 export function parsePipelineOutboxItem(value: unknown): PipelineOutboxItem {
   return pipelineOutboxItemSchema.parse(value);
+}
+
+export function parsePipelineOperationRecord(value: unknown): PipelineOperationRecord {
+  return pipelineOperationRecordSchema.parse(value);
 }

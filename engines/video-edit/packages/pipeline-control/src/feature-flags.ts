@@ -43,8 +43,20 @@ export function loadPipelineFeatureFlags(
 ): PipelineFeatureFlags {
   oneOf(env.PIPELINE_AUTO_PAID_REPAIR, ["off"] as const, "off", "PIPELINE_AUTO_PAID_REPAIR");
   oneOf(env.PIPELINE_LEGACY_PROJECTION, ["on"] as const, "on", "PIPELINE_LEGACY_PROJECTION");
+  const canonicalCoordinator = env.PIPELINE_COORDINATOR?.trim()
+    ? oneOf(env.PIPELINE_COORDINATOR, ["off", "shadow", "enforce"] as const, DEFAULTS.coordinator, "PIPELINE_COORDINATOR")
+    : undefined;
+  const legacyCoordinator = env.PIPELINE_CONTROL_PLANE?.trim()
+    ? oneOf(env.PIPELINE_CONTROL_PLANE, ["off", "shadow", "enforce"] as const, DEFAULTS.coordinator, "PIPELINE_CONTROL_PLANE")
+    : undefined;
+  if (canonicalCoordinator && legacyCoordinator && canonicalCoordinator !== legacyCoordinator) {
+    fail(
+      "PIPELINE_FLAG_CONFLICT",
+      `PIPELINE_COORDINATOR=${canonicalCoordinator} conflicts with PIPELINE_CONTROL_PLANE=${legacyCoordinator}`,
+    );
+  }
   return {
-    coordinator: oneOf(env.PIPELINE_COORDINATOR, ["off", "shadow", "enforce"] as const, DEFAULTS.coordinator, "PIPELINE_COORDINATOR"),
+    coordinator: canonicalCoordinator ?? legacyCoordinator ?? DEFAULTS.coordinator,
     managedCli: oneOf(env.PIPELINE_MANAGED_CLI, ["off", "on"] as const, "off", "PIPELINE_MANAGED_CLI") === "on",
     repair: oneOf(env.PIPELINE_REPAIR, ["off", "dry-run", "bounded"] as const, DEFAULTS.repair, "PIPELINE_REPAIR"),
     autoPaidRepair: false,

@@ -1,6 +1,6 @@
 /**
  * Drizzle type source for the additive video pipeline control-plane tables.
- * Canonical DDL remains packages/db/migrations/0054-0060.
+ * Canonical DDL remains packages/db/migrations/0054-0061.
  */
 import {
   bigint,
@@ -248,4 +248,36 @@ export const videoDeliveryRevisionJobs = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (t) => [unique("video_delivery_revision_idempotency").on(t.workspaceId, t.idempotencyKey)],
+);
+
+export const videoPipelineOperations = pgTable(
+  "video_pipeline_operations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull().references(() => tenants.id),
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id),
+    projectId: text("project_id").notNull(),
+    pipelineRunId: text("pipeline_run_id").notNull().references(() => videoPipelineRuns.id),
+    stageRunId: text("stage_run_id").notNull(),
+    operationKey: text("operation_key").notNull(),
+    kind: text("kind").notNull(),
+    state: text("state").notNull().default("reserved"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    request: jsonb("request").notNull(),
+    externalId: text("external_id"),
+    receipt: jsonb("receipt"),
+    cost: jsonb("cost").notNull().default({}),
+    error: jsonb("error"),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("video_pipeline_operations_idempotency").on(t.workspaceId, t.idempotencyKey),
+    unique("video_pipeline_operations_stage_key").on(t.stageRunId, t.operationKey),
+    index("idx_video_pipeline_operations_run").on(t.pipelineRunId, t.createdAt),
+  ],
 );
