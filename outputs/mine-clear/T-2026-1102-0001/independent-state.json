@@ -1,0 +1,46 @@
+{
+  "role": "/root/independent_review",
+  "goal": "Independent review and formal MCD acceptance of root video-audit fixes, no product code or test edits by this role.",
+  "repo": "/Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager",
+  "baseline": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "completed": [
+    "Root AGENTS and full guide read.",
+    "Independent full reads recorded in ../independent-read.json (30 full,6 partial; add requirement-contract.ts/studio.test.ts updates as needed).",
+    "Independent initial regression 4 files185 tests passed incl real PostgreSQL: ../independent-initial-tests.log.",
+    "Reviewed pipeline replay/frontier, requirement narrative fix, archive stage log/recovery/callers, CI new PG17service. No new defects in these fixes.",
+    "Found MC003 remaining reference/voice/subtitle counterexamples; sent exact reproduction to root and marketing_audit; author wrote red tests and fixed. Root subsequently asked entire abstract prompt template exit for custom references/colors; author currently finishing.",
+    "Read new MC007 discovery timing projection: bounded per-node actual schema, validate candidate before source mutation, no new regression found.",
+    "Current added MC008/MC010 implementation reviewed; 7 files429 tests independent green: ../independent-second-tests.log.",
+    "MC009 native fallback laundering and MC003 explicit music override independently reproduced, sent root; formal acceptance must await fixes.",
+    "CI omitted 3 card regressions reported to root.",
+    "MC003 final creative direction guards reviewed + original piano counterexample preserves prompt.",
+    "MC009 private per-scoped terminal hash evidence reviewed; both native existing-fields scripts now refuse correctly.",
+    "Final vendor+marketing+studio independent 3 files116 tests green (../independent-final-recovery-marketing.log).",
+    "Design proposal completely read and worker factual seams traced; no safety blocker.",
+    "CI final omitted-card regressions now included.",
+    "MC012 full router+test read; found common 选/就 negation residual and explainer projection mismatches; author fixed.",
+    "MC012 three independent counterexamples now narrative/no product activation; ../independent-route-counterexample-green.log.",
+    "MC012 final router+studio independent2-file regression green; ../independent-route-green.log.",
+    "Vendor compatibility whole 2225-line source read during wait; coverage upgraded to A-full.",
+    "MC013 final English numeral/unit presence detector reviewed; one-minute and numeric/Chinese/invalid/per-shot independent examples correct;112 router tests green.",
+    "Final finite MC012 token-family grammar+MC013 and strengthened MC010 Studio assembly reviewed;266 independent tests green.",
+    "All original independent MC003/009/012/013 counterexamples have been corrected; limited NLP and third-line executor scope explicitly sent root for report.",
+    "Enhanced workflow/proposal risk review saved ../independent-risk-review.json; final actual studio.start+router355 independent tests green.",
+    "Final MC009 per-shot flag repair reviewed;42 independent regressions green plus realnative oldinputtrue-to-cleanfalse positive and flag-only negative scratch repro."
+  ],
+  "pending": [
+    "Wait root fixed source commitC and12 repair evidence.",
+    "Verify complete clean commit, then run12 sequential MCD acceptance cards as codex-independent-review.",
+    "Read actual observed counts/source commits/role separation and gate, final report only local-preview."
+  ],
+  "runtime": {
+    "path": "/Users/mac/.local/wt-bin:/Users/mac/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH",
+    "engine_cwd": "engines/video-edit",
+    "admin_fixture": "postgres://postgres@127.0.0.1:57651/postgres",
+    "app_fixture_password": "pipeline_test_app",
+    "gateway_fixture_password": "pipeline_test_gateway",
+    "note": "Only isolated fixture cluster/databases; no business DB, model, render, cloud operations."
+  },
+  "mcd": "node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-... --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000; run only after root notifies commit and repair evidence.",
+  "findings_to_preserve": "Even after bounded fixes, default abstract template still hardcoded creative scenes/palette. Root must disclose deeper architecture pending; author gating custom refs/colors is small-fix boundary. Do not market quality/throughput verified without real models."
+}

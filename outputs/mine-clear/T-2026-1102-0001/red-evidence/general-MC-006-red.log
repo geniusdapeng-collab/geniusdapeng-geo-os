@@ -1,0 +1,79 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts (6 tests | 3 failed) 20ms
+   ✓ logStageOutcome > done：认领 attempt + 产物先落盘 + 台账 done + manifest 账本 + 事件 5ms
+   ✓ logStageOutcome > skipped（幂等命中）：不新开 attempt，只留事件 2ms
+   ✓ logStageOutcome > failed：记错误分类与摘要（截断 500 字） 2ms
+   × logStageOutcome > does not write attempt artifacts for an invalid claim receipt +0/'stages/renderSubmit/attempt-0.input.j…' 5ms
+     → expected +0 to be null
+   × logStageOutcome > does not write attempt artifacts for an invalid claim receipt 2/'stages/renderSubmit/attempt-1.input.j…' 3ms
+     → expected 2 to be null
+   × logStageOutcome > 台账不可用：不覆盖历史 attempt，保留待对账结果且不改写已成功业务状态 3ms
+     → expected 1 to be null
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts > logStageOutcome > does not write attempt artifacts for an invalid claim receipt +0/'stages/renderSubmit/attempt-0.input.j…'
+AssertionError: expected +0 to be null
+
+- Expected: 
+null
+
++ Received: 
+0
+
+ ❯ engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts:111:28
+    109|       stageId: "renderSubmit", status: "done", input: { shotId: "SHOT-…
+    110|     });
+    111|     expect(result.attempt).toBeNull();
+       |                            ^
+    112|     expect(result.error).toContain("STAGE_CLAIM_UNVERIFIED");
+    113|     expect(await store.listAttempts("renderSubmit")).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts > logStageOutcome > does not write attempt artifacts for an invalid claim receipt 2/'stages/renderSubmit/attempt-1.input.j…'
+AssertionError: expected 2 to be null
+
+- Expected: 
+null
+
++ Received: 
+2
+
+ ❯ engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts:111:28
+    109|       stageId: "renderSubmit", status: "done", input: { shotId: "SHOT-…
+    110|     });
+    111|     expect(result.attempt).toBeNull();
+       |                            ^
+    112|     expect(result.error).toContain("STAGE_CLAIM_UNVERIFIED");
+    113|     expect(await store.listAttempts("renderSubmit")).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts > logStageOutcome > 台账不可用：不覆盖历史 attempt，保留待对账结果且不改写已成功业务状态
+AssertionError: expected 1 to be null
+
+- Expected: 
+null
+
++ Received: 
+1
+
+ ❯ engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts:141:28
+    139|     expect(result.error).toContain("ECONNREFUSED");
+    140|     expect(errors.mock.calls.length).toBeGreaterThan(0);
+    141|     expect(result.attempt).toBeNull();
+       |                            ^
+    142|     expect(result.error).toContain("STAGE_CLAIM_UNVERIFIED");
+    143|     expect(result.outputRef).toMatch(/^unclaimed-outcomes\/[^/]+\.json…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 3 passed (6)
+   Start at  22:05:15
+   Duration  215ms (transform 68ms, setup 0ms, collect 73ms, tests 20ms, environment 0ms, prepare 33ms)
+

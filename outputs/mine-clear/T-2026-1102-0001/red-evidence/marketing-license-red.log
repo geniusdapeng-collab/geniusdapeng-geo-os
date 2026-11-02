@@ -1,0 +1,80 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts (14 tests | 1 failed | 12 skipped) 7ms
+   ↓ marketing prompt host contract > normalizes hardware, people, text conflicts and language policy
+   ↓ marketing prompt host contract > normalizes every abstract visual field before the producer gate
+   ↓ marketing prompt host contract > applies the abstract visual contract to production result fields
+   ↓ marketing prompt host contract > removes real-camera, studio, material and incomplete abstract field claims
+   ↓ marketing prompt host contract > derives exact visible names and claims from the accepted G1 facts
+   ↓ marketing prompt host contract > builds a complete G7 report without truncation or portrait approval
+   ↓ marketing prompt host contract > rebalances shot durations to the exact target and caps stale timecodes
+   ↓ marketing prompt host contract > rewrites the review table to the same conserved durations
+   ↓ marketing prompt host contract > conserves decimal durations across any shot count and marks portrait inapplicable
+   ↓ marketing normalization scope regressions > MC-003 preserves approved real-product visuals, presenters and dialogue outside the abstract contract
+   ↓ marketing normalization scope regressions > MC-003 does not infer silence from an abstract film without people
+   ↓ marketing normalization scope regressions > MC-003 applies the resolved delivery profile to abstract prompts and preserves requested subtitles
+   ✓ marketing normalization scope regressions > MC-004 never invents a license when accepted G1 has none 1ms
+   × MC-004 cannot promote a model-invented visible license into the accepted G1 whitelist 6ms
+     → expected '| scene-2 | 12s | 2809 | ✅ 30/30 | — …' not to contain 'Apache-2.0'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts > MC-004 cannot promote a model-invented visible license into the accepted G1 whitelist
+AssertionError: expected '| scene-2 | 12s | 2809 | ✅ 30/30 | — …' not to contain 'Apache-2.0'
+
+- Expected
++ Received
+
+- Apache-2.0
++ | scene-2 | 12s | 2809 | ✅ 30/30 | — | — | ✓ | ✓ |
++ ### scene-2(内容)
++ ```markdown
++ 01.【语言约束】除本次 G1 已审原文、许可证字段和仓库地址外，其余字段使用中文；不新增未审英文。
++ 02.【导演意图】极简抽象信息片；以本次 G1 已审原文、二维几何和受控明暗变化建立证据感；所有表达保持可读、可停稳、可截图复核。
++ 03.【基础】高质量二维文字与图形合成；文字边缘清晰，灰度层次稳定，画面不依赖实体材质、真实摄影或未审场景。字形、线宽、光点和灰阶在每个镜头内保持一致，不因缩放或叠层出现断裂、重影、噪点堆积与非受控闪动。
++ 04.【约束】2160x3840，9:16，30fps，H.264/MP4，AAC 48kHz 双声道；关键文字位于平台安全区；字幕轨不生成，画面文字仅作图形层。
++ 05.【场景】纯黑或冷灰二维抽象画布。本镜采用分布式节点网络：光点分布在网格四角与中心之间，连线保持开放，不形成单一枢纽；所有元素位于同一平面图层。文字与图形只在既定安全区内移动，层与层之间以明度、透明度和遮挡关系区分，无文字来源角标始终可辨认，任何装饰不得压住原文。来源角标为纯几何标记，不承载文字；如出现地址，只使用本镜列明字符串。场景中的全部对象均为可替换的文字层或矢量层，不通过透视、阴影方向、景别变化或环境细节暗示画外空间。
++ 06.【灯光设计】只以冷白自发光和灰阶明暗差建立层级；亮部集中在文字与线条，暗部保持纯净，不声明实体灯具或环境照明。高光只沿字形和图形边缘出现，亮区面积随信息落点变化，暗区保持连续并避免过曝；所有明暗变化必须服务文字可读性、节点连接或结尾停稳。
++ 07.【明亮约束】已审原文与关键图形在安全区内清晰可读，暗部不抬灰；亮暗变化只服务信息层级与停稳。
++ 08.【构图】文字与抽象几何按信息优先级分层；主体居中或按场景节奏偏置，四周保留平台安全边距，无文字来源角标不遮挡原文。每个画面的第一视觉落点为可核对文字，第二落点为节点或光标，第三层才允许出现辅助线；任何元素不得越出安全区、跨屏裁切或与平台遮挡区重叠。主次层级在所有时间点保持可辨，不以满屏装饰替代信息结构，也不让辅助线条先于原文抢占视线。
++ 09.【色彩/色调】纯黑、冷灰和冷白构成低饱和色板；强调色面积受控，不新增品牌色、材质色或未审环境色。文字使用最高明度，细线与节点使用中灰，背景保持连续暗场；不使用渐变彩光、彩色阴影或高饱和装饰，保证不同镜头之间色感一致。
++ 10.【景深】二维图层保持清晰；前后关系只由透明度、灰阶和图层叠放表达，关键原文、地址和光标处于同一可读平面。较远图形仅降低明度与不透明度，不做失焦、散景或距离推断；文字在出现和落位过程中保持相同清晰度，结尾停稳后可完整截取。
++ 11.【运镜】固定二维视图或受控图层位移；起止位置明确、速度平缓、落幅稳定，不使用真实摄影器材或物理光学位移参数。一次镜头只保留一个方向的信息推进，图层位移距离与速度以文字可读为上限；动作结束后所有元素停在可复核构图，不追加摆动、呼吸或自动回弹。
++ 12.【角色】全片无人，不出现人物、人体局部、服装、化妆、表情或人物动作；画面主体仅为已审原文和抽象图形。角色相关识别、身份、表演和一致性检查在本镜统一标记为不适用，后续不得由生成模型自行补人。
++ 13.【服装】无角色出场，本字段不适用。
++ 14.【化妆】无角色出场，本字段不适用。
++ 15.【动作】屏上文字严格按【可见文字锁定】的完整清单逐字呈现。本镜执行光点按由外到内的顺序亮起，细线逐段连接，最后保留一处未闭合节点作为停顿。出现阶段先锁定首字符与来源关系，推进阶段保持字距和行序不变，收束阶段统一完成连线并停止亮度变化；所有动作只发生在二维图层，结果可截图复核。
++ 16.【道具】无实物道具；本镜使用节点阵列、二维连接线与无文字来源角标，文字层只使用【可见文字锁定】列明字符串。文字层由后期精确排版，几何与光标由二维矢量生成；所有元素均保留独立层级与可审计位置，不调用未提供的产品图、人物素材或实体素材。
++ 17.【定妆照】不适用（cast.mode=none，无角色与定妆照）。
++ 18.【台词】不适用（本片无对白）；只允许逐字呈现本镜列明的已审可见文字。
++ 19.【时间轴】T00:00.0–T00:04.0 已审可见文字与抽象几何进入安全区，光标建立首个落点；T00:04.0–T00:08.0 光点依次亮起，细线分段连接并保留一处未闭合节点；T00:08.0–T00:12.0 已列明文字、图形与光标停稳，结尾保留可截图复核的静止画面。三段区间由两个阶段边界分隔，边界只允许亮度与位置产生一次可追溯变化，不得跳帧或重复回闪；最终帧与字段、旁白、字幕轨和交付清单中的本镜时长一致。
++ 20.【情绪】冷酷精密；无人物表演，仅由文字、图形、亮度与停稳节奏表达。情绪强度保持克制，结尾回到稳定与可信，不通过夸张对比、闪烁或音效煽动。
++ 21.【节奏】开头建立可读落点，中段按信息顺序展开，结尾统一降亮并停稳；不依赖快速抖动或多层噪声推动节奏。每个阶段的信息出现数量受控，前后镜保留明确停顿，高潮只由连线完成和文字停稳形成，避免重复闪烁与过量运动。
++ 22.【转场】统一使用 0.2 秒硬切；上一镜末帧与下一镜首帧亮度差受控，不新增叠化、缓推或空间连续性要求。切点保留稳定帧，前后文字形状与基线不得跳变；无文字来源角标仅作几何参照。
++ 23.【音频】无对白、无口播、无人声、无音乐、无BGM、无配乐、无音乐节拍；仅允许经授权的抽象键盘击键、低频环境音与动作音效，并与本镜剪辑点对齐。
++ 24.【音频纪律】本片按无对白处理，台词人声与旁白字段不适用；若后期新增人声，必须另走已审文案逐字朗读与授权核验。只保留抽象键盘击键、低频环境音和动作音效，配乐由后期统一处理；整体响度 -14 LUFS，True Peak ≤ -1 dBTP，AAC 48kHz 双声道。声音不得伪装产品运行、真人操作或未审空间。
++ 25.【负面约束】禁止人物、人体局部、实体空间、设备外观、可运行界面、价格类、销量类、评价类、竞品类信息、额外文字、品牌标识和未审外部素材。禁止画面内出现未列明的英文、乱码、占位符、重复字段、彩色噪点、粒子堆叠、过曝或遮挡原文；负面规则本身不上屏，也不能被误写为产品事实或替代来源标注。
++ 26.【角色约束】画面无人物，禁止任何人物入镜。
++ 27.【角色一致性】本镜无角色；保持二维色板、字形、光标和抽象几何样式一致。
++ 28.【微动作】无人物微动作；仅由画布上的光标、光点、连线与亮度变化表达节奏
++ 29.【可见文字锁定】本镜只允许以下精确字符串上屏：“License: Apache-2.0”；不截断、不改标点、不新增其他文字。
++ 30.【技术交付】2160x3840，9:16，30fps，H.264/MP4，AAC 48kHz 双声道；AAC 响度 -14 LUFS，True Peak ≤ -1 dBTP。
++ ```
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts:321:26
+    319|   const normalized = normalizeMarketingPromptText(report, { targetDura…
+    320|     allowedVisibleText: ["已核实商品"] }).value;
+    321|   expect(normalized).not.toContain("Apache-2.0");
+       |                          ^
+    322| });
+    323| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 12 skipped (14)
+   Start at  22:10:07
+   Duration  196ms (transform 71ms, setup 0ms, collect 72ms, tests 7ms, environment 0ms, prepare 31ms)
+

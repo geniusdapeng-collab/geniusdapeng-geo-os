@@ -1,0 +1,372 @@
+{
+  "actor": "/root/independent_review",
+  "baseline": "35743d90898d41f08800ec47d1935a581336bcd3",
+  "scope": "Independent full/diff review and direct implementation seams on frozen C; declared partial scopes retained; no full-repository/transitive/provider-media claim.",
+  "full": [
+    {
+      "path": "AGENTS.md",
+      "status": "A-full",
+      "lines": 50,
+      "sha256": "385f500eb0aa6524cc410e72162ba57738638459f147149c9cbbc2ef4a9283e9"
+    },
+    {
+      "path": "docs/AI-AGENT-GUIDE.md",
+      "status": "A-full",
+      "lines": 545,
+      "sha256": "83a37509db966bd932e2bf33c0ee601bd6abacd8a85052fbef6d9619d111ab09"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "status": "A-full",
+      "lines": 141,
+      "sha256": "435ce1ee070e0ccdbe3b41000fd93ff7fd85c51d6b9ecc2668c5fabc323ddab0"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+      "status": "A-full",
+      "lines": 1704,
+      "sha256": "a1296bc9900c489ad4fbabbdbc01f82cf187da71d0587088ca01eb3cece5cfdb"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+      "status": "A-full",
+      "lines": 163,
+      "sha256": "895906ae74f0010fa712e1470f38deb67e4ff75dfc78426ac486eeca6fdc29b4"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+      "status": "A-full",
+      "lines": 118,
+      "sha256": "7a959d9b1402239a432c66a9f6aa0e0458ec7957bb4e7cf2084b27e7674e2865"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/command-service.ts",
+      "status": "A-full",
+      "lines": 85,
+      "sha256": "edf3433e6ffcda51640602aac5398c2d1f966d005fe25ddc30aaa69250991c0e"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/query-service.ts",
+      "status": "A-full",
+      "lines": 13,
+      "sha256": "b49b815e06bd5f3c90a9819dfdcf19c0a42953b5620d2502ddaa9d201fb27b09"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/status.ts",
+      "status": "A-full",
+      "lines": 54,
+      "sha256": "f88bc90a69bee5f9c683f1e0f214bd8a71b7b0b0c8676886710e7a24bead4f4d"
+    },
+    {
+      "path": "engines/video-edit/packages/pipeline-control/src/command.ts",
+      "status": "A-full",
+      "lines": 29,
+      "sha256": "639e7d821e8211aa993ba0bcd605f56d8a5e0984ad865dd9bc5813e823fcc7e2"
+    },
+    {
+      "path": "engines/video-edit/packages/pipeline-control/src/artifact.ts",
+      "status": "A-full",
+      "lines": 86,
+      "sha256": "c84083ef5b16f481de7d54446eb383ecad8bbe5e32e93f14581eb562aab6e381"
+    },
+    {
+      "path": "engines/video-edit/packages/pipeline-control/src/schema.ts",
+      "status": "A-full",
+      "lines": 296,
+      "sha256": "a6daadaec73f37908a3dcc0c9e65d7a3cdfdee38a50e039188305f5103fa5bef"
+    },
+    {
+      "path": "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+      "status": "A-full",
+      "lines": 511,
+      "sha256": "976c6513fd91af7ee1362704e715fea7af97d8678489f7fd1d810112c424e0a9"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "status": "A-full",
+      "lines": 780,
+      "sha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "status": "A-full",
+      "lines": 971,
+      "sha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
+      "status": "A-full",
+      "lines": 921,
+      "sha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/duration-contract.ts",
+      "status": "A-full",
+      "lines": 18,
+      "sha256": "ad57f7a34752aa36517a93bacbb45fe671a2231faca899a82b502cacfa4f5220"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prd-contract.ts",
+      "status": "A-full",
+      "lines": 393,
+      "sha256": "25126297d17d3f3ba8d777523e28985a843377476f2b8887a336c3252361e682"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts",
+      "status": "A-full",
+      "lines": 848,
+      "sha256": "b4d9466cf316da42645f2b48fad6fbb934c05012c90902d4511558b5b351e1f7"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts",
+      "status": "A-full",
+      "lines": 232,
+      "sha256": "4ab72d993520bc8123d79315f5d083da28574efd62df897f48e0d4f58aebf4a1"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts",
+      "status": "A-full",
+      "lines": 369,
+      "sha256": "48657c1fbc99906dafbd70bcaed17d15858a57c772ade4ade0a8886eeb145026"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "status": "A-full",
+      "lines": 799,
+      "sha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-log.ts",
+      "status": "A-full",
+      "lines": 163,
+      "sha256": "832861998296463d0a18cac21e9a8c304b7e5477110cfc485ffe656a75028b30"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts",
+      "status": "A-full",
+      "lines": 202,
+      "sha256": "1893dcea8528dcdf666a257c3b11621f6567ccafeebed5489f7820f5702c9d77"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/store.ts",
+      "status": "A-full",
+      "lines": 302,
+      "sha256": "e2e84de2f5b3713e1fee1d7922a9eb7f0b5734481ef09d3f4d5fc7f548c625ef"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-runner.ts",
+      "status": "A-full",
+      "lines": 319,
+      "sha256": "6ce1577725a27f96345503ce5940ba358fe1795d36e8d61d75801cee27b207e7"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/render-archive-receipt.test.ts",
+      "status": "A-full",
+      "lines": 66,
+      "sha256": "4d5a253d2d57ad9a2d702d1c80da964b6e8071f7eca878cbe1bbe0c7546392c9"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/render-poller.ts",
+      "status": "A-full",
+      "lines": 410,
+      "sha256": "9695f47f3c9dde50bf61ee39be5c69dfeff87a25c0bfb9ccc854abaabc1166c4"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/data-mining-executor.ts",
+      "status": "A-full",
+      "lines": 828,
+      "sha256": "4c864c503792f95b4487c86392c1beb6473e312cef7fac398ed298c51f5e782f"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/data-mining-executor.test.ts",
+      "status": "A-full",
+      "lines": 242,
+      "sha256": "3cd2da390229ae0727e8e1a060356e65bf9f2753628bebe56a5711a9aabd837c"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts",
+      "status": "A-full",
+      "lines": 45,
+      "sha256": "51f0d85769b200d7c4a95882fb3faee3640387991313eed1c6d98aff112989b5"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "status": "A-full",
+      "lines": 535,
+      "sha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a"
+    },
+    {
+      "path": "package.json",
+      "status": "A-full",
+      "lines": 45,
+      "sha256": "3a53b0d6ac2666df50d9725671d6314a5558564110eb8f97c5a483dc878cca99"
+    },
+    {
+      "path": "engines/video-edit/package.json",
+      "status": "A-full",
+      "lines": 141,
+      "sha256": "7b9a9b6eb4c07734acdcb16018e7e3ae3c2d9cd5425d4da30e5084f511f03cc7"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
+      "status": "A-full",
+      "lines": 465,
+      "sha256": "06d117c929b82443b6f4ff5e3e49b4a129b6533010b8ccd27486dfad96a67a16"
+    },
+    {
+      "path": "docs/audits/2026-11-02-video-pipeline-design.md",
+      "status": "A-full",
+      "lines": 205,
+      "sha256": "c95aac82f839e0967aa0d18b37c269b7f6dc0df3d388dc612a3689f16e5e17e6"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
+      "status": "A-full",
+      "lines": 2226,
+      "sha256": "88bdb3d5170242e5b29c0ae417478ed9a002998f87f029e9ee7c4b7dedd0ec3b"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+      "status": "A-full",
+      "lines": 699,
+      "sha256": "3a8285e1f4580082a43ea060c3830998e3a66693b18645da0e25266f13d11f6d"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.test.ts",
+      "status": "A-full",
+      "lines": 433,
+      "sha256": "3c129e5a3fff8a48e24ef1477f2713b6797bb983f095903cca7c0a23a1730eff"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
+      "status": "A-full",
+      "lines": 1285,
+      "sha256": "4ca9c5817d351863083aaee729ba0e294a73606ca9e409b2b9c8dbb7e87a42a7"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
+      "status": "A-full",
+      "lines": 184,
+      "sha256": "203d70b366d2e060bca7f60c81388f6f4a4f7f89077d219ebf1a0ece1643c4c1"
+    }
+  ],
+  "partial": [
+    {
+      "path": "engines/video-edit/apps/server/src/video/router.ts",
+      "reason": "Review changed renderSubmit archive-receipt callsite and its surrounding flow, not unrelated router endpoints."
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "reason": "Reviewed changed assertion diff only."
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/studio.test.ts",
+      "reason": "Read initial wiring tests and selected marketing lifecycle tests; final added regressions to be reviewed at frozen commit."
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
+      "reason": "Searched structured contract handoff; no whole-file semantic claim."
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "reason": "Searched prompt review contracts producer; no whole-file semantic claim."
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/prompt-fusion-agent.js",
+      "reason": "Read real process, retry, fallback, builder and completeness implementation 254-800; unrelated prompt assembly helpers searched only."
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "reason": "Read changed fixture/MC011 known limitation test only."
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "reason": "Reviewed design factual worker claims at 680-705,1128-1218,1630-1665 and rg all controlMode/runPreproduction occurrences; unrelated worker code not re-read."
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/trpc/router.ts",
+      "reason": "Reviewed MC013 actual dispatch input/caller 1285-1380 and rg all videoRoute/explainer occurrences; full router not read by independent role."
+    }
+  ],
+  "tests": [
+    {
+      "log": "work/independent-initial-tests.log",
+      "result": "4 files, 185 passed, 0 skipped, includes real isolated PostgreSQL"
+    },
+    {
+      "log": "work/independent-second-tests.log",
+      "result": "7 files,429 passed,0 skipped; requirement/marketing/PRD/studio/search isolation."
+    },
+    {
+      "log": "work/independent-final-recovery-marketing.log",
+      "result": "3 files,116 passed,0 skipped; final MC009+MC003+studio independent rerun."
+    },
+    {
+      "log": "work/independent-route-green.log",
+      "result": "2 files,129 passed,0 skipped after final MC012 negation+three-line display fixes."
+    },
+    {
+      "log": "work/independent-route-duration-green.log",
+      "result": "1 file,112 passed,0 skipped; final MC013 English duration fix plus MC012 set at this revision."
+    },
+    {
+      "log": "work/independent-final-finite-route-studio.log",
+      "result": "2 files,266 passed,0 skipped; final finite MC012 grammar+MC013 duration+strengthened MC010 Studio assembly."
+    },
+    {
+      "log": "work/independent-final-router-complete.log",
+      "result": "2 files,final bounded modal/postposed/coordinated negation and Studio assembly passed; exact count in log."
+    },
+    {
+      "log": "work/independent-studio-start-final-green.log",
+      "result": "2 files,355 passed,0 skipped; actual tRPC studio.start new/existing input/auth/duration/route boundary plus final pipeline router."
+    },
+    {
+      "log": "work/independent-final-fusion-flags.log",
+      "result": "1 file,42 passed,0 skipped; final per-shot degraded:true rejection and legacy-input-to-real-clean-native-output migration."
+    }
+  ],
+  "findings": [
+    "MC-003 remaining subtitle/reference/voice counterexamples reported to root and marketing_audit, fixed by author and pending final independent rerun.",
+    "MC009 native existing-fields assembly after main+retry+fill permanent failures is misclassified as recovered success; work/independent-fusion-counterexample.mts/log. Sent root 2026-11-02.",
+    "MC003 explicit piano music in intent+brief.music still selects fixed no-music abstract template; work/independent-music-counterexample.log. Sent root 2026-11-02.",
+    "CI newly added step omitted MC009 vendor-compat,MC010 prd-authority and MC007 marketing-search-isolation tests; sent root.",
+    "MC009 two independent native-process fallback counterexamples now reject PHASE3_FUSION_UNVERIFIED/checkpoints0; green logs saved.",
+    "MC003 original piano counterexample now exits fixed template and preserves original prompt/list identity.",
+    "Design proposal full read; no new safety blocker. Suggested exact RequirementContract.scenes name instead of nonexistent SceneContract type.",
+    "Draft MCD MC007 assertion pointed wrong file; asked root fix before final ledger.",
+    "MC012 initial fix missed common explicit negation variants: 别选/不要选营销片 and 营销片就不做了 with existing product metadata still choose marketing; sent root+marketing author.",
+    "MC012 adjacent preexisting P2 display: explainer summary mislabeled narrative; no-excluded clarify.options misses explainer despite three-line question. Sent root for disposition.",
+    "MC013 current numeric/Chinese duration-presence fix reviewed; English spelled one-minute/ninety second still receives conflicting default30, sent general/root.",
+    "A partial dispatch caller trace shows explainer decisions still call common startVideoProjectRun(isMarketing=false) unlike video.studio.start dedicated draft path; reported root as third-line boundary for disposition.",
+    "Final finite MC012 original modal/negation cases correctly refuse excluded route; double/uncertain negation clarifies; shared conjoined postposed negation scope remains known outside finite grammar and was sent root for design disclosure.",
+    "Root strengthened MC010 Studio case now triggers abstract template by explicit silence; fixture guard/report methods are assembly seams only, do not prove real provider/media quality.",
+    "Parent explicitly limited remaining third-line dispatch executor mismatch to C-level uncovered design boundary, no extra two-main-line patch.",
+    "Final bounded postposed/coordinated exclusions fix reviewed and original group counterexample now explainer/no product activation; audio-only restriction remains marketing; no further grammar expansion planned.",
+    "MC013 actual studio.start new/existing default-duration bug identified in final CI test-source read, author fixed; independent355 tests green. Explicit/absent/default duration now kept distinct.",
+    "Final MC009 now rejects explicit per-shot degraded:true even when native aggregate failed0; independent native process flag-only fixture rejects with checkpoints0.",
+    "Independent real _fuseSingleShotWithDeadline→_fuseSingleShot with only _callLLM full-fields double produced clean outputfalse/reasonnull from oldinputtrue in onecall; supports strict migration without label laundering."
+  ],
+  "formal_acceptance": {
+    "actor": "codex-independent-review",
+    "role": "acceptance",
+    "source_commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+    "card_ids": [
+      "MC-001",
+      "MC-002",
+      "MC-003",
+      "MC-004",
+      "MC-005",
+      "MC-006",
+      "MC-007",
+      "MC-008",
+      "MC-009",
+      "MC-010",
+      "MC-012",
+      "MC-013"
+    ],
+    "result": "12verified;gateoktrue;all run/output hashes checked",
+    "log": "work/formal-mcd-acceptance.log",
+    "receipt": "work/independent-formal-acceptance-receipt.json"
+  }
+}

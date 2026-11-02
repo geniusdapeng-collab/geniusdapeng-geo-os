@@ -1,0 +1,1139 @@
+{
+  "schema": "workloom.mine-clear/ledger@1",
+  "task_id": "T-2026-1102-0001",
+  "repo": "pengmanager",
+  "repo_path": "/Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager",
+  "title": "通用与营销AI视频渲染前深度代码审计及缺陷修复",
+  "created_at": "2026-11-02T14:01:10.499Z",
+  "updated_at": "2026-11-02T15:43:37.870Z",
+  "baseline": {
+    "audit": {
+      "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "branch": "task/T-2026-1102-0001-video-audit",
+      "remote": "origin",
+      "fetched_at": null,
+      "fetch_status": "skipped",
+      "notes": "83c7632为本轮实际GitHub main，初始化前已使用本任务owner令牌fetch；初始唯一临时scope清单已移出仓库。"
+    },
+    "repair": {
+      "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+      "reverified_problem_ids": []
+    },
+    "acceptance": {
+      "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+      "is_descendant_of_repair": true
+    }
+  },
+  "environment": {
+    "kind": "local-preview",
+    "notes": "本机独立PG、真实原生代码/HTTP夹具；未调用付费模型、图片或视频供应商，不是生产出片验收。"
+  },
+  "invariants": [
+    {
+      "id": "INV-1",
+      "text": "秘密不得写入仓库、日志、测试或截图。",
+      "source": "AGENTS.md#Required-boundaries"
+    },
+    {
+      "id": "INV-2",
+      "text": "测试夹具、本地文件、HTTP200不作为真实供应商或平台发布成功。",
+      "source": "AGENTS.md#Required-boundaries"
+    },
+    {
+      "id": "INV-3",
+      "text": "付费视频提交必须保持原生作用域、围栏、预算、审批与不可变回执；不因归档失败重新付费。",
+      "source": "docs/AI-AGENT-GUIDE.md#9"
+    },
+    {
+      "id": "INV-4",
+      "text": "人工搭桥须服务端同细分环节至少三次失败且无未知外部结果，不得替代正式事实与渲染回执。",
+      "source": "docs/AI-AGENT-GUIDE.md#9.1"
+    }
+  ],
+  "cards": [
+    {
+      "id": "MC-001",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "管线命令重放返回残缺回执",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts:295@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "d4a76ecafe5056b6acfdbef2e5df31b163a634a0d42f022fc4b4373fd195c72c",
+          "note": "命令首次成功但HTTP响应丢失，沿用原幂等键重试时缺revision、stages或run，恢复中断。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+        "line": 295,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "commandReplay"
+      },
+      "trigger_path": "命令首次成功但HTTP响应丢失，沿用原幂等键重试时缺revision、stages或run，恢复中断。",
+      "fix_plan": "首次持久化完整返回快照；历史compact回执只读恢复当前作用域view，不重放动作或覆写历史。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+        "expect": "六方法新旧回执12例通过；原始快照、历史兼容、无重复outbox及冲突拒绝。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "命令首次成功但HTTP响应丢失，沿用原幂等键重试时缺revision、stages或run，恢复中断。",
+          "expect": "六方法新旧回执12例通过；原始快照、历史兼容、无重复outbox及冲突拒绝。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-001-0-1793634124086.json",
+            "sha256": "a5acaa669a849248f002cdf9e4b10cfb3de3525c5375c8d56e4bcc1bbe0941b1",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-001-0-1793634124086.txt",
+            "sha256": "abdfe8fe7d9a851a6fbcd2d5c4895abdbb24b893ebc782b2b46030fa9711ead5",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:05.873Z",
+      "verification_evidence": {
+        "path": "runs/MC-001-0-1793634124086.json",
+        "sha256": "a5acaa669a849248f002cdf9e4b10cfb3de3525c5375c8d56e4bcc1bbe0941b1",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:04.086Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:05.873Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:05.873Z",
+        "runs": [
+          {
+            "path": "runs/MC-001-0-1793634124086.json",
+            "sha256": "a5acaa669a849248f002cdf9e4b10cfb3de3525c5375c8d56e4bcc1bbe0941b1",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-002",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "通用需求桥无营销authority时访问空对象",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:76@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "a5097c73f502d7f51a97e1b3f14e0bc0f4d72e1e2081a3ecc95c23854b6be893",
+          "note": "narrative的withRequirementContractScope有scope但无marketing authority，render接缝TypeError导致G3中断。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+        "line": 76,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "renderScenePolicyCoverage"
+      },
+      "trigger_path": "narrative的withRequirementContractScope有scope但无marketing authority，render接缝TypeError导致G3中断。",
+      "fix_plan": "scope有authority时用其metadata，否则用当前scope.metadata，保留片型覆盖检查。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+        "expect": "普通builtin/none narrative不崩溃；营销authority与篡改、并发拒绝回归不退。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "narrative的withRequirementContractScope有scope但无marketing authority，render接缝TypeError导致G3中断。",
+          "expect": "普通builtin/none narrative不崩溃；营销authority与篡改、并发拒绝回归不退。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/requirement-contract.test.ts",
+              "packages/video-studio/src/requirement-contract-production-bridge.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-002-0-1793634125975.json",
+            "sha256": "a92b9e6e54468cfbc52dc60ead1c85dab6df2a5a46a21b351570d9ee9f5be5a8",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-002-0-1793634125975.txt",
+            "sha256": "6fe84c70e1db99ca389da9e34197f292f25a26d53bcc21ef02fd873e1351e420",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:06.811Z",
+      "verification_evidence": {
+        "path": "runs/MC-002-0-1793634125975.json",
+        "sha256": "a92b9e6e54468cfbc52dc60ead1c85dab6df2a5a46a21b351570d9ee9f5be5a8",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:05.974Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:06.811Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:06.811Z",
+        "runs": [
+          {
+            "path": "runs/MC-002-0-1793634125975.json",
+            "sha256": "a92b9e6e54468cfbc52dc60ead1c85dab6df2a5a46a21b351570d9ee9f5be5a8",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-003",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "营销归一模板越界改写客户创作与交付合同",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts:168@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "c9a5e6a44976738b18ce5b36326a42d2dc7ce87de9b2ba744f04b7083ff87971",
+          "note": "实物/有人/旁白及自定义参考、字幕、24fps等任务进入全局抽象静音模板，造成与用户意图和后续门禁冲突。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts",
+        "line": 168,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "normalizePromptString"
+      },
+      "trigger_path": "实物/有人/旁白及自定义参考、字幕、24fps等任务进入全局抽象静音模板，造成与用户意图和后续门禁冲突。",
+      "fix_plan": "收窄既有归一适用条件，显式参考/声音/风格要求不进替换模板；技术与字幕参数遵循已解析profile。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts packages/video-studio/src/marketing-prd-contract.test.ts packages/video-studio/src/prd-authority-bridge.test.ts packages/video-studio/src/studio.test.ts",
+        "expect": "普通营销不被抽象静音化；明确客户参考/声音/字幕/技术profile贯穿保留；现有严格合同检查继续。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "实物/有人/旁白及自定义参考、字幕、24fps等任务进入全局抽象静音模板，造成与用户意图和后续门禁冲突。",
+          "expect": "普通营销不被抽象静音化；明确客户参考/声音/字幕/技术profile贯穿保留；现有严格合同检查继续。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts packages/video-studio/src/marketing-prd-contract.test.ts packages/video-studio/src/prd-authority-bridge.test.ts packages/video-studio/src/studio.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/marketing-prompt-contract.test.ts",
+              "packages/video-studio/src/marketing-prd-contract.test.ts",
+              "packages/video-studio/src/prd-authority-bridge.test.ts",
+              "packages/video-studio/src/studio.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-003-0-1793634126911.json",
+            "sha256": "bf9acc9bcad206834429e51d142e6930e2d7f588667b35c646b5cf9cbd675e52",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-003-0-1793634126911.txt",
+            "sha256": "f333cfd26dc10dac0a0cc0e8c42e0bf77a130b903386f761d50c574791ff2204",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:10.824Z",
+      "verification_evidence": {
+        "path": "runs/MC-003-0-1793634126911.json",
+        "sha256": "bf9acc9bcad206834429e51d142e6930e2d7f588667b35c646b5cf9cbd675e52",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:06.910Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:10.824Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:10.824Z",
+        "runs": [
+          {
+            "path": "runs/MC-003-0-1793634126911.json",
+            "sha256": "bf9acc9bcad206834429e51d142e6930e2d7f588667b35c646b5cf9cbd675e52",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-004",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "营销提示词无来源添加许可证并扩张可见文字白名单",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts:352@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "c9a5e6a44976738b18ce5b36326a42d2dc7ce87de9b2ba744f04b7083ff87971",
+          "note": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts",
+        "line": 352,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "selectAbstractVisibleTexts"
+      },
+      "trigger_path": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。",
+      "fix_plan": "删除无依据许可兜底，仅消费G1提供的source-bound文字，不从候选自身扩权。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+        "expect": "无许可证证据不生成许可证；候选文字不进入白名单；真实G1已审许可仍可使用。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。",
+          "expect": "无许可证证据不生成许可证；候选文字不进入白名单；真实G1已审许可仍可使用。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/marketing-prompt-contract.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-004-0-1793634130924.json",
+            "sha256": "7c570678098654893cc1d1125cfdbe4e1f32c68eddca7ded016835eeb83e2b31",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-004-0-1793634130924.txt",
+            "sha256": "e057b058e67f7aadaa68962ef4b0641708b21399d9af8d14249e639c06df2d44",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:11.307Z",
+      "verification_evidence": {
+        "path": "runs/MC-004-0-1793634130924.json",
+        "sha256": "7c570678098654893cc1d1125cfdbe4e1f32c68eddca7ded016835eeb83e2b31",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:10.923Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:11.307Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:11.307Z",
+        "runs": [
+          {
+            "path": "runs/MC-004-0-1793634130924.json",
+            "sha256": "7c570678098654893cc1d1125cfdbe4e1f32c68eddca7ded016835eeb83e2b31",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-005",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "重复刷新把既有ready节点清出可运行前沿",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts:1159@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "d4a76ecafe5056b6acfdbef2e5df31b163a634a0d42f022fc4b4373fd195c72c",
+          "note": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+        "line": 1159,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "async refreshFrontier"
+      },
+      "trigger_path": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。",
+      "fix_plan": "从更新后的所有最新节点重建ready快照，保留blocker优先级。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+        "expect": "重复刷新、并行根节点、运行中等待及repair阻断4例真实PG通过。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。",
+          "expect": "重复刷新、并行根节点、运行中等待及repair阻断4例真实PG通过。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-005-0-1793634131410.json",
+            "sha256": "e11e4bb1dfa81fa36f1ef76624d46d1face5a0472df552c2ded4beee24348f5b",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-005-0-1793634131410.txt",
+            "sha256": "d5f1f7a575a53a5efb978a8f61e53ee81f65a06aa79fab5af809b3647ba4ef2d",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:12.886Z",
+      "verification_evidence": {
+        "path": "runs/MC-005-0-1793634131410.json",
+        "sha256": "e11e4bb1dfa81fa36f1ef76624d46d1face5a0472df552c2ded4beee24348f5b",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:11.410Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:12.887Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:12.886Z",
+        "runs": [
+          {
+            "path": "runs/MC-005-0-1793634131410.json",
+            "sha256": "e11e4bb1dfa81fa36f1ef76624d46d1face5a0472df552c2ded4beee24348f5b",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-006",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "归档失败路径覆盖旧attempt或虚标完成",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/archive/stage-log.ts:43@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "ef51247c4dcdc2ba143e6648472fc6480804c73b5fa3f2b63b827c3a8d9dc8d4",
+          "note": "结果已获供应商接受，但claim失败默认attempt1继续写盘；输入/输出/终结确认失败仍可能把manifest记done。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/archive/stage-log.ts",
+        "line": 43,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "logStageOutcome"
+      },
+      "trigger_path": "结果已获供应商接受，但claim失败默认attempt1继续写盘；输入/输出/终结确认失败仍可能把manifest记done。",
+      "fix_plan": "校验claim回执；任一归档失败保留唯一待对账原结果；未知终态不覆写done，调用方记录恢复路径且不重复外部动作。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/archive/stage-log.test.ts apps/server/src/video/render-archive-receipt.test.ts",
+        "expect": "claim异常/非法回执/输入输出失败/finish失败不虚标done；原任务结果保留且poll只调用一次不重提。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "结果已获供应商接受，但claim失败默认attempt1继续写盘；输入/输出/终结确认失败仍可能把manifest记done。",
+          "expect": "claim异常/非法回执/输入输出失败/finish失败不虚标done；原任务结果保留且poll只调用一次不重提。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/archive/stage-log.test.ts apps/server/src/video/render-archive-receipt.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/archive/stage-log.test.ts",
+              "apps/server/src/video/render-archive-receipt.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-006-0-1793634132989.json",
+            "sha256": "f41083fe47060c070ad3aec3e1c4b8697cf1ce87155e25377a3d47e682d3d25c",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-006-0-1793634132989.txt",
+            "sha256": "e097d1dfc4506d2f30f789a88a4b9807286feb2d60c3598291ca025b3d5b5b56",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:13.929Z",
+      "verification_evidence": {
+        "path": "runs/MC-006-0-1793634132989.json",
+        "sha256": "f41083fe47060c070ad3aec3e1c4b8697cf1ce87155e25377a3d47e682d3d25c",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:12.988Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:13.929Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:13.929Z",
+        "runs": [
+          {
+            "path": "runs/MC-006-0-1793634132989.json",
+            "sha256": "f41083fe47060c070ad3aec3e1c4b8697cf1ce87155e25377a3d47e682d3d25c",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-007",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P2",
+      "batch": 2,
+      "state": "verified",
+      "title": "搜索fixture-only缺夹具时仍访问线上",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/apps/server/src/video/data-mining-executor.ts:360@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "e1a5400ffd346320a7f5ae689d2a869a219f479421d3f43bdb8df34aab9d5f37",
+          "note": "确定性回归缺缓存、空缓存或缓存到期后落到线上provider，可能产生意外网络和搜索费用。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/apps/server/src/video/data-mining-executor.ts",
+        "line": 360,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "fixtureOnly"
+      },
+      "trigger_path": "确定性回归缺缓存、空缓存或缓存到期后落到线上provider，可能产生意外网络和搜索费用。",
+      "fix_plan": "fixture-only未命中直接返回空集，不进入任何线上provider。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/data-mining-executor.test.ts apps/server/src/video/marketing-search-isolation.test.ts",
+        "expect": "配置API key时缺/空/过期/无关/有效不足limit五种夹具均零fetch。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "确定性回归缺缓存、空缓存或缓存到期后落到线上provider，可能产生意外网络和搜索费用。",
+          "expect": "配置API key时缺/空/过期/无关/有效不足limit五种夹具均零fetch。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/data-mining-executor.test.ts apps/server/src/video/marketing-search-isolation.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "apps/server/src/video/data-mining-executor.test.ts",
+              "apps/server/src/video/marketing-search-isolation.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-007-0-1793634134033.json",
+            "sha256": "d767d36a8d2f598d191d536184faaab3f465fe1a2b962f4f4d7095638c2c68ff",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-007-0-1793634134033.txt",
+            "sha256": "6169aa4effce7d785ef8fa1d4e676a0b2de174f435b17925c6007df33ca484b2",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:14.490Z",
+      "verification_evidence": {
+        "path": "runs/MC-007-0-1793634134033.json",
+        "sha256": "d767d36a8d2f598d191d536184faaab3f465fe1a2b962f4f4d7095638c2c68ff",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:14.032Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:14.490Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:14.490Z",
+        "runs": [
+          {
+            "path": "runs/MC-007-0-1793634134033.json",
+            "sha256": "d767d36a8d2f598d191d536184faaab3f465fe1a2b962f4f4d7095638c2c68ff",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-008",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "时长投影硬编码下界违反当前原生schema",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/requirement-contract.ts:460@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "4fcd2adbba60d64c21f08975d11784d1a85c5966f7db6b06de5aed965defe391",
+          "note": "29→30秒把opening15推16，31→30秒把正式主体min5降4，导致已投影合同随后被原生schema拒绝。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+        "line": 460,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "normalizeDiscoveryTiming"
+      },
+      "trigger_path": "29→30秒把opening15推16，31→30秒把正式主体min5降4，导致已投影合同随后被原生schema拒绝。",
+      "fix_plan": "绑定本次SceneArchitect实际effectiveSchema上下界，完整候选合法后再投影，无解结构化失败。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+        "expect": "上下界边界、不可行目标与原有authority断言通过，任何已接受投影符合实际schema。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "29→30秒把opening15推16，31→30秒把正式主体min5降4，导致已投影合同随后被原生schema拒绝。",
+          "expect": "上下界边界、不可行目标与原有authority断言通过，任何已接受投影符合实际schema。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/requirement-contract.test.ts",
+              "packages/video-studio/src/requirement-contract-production-bridge.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-008-0-1793634134590.json",
+            "sha256": "546ea1551711e5ddbd2221f24b0577f0c134b30d574d72886c96dfdf52461613",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-008-0-1793634134590.txt",
+            "sha256": "5528966c5abbda47655a68dd69c4de3920bd9be94a3c589c65b7d14baf5e6679",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:15.443Z",
+      "verification_evidence": {
+        "path": "runs/MC-008-0-1793634134590.json",
+        "sha256": "546ea1551711e5ddbd2221f24b0577f0c134b30d574d72886c96dfdf52461613",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:14.590Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:15.443Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:15.443Z",
+        "runs": [
+          {
+            "path": "runs/MC-008-0-1793634134590.json",
+            "sha256": "546ea1551711e5ddbd2221f24b0577f0c134b30d574d72886c96dfdf52461613",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-009",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "真实融合恢复被旧失败计数误拒且原生兜底标记漏检",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/vendor-compat.ts:2038@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "79ae0515d7b51f91a24456f459c97c8ec3c9043855b1272e02bef57d99c256dc",
+          "note": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
+        "line": 2038,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "PHASE3_FUSION_UNVERIFIED"
+      },
+      "trigger_path": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。",
+      "fix_plan": "以本次scoped实际融合成功返回的私有hash证据核销已恢复失败；完整唯一镜号与无fallback都成立才通过；保留原生统计与恢复记录。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/vendor-compat.test.ts",
+        "expect": "真实原生process快速重试成功可接收；永久失败/已有字段或规则兜底/缺失重复镜号/隐藏error均拒绝且不写通过checkpoint。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。",
+          "expect": "真实原生process快速重试成功可接收；永久失败/已有字段或规则兜底/缺失重复镜号/隐藏error均拒绝且不写通过checkpoint。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/vendor-compat.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/vendor-compat.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-009-0-1793634135545.json",
+            "sha256": "465a20c7a063460a5bca91063ee084aa2b72bf4aa98cc9c9408b5dd188b60e0a",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-009-0-1793634135545.txt",
+            "sha256": "c2618f9f644ffd857481f2d806dd5c6db51ffe93872df12c8fdf61fe7d3c5706",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及真实无付费夹具红绿；未测真实模型创作表现。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:27.533Z",
+      "verification_evidence": {
+        "path": "runs/MC-009-0-1793634135545.json",
+        "sha256": "465a20c7a063460a5bca91063ee084aa2b72bf4aa98cc9c9408b5dd188b60e0a",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:15.544Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:27.533Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:27.533Z",
+        "runs": [
+          {
+            "path": "runs/MC-009-0-1793634135545.json",
+            "sha256": "465a20c7a063460a5bca91063ee084aa2b72bf4aa98cc9c9408b5dd188b60e0a",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-010",
+      "kind": "problem",
+      "level": "L1",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "封面片头与内容时间线使用不同目标",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/prd-authority.ts:471@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "2e72556d15081efe2333bbae37acf5b9023bf691fafa77bfb9a2c02a070ce8ca",
+          "note": "G3按final-cover分配内容，PRD提示/校验却以final为中心，Studio归一还会把内容再次拉回final；旧容差为5秒，错误窗口与重复计算在边界暴露。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+        "line": 471,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "validatePrdProduction"
+      },
+      "trigger_path": "G3按final-cover分配内容，PRD提示/校验却以final为中心，Studio归一还会把内容再次拉回final；旧容差为5秒，错误窗口与重复计算在边界暴露。",
+      "fix_plan": "PRD提示/校验/Studio归一统一prdDurationContract.contentDurationSeconds；母版final与cover独立保留。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/prd-authority.test.ts packages/video-studio/src/studio.test.ts",
+        "expect": "cover1/5、有/无封面、容差边界与非法cover均正确；内容25+cover5的最终30秒不被再拉长。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "G3按final-cover分配内容，PRD提示/校验却以final为中心，Studio归一还会把内容再次拉回final；旧容差为5秒，错误窗口与重复计算在边界暴露。",
+          "expect": "cover1/5、有/无封面、容差边界与非法cover均正确；内容25+cover5的最终30秒不被再拉长。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/prd-authority.test.ts packages/video-studio/src/studio.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/prd-authority.test.ts",
+              "packages/video-studio/src/studio.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-010-0-1793634147635.json",
+            "sha256": "8758791e3ba7cafa6e05c12f73392b4d515e0410058c4d51dac037ab3a7363c2",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-010-0-1793634147635.txt",
+            "sha256": "9ecb4c06423f75e1fe8ea5785b94371fb66f3c8704d809ff29d903e989748f3a",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "A=精读及真实无付费夹具红绿；未测真实模型创作表现。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:28.522Z",
+      "verification_evidence": {
+        "path": "runs/MC-010-0-1793634147635.json",
+        "sha256": "8758791e3ba7cafa6e05c12f73392b4d515e0410058c4d51dac037ab3a7363c2",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:27.634Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:28.522Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:28.522Z",
+        "runs": [
+          {
+            "path": "runs/MC-010-0-1793634147635.json",
+            "sha256": "8758791e3ba7cafa6e05c12f73392b4d515e0410058c4d51dac037ab3a7363c2",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-012",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "明确否定的路由仍被关键词和商品锚点选回",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/pipeline-router.ts:232@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "670bcd4409a265ae887bb9b1203537c12e1f12b30e822f2fb92698d99555f012",
+          "note": "不要营销片/别选营销片/营销片就不做了后明确通用管线，旧显式首命中及商品metadata兜底仍启动营销；非营销投影残留商品情报字段。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+        "line": 232,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "scoreRoute"
+      },
+      "trigger_path": "不要营销片/别选营销片/营销片就不做了后明确通用管线，旧显式首命中及商品metadata兜底仍启动营销；非营销投影残留商品情报字段。",
+      "fix_plan": "局部明确否定贯穿显式候选、分数、商品兜底和仲裁；冲突澄清；三线metadata和回执投影一致；保留已确认历史override。",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+        "expect": "显式前后否定、metadata真实激活、模拟仲裁与冲突、三线回执均通过；不宣称穷尽自然语言。"
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "不要营销片/别选营销片/营销片就不做了后明确通用管线，旧显式首命中及商品metadata兜底仍启动营销；非营销投影残留商品情报字段。",
+          "expect": "显式前后否定、metadata真实激活、模拟仲裁与冲突、三线回执均通过；不宣称穷尽自然语言。",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/pipeline-router.test.ts",
+              "apps/server/src/video/studio-start.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-012-0-1793634148624.json",
+            "sha256": "2fdc83b1111bcd1f9a4bb91dd92530424065f128edc1868e305c1dd90ee687c9",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-012-0-1793634148624.txt",
+            "sha256": "4f8bb146bee68efdca0cd4ea65367c55b107e305c31c27ff852406beca284a5d",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "入口函数全文与实际路由回归；dispatch总路由文件只做目标视频段精读，不声称其他业务已审计。MC-011另为待对齐视觉模式设计观察，不在此缺陷修复台账中假记为已修。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:30.173Z",
+      "verification_evidence": {
+        "path": "runs/MC-012-0-1793634148624.json",
+        "sha256": "2fdc83b1111bcd1f9a4bb91dd92530424065f128edc1868e305c1dd90ee687c9",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:28.623Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:30.173Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:30.173Z",
+        "runs": [
+          {
+            "path": "runs/MC-012-0-1793634148624.json",
+            "sha256": "2fdc83b1111bcd1f9a4bb91dd92530424065f128edc1868e305c1dd90ee687c9",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MC-013",
+      "kind": "problem",
+      "level": "L2",
+      "severity": "P1",
+      "batch": 2,
+      "state": "verified",
+      "title": "派活默认时长覆盖客户原文的明确时间要求",
+      "evidence": [
+        {
+          "type": "code",
+          "ref": "engines/video-edit/packages/video-studio/src/pipeline-router.ts:612@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+          "sha256": "670bcd4409a265ae887bb9b1203537c12e1f12b30e822f2fb92698d99555f012",
+          "note": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。"
+        }
+      ],
+      "root_cause": {
+        "file": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+        "line": 612,
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "symbol": "buildPipelineIntent"
+      },
+      "trigger_path": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。 studio.start new/existing callers also supplied the omitted field as an explicit 30-second duration.",
+      "fix_plan": "显式profile时长与系统defaultDurationSec区分；只有原文没有时间要求时追加默认；已有/非法/冲突表达保留来源不替用户猜值。 studio.start keeps omitted brief.duration undefined and passes defaultDurationSec separately in both caller branches.",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+        "expect": "客户明确秒/分钟/中文/非法与冲突时间要求不被30秒默认覆盖；未指定仍默认；结构化明确profile语义不变。 New and existing studio.start projects with omitted metadata preserve raw 60-second, one-minute and per-shot expressions."
+      },
+      "assertions": [
+        {
+          "kind": "property",
+          "given": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。 studio.start new/existing callers also supplied the omitted field as an explicit 30-second duration.",
+          "expect": "客户明确秒/分钟/中文/非法与冲突时间要求不被30秒默认覆盖；未指定仍默认；结构化明确profile语义不变。 New and existing studio.start projects with omitted metadata preserve raw 60-second, one-minute and per-shot expressions.",
+          "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+          "exec": {
+            "file": "node",
+            "args": [
+              "engines/video-edit/node_modules/vitest/vitest.mjs",
+              "run",
+              "--root",
+              "engines/video-edit/",
+              "--maxWorkers=1",
+              "--no-file-parallelism",
+              "packages/video-studio/src/pipeline-router.test.ts",
+              "apps/server/src/video/studio-start.test.ts"
+            ]
+          },
+          "last_result": "pass",
+          "run": {
+            "path": "runs/MC-013-0-1793634150281.json",
+            "sha256": "c62df6875222ac7a4355fc729e984fecc9a6c0fae6033579b14436ea178c26ce",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          },
+          "evidence": {
+            "path": "evidence/MC-013-0-1793634150281.txt",
+            "sha256": "e42ad7c705fafb5b65a3ad2b8532f32c1c67846523ef9d872e4ebc42645a1d92",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        }
+      ],
+      "notes": "入口函数全文与实际路由回归；dispatch总路由文件只做目标视频段精读，不声称其他业务已审计。MC-011另为待对齐视觉模式设计观察，不在此缺陷修复台账中假记为已修。",
+      "verified_by": "codex-independent-review",
+      "verified_at": "2026-11-02T15:42:31.866Z",
+      "verification_evidence": {
+        "path": "runs/MC-013-0-1793634150281.json",
+        "sha256": "c62df6875222ac7a4355fc729e984fecc9a6c0fae6033579b14436ea178c26ce",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      },
+      "last_assertion_attempt": {
+        "actor": "codex-independent-review",
+        "role": "acceptance",
+        "result": "pass",
+        "at": "2026-11-02T15:42:30.281Z",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "finished_at": "2026-11-02T15:42:31.866Z"
+      },
+      "fixed_by": "codex-root-repair",
+      "last_verification_attempt": {
+        "actor": "codex-independent-review",
+        "result": "pass",
+        "at": "2026-11-02T15:42:31.866Z",
+        "runs": [
+          {
+            "path": "runs/MC-013-0-1793634150281.json",
+            "sha256": "c62df6875222ac7a4355fc729e984fecc9a6c0fae6033579b14436ea178c26ce",
+            "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+          }
+        ]
+      }
+    }
+  ],
+  "gates": [],
+  "handoff": {
+    "generated_at": "2026-11-02T15:43:37.869Z",
+    "acceptance_command": "node scripts/acceptance/fleet-run.mjs --repo pengmanager --env local-preview",
+    "open_problem_ids": []
+  }
+}

@@ -1,0 +1,243 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts (5 tests | 3 failed) 8ms
+   × MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is missing 5ms
+     → expected "spy" to not be called at all, but actually been called 2 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "https://example.com/search",
+      Object {
+        "body": "{"query":"核实产品 参数","count":5}",
+        "headers": Object {
+          "authorization": "Bearer test-only",
+          "content-type": "application/json",
+        },
+        "method": "POST",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+  2nd spy call:
+
+    Array [
+      "https://www.bing.com/search?q=%E6%A0%B8%E5%AE%9E%E4%BA%A7%E5%93%81%20%E5%8F%82%E6%95%B0&format=rss&count=5",
+      Object {
+        "headers": Object {
+          "user-agent": "WorkLoom/1.0 (+jenny-loom-research)",
+        },
+        "redirect": "follow",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+
+Number of calls: 2
+
+   × MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is empty 1ms
+     → expected "spy" to not be called at all, but actually been called 2 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "https://example.com/search",
+      Object {
+        "body": "{"query":"核实产品 参数","count":5}",
+        "headers": Object {
+          "authorization": "Bearer test-only",
+          "content-type": "application/json",
+        },
+        "method": "POST",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+  2nd spy call:
+
+    Array [
+      "https://www.bing.com/search?q=%E6%A0%B8%E5%AE%9E%E4%BA%A7%E5%93%81%20%E5%8F%82%E6%95%B0&format=rss&count=5",
+      Object {
+        "headers": Object {
+          "user-agent": "WorkLoom/1.0 (+jenny-loom-research)",
+        },
+        "redirect": "follow",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+
+Number of calls: 2
+
+   × MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is expired 1ms
+     → expected "spy" to not be called at all, but actually been called 2 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "https://example.com/search",
+      Object {
+        "body": "{"query":"核实产品 参数","count":5}",
+        "headers": Object {
+          "authorization": "Bearer test-only",
+          "content-type": "application/json",
+        },
+        "method": "POST",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+  2nd spy call:
+
+    Array [
+      "https://www.bing.com/search?q=%E6%A0%B8%E5%AE%9E%E4%BA%A7%E5%93%81%20%E5%8F%82%E6%95%B0&format=rss&count=5",
+      Object {
+        "headers": Object {
+          "user-agent": "WorkLoom/1.0 (+jenny-loom-research)",
+        },
+        "redirect": "follow",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+
+Number of calls: 2
+
+   ✓ MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is irrelevant 0ms
+   ✓ MC-007 fixture-only marketing research isolation > returns only a relevant booked source without filling the requested limit online 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts > MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is missing
+ FAIL  engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts > MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is empty
+ FAIL  engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts > MC-007 fixture-only marketing research isolation > never calls an online provider when the booked fixture is expired
+AssertionError: expected "spy" to not be called at all, but actually been called 2 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "https://example.com/search",
+      Object {
+        "body": "{"query":"核实产品 参数","count":5}",
+        "headers": Object {
+          "authorization": "Bearer test-only",
+          "content-type": "application/json",
+        },
+        "method": "POST",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+  2nd spy call:
+
+    Array [
+      "https://www.bing.com/search?q=%E6%A0%B8%E5%AE%9E%E4%BA%A7%E5%93%81%20%E5%8F%82%E6%95%B0&format=rss&count=5",
+      Object {
+        "headers": Object {
+          "user-agent": "WorkLoom/1.0 (+jenny-loom-research)",
+        },
+        "redirect": "follow",
+        "signal": AbortSignal {
+          Symbol(kEvents): undefined,
+          Symbol(events.maxEventTargetListeners): 0,
+          Symbol(events.maxEventTargetListenersWarned): false,
+          Symbol(kHandlers): undefined,
+          Symbol(kAborted): false,
+          Symbol(kReason): undefined,
+          Symbol(kComposite): false,
+          Symbol(kTimeout): true,
+        },
+      },
+    ]
+
+
+Number of calls: 2
+
+ ❯ engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts:29:23
+     27|       api: { provider: "generic", apiUrl: "https://example.com/search"…
+     28|     expect(await search(query, 5)).toEqual([]);
+     29|     expect(fetch).not.toHaveBeenCalled();
+       |                       ^
+     30|   });
+     31| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed (5)
+   Start at  22:15:01
+   Duration  213ms (transform 70ms, setup 0ms, collect 69ms, tests 8ms, environment 0ms, prepare 39ms)
+

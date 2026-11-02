@@ -1,0 +1,52 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts (19 tests | 1 failed | 18 skipped) 4ms
+   ↓ marketing prompt host contract > normalizes hardware, people, text conflicts and language policy
+   ↓ marketing prompt host contract > normalizes every abstract visual field before the producer gate
+   ↓ marketing prompt host contract > applies the abstract visual contract to production result fields
+   ↓ marketing prompt host contract > removes real-camera, studio, material and incomplete abstract field claims
+   ↓ marketing prompt host contract > derives exact visible names and claims from the accepted G1 facts
+   ↓ marketing prompt host contract > builds a complete G7 report without truncation or portrait approval
+   ↓ marketing prompt host contract > rebalances shot durations to the exact target and caps stale timecodes
+   ↓ marketing prompt host contract > rewrites the review table to the same conserved durations
+   ↓ marketing prompt host contract > conserves decimal durations across any shot count and marks portrait inapplicable
+   ↓ marketing normalization scope regressions > MC-003 preserves approved real-product visuals, presenters and dialogue outside the abstract contract
+   ↓ marketing normalization scope regressions > MC-003 does not infer silence from an abstract film without people
+   ↓ marketing normalization scope regressions > MC-003 applies the resolved delivery profile to abstract prompts and preserves requested subtitles
+   ↓ marketing normalization scope regressions > MC-004 never invents a license when accepted G1 has none
+   ↓ MC-004 cannot promote a model-invented visible license into the accepted G1 whitelist
+   ↓ MC-003 keeps '1:1'/'1080p'/60 consistent with the native technical contract
+   ↓ MC-003 keeps '4:3'/'4K'/25 consistent with the native technical contract
+   ↓ MC-003 keeps '3:4'/'1080p'/30 consistent with the native technical contract
+   ↓ MC-003 resolves narration and native audio before selecting the silent abstract template
+   × MC-003 never selects the fixed abstract template over customer references or color/style directions 4ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts > MC-003 never selects the fixed abstract template over customer references or color/style directions
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts:347:86
+    345| it("MC-003 never selects the fixed abstract template over customer ref…
+    346|   const intent = "全片无人，仅使用抽象界面";
+    347|   expect(isAbstractMarketingIntent(intent, { brief: { references: ["客户…
+       |                                                                                      ^
+    348|   expect(isAbstractMarketingIntent(`${intent}，暖橙配色`)).toBe(false);
+    349|   expect(isAbstractMarketingIntent(intent, { brief: { visualStyle: "明快…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 skipped (19)
+   Start at  22:22:33
+   Duration  238ms (transform 80ms, setup 0ms, collect 81ms, tests 4ms, environment 0ms, prepare 37ms)
+

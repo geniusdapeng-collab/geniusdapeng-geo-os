@@ -1,0 +1,141 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+ ❯ packages/video-studio/src/pipeline-router.test.ts (107 tests | 1 failed | 89 skipped) 5ms
+   ↓ 视频管线自动化分流 > 用户显式声明营销片 + 商品名 → 营销片，直接开工
+   ↓ 视频管线自动化分流 > 用户显式声明叙事片 → 通用管线
+   ↓ 视频管线自动化分流 > 「给X做一条种草视频」→ 营销片 + 从原文取到商品名
+   ↓ 视频管线自动化分流 > 强营销线索但没给商品名 → 澄清（缺商品锚点），不猜商品
+   ↓ 视频管线自动化分流 > 题材清晰的叙事需求 → 通用管线（不触发情报层）
+   ↓ 视频管线自动化分流 > 信息不足（「帮我做个视频」）→ 澄清路由，而不是默认营销片
+   ↓ 视频管线自动化分流 > metadata 带商品锚点 + 意图含糊 → 按营销片立项（要卖东西是硬信号）
+   ↓ 视频管线自动化分流 > 显式叙事优先于 metadata 商品锚点（用户口径最大）
+   ↓ 视频管线自动化分流 > 调用方显式指定 kind（补跑）→ 不重复询问，直接沿用
+   ↓ 视频管线自动化分流 > LLM 仲裁：规则摇摆时可采纳（带商品名，不需要再澄清）
+   ↓ 视频管线自动化分流 > LLM 仲裁：判 marketing 但不给商品 → 仍要澄清商品名
+   ↓ 视频管线自动化分流 > LLM 仲裁超时/异常 → 不升级为营销片，落回澄清
+   ↓ 视频管线自动化分流 > LLM 仲裁输出非法 JSON → 落回澄清（不静默采信）
+   ↓ 视频管线自动化分流 > 营销判定写入 metadata.dataMining（激活 vendor Layer -2 的数据契约）
+   ↓ 视频管线自动化分流 > 叙事判定显式清除 dataMining / brief.product（防情报层误触发）
+   ↓ 视频管线自动化分流 > 否定营销表述不误判（「不要营销腔」）
+   ↓ 视频管线自动化分流 > 商品名抽取只认显式声明（不做词频猜测）
+   ↓ 视频管线自动化分流 > metadata 商品锚点支持三种登记口径
+   ↓ 视频管线自动化分流 > 决策摘要可读（写事件/回执共用）
+   ↓ 视频管线自动化分流 > 分流指令不进入创作意图（真机：主题被解析成「走营销片」质量 0/5）
+   ↓ 视频管线自动化分流 > 需求口径块：时长/画幅/平台写进意图，供生成器与 G2 监制核对
+   ↓ 视频管线自动化分流 > 显式声明「走口播片」→ explainer（不跑情报、不问商品）
+   ↓ 视频管线自动化分流 > 口播/讲解线索严格领先 → explainer；卖货线索仍走 marketing
+   ↓ 视频管线自动化分流 > 口播线索与商品线索并存且不领先 → 不擅自换线（回到既有判定/澄清）
+   ↓ 视频管线自动化分流 > 澄清话术含第三条线的选项（用户能自己说「走口播片」）
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='narrative' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='narrative' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='explainer' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='explainer' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='marketing' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='marketing' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='explainer' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='explainer' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='marketing' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='marketing' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='narrative' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='narrative' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'marketing' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'narrative' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'explainer' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'marketing' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'explainer' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > rejects a model arbitration result that contradicts an explicit route exclusion
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit marketing override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit narrative override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit explainer override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit marketing declaration unchanged
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit narrative declaration unchanged
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit explainer declaration unchanged
+   × MC-013 dispatched video duration defaults > adds the dispatch default only when the customer gave no duration expression 4ms
+     → expected '拍一条山间日出的故事\n[需求口径] 平台：抖音' to contain '[需求口径] 时长：30秒；平台：抖音'
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条60秒的山间日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条 60 秒的山间日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条1分钟的故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条一分钟的故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条一分半钟的故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条半分钟的故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 60-second story 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 1 minute story 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 60s story 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 1min story 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：0秒，拍日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：-30秒，拍日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：未定，拍日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍日出故事，60秒或90秒 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 每镜5秒，拍日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 片长不限，拍日出故事 0ms
+   ✓ MC-013 dispatched video duration defaults > keeps the existing explicitly structured duration contract 0ms
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > clarifies a contradictory local route request: 别选营销片，但又走营销片
+   ↓ MC-012 common local negation grammar > clarifies a contradictory local route request: 走营销片，营销片就不做了
+   ↓ MC-012 describes an explainer decision with the actual third-pipeline label
+   ↓ MC-012 offers every route named in the route clarification question
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/video-studio/src/pipeline-router.test.ts > MC-013 dispatched video duration defaults > adds the dispatch default only when the customer gave no duration expression
+AssertionError: expected '拍一条山间日出的故事\n[需求口径] 平台：抖音' to contain '[需求口径] 时长：30秒；平台：抖音'
+
+- Expected
++ Received
+
+- [需求口径] 时长：30秒；平台：抖音
++ 拍一条山间日出的故事
++ [需求口径] 平台：抖音
+
+ ❯ packages/video-studio/src/pipeline-router.test.ts:293:20
+    291|     });
+    292|     expect(intent).toContain("拍一条山间日出的故事");
+    293|     expect(intent).toContain("[需求口径] 时长：30秒；平台：抖音");
+       |                    ^
+    294|   });
+    295| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed | 89 skipped (107)
+   Start at  22:52:38
+   Duration  255ms (transform 68ms, setup 0ms, collect 70ms, tests 5ms, environment 0ms, prepare 36ms)
+

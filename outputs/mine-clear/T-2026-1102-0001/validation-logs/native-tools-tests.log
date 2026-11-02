@@ -1,0 +1,20 @@
+✔ failed setup chain can recover; durable failed installation stays truthful (16.143583ms)
+✔ line sink masks cross-chunk secrets and preserves split UTF-8 before disk/logger emission (0.328125ms)
+✔ line sink bounds an unfinished line and reports output failure without flushing raw fragments (0.098541ms)
+✔ real child service output split across chunks is redacted in owned logs and logger (1716.385416ms)
+✔ real installer child output is redacted before command tail and logger capture (2166.201375ms)
+✔ logging failure terminates each owned child rather than starting an unlogged service (1539.633375ms)
+✔ commercial readiness requires authorized scope and a nonempty regular grant, independently of presence (14.280292ms)
+✔ stop/start reuse, health failure recovery and missing dependency guard use owned child processes (3748.280416ms)
+✔ foreign port owner survives failed start and supervisor stop (1367.021375ms)
+✔ abort while starting cancels owned children without late spawn (314.836709ms)
+✔ private root, symlink, workspace and port validation fail before service spawn (9.309958ms)
+✔ voice readiness requires the current pinned model receipt and regular owned model files (11.262208ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10947.341791

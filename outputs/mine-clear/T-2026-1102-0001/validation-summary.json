@@ -1,0 +1,572 @@
+{
+  "schemaVersion": "pengmanager.video-audit-validation/v1",
+  "generatedAt": "2026-11-02T15:43:37.978037+00:00",
+  "taskId": "T-2026-1102-0001",
+  "environment": {
+    "kind": "local-preview",
+    "notes": "本机独立PG、真实原生代码/HTTP夹具；未调用付费模型、图片或视频供应商，不是生产出片验收。"
+  },
+  "auditBaseline": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "generationHead": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "sourceWorktreeDirtyAtGeneration": false,
+  "coverage": {
+    "total": 366,
+    "A": 121,
+    "B": 237,
+    "C": 8,
+    "unread": 0
+  },
+  "coverageInventorySha256": "4450829124784b93d1686e160688975274d3d325e01911df18d374870de066f2",
+  "cards": [
+    {
+      "id": "MC-001",
+      "title": "管线命令重放返回残缺回执",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+        "expect": "六方法新旧回执12例通过；原始快照、历史兼容、无重复outbox及冲突拒绝。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-002",
+      "title": "通用需求桥无营销authority时访问空对象",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+        "expect": "普通builtin/none narrative不崩溃；营销authority与篡改、并发拒绝回归不退。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-003",
+      "title": "营销归一模板越界改写客户创作与交付合同",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts packages/video-studio/src/marketing-prd-contract.test.ts packages/video-studio/src/prd-authority-bridge.test.ts packages/video-studio/src/studio.test.ts",
+        "expect": "普通营销不被抽象静音化；明确客户参考/声音/字幕/技术profile贯穿保留；现有严格合同检查继续。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-004",
+      "title": "营销提示词无来源添加许可证并扩张可见文字白名单",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+        "expect": "无许可证证据不生成许可证；候选文字不进入白名单；真实G1已审许可仍可使用。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-005",
+      "title": "重复刷新把既有ready节点清出可运行前沿",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+        "expect": "重复刷新、并行根节点、运行中等待及repair阻断4例真实PG通过。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-006",
+      "title": "归档失败路径覆盖旧attempt或虚标完成",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/archive/stage-log.test.ts apps/server/src/video/render-archive-receipt.test.ts",
+        "expect": "claim异常/非法回执/输入输出失败/finish失败不虚标done；原任务结果保留且poll只调用一次不重提。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-007",
+      "title": "搜索fixture-only缺夹具时仍访问线上",
+      "severity": "P2",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/data-mining-executor.test.ts apps/server/src/video/marketing-search-isolation.test.ts",
+        "expect": "配置API key时缺/空/过期/无关/有效不足limit五种夹具均零fetch。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-008",
+      "title": "时长投影硬编码下界违反当前原生schema",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+        "expect": "上下界边界、不可行目标与原有authority断言通过，任何已接受投影符合实际schema。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-009",
+      "title": "真实融合恢复被旧失败计数误拒且原生兜底标记漏检",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/vendor-compat.test.ts",
+        "expect": "真实原生process快速重试成功可接收；永久失败/已有字段或规则兜底/缺失重复镜号/隐藏error均拒绝且不写通过checkpoint。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-010",
+      "title": "封面片头与内容时间线使用不同目标",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/prd-authority.test.ts packages/video-studio/src/studio.test.ts",
+        "expect": "cover1/5、有/无封面、容差边界与非法cover均正确；内容25+cover5的最终30秒不被再拉长。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-012",
+      "title": "明确否定的路由仍被关键词和商品锚点选回",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+        "expect": "显式前后否定、metadata真实激活、模拟仲裁与冲突、三线回执均通过；不宣称穷尽自然语言。"
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    },
+    {
+      "id": "MC-013",
+      "title": "派活默认时长覆盖客户原文的明确时间要求",
+      "severity": "P1",
+      "state": "verified",
+      "regression": {
+        "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+        "expect": "客户明确秒/分钟/中文/非法与冲突时间要求不被30秒默认覆盖；未指定仍默认；结构化明确profile语义不变。 New and existing studio.start projects with omitted metadata preserve raw 60-second, one-minute and per-shot expressions."
+      },
+      "assertionResults": [
+        "pass"
+      ]
+    }
+  ],
+  "formalAcceptance": {
+    "status": "verified",
+    "counts": {
+      "verified": 12
+    },
+    "baseline": {
+      "audit": {
+        "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+        "branch": "task/T-2026-1102-0001-video-audit",
+        "remote": "origin",
+        "fetched_at": null,
+        "fetch_status": "skipped",
+        "notes": "83c7632为本轮实际GitHub main，初始化前已使用本任务owner令牌fetch；初始唯一临时scope清单已移出仓库。"
+      },
+      "repair": {
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "reverified_problem_ids": []
+      },
+      "acceptance": {
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+        "is_descendant_of_repair": true
+      }
+    },
+    "gate": {
+      "ledger": "/Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/outputs/mine-clear/T-2026-1102-0001/ledger.json",
+      "ok": true,
+      "errors": []
+    }
+  },
+  "checks": [
+    {
+      "id": "root",
+      "title": "根仓 Node 单元/集成",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/root-final-tests.log",
+        "sha256": "678f0950b895359a903ae8f04f0de8824b4e494ac63999bbe4fafcb56fd1ea25",
+        "bytes": 51908
+      },
+      "counts": {
+        "tests": 487,
+        "pass": 487,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "status": "log_pass",
+      "result": "487/487 通过；跳过 0"
+    },
+    {
+      "id": "native",
+      "title": "渲染前原生合同/恢复最终工作流",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-final-workflow.log",
+        "sha256": "ef34ea9c6fcf17753cee9cfb32153973f9faf54ba323a915bdbcc2d734451293",
+        "bytes": 4340
+      },
+      "counts": {
+        "passed": 1160,
+        "total": 1160,
+        "filesPassed": 18,
+        "filesTotal": 18
+      },
+      "status": "log_pass",
+      "result": "1160/1160 通过"
+    },
+    {
+      "id": "submit",
+      "title": "完整资格/编译/提交边界",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/submit-boundary-tests.log",
+        "sha256": "7933985bdd1124120674287d863c59df458627fb97120299788976c65f535b39",
+        "bytes": 286
+      },
+      "counts": {
+        "passed": 271,
+        "total": 271,
+        "filesPassed": 7,
+        "filesTotal": 7
+      },
+      "status": "log_pass",
+      "result": "271/271 通过"
+    },
+    {
+      "id": "host",
+      "title": "原生身份/岗位/技能宿主",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-host-regression.log",
+        "sha256": "b7d4d21b77487a476e7651b23dad314ac1a1ee96eb6986eaa46c7093475ac3a9",
+        "bytes": 288
+      },
+      "counts": {
+        "passed": 145,
+        "total": 145,
+        "filesPassed": 11,
+        "filesTotal": 11
+      },
+      "status": "log_pass",
+      "result": "145/145 通过"
+    },
+    {
+      "id": "geo",
+      "title": "GEO 与整合引擎",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/geo-tests.log",
+        "sha256": "58b8f9f356205ae3afa9532b393aed36280893cc2e7867c7698602721d5051d3",
+        "bytes": 1263
+      },
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "status": "log_pass",
+      "result": "14/14 通过；跳过 0"
+    },
+    {
+      "id": "vendor-node",
+      "title": "后期桥 Node 媒体",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/vendor-tests.log",
+        "sha256": "7c57f106edba19a70c17cf0e7258f5931c00529c6421866cd4454d7802ca7e23",
+        "bytes": 20257
+      },
+      "counts": {
+        "tests": 76,
+        "pass": 76,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "status": "log_pass",
+      "result": "76/76 通过；跳过 0"
+    },
+    {
+      "id": "vendor-vitest",
+      "title": "后期/封面/并发修订",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/vendor-tests.log",
+        "sha256": "7c57f106edba19a70c17cf0e7258f5931c00529c6421866cd4454d7802ca7e23",
+        "bytes": 20257
+      },
+      "counts": {
+        "passed": 74,
+        "total": 74,
+        "filesPassed": 4,
+        "filesTotal": 4
+      },
+      "status": "log_pass",
+      "result": "74/74 通过"
+    },
+    {
+      "id": "tools",
+      "title": "原生工具与运行时",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-tools-tests.log",
+        "sha256": "31b0ee28ac1c552626e3b9d1588f946bc653097c78fe206c9cc55f38bdc86ff8",
+        "bytes": 1340
+      },
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "status": "log_pass",
+      "result": "12/12 通过；跳过 0"
+    },
+    {
+      "id": "asr",
+      "title": "词级 ASR 兼容",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-asr-tests.log",
+        "sha256": "8956600a78ba899a57153d2b37bf479f488c2dca6f81849a34781a4f1cbd834f",
+        "bytes": 880
+      },
+      "counts": {
+        "total": 9,
+        "passed": 9,
+        "skipped": 0
+      },
+      "status": "log_pass",
+      "result": "9/9 通过；跳过 0"
+    },
+    {
+      "id": "ui",
+      "title": "官方 UI 原包安装边界",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/ui-bootstrap-tests.log",
+        "sha256": "bcbd00ffbbf344f2bf2a3c2d12c9debe4a9eacd6104ff5a69f95d559b19eb76d",
+        "bytes": 13680
+      },
+      "counts": {
+        "tests": 158,
+        "pass": 158,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "status": "log_pass",
+      "result": "158/158 通过；跳过 0"
+    },
+    {
+      "id": "deployment",
+      "title": "部署安全与恢复",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/deployment-tests.log",
+        "sha256": "bb9919833ef341235855fe96315b13b6e71db09dd5329d1982e2fa591475ab56",
+        "bytes": 150
+      },
+      "counts": {
+        "total": 39,
+        "passed": 37,
+        "skipped": 2
+      },
+      "status": "log_pass",
+      "result": "37/39 通过；跳过 2"
+    },
+    {
+      "id": "contract-build",
+      "title": "industry-contract 构建",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-contract-build.log",
+        "sha256": "f3e4f346165ff4f0c59667b4772755d071198e4bbfa51d3513bca4f2c0489b31",
+        "bytes": 198
+      },
+      "status": "coordinator_reported_pass",
+      "result": "构建日志及协调者退出记录通过"
+    },
+    {
+      "id": "web-build",
+      "title": "原生工作台构建",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/native-web-build.log",
+        "sha256": "a24355b932f685669365717d957f5846efe4c47123aca788990a2215a770222b",
+        "bytes": 1074
+      },
+      "status": "coordinator_reported_pass",
+      "result": "构建日志及协调者退出记录通过"
+    },
+    {
+      "id": "server-tsc",
+      "title": "原生 server 类型",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/final-server-typecheck.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "status": "coordinator_reported_pass",
+      "result": "协调者报告 exit 0；无诊断"
+    },
+    {
+      "id": "studio-tsc",
+      "title": "video-studio 类型",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/final-studio-typecheck.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "status": "coordinator_reported_pass",
+      "result": "协调者报告 exit 0；无诊断"
+    },
+    {
+      "id": "smoke",
+      "title": "根仓冒烟",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/smoke.log",
+        "sha256": "e70fc5e887020c055286d5be0a287552686907d1cdc74c62ff4d92f8a4e24555",
+        "bytes": 139
+      },
+      "details": {
+        "health": 200,
+        "dashboard": 200,
+        "geoEngine": 200,
+        "mediaEngine": 200,
+        "accounts": 16,
+        "contentBank": 120,
+        "revision": 0
+      },
+      "status": "log_pass",
+      "result": "健康/控制台/GEO/媒体入口均 200"
+    },
+    {
+      "id": "secret",
+      "title": "暂存范围秘密扫描",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/final-staged-secret-scan.log",
+        "sha256": "da084fa301de31ab783f47767c962b4397d8a9e5ec3b82e6309a2e4d18187174",
+        "bytes": 41
+      },
+      "details": {
+        "ok": true,
+        "filesScanned": 4046
+      },
+      "status": "log_pass",
+      "result": "扫描 4046 文件；ok=True"
+    },
+    {
+      "id": "snapshot",
+      "title": "完整引擎字节清单",
+      "evidenceGrade": "B",
+      "observedExitCode": null,
+      "log": {
+        "path": "validation-logs/snapshot-verify.log",
+        "sha256": "bd7964fab87de75f198f03d463bdbf6cd2f4c58f2d6dd4819a0961f69d6047b0",
+        "bytes": 259
+      },
+      "details": {
+        "fileCount": 3650,
+        "targetOwnedFileCount": 66,
+        "totalFiles": 3716,
+        "bytes": 339923089,
+        "sourceMain": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+        "snapshotSha256": "4e349465e80391e866e086e63edb351567a7ef773ba9b74572235bf983741912",
+        "evidence": "B",
+        "semanticReview": false
+      },
+      "status": "log_pass",
+      "result": "源 3650 + 宿主 66 文件字节校验"
+    }
+  ],
+  "delivery": {
+    "issue": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/66",
+    "branch": "task/T-2026-1102-0001-video-audit",
+    "sourceCommit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+    "acceptanceCommit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+    "evidenceCommit": "pending",
+    "pullRequest": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/pull/67",
+    "mainCommit": "pending",
+    "cloudCi": "pending",
+    "mainReadback": "pending",
+    "schemaVersion": "pengmanager.video-audit-integration/v1",
+    "observedAt": "2026-11-02T15:42:53.304160+00:00",
+    "nonEvidenceTreeSha256": "b49c4d8343c3d59de06713ff3843b243bb33d8af6059ab56fb51c109fffb5c39",
+    "historicalFailedCi": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/actions/runs/41472175226",
+    "ciCorrection": "Only CI service image/health changed after first source commit. Original product/engine bytes are identical. Final receipt requires candidate and main CI success.",
+    "environment": "local-preview",
+    "paidModelCalls": 0,
+    "paidRenderSubmissions": 0,
+    "architectureProposalImplemented": false
+  },
+  "boundaries": {
+    "productionVerified": false,
+    "realModelEfficiencyMeasured": false,
+    "paidModelCalls": 0,
+    "paidRenderSubmissions": 0,
+    "manualBridgeUsed": false,
+    "architectureProposalImplemented": false,
+    "fullDAGExecutorClaimed": false,
+    "unfixedDesignObservation": "MC-011",
+    "thirdExplainerRouteFullyAudited": false
+  },
+  "countingNote": "Suite counts overlap. The generator reads logs and does not invent subprocess exit codes; empty typecheck logs require coordinator execution records."
+}

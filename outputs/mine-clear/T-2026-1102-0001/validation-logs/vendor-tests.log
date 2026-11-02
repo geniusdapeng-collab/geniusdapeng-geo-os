@@ -1,0 +1,144 @@
+$ node --test --test-concurrency=1 engines/video-edit/bundles/ai-video/connectors/post-bridge/*.test.mjs && vitest run --maxWorkers=1 --minWorkers=1 --no-file-parallelism engines/video-edit/bundles/ai-video/connectors/cover-kb-bridge/core.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/post-cli-media.test.ts engines/video-edit/bundles/ai-video/connectors/post-bridge/revision-concurrency.test.ts
+▶ host audio source signature verification
+  ✔ accepts an exact current independent-source receipt without exposing signing secrets (1.434084ms)
+  ✔ has no default signing key and does not use bridge or delivery signing credentials (0.412708ms)
+  ✔ rejects a valid signature from a different tenant than the bound host (0.146375ms)
+  ✔ rejects wrong key identity, altered signature and request digest (0.267541ms)
+  ✔ rejects scope, role, original picture or timing replay even with a valid unchanged signature (0.355708ms)
+  ✔ checks current expiration on each call, including after a previous success (0.180416ms)
+  ✔ rejects self-declared clean, other-purpose seals, unknown fields and invalid time windows (0.221708ms)
+✔ host audio source signature verification (3.512958ms)
+▶ independent audio stem derivation
+  ✔ preserves each source and excludes the separate music role from the real PCM program (266.90375ms)
+  ✔ maps picture plus explicit program, leaving both old embedded music and stored music out (264.601ms)
+  ✔ places hard-cut stems at exact samples, including a 44.1 kHz source (290.973583ms)
+  ✔ uses the video's fade plan without shortening or changing playback speed (311.157583ms)
+  ✔ crossfades four independent roles on the same overlap sample grid (288.601917ms)
+  ✔ 按逐刀回执对齐节目声：每刀时长各自生效、硬切不重叠（2026-10-13 修复） (370.095959ms)
+  ✔ 逐刀回执缺席的切点按硬切处理，整段回执缺席时才退回 fadeSec 历史口径 (904.986542ms)
+  ✔ supports an aligned segment with explicit source trim and placement, and pads silence (227.404583ms)
+  ✔ represents all N/A roles as authorized decisions and silent exact-length files (137.805833ms)
+  ✔ requires actual host authority and rejects self-declared clean metadata before output (2.380625ms)
+  ✔ binds host approval to scope, shot, role, bytes, timing and exact receipt (195.126458ms)
+  ✔ surfaces verifier failure instead of treating an unavailable authority as approval (0.866166ms)
+  ✔ rechecks authority after rendering and never publishes an expired grant (198.441084ms)
+  ✔ rejects unknown/mixed provenance and reusing the same bytes as two independent roles (6.202292ms)
+  ✔ rejects a video file declared as an independent dialogue stem (38.369958ms)
+  ✔ rejects a source changed after authority verification (14.8325ms)
+  ✔ rejects both direct and intermediate source symlinks (29.019084ms)
+  ✔ rejects path escape and permission errors with explicit failure receipts (24.961666ms)
+  ✔ does not silently crop or speed up an overlong source (72.056083ms)
+  ✔ claims one output directory exclusively under two concurrent real renders (220.403416ms)
+  ✔ keeps a failed render inspectable but never publishes a completed manifest (521.546958ms)
+  ✔ rejects invalid timeline, role and N/A contracts before creating output (5.196958ms)
+  ✔ fails mux on stale hashes or duration mismatch and never overwrites an existing file (229.153125ms)
+✔ independent audio stem derivation (4622.453125ms)
+▶ frozen stem bundle cache revalidation
+  ✔ reopens exact current sources and deterministically derives every retained PCM output (545.773125ms)
+  ✔ rejects changed role/program/source bytes and externally pinned manifest hashes (444.434375ms)
+  ✔ rechecks verifier failure and current project scope on every cache read (305.389791ms)
+  ✔ cannot forge a clean program by replacing it with retained music and recomputing public hashes (525.794792ms)
+  ✔ does not let a verifier mutate the bound scope, timing or receipt (0.995834ms)
+✔ frozen stem bundle cache revalidation (1823.014041ms)
+✔ 系统临时路径的 lexical/canonical 别名都可冻结真实源字节，根外路径和子符号链接仍拒绝 (9.122042ms)
+✔ 逐镜去雾已执行时，变体调色可关闭旧 conservative 二次锐化 (272.545ms)
+✔ 真实本地拼接与技术调色的字节链可以交付，不需要模型调用 (187.384916ms)
+✔ 同短边的极宽原片不能冒充原生分辨率保留 (184.872042ms)
+✔ 换画幅必须显式批准并说明原因 (361.367875ms)
+✔ 母版与每个变体的主视频都是必需产物 (296.90625ms)
+✔ 删除或复制请求变体都不能用现存视频糊弄完整交付 (553.916833ms)
+✔ 任意 JSON 和 reused/passed 字段不能冒充真实转场凭证 (184.434708ms)
+✔ 一个母版凭证不能同时冒充变体加工与调色 (191.943333ms)
+✔ 调色请求改变必须重新执行，不能只改清单中的风格名 (189.841125ms)
+✔ 音轨需绑定实际音乐处理；原声视频无法冒充带配乐成片 (184.134041ms)
+✔ 软字幕与烧录字幕不能只靠外观文件名声明已完成 (354.6095ms)
+✔ 弹幕必需请求为空、缺执行结果时不得放行 (176.797083ms)
+✔ 实体工位请求不能悄悄丢弃，缺末端执行证明即失败 (175.39175ms)
+✔ 响度硬闸不能用 NaN/Infinity/未知模式绕过 (529.431084ms)
+✔ 实际编码音轨达不到声明目标时 block 失败，report 留实测而不虚报目标 (351.621583ms)
+✔ 完整解析 ass，不因合法头部或第一条就接受剩余坏内容 (34.421583ms)
+✔ 完整解析 vtt，不因合法头部或第一条就接受剩余坏内容 (32.066417ms)
+✔ 完整解析 srt，不因合法头部或第一条就接受剩余坏内容 (31.851833ms)
+✔ 加工发生前保存的源 SHA 能查出加工器改写源文件 (1.909375ms)
+✔ 真实媒体全片解码、尺寸与 SHA 一致后才放行，路径含空格和中文可执行 (50.099833ms)
+✔ 报告中的过期哈希不能让当前媒体通过 (0.812334ms)
+✔ 要求字幕但缺真实产物/执行回执即失败，passed 字段不能代替它 (29.143083ms)
+✔ 不适用必须有具体理由，删掉某个环节也不能绕过七项完整性 (29.685916ms)
+✔ 分辨率降低必须在契约里声明，实测结果仍必须等于目标 (65.6595ms)
+✔ probe 能读到规格仍不等于媒体完整：截断的 MP4 无法被放行 (1.689041ms)
+✔ 软字幕形态缺实际字幕流即失败 (15.538083ms)
+✔ 路径越界或软链接逃逸不能读成交付包的已核实资产 (28.021083ms)
+✔ 客观硬项失败不能降级成艺术建议，重复资产 ID 也拒绝 (27.414375ms)
+✔ 格式坏的字幕文件不能用非空字节伪装完成 (27.849542ms)
+✔ 完整视频发布门允许同变体的多种发布形态，但每支变体都必须有稳定哈希 (0.300125ms)
+✔ 返修版本可回读所属交付根，版本或工程身份不符及父目录逃逸均拒绝 (1.703541ms)
+Local font media evidence: /private/var/folders/dj/mkh6fwbd4mb6ycp933xfty4h0000gn/T/post-recipe-fonts-jbhdMm/validation-evidence.json
+✔ three declared fonts, tracks and covers reach current media; scoped revisions retain them and reject drift (26199.52475ms)
+✔ 二次构图：横向源 cover 填充裁切填满、无黑边、时长守恒、回执全过 (447.933292ms)
+✔ 二次构图：横向源 blur 填充可执行（多路图 split/overlay）且无黑边 (864.307959ms)
+✔ 二次构图：动画推近（zoompan）可执行且时长守恒 (1319.61325ms)
+✔ 二次构图：pad 填充 + 动画推近可执行（回归：zoompan 表达式曾缺右括号导致 Missing ')'） (1114.334916ms)
+✔ 二次构图：超无损预算且策略为 lossless → fail-closed（不静默上采样） (1169.424125ms)
+✔ 二次构图：未声明 reframe 时沿用旧归一化链（零行为变化） (1023.532625ms)
+✔ actual 24fps xfade runs keep the cumulative timeline within half a frame (1111.399209ms)
+✔ actual 30fps xfade runs keep the cumulative timeline within half a frame (1122.308083ms)
+ℹ tests 76
+ℹ suites 3
+ℹ pass 76
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45866.913083
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+stdout | engines/video-edit/bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts > 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 真实交付同时验证有计划和无计划分支，净时长不再抛 ReferenceError
+P1 media evidence {"measuredSeconds":7.5,"avSync":{"policy":"rendered-source-default-acceptance","qualityReviewed":false,"correlation":null,"method":"sample-accurate-timeline","sourceClips":3},"checks":[{"kind":"audio_sources","ok":true},{"kind":"resolution_exact","ok":true},{"kind":"enhancement_provenance","ok":true},{"kind":"master_no_burn_in","ok":true},{"kind":"sidecar_files","ok":true},{"kind":"subtitle_timing_retimed","ok":true},{"kind":"variant_count","ok":true},{"kind":"reframe_receipts","ok":true},{"kind":"covers_valid","ok":true},{"kind":"covers_distinct","ok":true},{"kind":"bgm_layer","ok":true},{"kind":"softsub_video_unchanged","ok":true},{"kind":"transition_receipts","ok":true},{"kind":"duration_consistent","ok":true},{"kind":"planned_duration_reference","ok":true}],"sourceQualityReviewed":false}
+
+stdout | engines/video-edit/bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts > 独立音轨、声明音效与配乐返修的真实最终成片 > 授权节目先合流再加 impact，最终配乐和音频返修均保留音效、原速和当前原生帧时钟
+independent stems sound final evidence {"paidCalls":0,"sourceFiles":15,"sourceFilesUnchanged":true,"independentMusicExcluded":true,"embeddedOldMusicExcluded":true,"evidence":[{"step":"build-clean-tech","outputSha256":"6fb237025efa4030520d5e8629f3c13d0d0da1a337822a35fac0c85d96827be2","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.04855339043575388,"ambience":0.04871508088329017,"foley":0.04886469076470975,"music":7.07338011963914e-7},"originalMixedMusic":0.000005244148484891306,"activeImpact":0.2891951171836168,"quietBreath":0.012010930291598174,"soundSha256":"97aabc79f6c1c2e779b578378ebfbee7438f74e44075705389e3242cf4815dd6","soundSourceSha256":"f9fda944ae490a8b54894b210e491166cabec023226e8b482d1a5748c7d4471e","packetPayloadUnchanged":true},{"step":"build-bold-promo","outputSha256":"44fa6432cdcfab2b6570c7a4175e9d91221189f6e98cc1ae907c8869c1fb649c","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.030128196785112245,"ambience":0.030282477863760527,"foley":0.03029519557419796,"music":0.0000018574604514049216},"originalMixedMusic":7.375680671718456e-7,"activeImpact":0.18759500346710548,"quietBreath":0.007536645550957311,"soundSha256":"0981b8763e27bae9dcab0fa072e647d633f3c12e74278d6bac8a10d75e62b643","soundSourceSha256":"3be8af738df9388619ea1fddf28fc8a6377a2fdd74af2de044bb1ebba0bb2e74","packetPayloadUnchanged":true},{"step":"bgm-off-clean-tech","outputSha256":"97aabc79f6c1c2e779b578378ebfbee7438f74e44075705389e3242cf4815dd6","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.018720753522497826,"ambience":0.01869216527530903,"foley":0.018741279702553886,"music":3.895773315550187e-7},"originalMixedMusic":2.497161169448422e-7,"activeImpact":0.11510537340798947,"quietBreath":0.0022641747955601775,"soundSha256":"97aabc79f6c1c2e779b578378ebfbee7438f74e44075705389e3242cf4815dd6","soundSourceSha256":"f9fda944ae490a8b54894b210e491166cabec023226e8b482d1a5748c7d4471e","packetPayloadUnchanged":true},{"step":"bgm-off-bold-promo","outputSha256":"44fa6432cdcfab2b6570c7a4175e9d91221189f6e98cc1ae907c8869c1fb649c","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.030128196785112245,"ambience":0.030282477863760527,"foley":0.03029519557419796,"music":0.0000018574604514049216},"originalMixedMusic":7.375680671718456e-7,"activeImpact":0.18759500346710548,"quietBreath":0.007536645550957311,"soundSha256":"0981b8763e27bae9dcab0fa072e647d633f3c12e74278d6bac8a10d75e62b643","soundSourceSha256":"3be8af738df9388619ea1fddf28fc8a6377a2fdd74af2de044bb1ebba0bb2e74","packetPayloadUnchanged":true},{"step":"bgm-on-clean-tech","outputSha256":"6fb237025efa4030520d5e8629f3c13d0d0da1a337822a35fac0c85d96827be2","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.04855339043575388,"ambience":0.04871508088329017,"foley":0.04886469076470975,"music":7.07338011963914e-7},"originalMixedMusic":0.000005244148484891306,"activeImpact":0.2891951171836168,"quietBreath":0.012010930291598174,"soundSha256":"97aabc79f6c1c2e779b578378ebfbee7438f74e44075705389e3242cf4815dd6","soundSourceSha256":"f9fda944ae490a8b54894b210e491166cabec023226e8b482d1a5748c7d4471e","packetPayloadUnchanged":true},{"step":"bgm-on-bold-promo","outputSha256":"44fa6432cdcfab2b6570c7a4175e9d91221189f6e98cc1ae907c8869c1fb649c","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.030128196785112245,"ambience":0.030282477863760527,"foley":0.03029519557419796,"music":0.0000018574604514049216},"originalMixedMusic":7.375680671718456e-7,"activeImpact":0.18759500346710548,"quietBreath":0.007536645550957311,"soundSha256":"0981b8763e27bae9dcab0fa072e647d633f3c12e74278d6bac8a10d75e62b643","soundSourceSha256":"3be8af738df9388619ea1fddf28fc8a6377a2fdd74af2de044bb1ebba0bb2e74","packetPayloadUnchanged":true},{"step":"copy-only-clean-tech","outputSha256":"6fb237025efa4030520d5e8629f3c13d0d0da1a337822a35fac0c85d96827be2","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.04855339043575388,"ambience":0.04871508088329017,"foley":0.04886469076470975,"music":7.07338011963914e-7},"originalMixedMusic":0.000005244148484891306,"activeImpact":0.2891951171836168,"quietBreath":0.012010930291598174,"soundSha256":"97aabc79f6c1c2e779b578378ebfbee7438f74e44075705389e3242cf4815dd6","soundSourceSha256":"f9fda944ae490a8b54894b210e491166cabec023226e8b482d1a5748c7d4471e","packetPayloadUnchanged":true},{"step":"copy-only-bold-promo","outputSha256":"44fa6432cdcfab2b6570c7a4175e9d91221189f6e98cc1ae907c8869c1fb649c","videoFrames":165,"fps":"30/1","canvas":[320,180],"programmePitchHz":440,"tones":{"dialogue":0.030128196785112245,"ambience":0.030282477863760527,"foley":0.03029519557419796,"music":0.0000018574604514049216},"originalMixedMusic":7.375680671718456e-7,"activeImpact":0.18759500346710548,"quietBreath":0.007536645550957311,"soundSha256":"0981b8763e27bae9dcab0fa072e647d633f3c12e74278d6bac8a10d75e62b643","soundSourceSha256":"3be8af738df9388619ea1fddf28fc8a6377a2fdd74af2de044bb1ebba0bb2e74","packetPayloadUnchanged":true}]}
+
+ ✓ engines/video-edit/bundles/ai-video/connectors/post-bridge/delivery-integration.test.ts (23 tests) 129533ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 硬切与淡入淡出实际拼接三镜并记录加工事实，不默认测品质窗口  682ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 母版交叉转场不二次扣除各变体源时间轴，三镜真实导出按各自装配时长核对  9405ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 变体风格 intentMap 覆盖观感：同一剪辑意图在不同变体下渲染成不同转场  360ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 独立音轨节目声 × 逐切转场计划：按逐刀实际时长对齐，不再 fail-closed（回归 2026-10-13）  10866ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > legacy fade 模式：黑场被量化取证（窗口内黑帧 >0），回执给出改用逐切计划的建议  494ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 真实交付同时验证有计划和无计划分支，净时长不再抛 ReferenceError  38450ms
+   ✓ 后期真实总装与连续返修（需 FFmpeg/FFprobe） > 显式换镜后 v2→v3 持续指向新素材和新归一化文件，未点名镜头保持哈希及 mtime  30698ms
+   ✓ 后期显式音轨边界和原节目默认路径 > 显式 null/false/空或缺角色来源在 core/tool/真实 CLI 创建交付目录前失败  378ms
+   ✓ 后期显式音轨边界和原节目默认路径 > 省略音轨实际加工黑帧无声原片并返修，不要求分轨密钥或品质复检  2881ms
+   ✓ 后期显式音轨边界和原节目默认路径 > core 交付长标题保留版式建议失败并接受真实封面产物  1704ms
+   ✓ 后期显式音轨边界和原节目默认路径 > tool 交付长标题保留版式建议失败并接受真实封面产物  1611ms
+   ✓ 后期显式音轨边界和原节目默认路径 > cli 交付长标题保留版式建议失败并接受真实封面产物  1801ms
+   ✓ 后期显式音轨边界和原节目默认路径 > 显式错误 audioStemsByShot 在 core/tool/真实返修 CLI 占版本前失败  421ms
+   ✓ 独立音轨、声明音效与配乐返修的真实最终成片 > 授权节目先合流再加 impact，最终配乐和音频返修均保留音效、原速和当前原生帧时钟  28966ms
+ ✓ engines/video-edit/bundles/ai-video/connectors/post-bridge/post-cli-media.test.ts (15 tests) 80171ms
+   ✓ actual edit-post preserves native pixels/frames, default declared hard cuts, requested text forms and SFX  7154ms
+   ✓ explicit fast cut rejects speed changes and partial/downsampled canvas before formal completion  470ms
+   ✓ explicit color-map shots are recorded as taken over and do not receive shared clarity twice  8601ms
+   ✓ actual cover CLI without a timeline publishes declared intro forms and preserves every soft subtitle stream  11780ms
+   ✓ actual Chinese package selects declared burned/danmaku/intro assets and repairs an owned stale file  21573ms
+   ✓ Chinese package refuses unknown collisions and unregistered publish-shaped files  5202ms
+   ✓ actual SFX adapter validates source bytes and refuses a plan that disagrees with the current video clock  439ms
+   ✓ editorial shot labels cannot move normalized output into the source directory  447ms
+   ✓ failed cover candidates preserve the accepted manifest and every accepted cover and intro  314ms
+   ✓ an existing optional pack outside the original roots remains usable and read only through the actual edit-post CLI  10181ms
+ ✓ engines/video-edit/bundles/ai-video/connectors/post-bridge/revision-concurrency.test.ts (19 tests) 9142ms
+   ✓ revision compare-and-swap and exclusive ownership > one of two simultaneous real revisions wins; old bytes and the winner remain unchanged  654ms
+   ✓ revision compare-and-swap and exclusive ownership > separate CLI processes cannot both commit from the same base  629ms
+   ✓ revision compare-and-swap and exclusive ownership > a failed reservation is kept for audit and a retry consumes a fresh version  630ms
+   ✓ revision compare-and-swap and exclusive ownership > infers the package root on the next revision and keeps versions flat  1081ms
+   ✓ revision compare-and-swap and exclusive ownership > detects a base mutation during the real copy and does not publish a success project  908ms
+   ✓ revision compare-and-swap and exclusive ownership > never releases or commits under a replacement lock belonging to another writer  568ms
+   ✓ revision compare-and-swap and exclusive ownership > refuses mutation or missing commit evidence in a published version  610ms
+   ✓ revision compare-and-swap and exclusive ownership > tool ingress requires preconditions and CLI rejects malformed explicit flags  629ms
+   ✓ revision compare-and-swap and exclusive ownership > CLI dry-run exposes the chosen snapshot and never silently follows a newer version  761ms
+ ✓ engines/video-edit/bundles/ai-video/connectors/cover-kb-bridge/core.test.ts (17 tests) 13ms
+
+ Test Files  4 passed (4)
+      Tests  74 passed (74)
+   Start at  22:17:19
+   Duration  220.03s (transform 286ms, setup 0ms, collect 626ms, tests 218.86s, environment 0ms, prepare 145ms)
+

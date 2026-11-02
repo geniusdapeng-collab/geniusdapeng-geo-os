@@ -1,0 +1,141 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/requirement-contract.test.ts (107 tests | 2 failed | 105 skipped) 11ms
+   ↓ actual vendor scene prompt correction > replaces only generated contradictions for 30s with the exact effective schema
+   ↓ actual vendor scene prompt correction > replaces only generated contradictions for 45s with the exact effective schema
+   ↓ actual vendor scene prompt correction > replaces only generated contradictions for 60s with the exact effective schema
+   ↓ actual vendor scene prompt correction > preserves customer description containing the exact generated lines and full native suffix
+   ↓ actual vendor scene prompt correction > rejects generated suffix drift and unserializable schema without touching customer content
+   ↓ schema-derived scene timing and bounded validation facts > derives feasible counts for 30 seconds without allocating nodes
+   ↓ schema-derived scene timing and bounded validation facts > derives feasible counts for 45 seconds without allocating nodes
+   ↓ schema-derived scene timing and bounded validation facts > derives feasible counts for 60 seconds without allocating nodes
+   ↓ schema-derived scene timing and bounded validation facts > derives feasible counts for 30.96 seconds without allocating nodes
+   ↓ schema-derived scene timing and bounded validation facts > uses the target-duration band at the count feasibility boundary
+   ↓ schema-derived scene timing and bounded validation facts > follows changed actual schema bounds and count limits without mutating them
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'minimum' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'maximum' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'type' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'minLength' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'maxLength' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'minItems' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'maxItems' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'required' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'additionalProperties' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > exposes only bounded 'enum' facts and never response text
+   ↓ schema-derived scene timing and bounded validation facts > refuses forged details, arbitrary labels and response-derived property paths
+   ↓ schema-derived scene timing and bounded validation facts > retains exactly the existing seven arithmetic facts as retry feedback
+   ↓ bounded native RiskAssessor validation facts > brands only numeric min/maxItems at the fixed technicalRisks array path
+   ↓ bounded native RiskAssessor validation facts > brands only numeric min/maxItems at the fixed businessConstraints array path
+   ↓ bounded native RiskAssessor validation facts > brands only numeric min/maxItems at the fixed mitigationSuggestions array path
+   ↓ bounded native RiskAssessor validation facts > returns only fixed top-level field names for missing or extra response keys
+   ↓ bounded native RiskAssessor validation facts > normalizes only exact Risk wrappers and snake_case aliases without changing content
+   ↓ bounded native RiskAssessor validation facts > rejects forged or relabeled facts, other keywords, response keys, nested paths and unsafe numeric limits
+   ↓ host requirement contract data > keeps the resolver result, owner audience and complete selected character while binding one real structure
+   ↓ host requirement contract data > retains long scene text and persona as complete source data without lexical persona props
+   ↓ host requirement contract data > permits an explicitly selected empty cast with real product/scene actions
+   ↓ host requirement contract data > permits a genuinely empty prop list only with an explicit scene reason
+   ↓ host requirement contract data > rejects missing-selection casting instead of inventing no-person
+   ↓ host requirement contract data > rejects wrong-schema casting instead of inventing no-person
+   ↓ host requirement contract data > rejects wrong-id casting instead of inventing no-person
+   ↓ host requirement contract data > rejects wrong-name casting instead of inventing no-person
+   ↓ host requirement contract data > rejects duplicate casting instead of inventing no-person
+   ↓ host requirement contract data > rejects profile casting instead of inventing no-person
+   ↓ host requirement contract data > rejects registry casting instead of inventing no-person
+   ↓ host requirement contract data > rejects none-conflict casting instead of inventing no-person
+   ↓ host requirement contract data > rejects mode casting instead of inventing no-person
+   ↓ host requirement contract data > rejects missing-contract physical structure
+   ↓ host requirement contract data > rejects props-type physical structure
+   ↓ host requirement contract data > rejects empty-actions physical structure
+   ↓ host requirement contract data > rejects unknown-actor physical structure
+   ↓ host requirement contract data > rejects generic-verb physical structure
+   ↓ host requirement contract data > rejects missing-elements physical structure
+   ↓ host requirement contract data > rejects duration-type physical structure
+   ↓ host requirement contract data > rejects duration-sum physical structure
+   ↓ host requirement contract data > rejects scene-count physical structure
+   ↓ host requirement contract data > rejects no-prop-reason physical structure
+   ↓ host requirement contract data > rejects props-with-reason physical structure
+   ↓ host requirement contract data > rejects props-with-null-reason physical structure
+   ↓ host requirement contract data > rejects props-with-empty-reason physical structure
+   ↓ host requirement contract data > rejects actor-unused physical structure
+   ↓ host requirement contract data > rejects a pending conversion and an authority changed during discovery
+   ↓ host requirement contract data > reports bounded numeric count diagnostics without scene prose
+   ↓ host requirement contract data > reports bounded numeric declared-duration diagnostics without scene prose
+   ↓ host requirement contract data > reports bounded numeric target-duration diagnostics without scene prose
+   ↓ host requirement contract data > retains the 0.05-second arithmetic tolerance between node sum and totalDuration
+   ↓ host requirement contract data > applies an explicit one-frame tolerance to the content timeline
+   ↓ host requirement contract data > rejects unverified product part and angle invention before G3
+   ↓ host requirement contract data > allows explicit negative appearance restrictions without treating them as new product evidence
+   ↓ host requirement contract data > states the final master, silent cover and content-timeline split in the scene authority
+   ↓ host requirement contract data > applies the ±5-second target band to total=25
+   ↓ host requirement contract data > applies the ±5-second target band to total=34
+   ↓ host requirement contract data > applies the ±5-second target band to total=35
+   ↓ host requirement contract data > applies the ±5-second target band to total=24.9
+   ↓ host requirement contract data > applies the ±5-second target band to total=35.1
+   ↓ host requirement contract data > rejects scene changes before G3
+   ↓ host requirement contract data > rejects cast changes before G3
+   ↓ host requirement contract data > rejects list-cast changes before G3
+   ↓ host requirement contract data > rejects contract changes before G3
+   ↓ host requirement contract data > rejects audience changes before G3
+   ↓ host requirement contract data > rejects metadata-contract changes before G3
+   ↓ host requirement contract data > hashes equivalent JSON deterministically and rejects missing, cyclic or non-JSON authority
+   ↓ host requirement contract data > rejects rehashed scene derivations that no longer match their unchanged authority
+   ↓ host requirement contract data > rejects rehashed prop derivations that no longer match their unchanged authority
+   ↓ host requirement contract data > rejects rehashed action derivations that no longer match their unchanged authority
+   ↓ host requirement contract data > rejects rehashed cast-selection derivations that no longer match their unchanged authority
+   × real discovery code with isolated fake LLM > renders the accepted narrative G3 contract for builtin casting without marketing authority 9ms
+     → Cannot read properties of undefined (reading 'metadata')
+   × real discovery code with isolated fake LLM > renders the accepted narrative G3 contract for none casting without marketing authority 1ms
+     → Cannot read properties of undefined (reading 'metadata')
+   ↓ real discovery code with isolated fake LLM > aborts the underlying discovery request at the native agent deadline
+   ↓ real discovery code with isolated fake LLM > rejects rehashed owner audience null against the frozen run authority
+   ↓ real discovery code with isolated fake LLM > rejects rehashed owner audience 被替换的受众 against the frozen run authority
+   ↓ real discovery code with isolated fake LLM > uses the same real four-agent workflow, extending the existing SceneArchitect response schema and prompt
+   ↓ real discovery code with isolated fake LLM > never accepts a real agent's rule fallback when model structure is missing
+   ↓ real discovery code with isolated fake LLM > propagates model failure after the bounded retries without fabricating props/actions
+   ↓ real discovery code with isolated fake LLM > preserves the latest native attempt's numeric failure through both vendor fallback catches
+   ↓ real discovery code with isolated fake LLM > does not reuse an earlier numeric failure after a later transport failure
+   ↓ real discovery code with isolated fake LLM > strictly rejects missing-index in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > strictly rejects missing-beat in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > strictly rejects invalid-beat in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > strictly rejects too-short-opening in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > strictly rejects too-many-elements in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > strictly rejects unknown-field in the real SceneArchitect response
+   ↓ real discovery code with isolated fake LLM > waits for original profile resolution before returning any downstream contract object
+   ↓ real discovery code with isolated fake LLM > preserves a real resolver rejection and does not create a fallback contract
+   ↓ real discovery code with isolated fake LLM > rejects invalid cast before calling the original profile resolver
+   ↓ real discovery code with isolated fake LLM > keeps overlapping projects and nested scopes separate, then rejects detached late calls
+   ↓ real discovery code with isolated fake LLM > restores the outer authority after a nested scope fails
+   ↓ real discovery code with isolated fake LLM > does not start SceneArchitect or any later agent after a detached run closes
+   ↓ real discovery code with isolated fake LLM > preserves native behavior without a Studio scope and restores every method after final shared holder
+   ↓ real discovery code with isolated fake LLM > detects prototype tampering and refuses to silently restore an unowned replacement
+   ↓ real discovery code with isolated fake LLM > detects descriptor-only tampering and restores every original descriptor exactly
+   ↓ real discovery code with isolated fake LLM > rejects unknown source interfaces and does not leave a partial installed bridge
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/requirement-contract.test.ts > real discovery code with isolated fake LLM > renders the accepted narrative G3 contract for builtin casting without marketing authority
+ FAIL  engines/video-edit/packages/video-studio/src/requirement-contract.test.ts > real discovery code with isolated fake LLM > renders the accepted narrative G3 contract for none casting without marketing authority
+TypeError: Cannot read properties of undefined (reading 'metadata')
+ ❯ engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:473:54
+    471|       }
+    472|       return renderRequirementContract(contract, requirementRecord(met…
+    473|         + renderScenePolicyCoverage(scope.authority!.metadata, contrac…
+       |                                                      ^
+    474|         + presentationSection(scope, contract.scenes.reduce((sum, scen…
+    475|     });
+ ❯ guard engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:152:12
+ ❯ Vendor.rendered engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:465:12
+ ❯ engines/video-edit/packages/video-studio/src/requirement-contract.test.ts:629:31
+ ❯ awaited engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:158:20
+ ❯ engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts:176:14
+ ❯ engines/video-edit/packages/video-studio/src/requirement-contract.test.ts:626:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 105 skipped (107)
+   Start at  22:01:10
+   Duration  1.17s (transform 702ms, setup 0ms, collect 865ms, tests 11ms, environment 0ms, prepare 88ms)
+

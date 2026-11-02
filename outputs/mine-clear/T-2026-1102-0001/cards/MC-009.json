@@ -1,0 +1,51 @@
+{
+  "id": "MC-009",
+  "kind": "problem",
+  "level": "L1",
+  "severity": "P1",
+  "batch": 2,
+  "state": "open",
+  "title": "真实融合恢复被旧失败计数误拒且原生兜底标记漏检",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-studio/src/vendor-compat.ts:2038@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "sha256": "79ae0515d7b51f91a24456f459c97c8ec3c9043855b1272e02bef57d99c256dc",
+      "note": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
+    "line": 2038,
+    "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+    "symbol": "PHASE3_FUSION_UNVERIFIED"
+  },
+  "trigger_path": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。",
+  "fix_plan": "以本次scoped实际融合成功返回的私有hash证据核销已恢复失败；完整唯一镜号与无fallback都成立才通过；保留原生统计与恢复记录。",
+  "regression": {
+    "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/vendor-compat.test.ts",
+    "expect": "真实原生process快速重试成功可接收；永久失败/已有字段或规则兜底/缺失重复镜号/隐藏error均拒绝且不写通过checkpoint。"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "原生process首次失败后快速重试成功仍保留failed；宿主又漏查degradeReason及已有字段组装fallback，存在误拒/误放两个终态。",
+      "expect": "真实原生process快速重试成功可接收；永久失败/已有字段或规则兜底/缺失重复镜号/隐藏error均拒绝且不写通过checkpoint。",
+      "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/vendor-compat.test.ts",
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/vendor-compat.test.ts"
+        ]
+      },
+      "last_result": "not-run"
+    }
+  ],
+  "notes": "A=精读及真实无付费夹具红绿；未测真实模型创作表现。"
+}

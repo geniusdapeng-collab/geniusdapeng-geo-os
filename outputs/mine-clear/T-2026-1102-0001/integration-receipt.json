@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "pengmanager.video-audit-integration/v1",
+  "observedAt": "2026-11-02T15:42:53.304160+00:00",
+  "sourceCommit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "acceptanceCommit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "evidenceCommit": "pending",
+  "pullRequest": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/pull/67",
+  "mainCommit": "pending",
+  "cloudCi": "pending",
+  "mainReadback": "pending",
+  "nonEvidenceTreeSha256": "b49c4d8343c3d59de06713ff3843b243bb33d8af6059ab56fb51c109fffb5c39",
+  "historicalFailedCi": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/actions/runs/41472175226",
+  "ciCorrection": "Only CI service image/health changed after first source commit. Original product/engine bytes are identical. Final receipt requires candidate and main CI success.",
+  "environment": "local-preview",
+  "paidModelCalls": 0,
+  "paidRenderSubmissions": 0,
+  "architectureProposalImplemented": false
+}

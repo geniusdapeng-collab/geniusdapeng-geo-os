@@ -1,0 +1,91 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts (9 tests | 3 failed) 12ms
+   ✓ marketing PRD host contract > binds references, no-person language, scene counts and technical delivery to host authority 3ms
+   ✓ marketing PRD host contract > normalizes unsupported screen labels and absolute whole-film claims 1ms
+   ✓ marketing PRD host contract > harmonizes license substrings, URL-only source rows and complete-line authority 1ms
+   ✓ marketing PRD host contract > fails closed instead of silently changing the approved scene count 0ms
+   ✓ MC-003 preserves ordinary marketing direction and explicit customer subtitle/frame-rate authority 0ms
+   ✓ MC-003 preserves explicit subtitles and 24fps in the abstract no-person PRD 0ms
+   × MC-003 retains an explicit abstract-film reference supplied in the customer brief 4ms
+     → expected [ Array(1) ] to deeply equal [ '客户指定的授权参考片A' ]
+   × MC-003 honors off-screen narration declared in brief metadata even if the original intent only describes visuals 1ms
+     → expected { …(3) } to deeply equal { musicStyle: '无旋律配乐', …(2) }
+   × MC-003 never changes a requested subtitle sidecar to a forbidden sidecar in rendered prose 1ms
+     → expected '{"creativeCore":{"creativeHook":"以抽象界…' not to match /不生成字幕轨|不另做 sidecar/
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts > MC-003 retains an explicit abstract-film reference supplied in the customer brief
+AssertionError: expected [ Array(1) ] to deeply equal [ '客户指定的授权参考片A' ]
+
+- Expected
++ Received
+
+  [
+-   "客户指定的授权参考片A",
++   "本次已审 G3 场景的画面目的、关键元素与用户 Brief；不引用未获客户提供的外部影片、导演或品牌案例",
+  ]
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts:210:55
+    208|     builtinCharacterSelection: { mode: "none" }, brief: { references: …
+    209|   }, {}, { scenes: [{ id: "opening" }, { id: "ending" }] }).prd as any;
+    210|   expect(result.visualSpecification.visualReferences).toEqual(source.v…
+       |                                                       ^
+    211|   expect(result.referenceCases).toEqual(source.referenceCases);
+    212| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts > MC-003 honors off-screen narration declared in brief metadata even if the original intent only describes visuals
+AssertionError: expected { …(3) } to deeply equal { musicStyle: '无旋律配乐', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "musicStyle": "无旋律配乐",
+-   "soundDesign": "低频节奏",
+-   "voicePolicy": "旁白：讲解系统能力",
++   "musicStyle": "无人声、低频音床、材质提示音与机械节奏；无旋律配乐",
++   "soundDesign": "低频节奏
++ 技术交付口径：AAC 48 kHz 双声道，整体响度 -14 LUFS，True Peak ≤ -1 dBTP；屏上所有可读文字统一受最小字号屏高3%、文字与底色对比度4.5:1、平台安全区和遮挡检查约束；辅助文字与脚注不豁免；G1 原文核对按连续子串截取：只允许原字符、原顺序、原标点；不得补写、拼接或改写标点；客户未明确要求字幕：不生成字幕轨或 SRT/VTT；屏上已审原文只作为画面图形层叠加，不属于字幕交付。",
++   "voicePolicy": "无对白",
+  }
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts:221:37
+    219|     brief: { voice: "旁白：讲解系统能力" },
+    220|   }, {}, { scenes: [{ id: "opening" }, { id: "ending" }] }).prd as any;
+    221|   expect(result.audioSpecification).toEqual(source.audioSpecification);
+       |                                     ^
+    222| });
+    223| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts > MC-003 never changes a requested subtitle sidecar to a forbidden sidecar in rendered prose
+AssertionError: expected '{"creativeCore":{"creativeHook":"以抽象界…' not to match /不生成字幕轨|不另做 sidecar/
+
+- Expected: 
+/不生成字幕轨|不另做 sidecar/
+
++ Received: 
+"{\"creativeCore\":{\"creativeHook\":\"以抽象界面、代码块、材质和示意图建立冷峻、精确的首屏视觉钩子；不出现人物、人体局部或人物动作\",\"keyMessages\":[\"使用本次 G1 已审官方主张；具体落点、时长和场景以已审 G3 合同为唯一时间轴\",\"合法消息\"],\"twistPoint\":\"结尾在已审 ending 场景内收束；不新增第二套场景、时间点或事实结论\"},\"visualSpecification\":{\"cameraLanguage\":\"围绕已审抽象界面、代码块、材质与示意图使用固定或缓慢运动镜头；不出现人物、人体局部或人物动作\",\"visualReferences\":[\"本次已审 G3 场景的画面目的、关键元素与用户 Brief；不引用未获客户提供的外部影片、导演或品牌案例\"]},\"audioSpecification\":{\"musicStyle\":\"无人声、低频音床、材质提示音与机械节奏；无旋律配乐\",\"soundDesign\":\"所有屏上文字只作为画面图形层叠加的等宽字体英文原文与来源标注；不生成字幕轨或 sidecar\\n技术交付口径：AAC 48 kHz 双声道，整体响度 -14 LUFS，True Peak ≤ -1 dBTP；屏上所有可读文字统一受最小字号屏高3%、文字与底色对比度4.5:1、平台安全区和遮挡检查约束；辅助文字与脚注不豁免；G1 原文核对按连续子串截取：只允许原字符、原顺序、原标点；不得补写、拼接或改写标点；字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付。\",\"voicePolicy\":\"无对白\"},\"scenePlan\":{\"scenes\":[{\"sceneId\":\"opening\",\"duration\":4,\"purpose\":\"开场\",\"visualRequirements\":[\"若干空心方块示意模块\",\"来源标识只按本场明确列出的位置出现；未列出时不声称每一帧都能独立自证出处\",\"屏上可见文字只允许从本次 G1 已审名称、官方卖点、许可证与仓库地址中取用，并由 G6 逐镜列明精确字符串；字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付；不新增未审中文说明。\"]},{\"sceneId\":\"ending\",\"duration\":4,\"purpose\":\"结尾\",\"visualRequirements\":[\"全片无人：不出现人物、人体局部或人物动作；只保留已审抽象视觉元素\",\"屏上可见文字只允许从本次 G1 已审名称、官方卖点、许可证与仓库地址中取用，并由 G6 逐镜列明精确字符串；字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付；不新增未审中文说明。\"]}],\"shotMapping\":[{\"sceneId\":\"opening\"},{\"sceneId\":\"ending\"}]},\"productionConstraints\":{\"technicalConstraints\":[\"按已审 G3 场景和交付 profile 执行\",\"输出画布 2160x3840，时长 按已审场景 秒，时长帧容差 1 帧；30fps；安全区按目标平台遮挡区在渲染前测量并留证；屏上所有可读文字统一受最小字号屏高3%、文字与底色对比度4.5:1、平台安全区和遮挡检查约束；辅助文字与脚注不豁免；G1 原文核对按连续子串截取：只允许原字符、原顺序、原标点；不得补写、拼接或改写标点\",\"AAC 48 kHz 双声道；整体响度 -14 LUFS；True Peak ≤ -1 dBTP\",\"字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付\",\"G1 已接受原文只作官方来源自述，不延伸为性能、安全、兼容性或运行效果承诺；来源中未经 claim 绑定的其他名称不得成为画面事实\"],\"businessConstraints\":[\"官方英文原文只以原文或明确节选出现并标注官方来源；不为无依据设备添加实物锚点，不延伸为性能或运行效果\",\"不依赖口播或对白字幕；关键信息由已审屏上原文和图形结构共同承载，屏上原文不属于字幕交付\"],\"forbiddenElements\":[\"人物\"],\"qualityThresholds\":{\"visual\":0.8,\"audio\":0.75,\"narrative\":0.85,\"consistency\":0.75}},\"audienceProfile\":{\"emotionTriggers\":[\"观众通过抽象界面、结构与声音节奏感到精密可信；不生成人物或人体画面\"]},\"referenceCases\":{\"filmReferences\":[\"客户未指定外部影片；只使用已审 G3 场景和视觉规格\"],\"adReferences\":[],\"styleReferences\":[\"由本次 G3 场景、G1 来源事实和客户 Brief 形成的通用视觉系统\"]},\"deliveryStandard\":{\"deliverables\":[{\"item\":\"video_master\",\"spec\":\"MP4/H.265, 4K；字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付；https://github.com/example/project；画布 2160x3840；时长 按已审场景 秒 ±1 帧；AAC 48 kHz 双声道；-14 LUFS / -1 dBTP；30fps；安全区按目标平台遮挡区在渲染前测量并留证；屏上所有可读文字统一受最小字号屏高3%、文字与底色对比度4.5:1、平台安全区和遮挡检查约束；辅助文字与脚注不豁免；G1 原文核对按连续子串截取：只允许原字符、原顺序、原标点；不得补写、拼接或改写标点；字幕按客户明确交付模式 sidecar 执行，保留已审正文、时间线及持续文字要求，不用屏上图形层代替字幕交付\",\"priority\":\"required\"}],\"acceptanceCriteria\":{\"visualScore\":0.75,\"audioScore\":0.7,\"narrativeScore\":0.75,\"consistencyScore\":0.7},\"outputFormat\":{\"resolution\":\"4K\",\"frameRate\":30}},\"productPositioning\":{\"productType\":\"商业广告\",\"genre\":\"商业广告\",\"resolution\":\"4K\",\"frameRate\":30}}"
+
+ ❯ engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts:230:38
+    228|     customerOriginalIntent: "全片无人，仅使用抽象界面", builtinCharacterSelection:…
+    229|   }, { subtitleMode: "sidecar" }, { scenes: [{ id: "opening" }, { id: …
+    230|   expect(JSON.stringify(result)).not.toMatch(/不生成字幕轨|不另做 sidecar/);
+       |                                      ^
+    231|   expect(result.audioSpecification.soundDesign).toContain("sidecar");
+    232| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 6 passed (9)
+   Start at  22:18:13
+   Duration  267ms (transform 87ms, setup 0ms, collect 91ms, tests 12ms, environment 0ms, prepare 37ms)
+

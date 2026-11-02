@@ -1,0 +1,75 @@
+{
+  "actor": "/root/governance",
+  "sourceCommit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "repo": "/Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager",
+  "fullRead": [
+    "AGENTS.md",
+    "docs/AI-AGENT-GUIDE.md",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "engines/video-edit/AGENTS.md",
+    "engines/video-edit/AGENTS.repo.md",
+    "engines/video-edit/docs/AUTOMATIC-RD-DELIVERY.md",
+    "engines/video-edit/docs/MINE-CLEAR-DELIVERY-SPEC.md",
+    "engines/video-edit/scripts/delivery/mine-clear.mjs",
+    "scripts/refresh-video-engine-snapshot.mjs",
+    "src/video-runtime/snapshot.mjs",
+    "upstreams/workloom-video-edit.pin.json",
+    "upstreams/marketing-evidence-and-risk-feedback.target-overlay.json",
+    "outputs/mine-clear/T-2026-1030-0002/STATE.md",
+    "outputs/mine-clear/T-2026-1030-0002/report.md",
+    ".gitignore",
+    "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+    "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.pg.test.ts",
+    "engines/video-edit/apps/server/src/video/pipeline/pipeline-control-stress.pg.test.ts",
+    "engines/video-edit/apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+    "engines/video-edit/apps/server/src/video/archive-host.ts",
+    "engines/video-edit/packages/pipeline-control/src/index.ts",
+    "engines/video-edit/packages/pipeline-control/src/artifact.ts",
+    "engines/video-edit/packages/pipeline-control/src/command.ts",
+    "engines/video-edit/packages/pipeline-control/src/canonical.ts",
+    "engines/video-edit/packages/pipeline-control/src/schema.ts",
+    "engines/video-edit/packages/pipeline-control/src/types.ts",
+    "engines/video-edit/packages/pipeline-control/src/auto-approval.ts",
+    "engines/video-edit/packages/video-pipeline/src/index.ts",
+    "engines/video-edit/packages/video-pipeline/src/compiled-plan.ts",
+    "engines/video-edit/packages/video-pipeline/src/auto-approval.ts",
+    "engines/video-edit/packages/db/src/index.ts",
+    "engines/video-edit/packages/db/src/client.ts",
+    "engines/video-edit/packages/db/migrations/0054_video_pipeline_control.sql",
+    "engines/video-edit/scripts/migrate.ts",
+    "engines/video-edit/scripts/tools/pipeline-control-stress.sh"
+  ],
+  "partialRead": [
+    {
+      "path": "engines/video-edit/scripts/delivery/evidence.mjs",
+      "lines": [
+        "1-110",
+        "208-290"
+      ],
+      "reason": "Only assertion runner and dirty-tree/observer contract needed for governance task."
+    },
+    {
+      "path": "engines/video-edit/WORKLOOM_PRODUCT_CONTEXT.md",
+      "method": "diff against fully read local controlled cache",
+      "reason": "Embedded historical 2026-09-30.1 snapshot; no product implementation conclusion taken from unread remainder."
+    }
+  ],
+  "controlledContextFullRead": [
+    "/Users/mac/.codex/workloom-context/WORKLOOM_PRODUCT_CONTEXT.md",
+    "/Users/mac/.codex/workloom-context/DEVELOPMENT-PROTOCOL.md"
+  ],
+  "controlledContextVersion": "2026-10-07.2",
+  "controlledContextBaseMain": "e5d76398484cac7d8ac50b6c27905765a59fd50f",
+  "controlledContextFetchedAt": "2026-10-29T04:38:38+00:00",
+  "notes": [
+    "Read-only governance preparation; no source modifications or GitHub writes.",
+    "Root repository GitHub CI is authoritative; embedded CNB delivery commands do not target this root repository.",
+    "MCD runner can operate on root with explicit --repo and custom invariant JSON.",
+    "No token used by governance agent.",
+    "Follow-up task: isolated MC command replay repair; repository and dedicated PG replay tests changed.",
+    "Private PG cluster started for this audit only; connection metadata in work/pg-command-replay.json; no business database or paid provider contacted.",
+    "Red: 12/12 new PG regression cases fail with partial receipt; green: 17/17 across replay and existing repository PG suite.",
+    "No independent acceptance claim for this card; this actor participated in its repair."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "id": "MC-005",
+  "kind": "problem",
+  "level": "L1",
+  "severity": "P1",
+  "batch": 2,
+  "state": "open",
+  "title": "重复刷新把既有ready节点清出可运行前沿",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts:1159@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "sha256": "d4a76ecafe5056b6acfdbef2e5df31b163a634a0d42f022fc4b4373fd195c72c",
+      "note": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+    "line": 1159,
+    "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+    "symbol": "async refreshFrontier"
+  },
+  "trigger_path": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。",
+  "fix_plan": "从更新后的所有最新节点重建ready快照，保留blocker优先级。",
+  "regression": {
+    "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+    "expect": "重复刷新、并行根节点、运行中等待及repair阻断4例真实PG通过。"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "节点已经ready但尚未claim，再刷新只记录本轮pending变ready的增量，返回wait_resource和空frontier。",
+      "expect": "重复刷新、并行根节点、运行中等待及repair阻断4例真实PG通过。",
+      "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts",
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts"
+        ]
+      },
+      "last_result": "not-run"
+    }
+  ],
+  "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。"
+}

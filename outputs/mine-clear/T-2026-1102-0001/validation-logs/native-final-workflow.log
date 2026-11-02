@@ -1,0 +1,55 @@
+
+ RUN  v4.1.11 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+[PromptFusionAgent] ⚠️ 镜头 S1 精炼后仅 557 字符，低于精炼后下限 1200，请检查上游字段是否过薄
+[PromptFusionAgent] ⚠️ 镜头 S1 中文占比过低(28.5%), 尝试修正为中文输出
+[PromptFusionAgent] ⚠️ 镜头 S1 精炼后仅 596 字符，低于精炼后下限 1200，请检查上游字段是否过薄
+[PromptFusionAgent] ⚠️ 镜头 S1 精炼后仅 557 字符，低于精炼后下限 1200，请检查上游字段是否过薄
+[PromptFusionAgent] ⚠️ 镜头 S1 中文占比过低(28.5%), 尝试修正为中文输出
+  ❌ SC-01 融合失败: fixture transient failure
+[PromptFusionAgent] ⚠️ 1/1 镜头需要补全/兜底
+  ❌ SC-01 融合失败: fixture permanent failure
+  ❌ 重试失败: fixture permanent failure
+  ❌ SC-01 补全也失败: fixture fill failure
+[PromptFusionAgent] ⚠️ 镜头 SC-01 精炼后仅 674 字符，低于精炼后下限 1200，请检查上游字段是否过薄
+[PromptFusionAgent] ⚠️ 镜头 SC-01 中文占比过低(19.0%), 尝试修正为中文输出
+[PromptFusionAgent] ⚠️ 1/1 镜头需要补全/兜底
+  ❌ SC-01 融合失败: fixture permanent failure
+  ❌ 重试失败: fixture permanent failure
+  ❌ SC-01 补全也失败: fixture fill failure
+  ❌ SC-01 无任何可用数据,规则兜底
+[PromptFusionAgent] ⚠️ 1/1 镜头需要补全/兜底
+[PromptFusion] SC-01 兜底 1 字段(批量 LLM + 规则兜底)
+[PromptFusionAgent] 尝试 1/3 失败: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture | type=NETWORK | retryable=false
+[PromptFusionAgent] 🔴 不可重试错误(NETWORK)，停止重试: 底层判定不可重试
+[PromptFusionAgent] 所有 1 次尝试均失败，最后错误: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture
+[PromptFusionAgent] 备用模型也失败: PHASE3_BUDGET_EXHAUSTED: 提供商调用前剩余预算不足 5 秒
+[PromptFusionAgent] 极限重试失败: PHASE3_BUDGET_EXHAUSTED: 提供商调用前剩余预算不足 5 秒
+[PromptFusionAgent] 降级结果为null/undefined: LLM failed after 1 attempts: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture
+[PromptFusionAgent] 尝试 1/3 失败: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture | type=NETWORK | retryable=false
+[PromptFusionAgent] 🔴 不可重试错误(NETWORK)，停止重试: 底层判定不可重试
+[PromptFusionAgent] 所有 1 次尝试均失败，最后错误: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture
+[PromptFusionAgent] 备用模型也失败: PHASE3_BUDGET_EXHAUSTED: 提供商调用前剩余预算不足 5 秒
+[PromptFusionAgent] 极限重试失败: PHASE3_BUDGET_EXHAUSTED: 提供商调用前剩余预算不足 5 秒
+[PromptFusionAgent] 降级结果为null/undefined: LLM failed after 1 attempts: [BudgetExhausted] LLM引擎返回失败: offline-budget-fixture
+[pii] PII_SALT 未配置，使用 dev 占位盐（仅限开发/测试，生产必须注入 PII_SALT）
+⚠️ [confirmation-crypto] HUMAN_CONFIRMATION_SECRET 未设置
+ 人工确认环节将不可用（无法生成/验证签名），但系统其余功能正常
+ 配置方法: export HUMAN_CONFIRMATION_SECRET=$(openssl rand -hex 32)，或写入 .env
+[pii] PII_SALT 未配置，使用 dev 占位盐（仅限开发/测试，生产必须注入 PII_SALT）
+⚠️ [confirmation-crypto] HUMAN_CONFIRMATION_SECRET 未设置
+ 人工确认环节将不可用（无法生成/验证签名），但系统其余功能正常
+ 配置方法: export HUMAN_CONFIRMATION_SECRET=$(openssl rand -hex 32)，或写入 .env
+[RenderingEngine] 无法加载现有渲染核心: Cannot find module './prompt-guardian'
+Require stack:
+- /private/var/folders/dj/mkh6fwbd4mb6ycp933xfty4h0000gn/T/wl-vendor-load-test-QT5cuE/[eval]
+[RenderingEngine] 将使用内置模拟模式
+⚠️ [confirmation-crypto] HUMAN_CONFIRMATION_SECRET 未设置
+ 人工确认环节将不可用（无法生成/验证签名），但系统其余功能正常
+ 配置方法: export HUMAN_CONFIRMATION_SECRET=$(openssl rand -hex 32)，或写入 .env
+
+ Test Files  18 passed (18)
+      Tests  1160 passed (1160)
+   Start at  23:28:00
+   Duration  26.71s (transform 1.58s, setup 0ms, import 3.30s, tests 22.16s, environment 1ms)
+

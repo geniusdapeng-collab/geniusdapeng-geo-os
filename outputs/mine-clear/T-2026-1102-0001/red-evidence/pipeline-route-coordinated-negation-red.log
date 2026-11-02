@@ -1,0 +1,413 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts (273 tests | 26 failed | 226 skipped) 10ms
+   ↓ 视频管线自动化分流 > 用户显式声明营销片 + 商品名 → 营销片，直接开工
+   ↓ 视频管线自动化分流 > 用户显式声明叙事片 → 通用管线
+   ↓ 视频管线自动化分流 > 「给X做一条种草视频」→ 营销片 + 从原文取到商品名
+   ↓ 视频管线自动化分流 > 强营销线索但没给商品名 → 澄清（缺商品锚点），不猜商品
+   ↓ 视频管线自动化分流 > 题材清晰的叙事需求 → 通用管线（不触发情报层）
+   ↓ 视频管线自动化分流 > 信息不足（「帮我做个视频」）→ 澄清路由，而不是默认营销片
+   ↓ 视频管线自动化分流 > metadata 带商品锚点 + 意图含糊 → 按营销片立项（要卖东西是硬信号）
+   ↓ 视频管线自动化分流 > 显式叙事优先于 metadata 商品锚点（用户口径最大）
+   ↓ 视频管线自动化分流 > 调用方显式指定 kind（补跑）→ 不重复询问，直接沿用
+   ↓ 视频管线自动化分流 > LLM 仲裁：规则摇摆时可采纳（带商品名，不需要再澄清）
+   ↓ 视频管线自动化分流 > LLM 仲裁：判 marketing 但不给商品 → 仍要澄清商品名
+   ↓ 视频管线自动化分流 > LLM 仲裁超时/异常 → 不升级为营销片，落回澄清
+   ↓ 视频管线自动化分流 > LLM 仲裁输出非法 JSON → 落回澄清（不静默采信）
+   ↓ 视频管线自动化分流 > 营销判定写入 metadata.dataMining（激活 vendor Layer -2 的数据契约）
+   ↓ 视频管线自动化分流 > 叙事判定显式清除 dataMining / brief.product（防情报层误触发）
+   ↓ 视频管线自动化分流 > 否定营销表述不误判（「不要营销腔」）
+   ↓ 视频管线自动化分流 > 商品名抽取只认显式声明（不做词频猜测）
+   ↓ 视频管线自动化分流 > metadata 商品锚点支持三种登记口径
+   ↓ 视频管线自动化分流 > 决策摘要可读（写事件/回执共用）
+   ↓ 视频管线自动化分流 > 分流指令不进入创作意图（真机：主题被解析成「走营销片」质量 0/5）
+   ↓ 视频管线自动化分流 > 需求口径块：时长/画幅/平台写进意图，供生成器与 G2 监制核对
+   ↓ 视频管线自动化分流 > 显式声明「走口播片」→ explainer（不跑情报、不问商品）
+   ↓ 视频管线自动化分流 > 口播/讲解线索严格领先 → explainer；卖货线索仍走 marketing
+   ↓ 视频管线自动化分流 > 口播线索与商品线索并存且不领先 → 不擅自换线（回到既有判定/澄清）
+   ↓ 视频管线自动化分流 > 澄清话术含第三条线的选项（用户能自己说「走口播片」）
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='narrative' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='narrative' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='explainer' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='marketing' chosen='explainer' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='marketing' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='marketing' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='explainer' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='narrative' chosen='explainer' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='marketing' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='marketing' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='narrative' reverse=false and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > resolves denied='explainer' chosen='narrative' reverse=true and applies the actual product activation boundary
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'marketing' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'narrative' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'explainer' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'marketing' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > never restores the excluded 'explainer' route through keywords or product metadata
+   ↓ MC-012 explicit negative route declarations > rejects a model arbitration result that contradicts an explicit route exclusion
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit marketing override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit narrative override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > retains the caller's explicit explainer override for a confirmed historical project
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit marketing declaration unchanged
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit narrative declaration unchanged
+   ↓ MC-012 explicit negative route declarations > keeps a positive explicit explainer declaration unchanged
+   ↓ MC-013 dispatched video duration defaults > adds the dispatch default only when the customer gave no duration expression
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条60秒的山间日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条 60 秒的山间日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条1分钟的故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条一分钟的故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条一分半钟的故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍一条半分钟的故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 60-second story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 1 minute story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 60s story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a 1min story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a one-minute story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a ninety second story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a half-hour story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a one and a half minute story
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for Create a story lasting an hour
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：0秒，拍日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：-30秒，拍日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 时长：未定，拍日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 拍日出故事，60秒或90秒
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 每镜5秒，拍日出故事
+   ↓ MC-013 dispatched video duration defaults > preserves the original duration expression without inventing a total for 片长不限，拍日出故事
+   ↓ MC-013 dispatched video duration defaults > keeps the existing explicitly structured duration contract
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='marketing' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='explainer' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='narrative' chosen='explainer' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='marketing' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='marketing' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '别选' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '不要选' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='narrative' reverse=false at actual activation boundaries
+   ↓ MC-012 common local negation grammar > handles '就不做了' for denied='explainer' chosen='narrative' reverse=true at actual activation boundaries
+   ↓ MC-012 common local negation grammar > clarifies a contradictory local route request: 别选营销片，但又走营销片
+   ↓ MC-012 common local negation grammar > clarifies a contradictory local route request: 走营销片，营销片就不做了
+   ↓ MC-012 describes an explainer decision with the actual third-pipeline label
+   ↓ MC-012 offers every route named in the route clarification question
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='marketing' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='marketing' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='marketing' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='marketing' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='narrative' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='narrative' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='narrative' chosen='explainer' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='narrative' chosen='explainer' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='explainer' chosen='marketing' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='explainer' chosen='marketing' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不想走' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不希望用' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不愿意做' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不打算选择' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不准备跑' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '不考虑使用' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没打算走' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '没有计划用' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='explainer' chosen='narrative' reverse=false without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > handles '无意采用' denied='explainer' chosen='narrative' reverse=true without activating an excluded pipeline
+   ↓ MC-012 finite local negation and modal grammar > clarifies double negation around marketing rather than inferring a paid route
+   ↓ MC-012 finite local negation and modal grammar > clarifies double negation around narrative rather than inferring a paid route
+   ↓ MC-012 finite local negation and modal grammar > clarifies double negation around explainer rather than inferring a paid route
+   ↓ MC-012 finite local negation and modal grammar > does not use a product anchor to override a locally negative but unsupported phrasing: 不乐意尝试营销片
+   ↓ MC-012 finite local negation and modal grammar > does not use a product anchor to override a locally negative but unsupported phrasing: 没兴趣选营销片
+   ↓ MC-012 finite local negation and modal grammar > does not use a product anchor to override a locally negative but unsupported phrasing: 无意愿做营销片
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 禁止走营销片 4ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 禁用营销片 1ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 无兴致选择营销片 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 非营销片 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不想走了 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不希望使用 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不考虑采用 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   × MC-012 bounded postposed and coordinated exclusions > clarifies ambiguous double negatives including postposed forms: 营销片不是不能走 0ms
+     → expected 'marketing' to be 'clarify' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > clarifies ambiguous double negatives including postposed forms: 不是不走营销片，走通用管线 0ms
+   ✓ MC-012 bounded postposed and coordinated exclusions > does not interpret an in-film audio restriction as a route exclusion: 营销片不要用旁白 0ms
+   ✓ MC-012 bounded postposed and coordinated exclusions > does not interpret an in-film audio restriction as a route exclusion: 营销片不需要配音 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'都不要' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'都不要' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'均不用' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'均不用' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'都不要' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'都不要' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'均不用' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'均不用' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'都不要' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'都不要' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'均不用' before choosing 'explainer' reverse=false 0ms
+     → expected 'marketing' to be 'explainer' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'均不用' before choosing 'explainer' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'都不要' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'都不要' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'均不用' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'均不用' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'都不要' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'都不要' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'均不用' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'均不用' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'都不要' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'都不要' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'均不用' before choosing 'narrative' reverse=false 0ms
+     → expected 'marketing' to be 'narrative' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'均不用' before choosing 'narrative' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'都不要' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'都不要' before choosing 'marketing' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'均不用' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'均不用' before choosing 'marketing' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'都不要' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'都不要' before choosing 'marketing' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'均不用' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'均不用' before choosing 'marketing' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'都不要' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'都不要' before choosing 'marketing' reverse=true 0ms
+   × MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'均不用' before choosing 'marketing' reverse=false 0ms
+     → expected 'narrative' to be 'marketing' // Object.is equality
+   ✓ MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'均不用' before choosing 'marketing' reverse=true 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 26 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 禁止走营销片
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 禁用营销片
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 无兴致选择营销片
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 非营销片
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不想走了
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不希望使用
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > honors clear local negative declaration: 营销片不考虑采用
+AssertionError: expected 'marketing' to be 'narrative' // Object.is equality
+
+Expected: "narrative"
+Received: "marketing"
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts:402:87
+    400|     "营销片不想走了", "营销片不希望使用", "营销片不考虑采用",
+    401|   ])("honors clear local negative declaration: %s", async negative => {
+    402|     expect((await routeVideoPipeline({ text: `${negative}，走通用管线`, meta…
+       |                                                                                       ^
+    403|   });
+    404| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > clarifies ambiguous double negatives including postposed forms: 营销片不是不能走
+AssertionError: expected 'marketing' to be 'clarify' // Object.is equality
+
+Expected: "clarify"
+Received: "marketing"
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts:406:66
+    404| 
+    405|   it.each(["营销片不是不能走", "不是不走营销片，走通用管线"])("clarifies ambiguous double n…
+    406|     expect((await routeVideoPipeline({ text, metadata })).route).toBe(…
+       |                                                                  ^
+    407|   });
+    408| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'都不要' before choosing 'explainer' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '和'/'均不用' before choosing 'explainer' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'都不要' before choosing 'explainer' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '及'/'均不用' before choosing 'explainer' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'都不要' before choosing 'explainer' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'narrative' ] group with '、'/'均不用' before choosing 'explainer' reverse=false
+AssertionError: expected 'marketing' to be 'explainer' // Object.is equality
+
+Expected: "explainer"
+Received: "marketing"
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts:427:30
+    425|       const clauses = [`${names[denied[0]]}${joiner}${names[denied[1]]…
+    426|       const decision = await routeVideoPipeline({ text: (reverse ? cla…
+    427|       expect(decision.route).toBe(chosen);
+       |                              ^
+    428|       const projected = applyRouteToMetadata(metadata, decision);
+    429|       expect(projected.pipelineRoute).toMatchObject({ kind: chosen });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'都不要' before choosing 'narrative' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '和'/'均不用' before choosing 'narrative' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'都不要' before choosing 'narrative' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '及'/'均不用' before choosing 'narrative' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'都不要' before choosing 'narrative' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'marketing', 'explainer' ] group with '、'/'均不用' before choosing 'narrative' reverse=false
+AssertionError: expected 'marketing' to be 'narrative' // Object.is equality
+
+Expected: "narrative"
+Received: "marketing"
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts:427:30
+    425|       const clauses = [`${names[denied[0]]}${joiner}${names[denied[1]]…
+    426|       const decision = await routeVideoPipeline({ text: (reverse ? cla…
+    427|       expect(decision.route).toBe(chosen);
+       |                              ^
+    428|       const projected = applyRouteToMetadata(metadata, decision);
+    429|       expect(projected.pipelineRoute).toMatchObject({ kind: chosen });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'都不要' before choosing 'marketing' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '和'/'均不用' before choosing 'marketing' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'都不要' before choosing 'marketing' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '及'/'均不用' before choosing 'marketing' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'都不要' before choosing 'marketing' reverse=false
+ FAIL  engines/video-edit/packages/video-studio/src/pipeline-router.test.ts > MC-012 bounded postposed and coordinated exclusions > excludes the whole [ 'narrative', 'explainer' ] group with '、'/'均不用' before choosing 'marketing' reverse=false
+AssertionError: expected 'narrative' to be 'marketing' // Object.is equality
+
+Expected: "marketing"
+Received: "narrative"
+
+ ❯ engines/video-edit/packages/video-studio/src/pipeline-router.test.ts:427:30
+    425|       const clauses = [`${names[denied[0]]}${joiner}${names[denied[1]]…
+    426|       const decision = await routeVideoPipeline({ text: (reverse ? cla…
+    427|       expect(decision.route).toBe(chosen);
+       |                              ^
+    428|       const projected = applyRouteToMetadata(metadata, decision);
+    429|       expect(projected.pipelineRoute).toMatchObject({ kind: chosen });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  26 failed | 21 passed | 226 skipped (273)
+   Start at  23:08:58
+   Duration  205ms (transform 68ms, setup 0ms, collect 72ms, tests 10ms, environment 0ms, prepare 32ms)
+

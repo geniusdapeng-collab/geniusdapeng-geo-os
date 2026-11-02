@@ -1,0 +1,228 @@
+{
+  "actor": "/root/general_audit",
+  "baseline": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "scope": "通用需求/G3合同/Studio编排/Phase3融合重点接缝及提交归档回执，非整个引擎或全部直接/传递依赖精读",
+  "full": [
+    {
+      "path": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "status": "A-full",
+      "lines": 799
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "status": "A-full",
+      "lines": 780
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "status": "A-full",
+      "lines": 971
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
+      "status": "A-full",
+      "lines": 921
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-retry-policy.ts",
+      "status": "A-full",
+      "lines": 58
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/narrative-prd-contract.ts",
+      "status": "A-full",
+      "lines": 289
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/duration-contract.ts",
+      "status": "A-full",
+      "lines": 18
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-runner.ts",
+      "status": "A-full",
+      "lines": 319
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-log.ts",
+      "status": "A-full",
+      "lines": 163
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-log.test.ts",
+      "status": "A-full",
+      "lines": 202
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/context-bundle.ts",
+      "status": "A-full",
+      "lines": 153
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/store.ts",
+      "status": "A-full",
+      "lines": 302
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/index.ts",
+      "status": "A-full",
+      "lines": 16
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/router.ts",
+      "status": "A-full",
+      "lines": 1953
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/render-poller.ts",
+      "status": "A-full",
+      "lines": 410
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/render-archive-receipt.test.ts",
+      "status": "A-full",
+      "lines": 66
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/gen/db.ts",
+      "status": "A-full",
+      "lines": 33
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/duration-submit.test.ts",
+      "status": "A-full",
+      "lines": 30
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
+      "status": "A-full",
+      "lines": 184
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "status": "A-full",
+      "lines": 107
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-requirement-entry.ts",
+      "status": "A-full",
+      "lines": 309
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
+      "status": "A-full",
+      "lines": 2226
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
+      "status": "A-full",
+      "lines": 1285
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/production-engine.js",
+      "status": "A-full",
+      "lines": 1825
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/prompt-fusion-agent.js",
+      "status": "A-full",
+      "lines": 2223
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/base-agent.js",
+      "status": "A-full",
+      "lines": 439
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/field-content-refiner.js",
+      "status": "A-full",
+      "lines": 741
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/agents/semantic-refinement-pass.js",
+      "status": "A-full",
+      "lines": 151
+    },
+    {
+      "path": "engines/video-edit/vendor/supermickey/hyperreality-system/engines/production-engine/phases/phase-3-5-field-quality.js",
+      "status": "A-full",
+      "lines": 86
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+      "status": "A-full",
+      "lines": 699
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.test.ts",
+      "status": "A-full",
+      "lines": 433
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
+      "status": "A-full",
+      "lines": 184
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "status": "A-full",
+      "lines": 535
+    }
+  ],
+  "partial": [
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "status": "C-partial",
+      "lines": 946,
+      "ranges": [
+        "部分输出被工具截断；未声称精读"
+      ]
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/archive-host.ts",
+      "status": "C-partial",
+      "lines": 312,
+      "ranges": [
+        "1-220"
+      ]
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/trpc/router.ts",
+      "status": "C-partial",
+      "lines": 4136,
+      "ranges": [
+        "1240-1405; 仅threads.dispatch视频分支及相邻事务/错误路径"
+      ]
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "status": "C-partial",
+      "lines": 1753,
+      "ranges": [
+        "550-640",
+        "1650-1753; 仅rawIntent与标准建档/启动转交链路"
+      ]
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+      "status": "C-partial",
+      "lines": 1704,
+      "ranges": [
+        "295-385",
+        "1190-1310",
+        "final full product diff for MC001/005; rest covered by governance agent, not this role"
+      ]
+    }
+  ],
+  "unread": [
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "status": "unread-by-this-agent",
+      "lines": 1401
+    }
+  ],
+  "excluded": [
+    "渲染执行后媒体质量与后期剪辑（仅完整读取render-poller用于提交证据消费者修复，未扩展为完整渲染后审计）",
+    "其余vendor多层创作Agent及电影技能正文，需由父代理汇总整体覆盖率，不可把本清单写成全引擎精读"
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "auditBaseline": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "finalSourceCommit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "note": "Historical failing assertions and isolated counterexamples, captured before the associated fix or with temporary exact-byte reversion. These are red diagnostics, not current failing tests or production model runs.",
+  "entries": [
+    {
+      "card": "MC-001",
+      "path": "red-evidence/command-replay-red.txt",
+      "sha256": "16edb6ab01c5b56c0bbd73a99d58a71dfb28534f7ef2808054dac6d2f388bae3",
+      "bytes": 37942
+    },
+    {
+      "card": "MC-002",
+      "path": "red-evidence/general-MC-002-red.log",
+      "sha256": "d6921c737bd44082b6fc4ab61579d1bad047805ee47ec780c1175f401df6c837",
+      "bytes": 14487
+    },
+    {
+      "card": "MC-003",
+      "path": "red-evidence/marketing-red.log",
+      "sha256": "c9e55cb9e78684004186142dfa2385825b32fd20e2073636ceef64ccb034f5ad",
+      "bytes": 28313
+    },
+    {
+      "card": "MC-003",
+      "path": "red-evidence/marketing-independent-red.log",
+      "sha256": "2205e1b98c4ace64fd9bc68b110f9e47c5a0a22c5909a54e8f00ae8ecad4fcf7",
+      "bytes": 11100
+    },
+    {
+      "card": "MC-003",
+      "path": "red-evidence/marketing-custom-direction-red.log",
+      "sha256": "7c3af2b69e684dbf764c816417610c8469e4b88a886accdf4e7c3b71d6b6a162",
+      "bytes": 3546
+    },
+    {
+      "card": "MC-003",
+      "path": "red-evidence/marketing-audio-direction-red.log",
+      "sha256": "911d712168489602fee2204eb8c8a50aa7ed25fe4a2b52690db84b48218f49d4",
+      "bytes": 8801
+    },
+    {
+      "card": "MC-004",
+      "path": "red-evidence/marketing-license-red.log",
+      "sha256": "0a3680de9a21e04bdad0126bdffe2de6c9f7a1738f3e20ce94b769f146b62e84",
+      "bytes": 10796
+    },
+    {
+      "card": "MC-005",
+      "path": "red-evidence/frontier-red.log",
+      "sha256": "07679299de84b5b998bbdbb95831d185849c40ba49a52a3fd401151c613ac3d3",
+      "bytes": 3166
+    },
+    {
+      "card": "MC-006",
+      "path": "red-evidence/general-MC-006-red.log",
+      "sha256": "4ce25528ba65021cf638b713858639fef28c116607e079053c9e115c36946790",
+      "bytes": 3583
+    },
+    {
+      "card": "MC-006",
+      "path": "red-evidence/general-MC-006-tail-red.log",
+      "sha256": "a7823c640a28d9fe8591a378ced1d9392ead418f0aecc981991f7c0e0c39b0d1",
+      "bytes": 4657
+    },
+    {
+      "card": "MC-007",
+      "path": "red-evidence/marketing-search-red.log",
+      "sha256": "e54c4c4f6e842ad6fe68c5385d40ca144397c2f95e71c10c18854b502858d70d",
+      "bytes": 8138
+    },
+    {
+      "card": "MC-008",
+      "path": "red-evidence/general-MC-008-red.log",
+      "sha256": "6c6b11d5c2b1512d5503eaf31a24257f09b6e1e56f17241f173244fe143fd562",
+      "bytes": 44013
+    },
+    {
+      "card": "MC-009",
+      "path": "red-evidence/general-MC-009-red.log",
+      "sha256": "3c570e22a731496742f58e57557e0583962a9f11068b1b7fa9967e8664e05833",
+      "bytes": 8819
+    },
+    {
+      "card": "MC-009",
+      "path": "red-evidence/independent-fusion-native-fields-counterexample.log",
+      "sha256": "ad2a48e0f2aea3171d8ce7f2fb11420180dba87855a4f6b2fa20801456cf49af",
+      "bytes": 2369
+    },
+    {
+      "card": "MC-009",
+      "path": "red-evidence/general-MC-009-flag-red.log",
+      "sha256": "66c563f4f0904ec0309556f6d0f630d1d78006bbbb7160cfa5af3facfbb9f334",
+      "bytes": 7492
+    },
+    {
+      "card": "MC-010",
+      "path": "red-evidence/marketing-content-duration-red.log",
+      "sha256": "72846137ca86a761c8509f219b703a3be180cfbc80a150e44e37fbbf9b670780",
+      "bytes": 38893
+    },
+    {
+      "card": "MC-010",
+      "path": "red-evidence/studio-content-wiring-red.log",
+      "sha256": "a768931b36e7722c96854fab6a25cc1397fe7316f3178179003ba11686f53268",
+      "bytes": 1571
+    },
+    {
+      "card": "MC-012",
+      "path": "red-evidence/pipeline-route-negation-red.log",
+      "sha256": "2282bbfe990388031dfdfa83f57acd3f972cded851cb97594238fd02a45b6148",
+      "bytes": 17095
+    },
+    {
+      "card": "MC-012",
+      "path": "red-evidence/pipeline-route-local-negation-red.log",
+      "sha256": "19f3a99c83a4f424c187a70b28b297455dc51301331ed947d4bae644e4ab8ced",
+      "bytes": 23229
+    },
+    {
+      "card": "MC-012",
+      "path": "red-evidence/pipeline-route-projection-red.log",
+      "sha256": "3cb45ccf27ca794eae82d01967841176ec7f55de8d43593f2046334d489cf0a6",
+      "bytes": 14648
+    },
+    {
+      "card": "MC-012",
+      "path": "red-evidence/pipeline-route-modal-negation-red.log",
+      "sha256": "d96cd850590a06334f8893c64a479e71808c90b2f7bd07159494ae6ed5df7c66",
+      "bytes": 61238
+    },
+    {
+      "card": "MC-012",
+      "path": "red-evidence/pipeline-route-coordinated-negation-red.log",
+      "sha256": "cb2682d5728b3acf3722435b34a71cfe2b2124b4b9b673836f688887933116b2",
+      "bytes": 54927
+    },
+    {
+      "card": "MC-013",
+      "path": "red-evidence/general-MC-013-red.log",
+      "sha256": "18151d2e76c54519ab7e00c3e42bd77cd68034062539425a41cf58fa03424eed",
+      "bytes": 16442
+    },
+    {
+      "card": "MC-013",
+      "path": "red-evidence/general-MC-013-studio-start-red.log",
+      "sha256": "f6a219c1f68fd32b7c6c0de663923d04bd3c01381e8073cc7290856db40137e2",
+      "bytes": 17544
+    }
+  ],
+  "historicalFirstSourceCommit": "35743d90898d41f08800ec47d1935a581336bcd3"
+}
