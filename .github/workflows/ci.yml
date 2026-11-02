@@ -13,13 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     services:
       pipeline-postgres:
-        image: postgres:17
+        image: pgvector/pgvector:0.8.7-pg17-bookworm
         env:
           POSTGRES_PASSWORD: pipeline_ci_fixture
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
