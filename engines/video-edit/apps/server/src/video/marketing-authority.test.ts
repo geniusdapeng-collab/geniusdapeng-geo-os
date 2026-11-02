@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, supportReviewFacts, type PreparedMarketingFacts } from "./marketing-authority.js";
+import { extractProductVisualAuthority } from "@hyperreality/video-studio";
 import { fetchMarketingSource, requestSource } from "./marketing-source-fetcher.js";
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
 const scope = { tenantId: "tenant-a", workspaceId: "ws-a", projectId: "P1", runId: "RUN1", attempt: 1 };
@@ -58,13 +59,14 @@ afterEach(async () => { vi.unstubAllGlobals(); await rm(root, { recursive: true,
 async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?: boolean; modelFailure?: boolean; mode?: string; attempt?: number; specs?: Record<string, string | number | boolean>; quoteIds?: boolean;
   citationFault?: "metadata" | "duplicate" | "missing" | "persistent" | "changed-payload" | "repair-quote" | "repair-source" | "repair-model-failure";
   imageExtras?: boolean;
+  intent?: string;
   imageMetadata?: "complete" | "no-source" | "no-angle" | "minimal";
   syntheticTokenCharge?: number;
   absoluteSellingPoint?: boolean;
   conflictingBrand?: string;
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
-  return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
+  return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: options.intent ?? "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
     llm: { reason: async (prompt, llmOptions) => {
       extractionOptions.push(llmOptions);
       extractionCalls.push(prompt); if (options.modelFailure) return { success: false, error: "LLM unavailable" };
@@ -418,4 +420,14 @@ describe("营销事实宿主完整执行", () => {
     if (kind === "source-final-url-changed") evidence.sources[0]!.finalUrl = "https://forged.example.com/spec";
     expect(() => toJennyMarketingRaw(raw, evidence)).toThrow(/MARKETING_(FACTS_CHANGED|SPEC_UNVERIFIED|SOURCE_INVALID)/);
   });
+});
+
+
+it("MC-011 records the current unresolved image requirement for an explicitly abstract text-only dossier", async () => {
+  const prepared = await prepare({ intent: "全片无人，仅使用抽象界面和示意图，不展示产品外观，不使用商品图片" });
+  expect(prepared.bundle.rawByAgent.A1.images).toEqual([]);
+  expect(prepared.bundle.dossier.visual_assets).toMatchObject({ images: [], needs_more_reference: true });
+  // Known design limitation: the proposed abstract/no-appearance mode is not
+  // implemented here; a missing image must not silently grant appearance rights.
+  expect(() => extractProductVisualAuthority(prepared.g1Content)).toThrow("PRODUCT_VISUAL_AUTHORITY_REQUIRED");
 });

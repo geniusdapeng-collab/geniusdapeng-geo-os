@@ -618,6 +618,58 @@ async function callConvert(vendor: object, d: unknown, meta: RequirementRecord):
 }
 
 describe("real discovery code with isolated fake LLM", () => {
+  it("reconciles duration within the actual SceneArchitect bounds instead of exceeding the opening maximum", async () => {
+    const Vendor = vendorClass(); install(Vendor);
+    const meta = metadata(), scene = structure();
+    requirementRecord(scene.opening, "opening").duration = 15;
+    requirementRecord((scene.scenes as RequirementRecord[])[0], "middle").duration = 11;
+    requirementRecord(scene.ending, "ending").duration = 3;
+    scene.totalDuration = 29;
+    const model = fakeModel(scene), engine = new RequirementDiscoveryEngine({ llmEngine: model.fake, timeoutMs: 1000, agentTimeoutMs: 100 });
+    let schema: unknown;
+    const agent = requirementRecord(requirementRecord(engine.agents, "agents").scene, "scene"), run = agent.run as (...args: unknown[]) => unknown;
+    agent.run = function (this: RequirementRecord, input: unknown, value: unknown) { schema = structuredClone(value); return Reflect.apply(run, this, [input, value]); };
+    await withRequirementContractScope(meta, async () => {
+      const result = await (engine.discover as (value: unknown) => Promise<RequirementRecord>)(upstream);
+      await callConvert(new Vendor(), result, meta);
+      expect(() => validateRequirementSchema(result.sceneStructure, schema)).not.toThrow();
+      expect(requirementRecord(requirementRecord(result.sceneStructure, "structure").opening, "opening").duration).toBe(15);
+      expect((requirementRecord(result.sceneStructure, "structure").scenes as RequirementRecord[])[0]!.duration).toBe(12);
+    });
+  });
+
+  it("rejects a duration projection with no feasible node durations without changing the accepted source", async () => {
+    const Vendor = vendorClass(); install(Vendor);
+    const meta = metadata(), scene = structure();
+    const middle = (scene.scenes as RequirementRecord[])[0]!;
+    scene.scenes = Array.from({ length: 5 }, (_, index) => ({ ...structuredClone(middle), index: index + 1, duration: 5 }));
+    requirementRecord(scene.opening, "opening").duration = 3;
+    requirementRecord(scene.ending, "ending").duration = 3;
+    scene.totalDuration = 31; scene.sceneCount = 7;
+    const model = fakeModel(scene), engine = new RequirementDiscoveryEngine({ llmEngine: model.fake, timeoutMs: 1000, agentTimeoutMs: 100 });
+    await withRequirementContractScope(meta, async () => {
+      const result = await (engine.discover as (value: unknown) => Promise<RequirementRecord>)(upstream);
+      const source = structuredClone(result.sceneStructure);
+      await expect(callConvert(new Vendor(), result, meta)).rejects.toMatchObject({ code: "REQUIREMENT_SCENE_UNVERIFIED" });
+      expect(result.sceneStructure).toEqual(source);
+      expect(meta._workloomRequirementContract).toBeUndefined();
+    });
+  });
+  it.each(["builtin", "none"])("renders the accepted narrative G3 contract for %s casting without marketing authority", async mode => {
+    const Vendor = vendorClass(); install(Vendor);
+    const vendor = new Vendor(), meta = mode === "builtin" ? metadata() : nobody();
+    meta.pipelineRoute = { kind: "narrative" };
+    const d = discovery(mode === "builtin" ? "young-rider-01" : "$scene");
+    await withRequirementContractScope(meta, async () => {
+      const list = await callConvert(vendor, d, meta);
+      const render = requirementRecord(vendor, "vendor")._renderRequirementContract as (...args: unknown[]) => string;
+      const markdown = render.call(vendor, upstream, meta, list, d);
+      expect(markdown).toContain("角色（" + (mode === "builtin" ? "1" : "0") + "）");
+      expect(markdown).toContain("开场保留完整的可拍行为和观察目的。");
+      expect(markdown).not.toContain("宿主权威交付与事实边界");
+      expect(markdown).not.toContain("场景级 policyTags 与配比预算");
+    });
+  });
   it("aborts the underlying discovery request at the native agent deadline", async () => {
     let signal: AbortSignal | undefined;
     const engine = new RequirementDiscoveryEngine({

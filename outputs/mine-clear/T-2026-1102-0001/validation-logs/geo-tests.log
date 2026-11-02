@@ -1,0 +1,22 @@
+✔ future front desk case builds exactly 100 unique queries (1.408792ms)
+✔ ambiguous short brand alias is not counted without context (0.644042ms)
+✔ full brand name negative claim is attributed to brand (0.519459ms)
+✔ generic industry negative does not become brand negative (0.086792ms)
+✔ uncertainty or absence of complaint evidence is not brand negative (0.092458ms)
+✔ missing reliability evidence is not treated as a direct negative claim (0.100125ms)
+✔ citation parser extracts markdown and bare domains (0.172ms)
+✔ metrics use successful samples and brand-mentioned denominator for negative rate (0.61075ms)
+✔ 100-query fixture run reaches evidence, negative incident and publication (79.072833ms)
+✔ HTTP API serves health, summary and fixtures securely on loopback (28.79975ms)
+✔ in-process GEO tool bridge exposes declared tools with receipts (10.199291ms)
+✔ integrated personal GEO engine seeds queries and produces a 100-sample fixture run (57.662375ms)
+✔ integrated video media engine reports bundled capabilities (57.702625ms)
+✔ video post arguments preserve the requested cover title and hook (0.209667ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.514375

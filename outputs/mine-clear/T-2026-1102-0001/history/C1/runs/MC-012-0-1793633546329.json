@@ -1,0 +1,42 @@
+{
+  "schema": "workloom.evidence-run/v1",
+  "id": "MC-012-0-1793633546329",
+  "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+  "exec": {
+    "file": "node",
+    "args": [
+      "engines/video-edit/node_modules/vitest/vitest.mjs",
+      "run",
+      "--root",
+      "engines/video-edit/",
+      "--maxWorkers=1",
+      "--no-file-parallelism",
+      "packages/video-studio/src/pipeline-router.test.ts",
+      "apps/server/src/video/studio-start.test.ts"
+    ]
+  },
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "subject": {
+    "card_id": "MC-012",
+    "assertion_index": 0
+  },
+  "commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+  "working_tree_dirty": false,
+  "started_at": "2026-11-02T15:32:26.329Z",
+  "finished_at": "2026-11-02T15:32:28.140Z",
+  "exit_code": 0,
+  "signal": null,
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "result": "pass",
+  "outputs": [
+    {
+      "path": "evidence/MC-012-0-1793633546329.txt",
+      "sha256": "c0e4275640bcf7b6de07215b1b4600208e2f88dfe6839093f5d9b757fc4b2e18",
+      "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+    }
+  ]
+}

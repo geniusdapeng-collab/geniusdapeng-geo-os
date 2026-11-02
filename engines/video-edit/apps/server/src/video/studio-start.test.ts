@@ -106,6 +106,20 @@ describe.each(branches)("studio.start %s project duration", branch => {
     expect(workerInput(branch).intent).toContain("[需求口径] 时长：30秒");
   });
 
+  it.each([
+    "拍一条60秒的山间日出故事", "拍一条一分钟的山间日出故事",
+    "Create a one-minute story", "每镜5秒，拍一条山间日出故事",
+  ])("does not turn an omitted brief duration into a conflicting total for %s", async raw => {
+    const request = { ...input(branch, undefined, "narrative"), intent: raw };
+    const result = await caller().start(request);
+    expect(result).toMatchObject({ kind: "routed", pipeline: "narrative", runId: `RUN-${branch}` });
+    const passed = workerInput(branch);
+    expect(passed.rawIntent).toBe(raw);
+    expect(passed.intent).toBe(`${raw}\n[需求口径] 平台：douyin`);
+    expect(passed.metadata.brief).toBeUndefined();
+    expect(d.routeLlm).not.toHaveBeenCalled();
+  });
+
   it.each([null, false, true, [], {}, 0, -1, 4.999, 180.001, NaN, Infinity, -Infinity,
     "", " 35", "35 ", "35s", "3.5e1", "0x23"].map(value => [value]))("rejects explicit invalid duration %j before routing or any business side effect", async duration => {
     await expect(caller().start(input(branch, { brief: { duration } }))).rejects.toMatchObject({

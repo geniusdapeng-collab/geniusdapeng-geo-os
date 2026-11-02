@@ -1,0 +1,22 @@
+[
+  {
+    "id": "INV-1",
+    "text": "秘密不得写入仓库、日志、测试或截图。",
+    "source": "AGENTS.md#Required-boundaries"
+  },
+  {
+    "id": "INV-2",
+    "text": "测试夹具、本地文件、HTTP200不作为真实供应商或平台发布成功。",
+    "source": "AGENTS.md#Required-boundaries"
+  },
+  {
+    "id": "INV-3",
+    "text": "付费视频提交必须保持原生作用域、围栏、预算、审批与不可变回执；不因归档失败重新付费。",
+    "source": "docs/AI-AGENT-GUIDE.md#9"
+  },
+  {
+    "id": "INV-4",
+    "text": "人工搭桥须服务端同细分环节至少三次失败且无未知外部结果，不得替代正式事实与渲染回执。",
+    "source": "docs/AI-AGENT-GUIDE.md#9.1"
+  }
+]

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "pengmanager.video-audit-review-receipt/v1",
+  "actor": "/root/general_audit",
+  "baseline": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+  "cards": [
+    "MC-001",
+    "MC-002",
+    "MC-005",
+    "MC-006",
+    "MC-008",
+    "MC-009",
+    "MC-013"
+  ],
+  "status": "no-additional-blocker-found-in-reviewed-diff",
+  "sourceFrozen": true,
+  "coverageManifest": "work/general-read.json",
+  "reviewNotes": [
+    "MC001/005 full changed hunks plus command replay/refreshFrontier implementations read locally; remaining repository implementation is C for this role and independently A by governance.",
+    "MC002 narrative metadata fallback reviewed; absence of marketing authority no longer dereferenced.",
+    "MC006 claim/file/terminal errors return unverified recovery evidence and do not publish file done before PG receipt; render consumers report reconciliation without retrying paid actions.",
+    "MC008 projection obeys actual SceneArchitect schema bounds, validates candidate before mutation, fails if infeasible.",
+    "MC009 explicit per-shot degraded:true now rejected; recovery needs a current explicit false result, aggregate failed0 alone cannot clear old/unknown flags.",
+    "MC013 raw-duration presence protection covers dispatch and both actual studio.start callers; omitted duration remains undefined until default policy, explicit35 semantics preserved.",
+    "build-inventory.mjs read completely; partial maps C, tests-executed-only maps B. trpc/router.ts remains C with no full declaration. rootFull A relies on root declaration; unread0 applies only to declared enumeration envelope.",
+    "No newly added TODO/FIXME/skip/only/empty catch placeholder found in reviewed product diffs; check is B machine evidence."
+  ],
+  "verification": {
+    "MC013": "work/general-MC-013-studio-start-green.log 355 pass; server tsc0",
+    "MC009": "work/general-MC-009-flag-green.log 42 pass; video-studio tsc0",
+    "MC009IndependentFullNativePositive": "work/independent-native-fusion-flag.log supplied by independent reviewer, actual native fusion clears old input flag",
+    "testsNotRepeated": "Previously green full repository/native suites not repeated by this role"
+  },
+  "limitations": [
+    "No paid model/provider calls, rendering or deployed runtime verification.",
+    "No full transitive code audit claim; trpc/router.ts and this role pipeline-repository.ts are partial reads."
+  ],
+  "files": [
+    {
+      "path": "engines/video-edit/apps/server/src/video/pipeline/pipeline-repository.ts",
+      "sha256": "a1296bc9900c489ad4fbabbdbc01f82cf187da71d0587088ca01eb3cece5cfdb"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "sha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "sha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/archive/stage-log.ts",
+      "sha256": "832861998296463d0a18cac21e9a8c304b7e5477110cfc485ffe656a75028b30"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/render-poller.ts",
+      "sha256": "9695f47f3c9dde50bf61ee39be5c69dfeff87a25c0bfb9ccc854abaabc1166c4"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/router.ts",
+      "sha256": "c546da4ed32c13977c88cda30c91df15d89abc5d1c8ef4d201ea4e0e5232abc2"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.ts",
+      "sha256": "88bdb3d5170242e5b29c0ae417478ed9a002998f87f029e9ee7c4b7dedd0ec3b"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "sha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+      "sha256": "3a8285e1f4580082a43ea060c3830998e3a66693b18645da0e25266f13d11f6d"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/trpc/router.ts",
+      "sha256": "e6c52188aaab3dd93add44e77c90de902e58c23911041b0063d5c18244184912"
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
+      "sha256": "203d70b366d2e060bca7f60c81388f6f4a4f7f89077d219ebf1a0ece1643c4c1"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
+      "sha256": "4ca9c5817d351863083aaee729ba0e294a73606ca9e409b2b9c8dbb7e87a42a7"
+    }
+  ]
+}

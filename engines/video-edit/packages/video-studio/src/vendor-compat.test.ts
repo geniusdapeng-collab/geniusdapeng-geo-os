@@ -757,6 +757,110 @@ ${body}
 }
 
 describe("Phase3 宿主融合桥（C1）", () => {
+  it("MC009 explicit per-shot degraded flag cannot be cleared by a successful native process summary", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+let attempts = 0;
+agent._callLLM = async () => { throw new Error("No external model allowed"); };
+agent._fuseSingleShotWithDeadline = async shot => {
+ attempts++;
+ return { ...shot, prompt: "【场景】规则生成的表盘微距，固定机位。", degraded: true };
+};
+const phase = makePhase(); phase.agents.promptFusion = agent;
+let code = null, success = false;
+try { success = (await phase.execute(makeState())).success; } catch (e) { code = e.code; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ attempts, code, success, checkpoints: counters.checkpoints }));
+`));
+    expect(result).toEqual({ attempts: 1, code: "PHASE3_FUSION_UNVERIFIED", success: false, checkpoints: 0 });
+  }, 90_000);
+
+  it("真实 process 的首次失败重试成功按最终结果通过，保留原生失败计数", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+let attempts = 0;
+agent._fuseSingleShotWithDeadline = async shot => {
+ attempts++;
+ if (attempts === 1) throw new Error("fixture transient failure");
+ return { ...shot, prompt: "【场景】手表表盘微距，固定机位观察材质。", degraded: false, degradeReason: null };
+};
+const phase = makePhase(); phase.agents.promptFusion = agent;
+let output = null, error = null;
+try { output = await phase.execute(makeState()); } catch (e) { error = e.code; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ attempts, success: output?.success ?? false, error,
+ stats: output?.result.llmStats.promptFusion.stats ?? null,
+ nativeStats: output?.result.llmStats.promptFusion.nativeStats ?? null,
+ recoveredFailures: output?.result.llmStats.promptFusion.recoveredFailures ?? null }));
+`));
+    expect(result).toMatchObject({ attempts: 2, success: true, error: null,
+      stats: { total: 1, failed: 0, success: 1 }, nativeStats: { total: 1, failed: 1, success: 0 }, recoveredFailures: 1 });
+  }, 90_000);
+
+  it("主调用、快速重试和补全均失败后，existing-fields 的非降级自标不得冒充真实恢复", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+let attempts = 0;
+agent._callLLM = async () => { throw new Error("No external model allowed"); };
+agent._fuseSingleShotWithDeadline = async () => { attempts++; throw new Error("fixture permanent failure"); };
+agent._fillMissingFieldsWithRetry = async () => { throw new Error("fixture fill failure"); };
+agent._extractFieldsFromShot = () => ({ scene: "手表商品表盘微距，固定机位观察材质。" });
+const phase = makePhase(); phase.agents.promptFusion = agent;
+let code = null, success = false;
+try { success = (await phase.execute(makeState())).success; } catch (e) { code = e.code; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ attempts, code, success, checkpoints: counters.checkpoints }));
+`));
+    expect(result).toEqual({ attempts: 2, code: "PHASE3_FUSION_UNVERIFIED", success: false, checkpoints: 0 });
+  }, 90_000);
+
+  it("聚合失败不得用空包、重复/错误ID、缺终态标记或隐藏错误冒充已恢复", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const good = { shotId: "SC-01", prompt: "【场景】实际模型完成的表盘微距。", degraded: false };
+const cases = [[], [{ ...good, shotId: "OTHER" }], [{ ...good, degraded: undefined }],
+ [{ ...good, degradeReason: "", error: "provider unverified" }], [good, { ...good }]];
+const errors = [];
+for (const output of cases) {
+ const state = makeState();
+ if (output.length === 2) state.shots.push({ ...state.shots[0], shotId: "SC-02" });
+ try { await makePhase({ process: async () => ({ shots: output, degraded: true,
+  stats: { total: state.shots.length, failed: 1, success: state.shots.length - 1 } }) }).execute(state); }
+ catch (e) { errors.push(e.code); }
+}
+uninstall();
+console.log("RESULT " + JSON.stringify({ errors, checkpoints: counters.checkpoints }));
+`));
+    expect(result.errors).toEqual(Array(5).fill("PHASE3_FUSION_UNVERIFIED"));
+    expect(result.checkpoints).toBe(0);
+  }, 90_000);
+
+  it("真实 process 重试后仍失败时拒绝规则兜底，degradeReason 原生拼写也不会漏过", () => {
+    const result = runInChild(phase3Fixture(`
+const uninstall = installVendorPhase3FusionBridge();
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+let attempts = 0;
+agent._fuseSingleShotWithDeadline = async () => { attempts++; throw new Error("fixture permanent failure"); };
+agent._fillMissingFieldsWithRetry = async () => { throw new Error("fixture fill failure"); };
+agent._extractFieldsFromShot = () => ({});
+agent._fallbackSingleShot = shot => ({ ...shot, prompt: "【场景】规则回填。", degraded: true, degradeReason: "native rule fallback" });
+const phase = makePhase(); phase.agents.promptFusion = agent;
+let code = null;
+try { await phase.execute(makeState()); } catch (e) { code = e.code; }
+let fieldFallbackCode = null;
+try { await makePhase({ process: async shots => ({
+ shots: shots.map(shot => ({ ...shot, prompt: "【场景】有文本但字段采用规则补齐。", degraded: true, degradeReason: "部分字段规则补齐" })),
+ degraded: false, stats: { total: 1, failed: 0, success: 1 }
+}) }).execute(makeState()); } catch (e) { fieldFallbackCode = e.code; }
+uninstall();
+console.log("RESULT " + JSON.stringify({ attempts, code, fieldFallbackCode, checkpoints: counters.checkpoints }));
+`));
+    expect(result).toMatchObject({ attempts: 2, code: "PHASE3_FUSION_UNVERIFIED", fieldFallbackCode: "PHASE3_FUSION_UNVERIFIED", checkpoints: 0 });
+  }, 90_000);
+
   it("原 const 重赋坏例被修复：真实 Phase3 完成融合、字段合并、台词检查与 checkpoint", () => {
     const result = runInChild(phase3Fixture(`
 const before = await makePhase().execute(makeState());
@@ -858,22 +962,35 @@ console.log("RESULT " + JSON.stringify({ error }));
     expect(String((result.error as Record<string, unknown>).message)).toContain("prompt=missing");
   }, 90_000);
 
-  it("区分继承的孤立 degraded 布尔值和带字段证据的真降级", () => {
+  it("旧 degraded 标记只由本次原生融合明确非降级结果清除，继承自标不能作为成功证据", () => {
     const result = runInChild(phase3Fixture(`
 const uninstall = installVendorPhase3FusionBridge();
-const inherited = await makePhase({ process: async shots => {
+let inheritedError = null;
+try { await makePhase({ process: async shots => {
  counters.fusion++;
  return { shots: shots.map(s => ({ ...s, prompt: "【场景】合法完整提示词。", degraded: true })), degraded: false, stats: { failed: 0, total: 1 } };
-} }).execute(makeState({ degraded: true }));
+} }).execute(makeState({ degraded: true })); } catch (e) { inheritedError = e.code; }
+const agent = new PromptFusionAgent({ semanticRefinement: false });
+agent._callLLM = async () => { throw new Error("No external model allowed"); };
+let recoveredAttempts = 0;
+agent._fuseSingleShotWithDeadline = async shot => {
+ recoveredAttempts++;
+ return { ...shot, prompt: "【场景】本次真实融合的完整表盘微距提示词。", degraded: false, degradeReason: null };
+};
+const recoveredPhase = makePhase(); recoveredPhase.agents.promptFusion = agent;
+const recovered = await recoveredPhase.execute(makeState({ degraded: true }));
 let explicitError = null;
 try { await makePhase({ process: async shots => {
  counters.fusion++;
  return { shots: shots.map(s => ({ ...s, prompt: "【场景】合法完整提示词。", degraded: true, degradedFields: ["scene"] })), degraded: false, stats: { failed: 0, total: 1 } };
 } }).execute(makeState()); } catch (e) { explicitError = e.message; }
 uninstall();
-console.log("RESULT " + JSON.stringify({ inheritedSuccess: inherited.success, inheritedDegraded: inherited.shots[0].degraded, explicitError }));
+console.log("RESULT " + JSON.stringify({ inheritedError, recoveredAttempts,
+ recoveredSuccess: recovered.success, recoveredDegraded: recovered.shots[0].degraded,
+ explicitError, checkpoints: counters.checkpoints }));
 `));
-    expect(result).toMatchObject({ inheritedSuccess: true, inheritedDegraded: false });
+    expect(result).toMatchObject({ inheritedError: "PHASE3_FUSION_UNVERIFIED", recoveredAttempts: 1,
+      recoveredSuccess: true, recoveredDegraded: false, checkpoints: 1 });
     expect(String(result.explicitError)).toContain("explicitDegradation=true");
   }, 90_000);
 

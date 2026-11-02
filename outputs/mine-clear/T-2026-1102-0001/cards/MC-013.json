@@ -1,0 +1,52 @@
+{
+  "id": "MC-013",
+  "kind": "problem",
+  "level": "L2",
+  "severity": "P1",
+  "batch": 2,
+  "state": "open",
+  "title": "派活默认时长覆盖客户原文的明确时间要求",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-studio/src/pipeline-router.ts:612@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "sha256": "670bcd4409a265ae887bb9b1203537c12e1f12b30e822f2fb92698d99555f012",
+      "note": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+    "line": 612,
+    "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+    "symbol": "buildPipelineIntent"
+  },
+  "trigger_path": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。 studio.start new/existing callers also supplied the omitted field as an explicit 30-second duration.",
+  "fix_plan": "显式profile时长与系统defaultDurationSec区分；只有原文没有时间要求时追加默认；已有/非法/冲突表达保留来源不替用户猜值。 studio.start keeps omitted brief.duration undefined and passes defaultDurationSec separately in both caller branches.",
+  "regression": {
+    "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+    "expect": "客户明确秒/分钟/中文/非法与冲突时间要求不被30秒默认覆盖；未指定仍默认；结构化明确profile语义不变。 New and existing studio.start projects with omitted metadata preserve raw 60-second, one-minute and per-shot expressions."
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "threads.dispatch对60秒/1分钟等原文仍注入需求口径30秒；rawIntent虽然保留但模型同时看到冲突时长。 studio.start new/existing callers also supplied the omitted field as an explicit 30-second duration.",
+      "expect": "客户明确秒/分钟/中文/非法与冲突时间要求不被30秒默认覆盖；未指定仍默认；结构化明确profile语义不变。 New and existing studio.start projects with omitted metadata preserve raw 60-second, one-minute and per-shot expressions.",
+      "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/pipeline-router.test.ts apps/server/src/video/studio-start.test.ts",
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/pipeline-router.test.ts",
+          "apps/server/src/video/studio-start.test.ts"
+        ]
+      },
+      "last_result": "not-run"
+    }
+  ],
+  "notes": "入口函数全文与实际路由回归；dispatch总路由文件只做目标视频段精读，不声称其他业务已审计。MC-011另为待对齐视觉模式设计观察，不在此缺陷修复台账中假记为已修。"
+}

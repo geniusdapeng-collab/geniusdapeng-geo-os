@@ -411,6 +411,10 @@ export function createWebSearch(options: {
       }
     }
 
+    // Missing, empty or expired booked evidence is still fixture-only. Never
+    // turn a deterministic pressure run into an online (possibly paid) lookup.
+    if (options.fixtureOnly) return merged.slice(0, limit);
+
     // ② 线上引擎（逐引擎降级；命中足够即停）
     for (const provider of providers) {
       if (merged.length >= limit) break;

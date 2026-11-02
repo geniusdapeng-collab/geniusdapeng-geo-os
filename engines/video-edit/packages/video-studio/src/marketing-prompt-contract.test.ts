@@ -3,11 +3,12 @@ import {
   buildMarketingPreproductionReport,
   isAbstractMarketingIntent,
   marketingVisibleTextFromG1,
+  normalizeMarketingPromptList,
   normalizeMarketingPromptResult,
   normalizeMarketingPromptText,
 } from "./marketing-prompt-contract.js";
 
-const options = { targetDuration: 30, noPeople: true };
+const options = { targetDuration: 30, noPeople: true, abstractOnly: true };
 
 describe("marketing prompt host contract", () => {
   it("normalizes hardware, people, text conflicts and language policy", () => {
@@ -40,16 +41,16 @@ describe("marketing prompt host contract", () => {
     expect(normalized).toContain("除本次 G1 已审原文");
     expect(normalized).toContain("无人物微动作");
     expect(normalized).toContain("no hardware devices");
-    expect(normalized).toContain("18.【台词】无对白");
-    expect(normalized).toContain("19.【微动作】无人物微动作");
+    expect(normalized).toContain("【台词】无对白");
+    expect(normalized).toContain("【微动作】无人物微动作");
     expect(normalized).not.toContain("26.【负面约束】。");
-    expect(normalized).toContain("20.【音频】无对白、无口播");
+    expect(normalized).toContain("【音频】无对白、无口播");
     expect(normalized).not.toContain("BPM");
     expect(normalized).not.toContain("卡槽");
     expect(normalized).not.toMatch(/导轨|槽口|槽深|槽底|卡槽|针脚|模块方块|锁合|咬合|贴合|接触面|接触瞬间|物理阶段|3200K|暖白|可触摸的哑光金属/);
     expect(normalized).not.toMatch(/身体语言|身体重心|音乐风格|每分钟六十拍|人声对话清晰可辨/);
-    expect(normalized).toContain("31.【开场音频设计】无对白、无口播");
-    expect(normalized).toContain("28.【微动作】无人物微动作");
+    expect(normalized).toContain("【开场音频设计】无对白、无口播");
+    expect(normalized).toContain("【微动作】无人物微动作");
     expect(normalized).toContain("**定妆照**: 无（无角色）");
   });
 
@@ -221,7 +222,8 @@ describe("marketing prompt host contract", () => {
     expect(shots.reduce((sum: number, shot: any) => sum + shot.duration, 0)).toBe(30);
     expect(shots[5].timeline).toContain("T00:03");
     expect(shots[5].timeline).not.toContain("T00:07");
-    expect(shots[5].dialogue).toContain("无对白");
+    expect(shots[5].dialogue).toBe("");
+    expect(shots[5].prompt).toContain("本片无对白");
   });
 
   it("rewrites the review table to the same conserved durations", () => {
@@ -272,3 +274,96 @@ describe("marketing prompt host contract", () => {
     expect(normalized).toContain("| — | ✓ | ✓ |");
   });
 });
+
+
+describe("marketing normalization scope regressions", () => {
+  it("MC-003 preserves approved real-product visuals, presenters and dialogue outside the abstract contract", () => {
+    const prompt = "05.【场景】真实厨房内拍摄已授权净化器。\n11.【运镜】85mm镜头缓慢推近。\n18.【台词】旁白：每天回家，空气清新。\n20.【音频】保留授权口播。";
+    const normal = { targetDuration: 30, noPeople: false, abstractOnly: false };
+    expect(normalizeMarketingPromptText(prompt, normal).value).toBe(prompt);
+    const result = { stages: { productionEngine: { shots: [{ shotId: "scene-1", duration: 30, scene: "真实厨房", dialogue: "每天回家，空气清新。", prompt }] } } };
+    expect(normalizeMarketingPromptResult(result, normal).value).toEqual(result);
+    expect(normalizeMarketingPromptText(prompt, { ...normal, noPeople: true }).value).toBe(prompt);
+  });
+
+  it("MC-003 does not infer silence from an abstract film without people", () => {
+    expect(isAbstractMarketingIntent("全片无人，仅使用抽象界面，旁白讲解系统能力")).toBe(false);
+    expect(isAbstractMarketingIntent("全片无人，仅使用抽象界面，无对白，无口播")).toBe(true);
+  });
+
+  it("MC-003 applies the resolved delivery profile to abstract prompts and preserves requested subtitles", () => {
+    const prompt = normalizeMarketingPromptList([{ shotId: "scene-1", duration: 12, prompt: "" }], {
+      targetDuration: 12, noPeople: true, abstractOnly: true,
+      aspectRatio: "16:9", resolution: "1080p", frameRate: 24, subtitleMode: "both",
+      allowedVisibleText: ["已核实商品"],
+    })[0]!.prompt as string;
+    expect(prompt).toContain("1920x1080");
+    expect(prompt).toContain("16:9");
+    expect(prompt).toContain("24fps");
+    expect(prompt).not.toMatch(/2160x3840|9:16|30fps|字幕轨不生成/);
+    expect(prompt).toContain("both");
+  });
+
+  it("MC-004 never invents a license when accepted G1 has none", () => {
+    const prompt = normalizeMarketingPromptList([{ shotId: "scene-2", duration: 12, prompt: "" }], {
+      targetDuration: 12, noPeople: true, abstractOnly: true, allowedVisibleText: ["已核实商品"],
+    })[0]!.prompt as string;
+    expect(prompt).not.toContain("Apache-2.0");
+    expect(prompt).not.toContain("License:");
+  });
+});
+
+
+it("MC-004 cannot promote a model-invented visible license into the accepted G1 whitelist", () => {
+  const report = "| scene-2 | 12s |\n### scene-2(内容)\n```markdown\n01.【场景】License: Apache-2.0\n```";
+  const normalized = normalizeMarketingPromptText(report, { targetDuration: 12, noPeople: true, abstractOnly: true,
+    allowedVisibleText: ["已核实商品"] }).value;
+  expect(normalized).not.toContain("Apache-2.0");
+});
+
+
+it.each([
+  { aspectRatio: "1:1", resolution: "1080p", frameRate: 60 as const, pixels: "1080x1080" },
+  { aspectRatio: "4:3", resolution: "4K", frameRate: 25 as const, pixels: "2880x2160" },
+  { aspectRatio: "3:4", resolution: "1080p", frameRate: 30 as const, pixels: "1080x1440" },
+])("MC-003 keeps $aspectRatio/$resolution/$frameRate consistent with the native technical contract", ({ pixels, ...profile }) => {
+  const prompt = normalizeMarketingPromptList([{ shotId: "opening", duration: 8, prompt: "" }], {
+    targetDuration: 8, noPeople: true, abstractOnly: true, ...profile,
+  })[0]!.prompt as string;
+  expect(prompt).toContain(pixels);
+  expect(prompt).toContain(`${profile.frameRate}fps`);
+});
+
+
+it("MC-003 resolves narration and native audio before selecting the silent abstract template", () => {
+  const intent = "全片无人，仅使用抽象界面";
+  expect(isAbstractMarketingIntent(intent, { brief: { voice: "旁白讲解" } })).toBe(false);
+  expect(isAbstractMarketingIntent(intent, {}, { nativeAudio: true })).toBe(false);
+  expect(isAbstractMarketingIntent(`${intent}，无对白，无口播`, {}, { nativeAudio: true })).toBe(true);
+});
+
+it("MC-003 never selects the fixed abstract template over customer references or color/style directions", () => {
+  const intent = "全片无人，仅使用抽象界面";
+  expect(isAbstractMarketingIntent(intent, { brief: { references: ["客户授权参考片A"] } })).toBe(false);
+  expect(isAbstractMarketingIntent(`${intent}，暖橙配色`)).toBe(false);
+  expect(isAbstractMarketingIntent(intent, { brief: { visualStyle: "明快暖橙" } })).toBe(false);
+});
+
+it.each([
+  { phrase: "配乐使用轻快钢琴", key: "music", direction: "轻快钢琴", prompt: "【音乐】轻快钢琴" },
+  { phrase: "音效使用清脆钟声", key: "soundEffects", direction: "清脆钟声", prompt: "【音效】清脆钟声" },
+  { phrase: "转场使用柔和叠化", key: "transition", direction: "柔和叠化", prompt: "【转场】柔和叠化" },
+  { phrase: "节奏使用快速明快剪辑", key: "rhythm", direction: "快速明快剪辑", prompt: "【节奏】快速明快剪辑" },
+].flatMap(value => ["intent", "brief", "metadata", "profile"].map(source => ({ ...value, source }))))(
+  "MC-003 preserves $key declared by $source instead of applying fixed abstract sound/motion",
+  ({ phrase, key, direction, prompt, source }) => {
+    const intent = "全片无人，仅使用抽象界面" + (source === "intent" ? `，${phrase}` : "");
+    const metadata = source === "brief" ? { brief: { [key]: direction } }
+      : source === "metadata" ? { [key]: direction } : {};
+    const profile = source === "profile" ? { [key]: direction } : {};
+    const abstractOnly = isAbstractMarketingIntent(intent, metadata, profile);
+    expect(abstractOnly).toBe(false);
+    const shots = [{ shotId: "opening", duration: 30, prompt }];
+    expect(normalizeMarketingPromptList(shots, { targetDuration: 30, noPeople: true, abstractOnly })).toEqual(shots);
+  },
+);

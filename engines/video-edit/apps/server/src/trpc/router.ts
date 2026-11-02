@@ -1339,14 +1339,14 @@ const threadsRouter = router({
           /**
            * 创作意图清理 + 需求口径（真机 VID-AUDIT-M1）：
            * ① 「走营销片」这类分流行指令不能进创意解析（否则主题被解析成「走营销片」，质量 0/5）；
-           * ② 营销片默认竖屏 30s（与本仓 brief 默认一致），显式写进口径块，
-           *    否则生成器按类型推导出 45s，G2 监制以「时长自相矛盾 + 缺画幅」打回。
+           * ② 原文未给时长时默认 30s；有时长表达则保留原文交需求流程，
+           *    不追加与客户要求冲突的系统默认。营销片另按平台写画幅口径。
            * ③ 画幅与平台口径按目标平台取（T-2026-0930-0005）：需求里写「小红书」走 3:4，
            *    未指定平台时按默认抖音口径落地——与平台化之前逐像素一致。
            */
           const platform = resolvePlatformForIntent(input.title, null);
           const pipelineIntent = buildPipelineIntent(input.title, {
-            durationSec: 30,
+            defaultDurationSec: 30,
             aspectRatio: decision.route === "marketing" ? platform.decision.aspectRatio : undefined,
             platform: platform.decision.id,
           });

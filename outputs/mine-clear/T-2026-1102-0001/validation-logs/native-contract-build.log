@@ -1,0 +1,4 @@
+
+> @workloom/industry-contract@2.0.0 build /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit/packages/industry-contract
+> tsc -p tsconfig.build.json
+

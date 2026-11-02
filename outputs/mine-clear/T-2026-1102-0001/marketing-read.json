@@ -1,0 +1,163 @@
+{
+  "agent": "/root/marketing_audit",
+  "fullRead": [
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-review-retry.ts",
+      "evidence": "A",
+      "lines": 33
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-review-retry.test.ts",
+      "evidence": "A",
+      "lines": 40
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-dossier-normalization.ts",
+      "evidence": "A",
+      "lines": 185
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-gate-evidence.ts",
+      "evidence": "A",
+      "lines": 180
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-facts.ts",
+      "evidence": "A",
+      "lines": 291
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
+      "evidence": "A",
+      "lines": 511
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-quote-index.ts",
+      "evidence": "A",
+      "lines": 66
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-source-fetcher.ts",
+      "evidence": "A",
+      "lines": 311
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/data-mining-executor.ts",
+      "evidence": "A",
+      "lines": 828
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-search-isolation.test.ts",
+      "evidence": "A",
+      "lines": 45
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "evidence": "A",
+      "lines": 799
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prd-contract.ts",
+      "evidence": "A",
+      "lines": 393
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts",
+      "evidence": "A",
+      "lines": 848
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prd-contract.test.ts",
+      "evidence": "A",
+      "lines": 232
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.test.ts",
+      "evidence": "A",
+      "lines": 369
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "evidence": "A",
+      "lines": 2008
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
+      "evidence": "A",
+      "lines": 184
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "evidence": "A",
+      "lines": 535
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "evidence": "A",
+      "lines": 1401
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "evidence": "A",
+      "lines": 107
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
+      "evidence": "A",
+      "lines": 465
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/prd-authority.test-support.ts",
+      "evidence": "A",
+      "lines": 81
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/product-visual-authority.test.ts",
+      "evidence": "A",
+      "lines": 46
+    },
+    {
+      "path": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "evidence": "A",
+      "lines": 433
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.ts",
+      "evidence": "A",
+      "lines": 699
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/pipeline-router.test.ts",
+      "evidence": "A",
+      "lines": 433
+    }
+  ],
+  "partialRead": [
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "evidence": "C",
+      "ranges": [
+        "205-245",
+        "670-706"
+      ],
+      "reason": "cross-call tracing; general audit owns full file"
+    },
+    {
+      "path": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "evidence": "C",
+      "ranges": [
+        "520-590"
+      ],
+      "reason": "product appearance guard trace; general audit owns full file"
+    }
+  ],
+  "testsExecutedOnly": [
+    "engines/video-edit/apps/server/src/video/marketing-facts.test.ts",
+    "engines/video-edit/apps/server/src/video/marketing-gate-evidence.test.ts",
+    "engines/video-edit/apps/server/src/video/marketing-source-fetcher.test.ts",
+    "engines/video-edit/apps/server/src/video/data-mining-executor.test.ts",
+    "engines/video-edit/apps/server/src/video/marketing-quote-index.test.ts",
+    "engines/video-edit/apps/server/src/video/marketing-dossier-normalization.test.ts"
+  ],
+  "scope": "marketing pre-render source collection, fact binding, G1 evidence, PRD/prompt normalization, Studio orchestration; no paid provider/render runs"
+}

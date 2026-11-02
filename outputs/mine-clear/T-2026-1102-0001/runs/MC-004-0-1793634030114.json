@@ -1,0 +1,41 @@
+{
+  "schema": "workloom.evidence-run/v1",
+  "id": "MC-004-0-1793634030114",
+  "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+  "exec": {
+    "file": "node",
+    "args": [
+      "engines/video-edit/node_modules/vitest/vitest.mjs",
+      "run",
+      "--root",
+      "engines/video-edit/",
+      "--maxWorkers=1",
+      "--no-file-parallelism",
+      "packages/video-studio/src/marketing-prompt-contract.test.ts"
+    ]
+  },
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "subject": {
+    "card_id": "MC-004",
+    "assertion_index": 0
+  },
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "working_tree_dirty": false,
+  "started_at": "2026-11-02T15:40:30.114Z",
+  "finished_at": "2026-11-02T15:40:30.469Z",
+  "exit_code": 0,
+  "signal": null,
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "result": "pass",
+  "outputs": [
+    {
+      "path": "evidence/MC-004-0-1793634030114.txt",
+      "sha256": "1d7e022d0a0e88c016a452e985940c8c696f1df1dcf19556a9802b469e943a5e",
+      "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+    }
+  ]
+}

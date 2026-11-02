@@ -1,0 +1,193 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+stderr | apps/server/src/video/studio-start.test.ts
+[pii] PII_SALT 未配置，使用 dev 占位盐（仅限开发/测试，生产必须注入 PII_SALT）
+
+stderr | apps/server/src/video/studio-start.test.ts
+[auth] JWT_SECRET 长度 <32 字符，熵不足——生产环境请配置 ≥32 字符随机密钥
+
+ ❯ apps/server/src/video/studio-start.test.ts (82 tests | 8 failed) 22ms
+   ✓ studio.start new project duration > uses this request's 35 seconds once and preserves the original intent and complete metadata 4ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary 5 1ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary "5" 0ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary "35" 0ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary 30.5 0ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary "30.5" 0ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary 180 0ms
+   ✓ studio.start new project duration > retains the accepted numeric/string boundary "180.0" 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata undefined 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {} 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {"brief":{}} 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {"brief":{}} 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {"brief":null} 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {"brief":"旧版完整客户描述"} 0ms
+   ✓ studio.start new project duration > defaults only an omitted duration in legacy metadata {"brief":[]} 0ms
+   × studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 拍一条60秒的山间日出故事 3ms
+     → expected '拍一条60秒的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条60秒的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   × studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 拍一条一分钟的山间日出故事 0ms
+     → expected '拍一条一分钟的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条一分钟的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   × studio.start new project duration > does not turn an omitted brief duration into a conflicting total for Create a one-minute story 1ms
+     → expected 'Create a one-minute story\n[需求口径] 时长：…' to be 'Create a one-minute story\n[需求口径] 平台：…' // Object.is equality
+   × studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 每镜5秒，拍一条山间日出故事 0ms
+     → expected '每镜5秒，拍一条山间日出故事\n[需求口径] 时长：30秒；平台：douy…' to be '每镜5秒，拍一条山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   ✓ studio.start new project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration false before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration true before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration [] before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration {} before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration 0 before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration -1 before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration 4.999 before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration 180.001 before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration "" before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration " 35" before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration "35 " before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration "35s" before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration "3.5e1" before routing or any business side effect 0ms
+   ✓ studio.start new project duration > rejects explicit invalid duration "0x23" before routing or any business side effect 0ms
+   ✓ studio.start new project duration > does not validate or rewrite unrelated legacy platform, aspect or partial production fields 0ms
+   ✓ studio.start new project duration > keeps narrative headers without a newly inferred aspect ratio 0ms
+   ✓ studio.start existing project duration > uses this request's 35 seconds once and preserves the original intent and complete metadata 1ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary 5 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary "5" 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary "35" 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary 30.5 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary "30.5" 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary 180 0ms
+   ✓ studio.start existing project duration > retains the accepted numeric/string boundary "180.0" 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata undefined 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {} 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {"brief":{}} 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {"brief":{}} 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {"brief":null} 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {"brief":"旧版完整客户描述"} 0ms
+   ✓ studio.start existing project duration > defaults only an omitted duration in legacy metadata {"brief":[]} 0ms
+   × studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 拍一条60秒的山间日出故事 0ms
+     → expected '拍一条60秒的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条60秒的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   × studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 拍一条一分钟的山间日出故事 0ms
+     → expected '拍一条一分钟的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条一分钟的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   × studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for Create a one-minute story 0ms
+     → expected 'Create a one-minute story\n[需求口径] 时长：…' to be 'Create a one-minute story\n[需求口径] 平台：…' // Object.is equality
+   × studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 每镜5秒，拍一条山间日出故事 0ms
+     → expected '每镜5秒，拍一条山间日出故事\n[需求口径] 时长：30秒；平台：douy…' to be '每镜5秒，拍一条山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+   ✓ studio.start existing project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration false before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration true before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration [] before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration {} before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration 0 before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration -1 before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration 4.999 before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration 180.001 before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration null before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration "" before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration " 35" before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration "35 " before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration "35s" before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration "3.5e1" before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > rejects explicit invalid duration "0x23" before routing or any business side effect 0ms
+   ✓ studio.start existing project duration > does not validate or rewrite unrelated legacy platform, aspect or partial production fields 0ms
+   ✓ studio.start existing project duration > keeps narrative headers without a newly inferred aspect ratio 0ms
+   ✓ studio.start explainer and authorization boundaries > retains the explainer draft flow and exact raw intent without starting a Studio worker 1ms
+   ✓ studio.start explainer and authorization boundaries > rejects an invalid explicit duration before an explainer draft or route model can be created 0ms
+   ✓ studio.start explainer and authorization boundaries > retains deterministic clarification without starting a project 1ms
+   ✓ studio.start explainer and authorization boundaries > keeps unauthenticated and non-writable callers outside all business paths 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 拍一条60秒的山间日出故事
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 拍一条60秒的山间日出故事
+AssertionError: expected '拍一条60秒的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条60秒的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+
+- Expected
++ Received
+
+  拍一条60秒的山间日出故事
+- [需求口径] 平台：douyin
++ [需求口径] 时长：30秒；平台：douyin
+
+ ❯ apps/server/src/video/studio-start.test.ts:118:27
+    116|     const passed = workerInput(branch);
+    117|     expect(passed.rawIntent).toBe(raw);
+    118|     expect(passed.intent).toBe(`${raw}\n[需求口径] 平台：douyin`);
+       |                           ^
+    119|     expect(passed.metadata.brief).toBeUndefined();
+    120|     expect(d.routeLlm).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 拍一条一分钟的山间日出故事
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 拍一条一分钟的山间日出故事
+AssertionError: expected '拍一条一分钟的山间日出故事\n[需求口径] 时长：30秒；平台：douyin' to be '拍一条一分钟的山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+
+- Expected
++ Received
+
+  拍一条一分钟的山间日出故事
+- [需求口径] 平台：douyin
++ [需求口径] 时长：30秒；平台：douyin
+
+ ❯ apps/server/src/video/studio-start.test.ts:118:27
+    116|     const passed = workerInput(branch);
+    117|     expect(passed.rawIntent).toBe(raw);
+    118|     expect(passed.intent).toBe(`${raw}\n[需求口径] 平台：douyin`);
+       |                           ^
+    119|     expect(passed.metadata.brief).toBeUndefined();
+    120|     expect(d.routeLlm).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start new project duration > does not turn an omitted brief duration into a conflicting total for Create a one-minute story
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for Create a one-minute story
+AssertionError: expected 'Create a one-minute story\n[需求口径] 时长：…' to be 'Create a one-minute story\n[需求口径] 平台：…' // Object.is equality
+
+- Expected
++ Received
+
+  Create a one-minute story
+- [需求口径] 平台：douyin
++ [需求口径] 时长：30秒；平台：douyin
+
+ ❯ apps/server/src/video/studio-start.test.ts:118:27
+    116|     const passed = workerInput(branch);
+    117|     expect(passed.rawIntent).toBe(raw);
+    118|     expect(passed.intent).toBe(`${raw}\n[需求口径] 平台：douyin`);
+       |                           ^
+    119|     expect(passed.metadata.brief).toBeUndefined();
+    120|     expect(d.routeLlm).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start new project duration > does not turn an omitted brief duration into a conflicting total for 每镜5秒，拍一条山间日出故事
+ FAIL  apps/server/src/video/studio-start.test.ts > studio.start existing project duration > does not turn an omitted brief duration into a conflicting total for 每镜5秒，拍一条山间日出故事
+AssertionError: expected '每镜5秒，拍一条山间日出故事\n[需求口径] 时长：30秒；平台：douy…' to be '每镜5秒，拍一条山间日出故事\n[需求口径] 平台：douyin' // Object.is equality
+
+- Expected
++ Received
+
+  每镜5秒，拍一条山间日出故事
+- [需求口径] 平台：douyin
++ [需求口径] 时长：30秒；平台：douyin
+
+ ❯ apps/server/src/video/studio-start.test.ts:118:27
+    116|     const passed = workerInput(branch);
+    117|     expect(passed.rawIntent).toBe(raw);
+    118|     expect(passed.intent).toBe(`${raw}\n[需求口径] 平台：douyin`);
+       |                           ^
+    119|     expect(passed.metadata.brief).toBeUndefined();
+    120|     expect(d.routeLlm).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 74 passed (82)
+   Start at  23:19:44
+   Duration  1.51s (transform 875ms, setup 0ms, collect 1.28s, tests 22ms, environment 0ms, prepare 44ms)
+

@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+ ❯ packages/video-studio/src/studio.test.ts (40 tests | 1 failed | 39 skipped) 16ms
+     × marketing assembly preserves content duration when the final master includes a cover intro 15ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 39 skipped (40)
+   Start at  23:05:06
+   Duration  417ms (transform 222ms, setup 0ms, import 330ms, tests 16ms, environment 0ms)
+
+stderr | packages/video-studio/src/studio.test.ts
+[pii] PII_SALT 未配置，使用 dev 占位盐（仅限开发/测试，生产必须注入 PII_SALT）
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/video-studio/src/studio.test.ts > 营销只消费宿主绑定回填 > marketing assembly preserves content duration when the final master includes a cover intro
+AssertionError: expected 30 to be 25 // Object.is equality
+
+- Expected
++ Received
+
+- 25
++ 30
+
+ ❯ packages/video-studio/src/studio.test.ts:513:72
+    511|     expect(result.stages).toBeDefined();
+    512|     const output = result.stages!.productionEngine as { shots: Array<{…
+    513|     expect(output.shots.reduce((sum, shot) => sum + shot.duration, 0))…
+       |                                                                        ^
+    514|     const content = (onApproval.mock.calls[0]?.[0] as { contentMd: str…
+    515|     const total = [...content.matchAll(/^\|\s*scene-\d+\s*\|\s*(\d+)s\…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

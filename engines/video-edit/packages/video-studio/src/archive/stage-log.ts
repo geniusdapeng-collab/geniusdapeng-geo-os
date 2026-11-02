@@ -11,6 +11,7 @@
  *     记成一次执行，污染监控的失败率/成本统计（规格书 §6.3 改动 A 的口径澄清）；
  *   - 台账不可用时只 `console.error`，主流程语义零变化（旁路不阻断）。
  */
+import { randomUUID } from "node:crypto";
 import type { ArchiveStore } from "./store.js";
 import { newStageRunId, type StageLedgerWriter, type StageStatus } from "./stage-runner.js";
 
@@ -32,6 +33,7 @@ export interface StageLogInput {
 export interface StageLogResult {
   /** null = 本次没有开新 attempt（skipped 或台账不可用） */
   attempt: number | null;
+  /** 回执未核实时指向独立待对账记录，不是已完成 attempt 的产物回执。 */
   outputRef: string | null;
   outputSha256: string | null;
   error: string | null;
@@ -65,89 +67,97 @@ export async function logStageOutcome(
     return result;
   }
 
-  let attempt = 1;
-  let inputRef: string | null = null;
+  const recovery = async (error: unknown, code: string): Promise<StageLogResult> => {
+    result.error = `${code}: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[archive] 档案回执待对账(${input.stageId}): ${result.error}`);
+    // 业务动作已经返回，档案失败不能要求调用方重复付费。独立保存原结果，
+    // 不覆盖任何已认领 attempt；产物指针不能被误认成已完成的台账回执。
+    try {
+      const recoveryRef = `unclaimed-outcomes/${randomUUID()}.json`;
+      const written = await store.writeJsonAtomic(recoveryRef, {
+        stageId: input.stageId, intendedStatus: input.status, runId: input.runId ?? null,
+        attempt: result.attempt, input: input.input ?? null, output: input.output ?? null,
+        cost: input.cost ?? null, errorClass: input.errorClass ?? null, errorMsg: input.errorMsg ?? null,
+        receiptError: result.error, recordedAt: new Date().toISOString(),
+        recovery: "reconcile-existing-result-do-not-repeat-external-action",
+      });
+      result.outputRef = recoveryRef;
+      result.outputSha256 = written.sha256;
+    } catch (archiveError) {
+      result.error += `; recovery-write-failed: ${archiveError instanceof Error ? archiveError.message : String(archiveError)}`;
+      console.error(`[archive] 待对账结果写入失败(${input.stageId}): ${result.error}`);
+    }
+    return result;
+  };
+
+  let attempt: number;
+  let inputRef: string;
   try {
     const claimed = await ledger.claimRun({
-      id: newStageRunId(),
-      projectId: store.projectId,
-      stageId: input.stageId,
-      inputRefTemplate: `${dir}/attempt-{attempt}.input.json`,
-      runId: input.runId ?? null,
+      id: newStageRunId(), projectId: store.projectId, stageId: input.stageId,
+      inputRefTemplate: `${dir}/attempt-{attempt}.input.json`, runId: input.runId ?? null,
     });
+    if (!Number.isSafeInteger(claimed.attempt) || claimed.attempt < 1
+      || claimed.inputRef !== `${dir}/attempt-${claimed.attempt}.input.json`) {
+      throw new Error("STAGE_CLAIM_INVALID: 台账未返回匹配的 attempt 与 input_ref");
+    }
     attempt = claimed.attempt;
     inputRef = claimed.inputRef;
+    result.attempt = attempt;
   } catch (err) {
-    result.error = (err as Error).message;
-    console.error(`[archive] 台账认领失败(${input.stageId}): ${result.error}`);
+    return recovery(err, "STAGE_CLAIM_UNVERIFIED");
   }
 
-  if (input.input) {
-    try {
-      await store.writeJsonAtomic(`${dir}/attempt-${attempt}.input.json`, {
-        stageId: input.stageId,
-        attempt,
-        input: input.input,
-        startedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error(`[archive] 输入快照写入失败(${input.stageId}): ${(err as Error).message}`);
-    }
-  }
+  let finishAttempted = false;
   try {
+    if (input.input) {
+      await store.writeJsonAtomic(inputRef, {
+        stageId: input.stageId, attempt, input: input.input, startedAt: new Date().toISOString(),
+      });
+    }
+    /* 产物先落盘，状态后翻转：失败不得生成缺少产物摘要的 done。 */
+    if (input.output) {
+      const outputRef = `${dir}/attempt-${attempt}.output.json`;
+      const written = await store.writeJsonAtomic(outputRef, input.output);
+      result.outputRef = outputRef;
+      result.outputSha256 = written.sha256;
+    }
+    finishAttempted = true;
+    await ledger.finishRun({
+      projectId: store.projectId, stageId: input.stageId, attempt, status: input.status,
+      outputRef: result.outputRef, outputSha256: result.outputSha256,
+      errorClass: input.errorClass ?? null, errorMsg: input.errorMsg ? input.errorMsg.slice(0, 500) : null,
+      durationMs: Date.now() - startedAt, cost: input.cost,
+    });
+  } catch (err) {
+    if (!finishAttempted) {
+      // 文件失败时 PG attempt 确实存在，但原业务动作的完成档案尚未成立。
+      // 已尝试终结却丢确认时不写另一终态，保留原回执供对账，避免覆盖未知结果。
+      try {
+        await ledger.finishRun({
+          projectId: store.projectId, stageId: input.stageId, attempt, status: "interrupted",
+          outputRef: result.outputRef, outputSha256: result.outputSha256,
+          errorClass: "RECEIPT_UNVERIFIED", errorMsg: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+          durationMs: Date.now() - startedAt, cost: input.cost,
+        });
+      } catch (receiptError) {
+        console.error(`[archive] 中断回执未核实(${input.stageId}): ${receiptError instanceof Error ? receiptError.message : String(receiptError)}`);
+      }
+    }
+    return recovery(err, "STAGE_RECEIPT_UNVERIFIED");
+  }
+
+  // PG 已确认相同终态，才允许文件投影和完成事件显示该状态。
+  try {
+    await store.updateLedger(input.stageId, {
+      attempt, status: input.status, finishedAt: new Date().toISOString(),
+    });
     await store.appendJsonl("events.jsonl", {
-      kind: `stage.${input.status}`,
-      stageId: input.stageId,
-      attempt,
+      kind: `stage.${input.status}`, stageId: input.stageId, attempt,
       ...(input.errorClass ? { errorClass: input.errorClass } : {}),
     });
   } catch (err) {
-    console.error(`[archive] 事件写入失败(${input.stageId}): ${(err as Error).message}`);
+    return recovery(err, "STAGE_ARCHIVE_PROJECTION_UNVERIFIED");
   }
-
-  /* 产物先落盘，状态后翻转 */
-  let outputRef: string | null = null;
-  let outputSha256: string | null = null;
-  if (input.output) {
-    outputRef = `${dir}/attempt-${attempt}.output.json`;
-    try {
-      const written = await store.writeJsonAtomic(outputRef, input.output);
-      outputSha256 = written.sha256;
-    } catch (err) {
-      outputRef = null;
-      console.error(`[archive] 产物写入失败(${input.stageId}): ${(err as Error).message}`);
-    }
-  }
-
-  try {
-    await ledger.finishRun({
-      projectId: store.projectId,
-      stageId: input.stageId,
-      attempt,
-      status: input.status,
-      outputRef,
-      outputSha256,
-      errorClass: input.errorClass ?? null,
-      errorMsg: input.errorMsg ? input.errorMsg.slice(0, 500) : null,
-      durationMs: Date.now() - startedAt,
-      cost: input.cost,
-    });
-  } catch (err) {
-    result.error = (err as Error).message;
-    console.error(`[archive] 台账终结写失败(${input.stageId}): ${result.error}`);
-  }
-  try {
-    await store.updateLedger(input.stageId, {
-      attempt,
-      status: input.status,
-      finishedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error(`[archive] manifest 账本更新失败(${input.stageId}): ${(err as Error).message}`);
-  }
-
-  result.attempt = attempt;
-  result.outputRef = outputRef;
-  result.outputSha256 = outputSha256;
   return result;
 }

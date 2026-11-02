@@ -101,8 +101,8 @@
       "sourceSha256": "3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
       "targetMode": "100644",
-      "targetBytes": 29815,
-      "targetSha256": "3cda428f798f55e0918538b27efe0c1cadf6dcdb3a1bf1158c1241189ac6fb2d",
+      "targetBytes": 41957,
+      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
       "transform": "none"
     },
     {
@@ -113,8 +113,8 @@
       "sourceSha256": "b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "targetMode": "100644",
-      "targetBytes": 16679,
-      "targetSha256": "b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828",
+      "targetBytes": 42948,
+      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
       "transform": "none"
     },
     {
@@ -137,8 +137,8 @@
       "sourceSha256": "d49ff433f74d06894b0a606f95a6b63776528cd57995f5bce0033087e2e7191f",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "targetMode": "100644",
-      "targetBytes": 25272,
-      "targetSha256": "d49ff433f74d06894b0a606f95a6b63776528cd57995f5bce0033087e2e7191f",
+      "targetBytes": 61407,
+      "targetSha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41",
       "transform": "none"
     },
     {
@@ -149,8 +149,8 @@
       "sourceSha256": "bae1076ddcd3ddd3053545be9baac73f9cbc865b0a255a5d5cc7040754925408",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "targetMode": "100644",
-      "targetBytes": 12910,
-      "targetSha256": "bae1076ddcd3ddd3053545be9baac73f9cbc865b0a255a5d5cc7040754925408",
+      "targetBytes": 44261,
+      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
       "transform": "none"
     },
     {
@@ -161,8 +161,8 @@
       "sourceSha256": "96c36c8031d300521a2235939ec3db7519707d79b15cb4687ed047254a0e1a4a",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
       "targetMode": "100644",
-      "targetBytes": 31058,
-      "targetSha256": "96c36c8031d300521a2235939ec3db7519707d79b15cb4687ed047254a0e1a4a",
+      "targetBytes": 64431,
+      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
       "transform": "none"
     },
     {
@@ -209,8 +209,8 @@
       "sourceSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6",
       "targetPath": "engines/video-edit/packages/video-studio/src/vendor-compat.test.ts",
       "targetMode": "100644",
-      "targetBytes": 58983,
-      "targetSha256": "a265b3dee29498ab532682b77081070a96b2b30ea3795fe7779cde44f3c8c6f6",
+      "targetBytes": 73821,
+      "targetSha256": "4ca9c5817d351863083aaee729ba0e294a73606ca9e409b2b9c8dbb7e87a42a7",
       "transform": "none"
     },
     {
@@ -251,5 +251,6 @@
       "targetSha256": "9f565a051bd83039d96d83561d26372b2a5242f611c4a4d08c096d572eaed346",
       "transform": "none"
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

@@ -1,0 +1,561 @@
+{
+  "source_commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+  "git_head": "35743d90898d41f08800ec47d1935a581336bcd3",
+  "git_clean": true,
+  "baseline": {
+    "audit": {
+      "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "branch": "task/T-2026-1102-0001-video-audit",
+      "remote": "origin",
+      "fetched_at": null,
+      "fetch_status": "skipped",
+      "notes": "83c7632为本轮实际GitHub main，初始化前已使用本任务owner令牌fetch；初始唯一临时scope清单已移出仓库。"
+    },
+    "repair": {
+      "commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+      "reverified_problem_ids": []
+    },
+    "acceptance": {
+      "commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+      "is_descendant_of_repair": true
+    }
+  },
+  "environment": {
+    "kind": "local-preview",
+    "notes": "本机独立PG、真实原生代码/HTTP夹具；未调用付费模型、图片或视频供应商，不是生产出片验收。"
+  },
+  "cards": [
+    {
+      "card": "MC-001",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-001-0-1793633518967.json",
+        "sha256": "442ab15a92274cdcf0dc468866ab2a0bfa722b2d6ff7b5a884537eb7f42c28de",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-001-0-1793633518967.txt",
+        "sha256": "7ef28bb7ad00e572d907e5fb24d01cfc337afb5c09f7067b80c451e05f8e1fdd",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  12 passed (12)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-002",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-002-0-1793633521201.json",
+        "sha256": "c666323d1c80fa4cc1ba2542d81df971ae9f9a50bc618a687030c75cb1ec4e82",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-002-0-1793633521201.txt",
+        "sha256": "4361ad738ccf746e3e28d82277eefd3f49d3b4edf81b11225ec53e5e51d01ca9",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  171 passed (171)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/requirement-contract.test.ts",
+          "packages/video-studio/src/requirement-contract-production-bridge.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-003",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-003-0-1793633522257.json",
+        "sha256": "415a5189de1a27c09eb57c8dc1df7868e7bf58e2e7ecdb08068e9573eae81316",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-003-0-1793633522257.txt",
+        "sha256": "7b526ec716c4c98173e7e27f2635296d43e1096aa00702952b11ac1b88251314",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  4 passed (4)",
+        "      Tests  279 passed (279)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/marketing-prompt-contract.test.ts",
+          "packages/video-studio/src/marketing-prd-contract.test.ts",
+          "packages/video-studio/src/prd-authority-bridge.test.ts",
+          "packages/video-studio/src/studio.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-004",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-004-0-1793633526959.json",
+        "sha256": "022dbcccc24a88f39955bc8b9a9dfd331e165b8937b9b8f337ec8b487cc61750",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-004-0-1793633526959.txt",
+        "sha256": "be12fc9bce414a90bd203f0a80fefd2ddb38e60706353b3742a31d2ea9a6b927",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  35 passed (35)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/marketing-prompt-contract.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-005",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-005-0-1793633527478.json",
+        "sha256": "ff768b0555c75855c6ec4b005f9753bf85fa809451e4d7f21af0f58972c8a0f6",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-005-0-1793633527478.txt",
+        "sha256": "3ac3e472e35ece7221c8b8b2ce9cfab8e973aa75a16f086b1dac9391dc5f1b7b",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  4 passed (4)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-006",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-006-0-1793633529318.json",
+        "sha256": "350c6dc8218e0044d733323578607b00f555a0d971c8bb112c0148c2976bdebf",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-006-0-1793633529318.txt",
+        "sha256": "2b965d91a8a522a423a130c88dd2a3cad80fb6d531a85b81da88ca74590e207a",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  11 passed (11)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/archive/stage-log.test.ts",
+          "apps/server/src/video/render-archive-receipt.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-007",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-007-0-1793633530453.json",
+        "sha256": "5303a80723a9774248782400732ff589495cd1f3521ed97fa3bb2fb386f031c0",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-007-0-1793633530453.txt",
+        "sha256": "4ca03859065a0a6322a3a328af85c2d7512fa250e11245e1707ec9a8b551280c",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  21 passed (21)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "apps/server/src/video/data-mining-executor.test.ts",
+          "apps/server/src/video/marketing-search-isolation.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-008",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-008-0-1793633531145.json",
+        "sha256": "fa818bc4b521d4194a75a791c053792a45ee73011353110dcea1d5e75e849035",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-008-0-1793633531145.txt",
+        "sha256": "5b51692282d241f093fb973daddec7034d798726d98d01af3292990d09e3ad76",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  171 passed (171)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/requirement-contract.test.ts",
+          "packages/video-studio/src/requirement-contract-production-bridge.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-009",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-009-0-1793633532185.json",
+        "sha256": "01d4506c0f32dbdb1516e046683f423ee30a968e826d546353e0095b96449c41",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-009-0-1793633532185.txt",
+        "sha256": "63812267244c3b2083e574fa8ccfc79ed526b3ae8c9b9c029c19c2f71465bd4a",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  42 passed (42)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/vendor-compat.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-010",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-010-0-1793633545082.json",
+        "sha256": "dd614cee8945c3f5152995be4b457f37d0db02353b5408fe5758e66f19b6cd95",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-010-0-1793633545082.txt",
+        "sha256": "dbf30c72ec687a499c292af8c91fe3af47ec73af53b23b00a31706fe4b487c3c",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  225 passed (225)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/prd-authority.test.ts",
+          "packages/video-studio/src/studio.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-012",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-012-0-1793633546329.json",
+        "sha256": "a66a8eab9949254a7e8d47ed287fbe18d7591595f9c29b95c07321d1596ec55e",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-012-0-1793633546329.txt",
+        "sha256": "c0e4275640bcf7b6de07215b1b4600208e2f88dfe6839093f5d9b757fc4b2e18",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  355 passed (355)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/pipeline-router.test.ts",
+          "apps/server/src/video/studio-start.test.ts"
+        ]
+      }
+    },
+    {
+      "card": "MC-013",
+      "state": "verified",
+      "fixed_by": "codex-root-repair",
+      "verified_by": "codex-independent-review",
+      "run": {
+        "path": "runs/MC-013-0-1793633548303.json",
+        "sha256": "ec92ed2e76f752c248bb6c128783e579888c46ba04b06eae27b7c175d975d448",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "evidence": {
+        "path": "evidence/MC-013-0-1793633548303.txt",
+        "sha256": "76b2e59cefb624eb74d08de0c947f61c3a073d6f39a4f14112386a5a5d0ea889",
+        "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+      },
+      "checks": {
+        "run_sha256": true,
+        "evidence_sha256": true,
+        "source_commit": true,
+        "role": true,
+        "actor": true,
+        "clean": true,
+        "actual_exec": true,
+        "success": true,
+        "role_separation": true
+      },
+      "test_summary": [
+        " Test Files  2 passed (2)",
+        "      Tests  355 passed (355)"
+      ],
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/pipeline-router.test.ts",
+          "apps/server/src/video/studio-start.test.ts"
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "gate": {
+    "command": "node engines/video-edit/scripts/delivery/mine-clear.mjs gate --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --repo .",
+    "result": "pass12cards4invariants",
+    "note": "Executed read-only after acceptance; stdout observed. Parent may save canonical mcd-gate.json."
+  }
+}

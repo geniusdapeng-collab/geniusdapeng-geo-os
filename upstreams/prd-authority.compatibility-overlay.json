@@ -25,8 +25,8 @@
       "sourceBytes": 20967,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "3409a011eec1b4e3b2aeb2ce94c950f8a732ede8883f91e8988ab7a1140bd08a",
-      "targetBytes": 20967,
+      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
+      "targetBytes": 35551,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -37,8 +37,8 @@
       "sourceBytes": 10913,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
-      "targetSha256": "64d2ebc2ebc50e1e51e084530a09c99d6096825d71337d6938a94da45ad537c3",
-      "targetBytes": 10913,
+      "targetSha256": "06d117c929b82443b6f4ff5e3e49b4a129b6533010b8ccd27486dfad96a67a16",
+      "targetBytes": 38098,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -61,8 +61,8 @@
       "sourceBytes": 21779,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
-      "targetSha256": "fc165ccc020288379bddcf171c8a14f1434262dbbb5bee5b7d299923ef454c24",
-      "targetBytes": 21779,
+      "targetSha256": "a87d0388f39219d53498090743c69257dd9c5f89d2d2a78f2721a3df02fd4be1",
+      "targetBytes": 154044,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -85,8 +85,8 @@
       "sourceBytes": 30971,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "efcffb813c6377c5d43f8157563ae553dbe663734111c8c7cffefa58ba4a13e0",
-      "targetBytes": 30971,
+      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
+      "targetBytes": 41957,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -97,8 +97,8 @@
       "sourceBytes": 18969,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "413d90cafb63827e784373ea93fe352eaac8bb5c5cfb13817879d3ef31257cdd",
-      "targetBytes": 18969,
+      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
+      "targetBytes": 42948,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -216,5 +216,6 @@
   "sourceMembershipEvidence": "B-Root-actual-merged-main-receipt-and-offline16SHA-size-gitblob-checks",
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
-  "bundleAssetCount": 644
+  "bundleAssetCount": 644,
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

@@ -49,8 +49,8 @@
       "sourceBytes": 22488,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "9fbf47cfc73020b8363b27afa1133d5b163a2ef84340dbffa4df178d5a732214",
-      "targetBytes": 22488,
+      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
+      "targetBytes": 44261,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -61,8 +61,8 @@
       "sourceBytes": 32281,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
-      "targetSha256": "8863d343a898002446471929c5dc09efd7895d48cfac10165eb181b6a4289f08",
-      "targetBytes": 32281,
+      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
+      "targetBytes": 64431,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -85,8 +85,8 @@
       "sourceBytes": 32920,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "8b765285e072731d2c932c230bc6b27975601a7cc96179b1c9c5f2fa123e50e2",
-      "targetBytes": 32920,
+      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
+      "targetBytes": 41957,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -97,8 +97,8 @@
       "sourceBytes": 28504,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "63193f867cc9868f3362af752fb52c48bb29fe5f226ce01fe34befa52f09ab6c",
-      "targetBytes": 28504,
+      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
+      "targetBytes": 42948,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -144,5 +144,6 @@
   "sourceMembershipEvidence": "B-Root-actual-merged-main-receipt-and-offline10SHA-size-gitblob-checks; candidate-CI-not-postmerge-main-CI",
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
-  "bundleAssetCount": 644
+  "bundleAssetCount": 644,
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

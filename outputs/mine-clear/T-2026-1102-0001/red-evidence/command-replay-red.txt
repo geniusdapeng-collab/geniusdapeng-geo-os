@@ -1,0 +1,1068 @@
+
+ RUN  v4.1.11 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+stderr | apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts
+[pii] PII_SALT 未配置，使用 dev 占位盐（仅限开发/测试，生产必须注入 PII_SALT）
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts (12 tests | 12 failed) 656ms
+     × 'createRun' restores 'exact stored response' without repeating state changes 44ms
+     × 'createRun' restores 'historical partial receipt' without repeating state changes 24ms
+     × 'claimStage' restores 'exact stored response' without repeating state changes 20ms
+     × 'claimStage' restores 'historical partial receipt' without repeating state changes 21ms
+     × 'commitArtifact' restores 'exact stored response' without repeating state changes 19ms
+     × 'commitArtifact' restores 'historical partial receipt' without repeating state changes 18ms
+     × 'refreshFrontier' restores 'exact stored response' without repeating state changes 17ms
+     × 'refreshFrontier' restores 'historical partial receipt' without repeating state changes 16ms
+     × 'recordGateDecision' restores 'exact stored response' without repeating state changes 16ms
+     × 'recordGateDecision' restores 'historical partial receipt' without repeating state changes 16ms
+     × 'markInterrupted' restores 'exact stored response' without repeating state changes 15ms
+     × 'markInterrupted' restores 'historical partial receipt' without repeating state changes 19ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'createRun' restores 'exact stored response' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "source",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "run_node",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-createRun-current",
+-   "revision": 1,
+    "runId": "RUN-0ae9b84de492b343189a466c",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-4ad659230ffe489665b3",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-8f4ea39f310164d96394",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "ready",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-834acc3ac170c70d0d55",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-   ],
+-   "status": "running",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'createRun' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-createRun-legacy",
+-   "revision": 8,
+    "runId": "RUN-09060dd41649c522fb0b8a10",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-78937bf2148a8ddcda83",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 37,
+-         "id": "A:REPLAY-createRun-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "1bcf4d89fbf7aaf03a6a2589624a645b6c99293cd5d10ebf0f4fea58600cdd32",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-createRun-legacy",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-49bf7ea34983dca2055c",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 37,
+-         "id": "A:REPLAY-createRun-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "1bcf4d89fbf7aaf03a6a2589624a645b6c99293cd5d10ebf0f4fea58600cdd32",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-createRun-legacy",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-c47a548b6657467cc011",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'claimStage' restores 'exact stored response' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "source",
+-   ],
+-   "leaseExpiresAt": "2026-11-02T14:05:31.285Z",
+-   "leaseOwner": "replay-worker",
+-   "nextAction": "run_node",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-claimStage-current",
+-   "revision": 2,
+    "runId": "RUN-8b2fdebe66ffe9e0c7793fba",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-28da62f0a5863bffcdeb",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-692b57e01b2f86fecc31",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "running",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+    "stageRunId": "SR-73f4a6c3e0914c5c4b18",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-   ],
+-   "status": "running",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'claimStage' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-claimStage-legacy",
+-   "revision": 8,
+    "runId": "RUN-40f5b06f7a9656b02677d326",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-9ce935fd618a77adfe89",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 38,
+-         "id": "A:REPLAY-claimStage-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "771a6c3883e9f507159474d9017f81193f505993f77ad8e05a5745e708f3ad80",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-claimStage-legacy",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-81f858980f9317febe6c",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 38,
+-         "id": "A:REPLAY-claimStage-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "771a6c3883e9f507159474d9017f81193f505993f77ad8e05a5745e708f3ad80",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-claimStage-legacy",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+    "stageRunId": "SR-bac85c0afd149c2434a5",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'commitArtifact' restores 'exact stored response' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { run: { …(13) }, …(1) }
+
+- Expected
++ Received
+
+  {
+    "artifactManifestHash": "b80438c24265f9ba0f25da2a3dd38741908fb7132dba388f4f5986b898364015",
+-   "run": {
+-     "currentFrontier": [
+-       "source",
+-     ],
+-     "leaseExpiresAt": null,
+-     "leaseOwner": null,
+-     "nextAction": "run_node",
+-     "pipelineKind": "marketing",
+-     "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-     "planKey": "command-replay",
+-     "planVersion": "1",
+-     "projectId": "REPLAY-commitArtifact-current",
+-     "revision": 3,
+    "runId": "RUN-c4e3cf0cabdc7b8d9c40a671",
+-     "stages": [
+-       {
+-         "artifact": null,
+-         "disposition": "continue",
+-         "executionStatus": "pending",
+-         "gateDecisionId": null,
+-         "itemKey": null,
+-         "key": "consumer",
+-         "revision": 1,
+-         "stageRunId": "SR-fc3d78652526df5d631d",
+-         "staleReason": null,
+-         "verificationStatus": "not_run",
+-       },
+-       {
+-         "artifact": null,
+-         "disposition": "continue",
+-         "executionStatus": "pending",
+-         "gateDecisionId": null,
+-         "itemKey": null,
+-         "key": "g1",
+-         "revision": 1,
+-         "stageRunId": "SR-d36a38b5e786565dac4d",
+-         "staleReason": null,
+-         "verificationStatus": "not_run",
+-       },
+-       {
+-         "artifact": {
+-           "bytes": 43,
+-           "id": "A:REPLAY-commitArtifact-current",
+-           "logicalId": "dossier",
+-           "mediaType": "application/json",
+-           "revision": 1,
+-           "role": "dossier",
+-           "schema": "workloom.video.dossier/v1",
+-           "sha256": "0c4ada8999007e97e68a6c988671e1d3d9a8c03fc9551403042dc99396d82dd1",
+-           "storageRef": "artifacts/source.json",
+-         },
+-         "disposition": "continue",
+-         "executionStatus": "output_ready",
+-         "gateDecisionId": null,
+-         "itemKey": null,
+-         "key": "source",
+-         "revision": 1,
+-         "stageRunId": "SR-3d032d0cc42981a32cdc",
+-         "staleReason": null,
+-         "verificationStatus": "pending",
+-       },
+-     ],
+-     "status": "running",
+-   },
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'commitArtifact' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { run: { …(13) }, …(1) }
+
+- Expected
++ Received
+
+  {
+    "artifactManifestHash": "8e94804d50d459dba8f66990f9b85c1e89204c40be30259ef6a7628c893ab577",
+-   "run": {
+-     "currentFrontier": [
+-       "consumer",
+-     ],
+-     "leaseExpiresAt": null,
+-     "leaseOwner": null,
+-     "nextAction": "reconcile",
+-     "pipelineKind": "marketing",
+-     "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-     "planKey": "command-replay",
+-     "planVersion": "1",
+-     "projectId": "REPLAY-commitArtifact-legacy",
+-     "revision": 8,
+    "runId": "RUN-04ffff33560a601fd59ceeb2",
+-     "stages": [
+-       {
+-         "artifact": null,
+-         "disposition": "reconcile",
+-         "executionStatus": "interrupted",
+-         "gateDecisionId": null,
+-         "itemKey": null,
+-         "key": "consumer",
+-         "revision": 1,
+-         "stageRunId": "SR-6f47941ca2307cb9d648",
+-         "staleReason": null,
+-         "verificationStatus": "unverified",
+-       },
+-       {
+-         "artifact": {
+-           "bytes": 42,
+-           "id": "A:REPLAY-commitArtifact-legacy",
+-           "logicalId": "dossier",
+-           "mediaType": "application/json",
+-           "revision": 1,
+-           "role": "dossier",
+-           "schema": "workloom.video.dossier/v1",
+-           "sha256": "a6dbcbf8cb9ae9fb5496aeb228f478d8a93156e525192f4e19568392f7df1bbc",
+-           "storageRef": "artifacts/source.json",
+-         },
+-         "disposition": "continue",
+-         "executionStatus": "completed",
+-         "gateDecisionId": "GD:REPLAY-commitArtifact-legacy",
+-         "itemKey": null,
+-         "key": "g1",
+-         "revision": 1,
+-         "stageRunId": "SR-2a8a9e2ababf3158ab85",
+-         "staleReason": null,
+-         "verificationStatus": "passed",
+-       },
+-       {
+-         "artifact": {
+-           "bytes": 42,
+-           "id": "A:REPLAY-commitArtifact-legacy",
+-           "logicalId": "dossier",
+-           "mediaType": "application/json",
+-           "revision": 1,
+-           "role": "dossier",
+-           "schema": "workloom.video.dossier/v1",
+-           "sha256": "a6dbcbf8cb9ae9fb5496aeb228f478d8a93156e525192f4e19568392f7df1bbc",
+-           "storageRef": "artifacts/source.json",
+-         },
+-         "disposition": "continue",
+-         "executionStatus": "completed",
+-         "gateDecisionId": "GD:REPLAY-commitArtifact-legacy",
+-         "itemKey": null,
+-         "key": "source",
+-         "revision": 1,
+-         "stageRunId": "SR-6455b9108628c1df4b1c",
+-         "staleReason": null,
+-         "verificationStatus": "passed",
+-       },
+-     ],
+-     "status": "reconciling",
+-   },
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'refreshFrontier' restores 'exact stored response' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "g1",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "run_node",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-refreshFrontier-current",
+-   "revision": 4,
+    "runId": "RUN-2b1d03fed1e9984a6347c0ce",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-9150bdb0a3497ec2cce8",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "ready",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-2429de24434d37528e79",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 44,
+-         "id": "A:REPLAY-refreshFrontier-current",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "20d19802d3d0a4a8ce2ed26c789c56ed4743e58b8f7fb135231f997b40afb811",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "output_ready",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-209787538fb384074d7e",
+-       "staleReason": null,
+-       "verificationStatus": "pending",
+-     },
+-   ],
+-   "status": "running",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'refreshFrontier' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-refreshFrontier-legacy",
+-   "revision": 8,
+    "runId": "RUN-0152482f5b2b378529d8c06b",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-81dacfb1a84a33ff96c4",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 43,
+-         "id": "A:REPLAY-refreshFrontier-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "987ad3efa378974b3b20a2dc8842d54e4d069af5f14fd487df4369f8477c9e4d",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-refreshFrontier-legacy",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-70969f6ebd1a09f82493",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 43,
+-         "id": "A:REPLAY-refreshFrontier-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "987ad3efa378974b3b20a2dc8842d54e4d069af5f14fd487df4369f8477c9e4d",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-refreshFrontier-legacy",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-b4ca065136560122efd7",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'recordGateDecision' restores 'exact stored response' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "g1",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "run_node",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-recordGateDecision-current",
+-   "revision": 5,
++   "decisionId": "GD:REPLAY-recordGateDecision-current",
+    "runId": "RUN-9a2d75658d869fa54335bcb4",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "continue",
+-       "executionStatus": "pending",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-c2e0ab6341e76166a0a5",
+-       "staleReason": null,
+-       "verificationStatus": "not_run",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 47,
+-         "id": "A:REPLAY-recordGateDecision-current",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "a981b86e527b2c614b869069fc95d12e0904cb76cd1dd8cf47a3423ea3bd81e0",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-recordGateDecision-current",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-43e99b77e4c70efbf780",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 47,
+-         "id": "A:REPLAY-recordGateDecision-current",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "a981b86e527b2c614b869069fc95d12e0904cb76cd1dd8cf47a3423ea3bd81e0",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-recordGateDecision-current",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-e0e87941e730aca66d5e",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "running",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'recordGateDecision' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { …(2) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-recordGateDecision-legacy",
+-   "revision": 8,
++   "decisionId": "GD:REPLAY-recordGateDecision-legacy",
+    "runId": "RUN-e5850ee2ee24506b74fc99ee",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-e66dd165e623f54a4422",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 46,
+-         "id": "A:REPLAY-recordGateDecision-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "744aa8f1129d0fcccbfc1db9ae7a316f2cf3feb72bd170853097f4859edd05c3",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-recordGateDecision-legacy",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-4288301ca56a865d837a",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 46,
+-         "id": "A:REPLAY-recordGateDecision-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "744aa8f1129d0fcccbfc1db9ae7a316f2cf3feb72bd170853097f4859edd05c3",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-recordGateDecision-legacy",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-6e0eb52a988f40e82f4f",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'markInterrupted' restores 'exact stored response' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-markInterrupted-current",
+-   "revision": 8,
+    "runId": "RUN-c941ff9a7ef7ec35cd407c7b",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-7b397fe97ac03b3abe57",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 44,
+-         "id": "A:REPLAY-markInterrupted-current",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "7762ffad2ad5402d5b7fb73424f5a148ef8867388363b27af5785baff08735f6",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-markInterrupted-current",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-5067de8555ee45942ecc",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 44,
+-         "id": "A:REPLAY-markInterrupted-current",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "7762ffad2ad5402d5b7fb73424f5a148ef8867388363b27af5785baff08735f6",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-markInterrupted-current",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-9d9980eee6f89c0f4a88",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts > pipeline command response replay with PostgreSQL > 'markInterrupted' restores 'historical partial receipt' without repeating state changes
+AssertionError: expected { Object (runId) } to deeply equal { …(13) }
+
+- Expected
++ Received
+
+  {
+-   "currentFrontier": [
+-     "consumer",
+-   ],
+-   "leaseExpiresAt": null,
+-   "leaseOwner": null,
+-   "nextAction": "reconcile",
+-   "pipelineKind": "marketing",
+-   "planHash": "8b30c1f79e89bf38285f7260e53daa0ef6607a93b9c06c74abbf7f7f66ae8e22",
+-   "planKey": "command-replay",
+-   "planVersion": "1",
+-   "projectId": "REPLAY-markInterrupted-legacy",
+-   "revision": 8,
+    "runId": "RUN-3e3251ba623f3ef705ae1501",
+-   "stages": [
+-     {
+-       "artifact": null,
+-       "disposition": "reconcile",
+-       "executionStatus": "interrupted",
+-       "gateDecisionId": null,
+-       "itemKey": null,
+-       "key": "consumer",
+-       "revision": 1,
+-       "stageRunId": "SR-bddc4f2fb09470d89ffe",
+-       "staleReason": null,
+-       "verificationStatus": "unverified",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 43,
+-         "id": "A:REPLAY-markInterrupted-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "78b83455c21d2668f587d2e9d29b76afde26d23fa84e5fac5df90e3e77f2b357",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-markInterrupted-legacy",
+-       "itemKey": null,
+-       "key": "g1",
+-       "revision": 1,
+-       "stageRunId": "SR-4630d0edaea73c8e2014",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-     {
+-       "artifact": {
+-         "bytes": 43,
+-         "id": "A:REPLAY-markInterrupted-legacy",
+-         "logicalId": "dossier",
+-         "mediaType": "application/json",
+-         "revision": 1,
+-         "role": "dossier",
+-         "schema": "workloom.video.dossier/v1",
+-         "sha256": "78b83455c21d2668f587d2e9d29b76afde26d23fa84e5fac5df90e3e77f2b357",
+-         "storageRef": "artifacts/source.json",
+-       },
+-       "disposition": "continue",
+-       "executionStatus": "completed",
+-       "gateDecisionId": "GD:REPLAY-markInterrupted-legacy",
+-       "itemKey": null,
+-       "key": "source",
+-       "revision": 1,
+-       "stageRunId": "SR-94ee2da990cd6eb1ea16",
+-       "staleReason": null,
+-       "verificationStatus": "passed",
+-     },
+-   ],
+-   "status": "reconciling",
+  }
+
+ ❯ apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts:153:22
+    151|       ? method === "commitArtifact" ? { run: current, artifactManifest…
+    152|       : target.response;
+    153|     expect(replayed).toEqual(expected);
+       |                      ^
+    154|     expect(await repository.getRun(created.runId)).toEqual(current);
+    155|     const after = await owner.query("SELECT event_kind,payload FROM vi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed (12)
+   Start at  22:04:59
+   Duration  1.60s (transform 514ms, setup 0ms, import 875ms, tests 656ms, environment 0ms)
+

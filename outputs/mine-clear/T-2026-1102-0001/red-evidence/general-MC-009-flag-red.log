@@ -1,0 +1,82 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+ ❯ packages/video-studio/src/vendor-compat.test.ts (42 tests | 1 failed | 41 skipped) 247ms
+   ↓ 当前定妆照版本的真实消费链 > 真实runtime两版四角度→manifest→provider payload只消费索引最新字节，历史目录顺序无效
+   ↓ 当前定妆照版本的真实消费链 > 模型遗留的 portraits 字符串或 fields.portraits 不能覆盖宿主当前精确定妆照
+   ↓ 当前定妆照版本的真实消费链 > 篡改、缺收据、symlink、越界和重复角度均不能进入vendor提交
+   ↓ 当前定妆照版本的真实消费链 > 清单生成后改索引/产物/清单均阻断，最终payload字节也再次核对
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 角色四角度齐备后，vendor 绑定清单校验通过（不再 BINDING_MANIFEST_INVALID）
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 索引里没有四角度齐备角色时不注入（渲染门照常报错，不伪造绑定）
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 配置隔离保活注入的类实例（LLM 引擎方法不再丢失）
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 字段质检桥：结构化 timeline 不再崩，单镜异常也有 reports 数组
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 字段质检使用宿主定妆照探针通过格式检查，返回后仍留给渲染桥绑定真实路径
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 微动作桥：camera_movement 参与距离推断，neutral 模板补齐（不再 0/6）
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > prompt 重建：空 prompt 镜头按字段复原，并保留结构化原值
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > promptFieldText：对象与数组转可读文本，不产生 [object Object]
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > healPromptContract（重建产物契约自愈） > 台词竖杠归一：只改【台词】字段，其它字段不动
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > healPromptContract（重建产物契约自愈） > 缺【服装】字段：有卡片服装短语 → 补字段并重排编号，判为已锁定
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > healPromptContract（重建产物契约自愈） > 缺【服装】字段且无提示：补「未锁定」声明并判 costumeLocked=false（不得静默放行）
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > healPromptContract（重建产物契约自愈） > 已有【服装】字段：不重复补字段
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > healPromptContract（重建产物契约自愈） > 重建链路：空 prompt 镜头重建后自带【服装】补全与台词归一留痕
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 契约桥：对象型字段不再产生 [object Object]，并输出契约账本行
+   ↓ 定妆照绑定桥（真机故障复现 → 修复） > 需求洞察字段填充桥：数组保形（原实现会 {0:…} 展平且 const 重赋值）
+   ↓ 音频纪律桥与时长策略桥（真机口径 2026-09-23） > 音频纪律桥：组装器出口追加【音频纪律】+ 清洗 audio 字段里的音乐指令，摘除后复原
+   ↓ 音频纪律桥与时长策略桥（真机口径 2026-09-23） > 时长策略桥：5 处在用口径统一放宽到模型上限 30s，摘除后精确还原
+   × Phase3 宿主融合桥（C1） > MC009 explicit per-shot degraded flag cannot be cleared by a successful native process summary 246ms
+     → expected { attempts: 1, code: null, …(2) } to deeply equal { attempts: 1, …(3) }
+   ↓ Phase3 宿主融合桥（C1） > 真实 process 的首次失败重试成功按最终结果通过，保留原生失败计数
+   ↓ Phase3 宿主融合桥（C1） > 主调用、快速重试和补全均失败后，existing-fields 的非降级自标不得冒充真实恢复
+   ↓ Phase3 宿主融合桥（C1） > 聚合失败不得用空包、重复/错误ID、缺终态标记或隐藏错误冒充已恢复
+   ↓ Phase3 宿主融合桥（C1） > 真实 process 重试后仍失败时拒绝规则兜底，degradeReason 原生拼写也不会漏过
+   ↓ Phase3 宿主融合桥（C1） > 原 const 重赋坏例被修复：真实 Phase3 完成融合、字段合并、台词检查与 checkpoint
+   ↓ Phase3 宿主融合桥（C1） > 宿主绑定定妆照时，空 portraits 不会把完整镜头误判为规则降级；其他短字段仍会降级
+   ↓ Phase3 宿主融合桥（C1） > 模型 picks=[] 真正不匹配，清除旧 _skillContext 后仍按原镜头融合
+   ↓ Phase3 宿主融合桥（C1） > 融合器仅丢失包装 id 且保持输入顺序时按位置恢复原始 shotId
+   ↓ Phase3 宿主融合桥（C1） > 融合器丢失 prompt 时仍 fail-closed，并报告精确镜头位置
+   ↓ Phase3 宿主融合桥（C1） > 区分继承的孤立 degraded 布尔值和带字段证据的真降级
+   ↓ Phase3 宿主融合桥（C1） > 真实 vendor 的融合请求生成器收到实际技能正文，负面禁词不被误判
+   ↓ Phase3 宿主融合桥（C1） > 预算拒绝或未知预算在任何路由模型/融合调用之前停止
+   ↓ Phase3 宿主融合桥（C1） > 提供商边界再次核预算：第一次返回后耗尽，第二次绝不发出；原 agent 未被改写
+   ↓ Phase3 宿主融合桥（C1） > 运行中预算变未知与 health 清理失败不会落通过 checkpoint
+   ↓ Phase3 宿主融合桥（C1） > 真实 BaseAgent 的 critical 备用模型与最终缩短重试也遵守外调预算
+   ↓ Phase3 宿主融合桥（C1） > 融合异常/降级/空 prompt/错 id/checkpoint 失败都不能成功返回
+   ↓ Phase3 宿主融合桥（C1） > 同一进程重复安装采用引用计数，最后卸载精确复原
+   ↓ Phase3 宿主融合桥（C1） > 安装日志抛错也还原原型且不遗留共享引用
+   ↓ Phase3 宿主融合桥（C1） > vendor RECOVERY 宣称成功也被外层拦下；未知旧断点不能伪过
+   ↓ VideoStudio 的 C1 实际安装入口 > runPreproduction 经现有兼容入口安装并消费 Phase3，失败与成功均卸载还原
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/video-studio/src/vendor-compat.test.ts > Phase3 宿主融合桥（C1） > MC009 explicit per-shot degraded flag cannot be cleared by a successful native process summary
+AssertionError: expected { attempts: 1, code: null, …(2) } to deeply equal { attempts: 1, …(3) }
+
+- Expected
++ Received
+
+  {
+    "attempts": 1,
+-   "checkpoints": 0,
+-   "code": "PHASE3_FUSION_UNVERIFIED",
+-   "success": false,
++   "checkpoints": 1,
++   "code": null,
++   "success": true,
+  }
+
+ ❯ packages/video-studio/src/vendor-compat.test.ts:776:20
+    774| console.log("RESULT " + JSON.stringify({ attempts, code, success, chec…
+    775| `));
+    776|     expect(result).toEqual({ attempts: 1, code: "PHASE3_FUSION_UNVERIF…
+       |                    ^
+    777|   }, 90_000);
+    778| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 41 skipped (42)
+   Start at  23:23:36
+   Duration  608ms (transform 122ms, setup 0ms, collect 134ms, tests 247ms, environment 0ms, prepare 37ms)
+

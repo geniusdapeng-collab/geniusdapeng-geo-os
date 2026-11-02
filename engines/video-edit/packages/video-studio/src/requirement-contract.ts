@@ -454,14 +454,15 @@ function sceneNodes(structure: RequirementRecord): RequirementRecord[] {
 /**
  * G3 accepts a small model timing tolerance, but the customer's exact duration
  * remains authoritative. Reconcile the small residual before hashing the
- * requirement contract, while preserving node count/order and every minimum of
- * three seconds supported by the pinned SceneArchitect schema.
+ * requirement contract, while preserving node count/order and the exact per-node lower and upper
+ * duration bounds from this run's actual SceneArchitect response schema.
  */
 export function normalizeDiscoveryTiming(
   targetValue: unknown,
   structureValue: unknown,
   audienceValue: unknown,
   restrictions: string[] = [],
+  sceneSchema?: unknown,
 ): DiscoveryTimingNormalization {
   const target = Number(targetValue);
   if (!Number.isFinite(target) || target <= 0 || !structureValue || typeof structureValue !== "object" || Array.isArray(structureValue)) {
@@ -473,34 +474,53 @@ export function normalizeDiscoveryTiming(
   if (durations.some((value) => !Number.isFinite(value) || value <= 0)) {
     return { changes: [], previousDuration: null, normalizedDuration: null };
   }
-  const previousDuration = Math.round(durations.reduce((sum, value) => sum + value, 0) * 10) / 10;
+  const round = (value: number): number => Math.round(value * 1_000_000) / 1_000_000;
+  const previousDuration = round(durations.reduce((sum, value) => sum + value, 0));
   const changes: string[] = [];
-  let residual = Math.round((previousDuration - target) * 10) / 10;
+  let residual = round(previousDuration - target);
   if (Math.abs(residual) > TARGET_DURATION_TOLERANCE_SECONDS) {
     return { changes, previousDuration, normalizedDuration: null };
   }
   if (residual !== 0) {
-    const adjustable = nodes.map((node, index) => ({ node, index, duration: durations[index]! }))
+    if (!sceneSchema) {
+      throw new RequirementContractError("REQUIREMENT_SCHEMA_UNSUPPORTED", "场景时长投影缺少本次实际 SceneArchitect schema，拒绝按猜测边界改写");
+    }
+    validateRequirementSchema(structure, sceneSchema);
+    const timing = structuredSceneTiming(sceneSchema, target, 0);
+    const bounds = nodes.map((_node, index) => index === 0 ? timing.opening
+      : index === nodes.length - 1 ? timing.ending : timing.middle);
+    const minimum = bounds.reduce((sum, bound) => sum + bound.minimum, 0);
+    const maximum = bounds.reduce((sum, bound) => sum + bound.maximum, 0);
+    const infeasible = (): never => {
+      throw withValidationFacts(new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED",
+        "当前场景节点在实际 schema 时长上下界内无法满足目标总时长，须重新创作节点数量或结构"), {
+        kind: "duration-projection", nodeCount: nodes.length, targetDuration: target,
+        durationSum: previousDuration, minimumDuration: minimum, maximumDuration: maximum,
+      });
+    };
+    if (target < minimum - 0.000001 || target > maximum + 0.000001) infeasible();
+    const planned = [...durations];
+    const adjustable = durations.map((duration, index) => ({ index, duration }))
       .sort((left, right) => right.duration - left.duration);
     for (const item of adjustable) {
       if (residual === 0) break;
-      if (residual > 0) {
-        const removable = Math.max(0, Math.floor((item.duration - 3) * 10) / 10);
-        if (removable <= 0) continue;
-        const delta = Math.min(removable, residual);
-        item.node.duration = Math.round((item.duration - delta) * 10) / 10;
-        residual = Math.round((residual - delta) * 10) / 10;
-      } else {
-        const delta = Math.abs(residual);
-        item.node.duration = Math.round((item.duration + delta) * 10) / 10;
-        residual = 0;
-      }
+      const bound = bounds[item.index]!;
+      const capacity = residual > 0 ? item.duration - bound.minimum : bound.maximum - item.duration;
+      const delta = Math.min(Math.max(0, capacity), Math.abs(residual));
+      if (delta === 0) continue;
+      planned[item.index] = round(item.duration + (residual > 0 ? -delta : delta));
+      residual = round(residual + (residual > 0 ? -delta : delta));
     }
-    if (residual === 0) {
-      structure.totalDuration = target;
-      structure.sceneCount = nodes.length;
-      changes.push("scene-duration-reconciled");
-    }
+    if (residual !== 0) infeasible();
+    // Validate the complete candidate before touching the accepted source.
+    const candidate = structuredClone(structure), candidateNodes = sceneNodes(candidate);
+    candidateNodes.forEach((node, index) => { node.duration = planned[index]; });
+    candidate.totalDuration = target; candidate.sceneCount = nodes.length;
+    validateRequirementSchema(candidate, sceneSchema);
+    nodes.forEach((node, index) => { node.duration = planned[index]; });
+    structure.totalDuration = target;
+    structure.sceneCount = nodes.length;
+    changes.push("scene-duration-reconciled");
   }
   const audience = audienceValue && typeof audienceValue === "object" && !Array.isArray(audienceValue)
     ? audienceValue as RequirementRecord
@@ -642,7 +662,7 @@ export function requirementScenes(
 
 export function bindRequirementContract(
   originalValue: unknown, discoveryValue: unknown, upstreamValue: unknown, metadataValue: unknown, expectedCastHash: string,
-  expectedOwnerAudience: string | null
+  expectedOwnerAudience: string | null, sceneSchema?: unknown
 ): RequirementRecord {
   const original = requirementRecord(originalValue, "ProfileResolver 完成后的需求清单");
   const originalDiscovery = requirementRecord(discoveryValue, "需求洞察结果");
@@ -658,6 +678,7 @@ export function bindRequirementContract(
     Array.isArray(metadata.marketingRestrictions)
       ? metadata.marketingRestrictions.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
       : [],
+    sceneSchema,
   );
   if (timing.changes.length > 0) {
     metadata._workloomDiscoveryTimingNormalization = {

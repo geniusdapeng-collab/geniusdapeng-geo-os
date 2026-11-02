@@ -1,0 +1,15 @@
+[PromptFusionAgent] 开始处理 1 个镜头(串行模式,避免并发超时)| 单镜头预算=600000ms
+[PromptFusionAgent] 每个镜头预算: 300000ms (串行模式，不除以镜头数)
+
+🎬 处理镜头 1/1: SC-01 | 截止时间=2026-11-02T14:42:16.035Z
+  ❌ SC-01 融合失败: fixture permanent failure
+  🔄 快速重试 1/1...
+  ❌ 重试失败: fixture permanent failure
+  🔄 尝试补全缺失字段...
+  ❌ SC-01 补全也失败: fixture fill failure
+  ⚠️ 使用已有字段组装 prompt(非降级)
+[PromptFusionAgent] ⚠️ 镜头 SC-01 精炼后仅 781 字符，低于精炼后下限 1200，请检查上游字段是否过薄
+[PromptFusionAgent] ⚠️ 镜头 SC-01 中文占比过低(25.9%), 尝试修正为中文输出
+[PromptFusionAgent] ⚠️ 1/1 镜头需要补全/兜底
+[PromptFusionAgent] 完成 ✓ | 降级: 1/1
+RESULT {"attempts":2,"checkpoints":1,"error":null,"success":true,"recovery":{"initialFailures":1,"recoveredFailures":1,"finalFailures":0,"nativeStats":{"total":1,"failed":1,"success":0}},"prompt":"01.【强制中文输出】【语言约束】全部字段必须使用中文输出,禁止出现英文单词、英文短语、英文描述。\n02.【导演意图】好莱坞电影级质感,写实风格,专业摄影布光,8K超高清, cinematic color grading。\n03.【基础】4K resolution, cinematic quality, film grain, professional color grading, highly detailed, photorealistic, sharp focus, ultra high definition, lifelike textures。\n04.【约束】16:9画幅，8K分辨率，24fps，MP4格式。\n05.【场景】手表商品微距。\n06.【明亮约束】主体面部明亮清晰，阴影保留层次不死黑。\n07.【构图】表盘特写。\n08.【运镜】固定机位。\n09.【定妆照】\n10.【时间轴】T00:00 - 全景establishing,环境展示;T00:01 - 中景推进,人物动作;\n11.【负面约束】no text, no watermark, no signage, no blurry, no low resolution, no pixelated, no distorted, no artifacts, no compression noise, no extra limbs, no deformed hands, no malformed fingers, no extra fingers, no fused fingers, no cartoon style, no flat lighting。\n12.【角色约束】只出现指定角色,禁止其他未指定人物入镜,禁止同一角色重复出现,禁止角色分身或克隆。\n13.【角色一致性】保持角色形象一致,造型不变,面部特征与体型每帧统一。"}

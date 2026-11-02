@@ -231,11 +231,11 @@ function preproductionRethrow(err: unknown): never {
 }
 
 /** Validate only the explicit duration here; legacy platform/production fields keep their existing paths. */
-function studioDurationOf(metadata?: Record<string, unknown>): number {
+function studioDurationOf(metadata?: Record<string, unknown>): number | undefined {
   const brief = metadata?.brief;
-  if (!brief || typeof brief !== "object" || Array.isArray(brief)) return 30;
+  if (!brief || typeof brief !== "object" || Array.isArray(brief)) return undefined;
   try {
-    return normalizeExplicitBriefDuration((brief as Record<string, unknown>).duration) ?? 30;
+    return normalizeExplicitBriefDuration((brief as Record<string, unknown>).duration);
   } catch (error) {
     if (error instanceof PrdAuthorityError) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
@@ -589,6 +589,7 @@ const studioRouter = router({
             rawIntent: input.intent,
             intent: buildPipelineIntent(input.intent, {
               durationSec,
+              defaultDurationSec: 30,
               aspectRatio: decision.route === "marketing" ? selectedPlatform.decision.aspectRatio : undefined,
               platform: selectedPlatform.decision.id,
             }),
@@ -652,6 +653,7 @@ const studioRouter = router({
           customerMetadata: input.metadata ?? null,
           intent: buildPipelineIntent(input.intent, {
             durationSec,
+            defaultDurationSec: 30,
             aspectRatio: decision.route === "marketing" ? standardPlatform.decision.aspectRatio : undefined,
             platform: standardPlatform.decision.id,
           }),
@@ -1310,7 +1312,7 @@ const renderRouter = router({
       const archiveHandle = makeStageArchive(scope, script.project_id);
       if (archiveHandle) {
         try {
-          await logStageOutcome(archiveHandle.store, archiveHandle.ledger, {
+          const archiveReceipt = await logStageOutcome(archiveHandle.store, archiveHandle.ledger, {
             stageId: "renderSubmit",
             status: submitted.deduped ? "skipped" : "done",
             skipReason: submitted.deduped ? "idempotency-key 命中既有 job（不重复烧额度）" : null,
@@ -1328,6 +1330,9 @@ const renderRouter = router({
             cost: { cashCny: submitted.estCny ?? null },
             runId: null,
           });
+          if (archiveReceipt.error) {
+            console.error(`[video.render.submit] 档案回执待对账 job=${submitted.jobId}：${archiveReceipt.error}；产物=${archiveReceipt.outputRef ?? "未落盘"}；保留原任务，禁止重复提交`);
+          }
         } catch (err) {
           console.error(`[video.render.submit] 档案记账失败（不影响提交）: ${(err as Error).message}`);
         }

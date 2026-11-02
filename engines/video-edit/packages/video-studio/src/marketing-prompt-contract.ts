@@ -7,6 +7,9 @@ export interface MarketingPromptOptions {
   abstractOnly?: boolean;
   /** Formal delivery frame rate when the caller has already resolved it. */
   frameRate?: 24 | 25 | 30 | 60;
+  aspectRatio?: string;
+  resolution?: string;
+  subtitleMode?: "both" | "burned" | "sidecar" | "none";
   /** Exact source-bound names/claims that may appear as visible text. */
   allowedVisibleText?: string[];
 }
@@ -146,9 +149,35 @@ export function marketingVisibleTextFromG1(content: string): string[] {
   }
 }
 
-export function isAbstractMarketingIntent(value: string): boolean {
-  return /仅使用抽象|只用抽象|抽象界面|抽象[^。\n]{0,12}示意|不展示未核实硬件/iu.test(value)
-    && /全片无人|无人物|无人出镜/iu.test(value);
+export function isAbstractMarketingIntent(value: string, metadataValue?: unknown, profileValue?: unknown): boolean {
+  const metadata = isRecord(metadataValue) ? metadataValue : {};
+  const brief = isRecord(metadata.brief) ? metadata.brief : {};
+  const profile = isRecord(profileValue) ? profileValue
+    : isRecord(brief.productionRequirements) ? brief.productionRequirements : {};
+  const intent = [value, metadata.customerOriginalIntent, brief.description].filter(item => typeof item === "string").join("\n");
+  const directionKeys = [
+    "references", "visualReferences", "referenceCases", "visualStyle", "style", "colorPalette", "colorStyle", "palette",
+    "music", "musicStyle", "soundEffects", "soundDesign", "soundtrack", "sound", "audio", "audioDirection", "audioRequirements", "sfx", "bgm",
+    "transition", "transitions", "rhythm", "pacing", "pace", "tempo", "editing", "editStyle",
+    "mood", "tone", "emotion", "emotionalArc", "creativeHook", "cameraLanguage", "cameraMovement", "lighting", "composition", "visualDirection",
+  ];
+  const declared = (item: unknown): boolean => Array.isArray(item) ? item.length > 0
+    : isRecord(item) ? Object.keys(item).length > 0 : typeof item === "string" ? Boolean(item.trim())
+      : typeof item === "boolean" || typeof item === "number" && Number.isFinite(item);
+  // The historical template owns a fixed palette, music policy, timing and
+  // transitions. Any customer direction on these axes belongs to native creation
+  // and its ordinary gates; selecting the template must not erase that direction.
+  const hasDirection = [brief, metadata, profile].some(owner => directionKeys.some(key => declared(owner[key])));
+  if (hasDirection || /风格|配色|色板|主色|色调|参考片|参考影片|艺术参考|导演|暖橙|暖色|暖黄|暖红|粉色|蓝色|绿色|红色|紫色|音乐|配乐|音效|环境音|背景声|转场|叠化|硬切|节奏|节拍|剪辑|构图|运镜|灯光|光影|情绪|氛围|\b(?:music|soundtrack|sfx|bgm|bpm|transition|rhythm|pacing|tempo|palette|style)\b/iu.test(intent)) return false;
+  const removeSilence = (text: string): string => text.replace(/(?:无|不要|无需|禁止|不需要|不含|不使用)(?:任何)?(?:对白|旁白|口播|人声|配音)/gu, "");
+  // The silent template is not allowed to overrule a voice policy supplied in
+  // another customer-owned field or a native audio contract that may contain speech.
+  const voice = typeof brief.voice === "string" ? brief.voice.trim() : isRecord(brief.voice) ? JSON.stringify(brief.voice) : "";
+  if (voice && !/^(?:none|silent|无|无对白|无旁白|无口播|无人声|不需要配音)$/iu.test(voice)) return false;
+  if (/旁白|口播|对白|人声|配音|\bnarration\b|\bvoice[- ]?over\b|\bdialogue\b/iu.test(removeSilence(intent))) return false;
+  if (profile.nativeAudio === true && !/(?:无|不要|无需|禁止|不需要|不含|不使用)(?:任何)?(?:对白|旁白|口播|人声|配音)/u.test(intent) && !voice) return false;
+  return /仅使用抽象|只用抽象|抽象界面|抽象[^。\n]{0,12}示意|不展示未核实硬件/iu.test(intent)
+    && /全片无人|无人物|无人出镜/iu.test(intent);
 }
 
 function timecodeSeconds(value: string): number | null {
@@ -166,6 +195,7 @@ function capTimecodes(value: string, duration: number): string {
 }
 
 function normalizePromptString(value: string, duration: number | null, options: MarketingPromptOptions): string {
+  if (!options.abstractOnly || !options.noPeople) return value;
   let next = value
     .replace(
       /01\.【语言约束】[^\n]*/u,
@@ -282,21 +312,10 @@ function normalizeAbstractField(tag: string, content: string): string {
   return next;
 }
 
-function extractAbstractVisibleText(value: string, seed: string[] = []): string[] {
-  const candidates: string[] = [];
-  const add = (candidate: string): void => {
-    const text = candidate.trim();
-    if (text && !candidates.includes(text)) candidates.push(text);
-  };
-  for (const item of seed) add(item);
-  for (const match of value.matchAll(/\bLicense\s*[：:]\s*Apache-2\.0\b/giu)) add(match[0].replace(/[：:]/gu, ": ").replace(/\s+/gu, " "));
-  for (const match of value.matchAll(/https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/gu)) add(match[0]);
-  for (const match of value.matchAll(/[A-Z][A-Za-z0-9 ,.'’!?-]{24,220}[.!?]/gu)) {
-    const sentence = match[0].trim();
-    if (/\b(?:MP4|H\.264|H\.265|fps|T\d{2}:|prompt|negative|lighting|scene|shot|resolution)\b/iu.test(sentence)) continue;
-    add(sentence);
-  }
-  return candidates.slice(0, 8);
+function extractAbstractVisibleText(_value: string, seed: string[] = []): string[] {
+  // Only accepted G1 can add visible strings. A model prompt is the object being
+  // reviewed and must never become a second source of license/name authority.
+  return [...new Set(seed.map(value => value.trim()).filter(Boolean))].slice(0, 8);
 }
 
 function abstractTimeline(duration: number, action: string, hasText: boolean): string {
@@ -358,14 +377,38 @@ function selectAbstractVisibleTexts(shotId: string, values: string[]): string[] 
   const clean = (items: Array<string | undefined>): string[] => [...new Set(items.filter((item): item is string => Boolean(item)))];
   if (shotId === "opening") return clean([url, values[0]]);
   if (shotId === "scene-1") return clean([official[0], values[1]]);
-  if (shotId === "scene-2") return [license ?? "Apache-2.0"];
+  if (shotId === "scene-2") return clean([license]);
   if (shotId === "scene-3") return clean([url, license, official[1], official[0]]);
   if (shotId === "scene-4") return [];
   if (shotId === "ending") return clean([official[0], url]);
   return clean([values[0]]);
 }
 
-function buildAbstractPromptFields(shotId: string, duration: number, visibleTexts: string[]): string[] {
+export function marketingDeliveryDimensions(resolution: string, aspect: string): string {
+  const shortEdge = resolution === "1080p" ? 1080 : 2160;
+  const [width, height] = aspect.split(":").map(Number);
+  if (!width || !height || width < 0 || height < 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
+    throw new Error("MARKETING_PROMPT_PROFILE_INVALID：画幅必须是有效宽高比");
+  }
+  return width >= height
+    ? `${Math.round(shortEdge * width / height)}x${shortEdge}`
+    : `${shortEdge}x${Math.round(shortEdge * height / width)}`;
+}
+
+function abstractDelivery(options: MarketingPromptOptions): { technical: string; subtitle: string; aspect: string } {
+  const aspect = options.aspectRatio ?? "9:16";
+  const dimensions = marketingDeliveryDimensions(options.resolution ?? "4K", aspect);
+  return {
+    aspect,
+    technical: `${dimensions}，${aspect}，${options.frameRate ?? 30}fps，H.264/MP4，AAC 48kHz 双声道`,
+    subtitle: options.subtitleMode && options.subtitleMode !== "none"
+      ? `字幕按本次明确交付模式 ${options.subtitleMode} 执行；字幕正文与本次已审文字及时间线绑定，不能用图形层代替字幕交付`
+      : "字幕轨不生成，画面文字仅作图形层",
+  };
+}
+
+function buildAbstractPromptFields(shotId: string, duration: number, visibleTexts: string[], options: MarketingPromptOptions): string[] {
+  const delivery = abstractDelivery(options);
   const values = [...new Set(visibleTexts.filter(Boolean))];
   const hasText = values.length > 0;
   const sentence = values.map((value) => `“${value}”`).join("、");
@@ -374,7 +417,7 @@ function buildAbstractPromptFields(shotId: string, duration: number, visibleText
     ["语言约束", "除本次 G1 已审原文、许可证字段和仓库地址外，其余字段使用中文；不新增未审英文。"],
     ["导演意图", "极简抽象信息片；以本次 G1 已审原文、二维几何和受控明暗变化建立证据感；所有表达保持可读、可停稳、可截图复核。"],
     ["基础", "高质量二维文字与图形合成；文字边缘清晰，灰度层次稳定，画面不依赖实体材质、真实摄影或未审场景。字形、线宽、光点和灰阶在每个镜头内保持一致，不因缩放或叠层出现断裂、重影、噪点堆积与非受控闪动。"],
-    ["约束", "9:16 竖屏，2160x3840，30fps，H.264/MP4，AAC 48kHz 双声道；关键文字位于平台安全区，字幕轨不生成，画面文字仅作图形层。"],
+    ["约束", `${delivery.technical}；关键文字位于平台安全区；${delivery.subtitle}。`],
     ["场景", `纯黑或冷灰二维抽象画布。本镜采用${variant.scene}；所有元素位于同一平面图层。文字与图形只在既定安全区内移动，层与层之间以明度、透明度和遮挡关系区分，无文字来源角标始终可辨认，任何装饰不得压住原文。来源角标为纯几何标记，不承载文字；${hasText ? "如出现地址，只使用本镜列明字符串。" : "本镜不出现任何文字、地址或标签。"}场景中的全部对象均为可替换的文字层或矢量层，不通过透视、阴影方向、景别变化或环境细节暗示画外空间。`],
     ["灯光设计", "只以冷白自发光和灰阶明暗差建立层级；亮部集中在文字与线条，暗部保持纯净，不声明实体灯具或环境照明。高光只沿字形和图形边缘出现，亮区面积随信息落点变化，暗区保持连续并避免过曝；所有明暗变化必须服务文字可读性、节点连接或结尾停稳。"],
     ["明亮约束", hasText ? "已审原文与关键图形在安全区内清晰可读，暗部不抬灰；亮暗变化只服务信息层级与停稳。" : "网格线、空框和光标在安全区内保持可辨，暗部不抬灰；亮暗变化只服务停顿和停稳。"],
@@ -406,7 +449,7 @@ function buildAbstractPromptFields(shotId: string, duration: number, visibleText
     ["角色一致性", "本镜无角色；保持二维色板、字形、光标和抽象几何样式一致。"],
     ["微动作", NO_PERSON_MICRO_ACTION],
     ["可见文字锁定", hasText ? `本镜只允许以下精确字符串上屏：${sentence}；不截断、不改标点、不新增其他文字。` : "本镜无屏上文字；不得由生成端补字、标签或占位符。"],
-    ["技术交付", "2160x3840，9:16，30fps，H.264/MP4，AAC 48kHz 双声道；AAC 响度 -14 LUFS，True Peak ≤ -1 dBTP。"],
+    ["技术交付", `${delivery.technical}；AAC 响度 -14 LUFS，True Peak ≤ -1 dBTP。`],
   ];
   return fields.map(([tag, content], index) => `${String(index + 1).padStart(2, "0")}.【${tag}】${content}`);
 }
@@ -444,7 +487,7 @@ function normalizeAbstractPromptMarkdown(value: string, changes: string[], optio
     if (inPrompt && line.trim() === "```") {
       const duration = durationRows.get(shotId) ?? 4;
       const visible = selectAbstractVisibleTexts(shotId, visibleTexts);
-      const fields = buildAbstractPromptFields(shotId, duration, visible);
+      const fields = buildAbstractPromptFields(shotId, duration, visible, options);
       const content = fields.join("\n");
       output.push(...fields, line);
       rebuilt.push({ shotId, chars: Array.from(content).length, count: fields.length, duration });
@@ -616,6 +659,7 @@ export function normalizeMarketingPromptText(
   value: string,
   options: MarketingPromptOptions,
 ): MarketingPromptNormalization<string> {
+  if (!options.abstractOnly || !options.noPeople) return { value, changes: [] };
   const changes: string[] = [];
   let next = normalizePromptString(value ?? "", null, options);
   if (next !== value) changes.push("gate-prompt-contract-normalized");
@@ -628,6 +672,7 @@ export function normalizeMarketingPromptResult<T>(
   value: T,
   options: MarketingPromptOptions,
 ): MarketingPromptNormalization<T> {
+  if (!options.abstractOnly || !options.noPeople) return { value, changes: [] };
   const changes: string[] = [];
   const normalizedValue = normalizeUnknown(value, options, changes) as T;
   if (options.abstractOnly && isRecord(normalizedValue) && isRecord(normalizedValue.stages)) {
@@ -656,11 +701,12 @@ export function normalizeMarketingPromptList<T extends RecordValue>(
   prompts: T[],
   options: MarketingPromptOptions,
 ): T[] {
+  if (!options.abstractOnly || !options.noPeople) return prompts;
   const visibleTexts = extractAbstractVisibleText("", options.allowedVisibleText);
   return prompts.map((prompt, index) => {
     const shotId = String(prompt.shotId ?? prompt.shot_id ?? `shot-${index + 1}`);
     const duration = Number(prompt.duration ?? prompt.duration_sec ?? 0);
-    const fields = buildAbstractPromptFields(shotId, duration, selectAbstractVisibleTexts(shotId, visibleTexts));
+    const fields = buildAbstractPromptFields(shotId, duration, selectAbstractVisibleTexts(shotId, visibleTexts), options);
     const fieldRecord: RecordValue = {};
     for (const line of fields) {
       const match = /^\d+\.【([^】]+)】([\s\S]*)$/u.exec(line);
@@ -741,7 +787,7 @@ export function buildMarketingPreproductionReport(input: {
     const duration = resolvedDurations[index] ?? 0;
     const visibleValues = selectAbstractVisibleTexts(shotId, visibleTexts);
     const visible = visibleValues.join(" | ");
-    const fields = buildAbstractPromptFields(shotId, duration, visibleValues);
+    const fields = buildAbstractPromptFields(shotId, duration, visibleValues, input.options);
     const body = fields.join("\n");
     const scene = body.split("\n").find((line) => line.includes("【场景】"))?.replace(/^\d+\.【场景】/u, "") ?? "";
     promptBodies.push({ shotId, duration, body, scene, visible, fields });

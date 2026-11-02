@@ -1,0 +1,304 @@
+
+ RUN  v3.2.0 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager
+
+ ❯ engines/video-edit/packages/video-studio/src/prd-authority.test.ts (185 tests | 9 failed | 175 skipped) 22ms
+   ↓ shared explicit Brief duration > leaves omission without a customer-authoritative default
+   ↓ shared explicit Brief duration > preserves the existing accepted value 5 without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value "5" without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value 35 without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value "35" without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value "035" without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value 30.5 without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value "30.5" without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value 180 without rounding
+   ↓ shared explicit Brief duration > preserves the existing accepted value "180.0" without rounding
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value null
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value false
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value true
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value []
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value {}
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value 0
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value -1
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value 4.999
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value 180.001
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value null
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value null
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value null
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value ""
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value " 35"
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value "35 "
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value "35s"
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value "3.5e1"
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value "0x23"
+   ↓ shared explicit Brief duration > rejects the same malformed explicit value "35."
+   ↓ shared explicit Brief duration > rejects objects without invoking a caller-controlled numeric conversion
+   ↓ PRD explicit production requirements > normalizes the explicit platform without replacing the full client brief
+   ↓ PRD explicit production requirements > legacy briefs without the new object enforce only fields the client actually provided
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"resolution":"8K"}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"resolution":"2K"}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"resolution":"720p"}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"frameRate":29.97}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"nativeAudio":"true"}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"subtitleMode":"optional"}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"durationToleranceFrames":2}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"durationToleranceFrames":-1}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"openWithCover":null}
+   ↓ PRD explicit production requirements > rejects malformed present requirements {"extra":true}
+   ↓ PRD explicit production requirements > rejects a present incomplete object undefined
+   ↓ PRD explicit production requirements > rejects a present incomplete object null
+   ↓ PRD explicit production requirements > rejects a present incomplete object {}
+   ↓ PRD explicit production requirements > rejects a present incomplete object {"resolution":"1080p"}
+   ↓ PRD explicit production requirements > rejects incompatible explicit brief values {"duration":0}
+   ↓ PRD explicit production requirements > rejects incompatible explicit brief values {"duration":181}
+   ↓ PRD explicit production requirements > rejects incompatible explicit brief values {"duration":"30sec"}
+   ↓ PRD explicit production requirements > rejects incompatible explicit brief values {"aspectRatio":"4:5"}
+   ↓ PRD explicit production requirements > rejects incompatible explicit brief values {"platform":"constructor"}
+   ↓ PRD explicit production requirements > does not promote the old PRD 4:3 declaration into a new formal CLI capability
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"coverDelivery":"standalone"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"coverDelivery":"none"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"sidecarPolicy":"dialogue-only"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"sidecarPolicy":"dialogue-and-composite-ass"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"subtitleMode":"burned","persistentSubtitleText":"完整持续警示🙂"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > accepts each atomic declaration without inventing omitted declarations {"coverDelivery":"standalone","sidecarPolicy":"dialogue-and-composite-ass","persistentSubtitleText":"完整持续警示🙂"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original resolution when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original frameRate when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original subtitleMode when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original nativeAudio when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original openWithCover when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original titleCard when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > still requires the original durationToleranceFrames when optional atoms are present
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":null}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":true}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":[]}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":""}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":"standalone "}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"coverDelivery":"cover"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":null}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":false}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":{}}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":""}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":"dialogue-only "}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"sidecarPolicy":"all"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":null}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":1}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":[]}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":{}}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":""}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"persistentSubtitleText":"   "}
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects a malformed present atom or unknown key {"unrelatedDeliveryField":true}
+   ↓ PRD explicit separate cover and subtitle composition declarations > trims only the edges and counts Unicode code points without shortening the actual message
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警警🙂" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文\n第二行" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文\r" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文\t" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文\u0000" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文 " before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文 " before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "\ud800" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "\udc00" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects overlong, multiline, control or invalid Unicode text "正文\ud800结尾" before any media work
+   ↓ PRD explicit separate cover and subtitle composition declarations > does not invoke a caller-controlled text conversion
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"burned","sidecarPolicy":"dialogue-only"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"none","sidecarPolicy":"dialogue-and-composite-ass"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"none","persistentSubtitleText":"完整持续警示"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"burned","persistentSubtitleText":"完整持续警示","titleCard":true}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"both","persistentSubtitleText":"完整持续警示"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"sidecar","persistentSubtitleText":"完整持续警示"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"both","persistentSubtitleText":"完整持续警示","sidecarPolicy":"dialogue-only"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > fails closed on an explicitly contradictory combination {"subtitleMode":"sidecar","persistentSubtitleText":"完整持续警示","sidecarPolicy":"dialogue-only"}
+   ↓ PRD explicit separate cover and subtitle composition declarations > allows persistent content text with a separate silent cover intro and records its duration
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects invalid cover intro duration -0.1
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects invalid cover intro duration 5.1
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects invalid cover intro duration "0.6"
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects invalid cover intro duration null
+   ↓ PRD explicit separate cover and subtitle composition declarations > rejects invalid cover intro duration null
+   ↓ PRD explicit separate cover and subtitle composition declarations > keeps standalone separate-cover delivery independent from embedding in the opening
+   ↓ PRD explicit separate cover and subtitle composition declarations > keeps none separate-cover delivery independent from embedding in the opening
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > keeps the exact former normalized profile and delivery bytes when the three new keys are omitted
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > enumerates a required independent cover and distinguishes dialogue sidecars from the full persistent ASS composition
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > a cover-only standalone declaration preserves the exact former subtitle specs without inventing a sidecar or persistent policy
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > a cover-only none declaration preserves the exact former subtitle specs without inventing a sidecar or persistent policy
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > extends only the current declaration's narrow item/output schema { coverDelivery: 'none' }
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > extends only the current declaration's narrow item/output schema { coverDelivery: 'standalone', …(1) }
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > extends only the current declaration's narrow item/output schema { coverDelivery: 'standalone', …(1) }
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed missing-cover projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed duplicate-cover projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed changed-cover-spec projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed missing-burned projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed changed-sidecar-spec projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed unknown-item projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed item-extra projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed output-extra projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects a changed output-value projection instead of repairing it
+   ↓ PRD rule-owned delivery projection and legacy byte compatibility > rejects an independent cover that was explicitly disabled
+   ↓ PRD private accepted current G1 > preserves every original nested review, issue, suggestion and complete byte identity
+   ↓ PRD private accepted current G1 > rejects wrong-project
+   ↓ PRD private accepted current G1 > rejects old-attempt
+   ↓ PRD private accepted current G1 > rejects old-run
+   ↓ PRD private accepted current G1 > rejects degraded
+   ↓ PRD private accepted current G1 > rejects missing-evidence
+   ↓ PRD private accepted current G1 > rejects partial-evidence
+   ↓ PRD private accepted current G1 > rejects wrong-hash
+   ↓ PRD private accepted current G1 > rejects wrong-file
+   ↓ PRD private accepted current G1 > rejects file-changed
+   ↓ PRD private accepted current G1 > rejects a G1 symlink even when its target has the expected bytes
+   ↓ PRD real model response and provenance > derives the bare creative shape and exact four production modules without mutating native constraints
+   ↓ PRD real model response and provenance > exposes exactly the current 0 selected people and ten scenes to the model schema
+   ↓ PRD real model response and provenance > exposes exactly the current 6 selected people and ten scenes to the model schema
+   ↓ PRD real model response and provenance > exposes exactly the current 10 selected people and ten scenes to the model schema
+   ↓ PRD real model response and provenance > accepts the original visual reference boundary of 1 items
+   ↓ PRD real model response and provenance > accepts the original visual reference boundary of 5 items
+   ↓ PRD real model response and provenance > rejects illegal visualReferences 'empty' without filling a reference
+   ↓ PRD real model response and provenance > rejects illegal visualReferences 'six' without filling a reference
+   ↓ PRD real model response and provenance > rejects illegal visualReferences 'missing' without filling a reference
+   ↓ PRD real model response and provenance > rejects illegal visualReferences 'not-array' without filling a reference
+   ↓ PRD real model response and provenance > rejects illegal visualReferences 'wrong-item-type' without filling a reference
+   ↓ PRD real model response and provenance > accepts genuine payload structure and keeps full model creative sentences untouched
+   ↓ PRD real model response and provenance > compacts only over-budget creative key messages without mutating the provider payload
+   ↓ PRD real model response and provenance > compacts over-budget production scene requirements without dropping their text
+   ↓ PRD real model response and provenance > rejects missing-scene without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects wrong-id without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects wrong-order without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects over-duration without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects wrong-character without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects invented-character without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects wrong-mapping without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects missing-module without writing a repaired creative result
+   ↓ PRD real model response and provenance > rejects bad-enum without writing a repaired creative result
+   ↓ PRD real model response and provenance > allows exactly one explicitly requested frame of deviation and rejects two
+   ↓ PRD real model response and provenance > accepts a 34-second scene total for a 30-second target while preserving each approved node
+   ↓ PRD real model response and provenance > preserves ten approved nodes and a long purpose without the obsolete PRD 8-node/200-character ceilings
+   ↓ PRD real model response and provenance > accepts exactly the actual host selection of 0 people, without the old five-person cap
+   ↓ PRD real model response and provenance > accepts exactly the actual host selection of 6 people, without the old five-person cap
+   ↓ PRD real model response and provenance > accepts exactly the actual host selection of 10 people, without the old five-person cap
+   ↓ PRD real model response and provenance > overrides only declared rule fields and delivers both subtitle forms
+   × MC-010 final master and content timeline duration > centers the existing tolerance on content when a 1s cover intro is enabled 7ms
+     → expected [Function] to not throw an error but 'PrdAuthorityError: PRD_SCENE_DURATION…' was thrown
+   × MC-010 final master and content timeline duration > centers the existing tolerance on content when a 5s cover intro is enabled 1ms
+     → expected [Function] to not throw an error but 'PrdAuthorityError: PRD_SCENE_DURATION…' was thrown
+   × MC-010 final master and content timeline duration > rejects content above its budget even when its sum is close to the final master duration 1ms
+     → expected [Function] to throw an error
+   × MC-010 final master and content timeline duration > instructs the real PRD model to inherit content scenes and retain the separate final master duration 4ms
+     → expected '\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为…' to contain '内容节点合计 25s'
+   ✓ MC-010 final master and content timeline duration > keeps the existing no-cover duration tolerance and does not subtract an inactive intro 1ms
+   × MC-010 final master and content timeline duration > rejects an invalid enabled intro -1 before validating scenes 1ms
+     → expected [Function] to throw an error
+   × MC-010 final master and content timeline duration > rejects an invalid enabled intro 30 before validating scenes 1ms
+     → expected [Function] to throw an error
+   × MC-010 final master and content timeline duration > rejects an invalid enabled intro 31 before validating scenes 1ms
+     → expected [Function] to throw an error
+   × MC-010 final master and content timeline duration > rejects an invalid enabled intro NaN before validating scenes 1ms
+     → expected [Function] to throw an error
+   × MC-010 final master and content timeline duration > rejects an invalid enabled intro Infinity before validating scenes 1ms
+     → expected [Function] to throw an error
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > centers the existing tolerance on content when a 1s cover intro is enabled
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > centers the existing tolerance on content when a 5s cover intro is enabled
+AssertionError: expected [Function] to not throw an error but 'PrdAuthorityError: PRD_SCENE_DURATION…' was thrown
+
+- Expected: 
+undefined
+
++ Received: 
+"PrdAuthorityError: PRD_SCENE_DURATION_CONFLICT: 模型场景节点、顺序或时长未继承本次已审 G3，拒绝改写为凑齐目标"
+
+ ❯ engines/video-edit/packages/video-studio/src/prd-authority.test.ts:435:88
+    433|     const profile = { ...value.authority.profile, targetDuration: cont…
+    434|       openWithCover: true, coverIntroSeconds };
+    435|     expect(() => validatePrdProduction(value.production, value.contrac…
+       |                                                                                        ^
+    436|   });
+    437| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects content above its budget even when its sum is close to the final master duration
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ engines/video-edit/packages/video-studio/src/prd-authority.test.ts:441:84
+    439|     const value = fixture("CONTENT-TOO-LONG", [8, 14.1, 8]);
+    440|     const profile = { ...value.authority.profile, targetDuration: 30, …
+    441|     expect(() => validatePrdProduction(value.production, value.contrac…
+       |                                                                                    ^
+    442|   });
+    443| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > instructs the real PRD model to inherit content scenes and retain the separate final master duration
+AssertionError: expected '\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为…' to contain '内容节点合计 25s'
+
+- Expected
++ Received
+
+- 内容节点合计 25s
++
++
++ ## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）
++ 完整客户 Brief：
++ {"product":"合成商品","audience":"原始年轻消费者","description":"完整创作原文-CONTENT-PROMPT-完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的完整目的","duration":25,"aspectRatio":"9:16","platform":"douyin","productionRequirements":{"resolution":"1080p","frameRate":30,"subtitleMode":"both","nativeAudio":true,"openWithCover":false,"titleCard":false,"durationToleranceFrames":1}}
++ 客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：
++ {"targetDuration":30,"aspectRatio":"9:16","targetPlatform":"抖音","resolution":"1080p","frameRate":30,"subtitleMode":"both","nativeAudio":true,"openWithCover":true,"titleCard":false,"durationToleranceFrames":1,"coverIntroSeconds":5}
++ 本次 G3 已审的完整场景、道具、动作和宿主选角合同：
++ {"schemaVersion":"workloom.requirement-contract/v1","status":"ready-for-g3","cast":{"mode":"builtin","selection":{"schemaVersion":"workloom.video-character-selection/v1","mode":"builtin","registrySha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","characters":[{"id":"builtin-person","name":"合成人物","source":"builtin","profilePath":"/synthetic/profile.json","profileSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","selectedVersion":2}]},"characters":[{"id":"builtin-person","character_id":"builtin-person","name":"合成人物","role":"主角","personality":"人物语气完整保留","portraitVersion":2,"builtinCharacterSource":{"profilePath":"/synthetic/profile.json","profileSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","registrySha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}],"hash":"d2af20bbf461036fbc3faf3b8a10c2cca6d0cd290db05aa385b60e5ba58f230f"},"ownerAudience":"原始年轻消费者","modelAudienceHypothesis":{"primaryAudience":{"ageRange":"25-30","gender":"male","interestTags":[]}},"scenes":[{"id":"opening","source":"/sceneStructure/opening","duration":8,"purpose":"完整场景目的0：人物观察合成商品并完成可见动作","keyElements":["合成商品","合成人物"],"props":[{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/opening/productionContract/props/0"}],"actions":[{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/opening/productionContract/actions/0"}],"noPropsReason":null},{"id":"scene-1","source":"/sceneStructure/scenes/0","duration":9,"purpose":"完整场景目的1：人物观察合成商品并完成可见动作","keyElements":["合成商品","合成人物"],"props":[{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/scenes/0/productionContract/props/0"}],"actions":[{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/scenes/0/productionContract/actions/0"}],"noPropsReason":null},{"id":"ending","source":"/sceneStructure/ending","duration":8,"purpose":"完整场景目的2：人物观察合成商品并完成可见动作","keyElements":["合成商品","合成人物"],"props":[{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/ending/productionContract/props/0"}],"actions":[{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/ending/productionContract/actions/0"}],"noPropsReason":null}],"props":[{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/opening/productionContract/props/0"},{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/scenes/0/productionContract/props/0"},{"name":"合成商品","description":"封闭拍摄场地中实际可见的合成商品","source":"/sceneStructure/ending/productionContract/props/0"}],"actions":[{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/opening/productionContract/actions/0"},{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/scenes/0/productionContract/actions/0"},{"actorId":"builtin-person","description":"合成人物沿着商品边缘观察并轻轻点头","source":"/sceneStructure/ending/productionContract/actions/0"}],"sceneStructureHash":"a6bbeede8d3c7478ebab5f614c814266b5c94658465dca58a9d134d21258ab03","hash":"971d7c8466eec7458b6d3d33d450fbcf3659ab9c7098930cb46fd7f26c6dbcac"}
++ 客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。
++ 制作规格 scenePlan.scenes 按合同节点顺序一一对应，sceneId 必须逐项等于合同 scenes[].id，duration 必须逐项等于该节点 duration。不得合并、拆分、漏掉开场或结尾；总时长必须位于 30s 的 ±5s 内，且各节点时长必须继承已审 G3 合同。完整保留场景原目的、角色行为、可见道具与创作原文；叙事语言由本次模型创作。
++ 下面是本次宿主真实非降级 G1 通过的完整原件，仅授权其中已接受 claims 及其限定用途，不批准本次 PRD。必须遵守原件明确 restrictions。完整阅读嵌套 A1/A2/A3 support review 的 issues 和 suggestions，回应其中的事实不确定性、来源/报道日期/用途限定。保持原始层级：非阻断的创意建议仍为建议，不能升级为 G1 硬条件或新审批，G1 通过也不批准这些新创作。媒体报道只能归因给该媒体和日期，没有直接厂家引语不能改称厂家官方确认；未知外观、使用场地限定、赛事型号与零售型号边界不得扩写。不确定时不使用该主张，不能把“通过G1”解释为每个创作句子已获批准。
++ G1 完整原始裁决（包括所有意见和建议）：
++ {"gate":"G1_DOSSIER","approved":true,"status":"passed","via":"llm","degraded":false,"model":"synthetic-reviewed-model","evidence":[{"path":"/private/var/folders/dj/mkh6fwbd4mb6ycp933xfty4h0000gn/T/wl-prd-authority-test-YssNhJ/gates/CONTENT-PROMPT/attempt-2/G1_DOSSIER.md","sha256":"c35125744508086740ac59aedd07e7d93facb7a1cb4ea2c8535a8baa39a9a7d3","scope":"complete-text"}],"issues":["保留完整原始意见"],"suggestions":["限定媒体归因"]}
++ G1 原件 /private/var/folders/dj/mkh6fwbd4mb6ycp933xfty4h0000gn/T/wl-prd-authority-test-YssNhJ/gates/CONTENT-PROMPT/attempt-2/G1_DOSSIER.md / SHA256 c35125744508086740ac59aedd07e7d93facb7a1cb4ea2c8535a8baa39a9a7d3：
++ {"facts":{"schemaVersion":"workloom.marketing-facts/v1","issuer":"workloom.marketing-authority","scope":{"tenantId":"tenant-test","workspaceId":"workspace-test","projectId":"CONTENT-PROMPT","runId":"RUN-CONTENT-PROMPT","attempt":2},"restrictions":["不得虚构客户评价","不得虚构竞品事实"],"stages":[{"stage":"A1","facts":{"claims":[{"id":"claim-1","text":"据测试媒体2026年报道的合成规格","source":"synthetic source"}]},"supportReview":{"status":"passed","score":88,"issues":["仅支持媒体报道归因"],"suggestions":["注明报道日期与封闭场地用途；未知外观不得臆测"]}}]}}
++
+
+ ❯ engines/video-edit/packages/video-studio/src/prd-authority.test.ts:448:20
+    446|     value.authority.profile = { ...value.authority.profile, targetDura…
+    447|     const prompt = prdAuthorityPrompt(value.authority, value.contract);
+    448|     expect(prompt).toContain("内容节点合计 25s");
+       |                    ^
+    449|     expect(prompt).toContain("最终成片 30s");
+    450|     expect(prompt).toContain("封面片头 5s");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects an invalid enabled intro -1 before validating scenes
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects an invalid enabled intro 30 before validating scenes
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects an invalid enabled intro 31 before validating scenes
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects an invalid enabled intro NaN before validating scenes
+ FAIL  engines/video-edit/packages/video-studio/src/prd-authority.test.ts > MC-010 final master and content timeline duration > rejects an invalid enabled intro Infinity before validating scenes
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ engines/video-edit/packages/video-studio/src/prd-authority.test.ts:463:9
+    461|     expect(() => validatePrdProduction(value.production, value.contrac…
+    462|       ...value.authority.profile, targetDuration: 30, openWithCover: t…
+    463|     })).toThrow("PRD_PROFILE_INVALID");
+       |         ^
+    464|   });
+    465| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 1 passed | 175 skipped (185)
+   Start at  22:26:59
+   Duration  218ms (transform 61ms, setup 0ms, collect 76ms, tests 22ms, environment 0ms, prepare 30ms)
+

@@ -1,0 +1,234 @@
+Independent actor /root/independent_review (codex-independent-review)
+Source commit 0c5e5bb188d9562d32365578d7647b9ae0fdf9d6
+Started 2026-11-02T15:42:03.972981+00:00
+C2 full rerun; C1 evidence remains historical. Local-preview isolated PostgreSQL fixture; no paid external tasks.
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-001 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-001",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-001-0-1793634124086.json",
+        "sha256": "a5acaa669a849248f002cdf9e4b10cfb3de3525c5375c8d56e4bcc1bbe0941b1",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-002 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-002",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-002-0-1793634125975.json",
+        "sha256": "a92b9e6e54468cfbc52dc60ead1c85dab6df2a5a46a21b351570d9ee9f5be5a8",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-003 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-003",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-003-0-1793634126911.json",
+        "sha256": "bf9acc9bcad206834429e51d142e6930e2d7f588667b35c646b5cf9cbd675e52",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-004 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-004",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-004-0-1793634130924.json",
+        "sha256": "7c570678098654893cc1d1125cfdbe4e1f32c68eddca7ded016835eeb83e2b31",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-005 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-005",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-005-0-1793634131410.json",
+        "sha256": "e11e4bb1dfa81fa36f1ef76624d46d1face5a0472df552c2ded4beee24348f5b",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-006 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-006",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-006-0-1793634132989.json",
+        "sha256": "f41083fe47060c070ad3aec3e1c4b8697cf1ce87155e25377a3d47e682d3d25c",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-007 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-007",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-007-0-1793634134033.json",
+        "sha256": "d767d36a8d2f598d191d536184faaab3f465fe1a2b962f4f4d7095638c2c68ff",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-008 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-008",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-008-0-1793634134590.json",
+        "sha256": "546ea1551711e5ddbd2221f24b0577f0c134b30d574d72886c96dfdf52461613",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-009 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-009",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-009-0-1793634135545.json",
+        "sha256": "465a20c7a063460a5bca91063ee084aa2b72bf4aa98cc9c9408b5dd188b60e0a",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-010 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-010",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-010-0-1793634147635.json",
+        "sha256": "8758791e3ba7cafa6e05c12f73392b4d515e0410058c4d51dac037ab3a7363c2",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-012 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-012",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-012-0-1793634148624.json",
+        "sha256": "2fdc83b1111bcd1f9a4bb91dd92530424065f128edc1868e305c1dd90ee687c9",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+COMMAND node engines/video-edit/scripts/delivery/mine-clear.mjs run-assertions --ledger outputs/mine-clear/T-2026-1102-0001/ledger.json --card MC-013 --actor codex-independent-review --role acceptance --repo . --timeout-ms 180000
+{
+  "id": "MC-013",
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-013-0-1793634150281.json",
+        "sha256": "c62df6875222ac7a4355fc729e984fecc9a6c0fae6033579b14436ea178c26ce",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+
+Completed 2026-11-02T15:42:31.869298+00:00

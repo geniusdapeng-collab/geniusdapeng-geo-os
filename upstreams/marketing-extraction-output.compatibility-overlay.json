@@ -37,8 +37,8 @@
       "sourceBytes": 34358,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
-      "targetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetBytes": 34358,
+      "targetSha256": "4361e1cf3ed758b5a2733d044c663471909d1832ef871f91eb5ccea96008b372",
+      "targetBytes": 39441,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -70,5 +70,6 @@
   "sourceMembershipEvidence": "B-Root-actual-merged-main-receipt-and-offline4SHA-size-gitblob-checks",
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
-  "bundleAssetCount": 644
+  "bundleAssetCount": 644,
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

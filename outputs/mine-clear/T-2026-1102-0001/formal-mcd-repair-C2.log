@@ -1,0 +1,204 @@
+{
+  "id": "MC-001",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-001-0-1793634023363.json",
+        "sha256": "ba1c097cd9de53f971bbc6186a1f56db27c126f11167eba5540f8a8c717382de",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-002",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-002-0-1793634025228.json",
+        "sha256": "a7cd0efd0bc8c8765bfc6ead9d17a4212d625be916f9048efa685af478c11d42",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-003",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-003-0-1793634026141.json",
+        "sha256": "ede49b714115d7c0e0db3f9cd3ad97a55082644f5d1fd61dd190bb56e372f43d",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-004",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-004-0-1793634030114.json",
+        "sha256": "33b30e82176a9f6896d3861b29863991ade861aef1fa77640303695d107b901c",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-005",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-005-0-1793634030585.json",
+        "sha256": "e4297ce0da6194f329fb6bf612745d589e968a9382f3f5a0d922424714b2d9d0",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-006",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-006-0-1793634032104.json",
+        "sha256": "1f2bc31e8130d0225a3ff60e0b4720e35963309c622edb6505087261c23a7921",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-007",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-007-0-1793634033117.json",
+        "sha256": "547899a59cb9be27a496e9e9661577d4c765b3dc8f17b0ef9bca161117e0a8e3",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-008",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-008-0-1793634033657.json",
+        "sha256": "1311fb635f99d83e0f0c5d7105398f78544a58aa194193321cad0b3f80245bec",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-009",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-009-0-1793634034598.json",
+        "sha256": "d27089b01c8765a9aa14642275684c2c5b71a9f928c39246b73804349e574106",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-010",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-010-0-1793634046652.json",
+        "sha256": "663f03f42cf7e9f675203843e95446cae4cc70369c927328c8e06a18b4216132",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-012",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-012-0-1793634047634.json",
+        "sha256": "ef0c59fadd3559b6ab1eaea18d67ff3a71e0d7c822d629f811fdd11cde6b1578",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}
+{
+  "id": "MC-013",
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "result": "pass",
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "assertions": [
+    {
+      "result": "pass",
+      "run": {
+        "path": "runs/MC-013-0-1793634049249.json",
+        "sha256": "3a296063a311dcef28e128e27d7b141273031938749e0d8e6d244230b5cd7efc",
+        "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+      }
+    }
+  ]
+}

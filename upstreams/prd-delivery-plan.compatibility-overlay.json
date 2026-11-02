@@ -30,8 +30,8 @@
       "sourceGitBlob": "2677773e2ce93562e9f49960df26b1b1c1657030",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "targetMode": "100644",
-      "targetSha256": "aad662c6b06f8147d6401f4ba7ef789da48446f656b621a4832b46e6475174e8",
-      "targetBytes": 29397,
+      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
+      "targetBytes": 35551,
       "transform": "none"
     },
     {
@@ -42,8 +42,8 @@
       "sourceGitBlob": "120974cbf50d75958a8a46f7a1ce75fff5b4d832",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
       "targetMode": "100644",
-      "targetSha256": "a409af92c8f20541577853a354a4cd6f63630c21dff97847dbc85cd32fbd19fc",
-      "targetBytes": 32655,
+      "targetSha256": "06d117c929b82443b6f4ff5e3e49b4a129b6533010b8ccd27486dfad96a67a16",
+      "targetBytes": 38098,
       "transform": "none"
     },
     {
@@ -66,8 +66,8 @@
       "sourceGitBlob": "0ab9a66dbd5045ca7a86492d2b5b59738c8cbbef",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
       "targetMode": "100644",
-      "targetSha256": "d68173f607842fdf1ff7d18d8d7c327b4abeaae4163a71026b80e0ed933abd7f",
-      "targetBytes": 152458,
+      "targetSha256": "a87d0388f39219d53498090743c69257dd9c5f89d2d2a78f2721a3df02fd4be1",
+      "targetBytes": 154044,
       "transform": "none"
     },
     {
@@ -127,5 +127,6 @@
       "README.md",
       "docs/AI-AGENT-GUIDE.md"
     ]
-  }
+  },
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

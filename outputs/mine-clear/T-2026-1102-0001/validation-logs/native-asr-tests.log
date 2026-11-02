@@ -1,0 +1,14 @@
+test_alias_is_same_owned_official_bytes_and_reentrant (__main__.ModelCompatibilityTests) ... ok
+test_alias_symlink_is_rejected (__main__.ModelCompatibilityTests) ... ok
+test_existing_wrong_alias_is_not_overwritten (__main__.ModelCompatibilityTests) ... ok
+test_parent_escape_and_unknown_source_are_rejected (__main__.ModelCompatibilityTests) ... ok
+test_actual_nested_word_timestamps_keep_word_precision (__main__.WordPrecisionTests) ... ok
+test_old_segment_only_response_is_declared_as_segment (__main__.WordPrecisionTests) ... ok
+test_partial_sentence_word_coverage_fails (__main__.WordPrecisionTests) ... ok
+test_reversed_nan_and_missing_word_times_fail (__main__.WordPrecisionTests) ... ok
+test_top_level_word_timestamps_keep_word_precision (__main__.WordPrecisionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 3.572s
+
+OK

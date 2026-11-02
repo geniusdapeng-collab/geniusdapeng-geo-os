@@ -1,0 +1,51 @@
+{
+  "id": "MC-004",
+  "kind": "problem",
+  "level": "L2",
+  "severity": "P1",
+  "batch": 2,
+  "state": "open",
+  "title": "营销提示词无来源添加许可证并扩张可见文字白名单",
+  "evidence": [
+    {
+      "type": "code",
+      "ref": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts:352@83c76329cb3b82b7096364dbd8dab869f86ab22c",
+      "sha256": "c9a5e6a44976738b18ce5b36326a42d2dc7ce87de9b2ba744f04b7083ff87971",
+      "note": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。"
+    }
+  ],
+  "root_cause": {
+    "file": "engines/video-edit/packages/video-studio/src/marketing-prompt-contract.ts",
+    "line": 352,
+    "commit": "83c76329cb3b82b7096364dbd8dab869f86ab22c",
+    "symbol": "selectAbstractVisibleTexts"
+  },
+  "trigger_path": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。",
+  "fix_plan": "删除无依据许可兜底，仅消费G1提供的source-bound文字，不从候选自身扩权。",
+  "regression": {
+    "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+    "expect": "无许可证证据不生成许可证；候选文字不进入白名单；真实G1已审许可仍可使用。"
+  },
+  "assertions": [
+    {
+      "kind": "property",
+      "given": "scene-2没有G1许可证时硬编码Apache-2.0，或从待审提示词自举上屏白名单，新增无证据事实。",
+      "expect": "无许可证证据不生成许可证；候选文字不进入白名单；真实G1已审许可仍可使用。",
+      "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/marketing-prompt-contract.test.ts",
+      "exec": {
+        "file": "node",
+        "args": [
+          "engines/video-edit/node_modules/vitest/vitest.mjs",
+          "run",
+          "--root",
+          "engines/video-edit/",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "packages/video-studio/src/marketing-prompt-contract.test.ts"
+        ]
+      },
+      "last_result": "not-run"
+    }
+  ],
+  "notes": "A=精读及红绿回归；本轮local-preview，不等于生产模型/渲染验证。MC-001/005覆盖已存在控制层，不声明完整DAG执行器已切换。"
+}

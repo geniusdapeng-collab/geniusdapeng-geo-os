@@ -26,8 +26,8 @@
       "sourceGitBlob": "00b08b3b000f26d28c3dca985967293b0ac38fbe",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "targetMode": "100644",
-      "targetSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetBytes": 68733,
+      "targetSha256": "c546da4ed32c13977c88cda30c91df15d89abc5d1c8ef4d201ea4e0e5232abc2",
+      "targetBytes": 90312,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "8cc6da377732b3685d216fb35262b73faf1d5067",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
       "targetMode": "100644",
-      "targetSha256": "954bf6f7b51b30547b2ddbdb5c1ff041f7f8e608cc0ed6fe288d05fb7b78d93b",
-      "targetBytes": 10054,
+      "targetSha256": "203d70b366d2e060bca7f60c81388f6f4a4f7f89077d219ebf1a0ece1643c4c1",
+      "targetBytes": 10813,
       "transform": "none"
     },
     {
@@ -50,8 +50,8 @@
       "sourceGitBlob": "c61a26151824867ace6c26147e61b78d577aedbb",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "targetMode": "100644",
-      "targetSha256": "af4eb4990850894058b9555e805a158c9e84d782655d032573dcd5fdedb24bdb",
-      "targetBytes": 21870,
+      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
+      "targetBytes": 35551,
       "transform": "none"
     },
     {
@@ -62,8 +62,8 @@
       "sourceGitBlob": "ec4d14433c5d3e9f9a68e715efa0be8189bda518",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
       "targetMode": "100644",
-      "targetSha256": "94af03f4a5458cf17a6b7faf372fbeff1560dbc608980426325177b7ebd4a97f",
-      "targetBytes": 16810,
+      "targetSha256": "06d117c929b82443b6f4ff5e3e49b4a129b6533010b8ccd27486dfad96a67a16",
+      "targetBytes": 38098,
       "transform": "none"
     },
     {
@@ -158,5 +158,6 @@
       "README.md",
       "docs/AI-AGENT-GUIDE.md"
     ]
-  }
+  },
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

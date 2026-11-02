@@ -220,3 +220,214 @@ describe("视频管线自动化分流", () => {
     expect(decision.clarify?.question).toContain("走口播片");
   });
 });
+
+describe("MC-012 explicit negative route declarations", () => {
+  const names = { marketing: "营销片", narrative: "通用管线", explainer: "解说管线" } as const;
+  const pairs = [
+    { denied: "marketing", chosen: "narrative" }, { denied: "marketing", chosen: "explainer" },
+    { denied: "narrative", chosen: "marketing" }, { denied: "narrative", chosen: "explainer" },
+    { denied: "explainer", chosen: "marketing" }, { denied: "explainer", chosen: "narrative" },
+  ] as const;
+  const metadata = { dataMining: { name: "测试商品" }, brief: { product: "测试商品", duration: 30 } };
+
+  it.each(pairs.flatMap(pair => [false, true].map(reverse => ({ ...pair, reverse }))))(
+    "resolves denied=$denied chosen=$chosen reverse=$reverse and applies the actual product activation boundary",
+    async ({ denied, chosen, reverse }) => {
+      const clauses = [`不要${names[denied]}`, `走${names[chosen]}`];
+      const text = (reverse ? clauses.reverse() : clauses).join("，");
+      const decision = await routeVideoPipeline({ text, metadata });
+      expect(decision.route).toBe(chosen);
+      const routed = applyRouteToMetadata(metadata, decision);
+      expect(routed.pipelineRoute).toMatchObject({ kind: chosen });
+      if (chosen === "marketing") expect(routed.dataMining).toMatchObject({ name: "测试商品" });
+      else {
+        expect(routed.dataMining).toBeUndefined();
+        expect((routed.brief as Record<string, unknown>).product).toBeUndefined();
+      }
+      expect(metadata.dataMining.name).toBe("测试商品");
+    },
+  );
+
+  it.each([
+    { text: "不要营销片", denied: "marketing" },
+    { text: "不要走通用管线", denied: "narrative" },
+    { text: "别用解说管线", denied: "explainer" },
+    { text: "不使用营销管线，产品品牌推广投放带货", denied: "marketing" },
+    { text: "不需要口播解说，科普教程逐字字幕同步", denied: "explainer" },
+  ])("never restores the excluded $denied route through keywords or product metadata", async ({ text, denied }) => {
+    const decision = await routeVideoPipeline({ text, metadata });
+    expect(decision.route).not.toBe(denied);
+    if (denied === "marketing") {
+      expect(decision.route).toBe("clarify");
+      expect(decision.clarify?.options.some(option => option.key === "marketing")).toBe(false);
+    }
+  });
+
+  it("rejects a model arbitration result that contradicts an explicit route exclusion", async () => {
+    const decision = await routeVideoPipeline({ text: "不要营销片，围绕未来做个视频" }, {
+      llmCall: async () => JSON.stringify({ route: "marketing", confidence: 0.99, product: { name: "模型产品" }, rationale: "模拟分类" }),
+    });
+    expect(decision.route).toBe("clarify");
+    expect(decision.product).toBeUndefined();
+  });
+
+  it.each(["marketing", "narrative", "explainer"] as const)("retains the caller's explicit %s override for a confirmed historical project", async explicit => {
+    const decision = await routeVideoPipeline({ text: `不要${names[explicit]}`, metadata, explicit });
+    expect(decision.route).toBe(explicit);
+    expect(decision.via).toBe("metadata");
+  });
+
+  it.each(["marketing", "narrative", "explainer"] as const)("keeps a positive explicit %s declaration unchanged", async route => {
+    const decision = await routeVideoPipeline({ text: `走${names[route]}`, metadata });
+    expect(decision.route).toBe(route);
+    expect(decision.via).toBe("rule");
+  });
+});
+
+describe("MC-013 dispatched video duration defaults", () => {
+  it("adds the dispatch default only when the customer gave no duration expression", () => {
+    const intent = buildPipelineIntent("走叙事片：拍一条山间日出的故事", {
+      defaultDurationSec: 30, platform: "抖音",
+    });
+    expect(intent).toContain("拍一条山间日出的故事");
+    expect(intent).toContain("[需求口径] 时长：30秒；平台：抖音");
+  });
+
+  it.each([
+    "拍一条60秒的山间日出故事", "拍一条 60 秒的山间日出故事", "拍一条1分钟的故事",
+    "拍一条一分钟的故事", "拍一条一分半钟的故事", "拍一条半分钟的故事",
+    "Create a 60-second story", "Create a 1 minute story", "Create a 60s story", "Create a 1min story",
+    "Create a one-minute story", "Create a ninety second story", "Create a half-hour story",
+    "Create a one and a half minute story", "Create a story lasting an hour",
+    "时长：0秒，拍日出故事", "时长：-30秒，拍日出故事", "时长：未定，拍日出故事",
+    "拍日出故事，60秒或90秒", "每镜5秒，拍日出故事", "片长不限，拍日出故事",
+  ])("preserves the original duration expression without inventing a total for %s", text => {
+    const intent = buildPipelineIntent(text, { defaultDurationSec: 30, platform: "抖音" });
+    expect(intent).toBe(`${text}\n[需求口径] 平台：抖音`);
+  });
+
+  it("keeps the existing explicitly structured duration contract", () => {
+    const intent = buildPipelineIntent("拍一条山间日出故事", {
+      durationSec: 60, defaultDurationSec: 30, platform: "抖音",
+    });
+    expect(intent).toContain("[需求口径] 时长：60秒；平台：抖音");
+    expect(intent).not.toContain("时长：30秒");
+  });
+});
+
+describe("MC-012 common local negation grammar", () => {
+  const names = { marketing: "营销片", narrative: "通用管线", explainer: "解说管线" } as const;
+  const metadata = { dataMining: { name: "测试商品" }, brief: { product: "测试商品", duration: 30 } };
+  const pairs = [
+    { denied: "marketing", chosen: "narrative" }, { denied: "marketing", chosen: "explainer" },
+    { denied: "narrative", chosen: "marketing" }, { denied: "narrative", chosen: "explainer" },
+    { denied: "explainer", chosen: "marketing" }, { denied: "explainer", chosen: "narrative" },
+  ] as const;
+  it.each(pairs.flatMap(pair => ["别选", "不要选", "就不做了"].flatMap(grammar => [false, true].map(reverse => ({ ...pair, grammar, reverse })))))(
+    "handles $grammar for denied=$denied chosen=$chosen reverse=$reverse at actual activation boundaries",
+    async ({ denied, chosen, grammar, reverse }) => {
+      const negative = grammar === "就不做了" ? `${names[denied]}${grammar}` : `${grammar}${names[denied]}`;
+      const clauses = [negative, `走${names[chosen]}`];
+      const decision = await routeVideoPipeline({ text: (reverse ? clauses.reverse() : clauses).join("，"), metadata });
+      expect(decision.route).toBe(chosen);
+      const applied = applyRouteToMetadata(metadata, decision);
+      expect(applied.pipelineRoute).toMatchObject({ kind: chosen });
+      expect(applied.dataMining).toEqual(chosen === "marketing" ? { name: "测试商品" } : undefined);
+    },
+  );
+
+  it.each(["别选营销片，但又走营销片", "走营销片，营销片就不做了"])("clarifies a contradictory local route request: %s", async text => {
+    const decision = await routeVideoPipeline({ text, metadata });
+    expect(decision.route).toBe("clarify");
+    expect(decision.clarify?.missing).toEqual(["route"]);
+  });
+});
+
+it("MC-012 describes an explainer decision with the actual third-pipeline label", async () => {
+  const decision = await routeVideoPipeline({ text: "走解说管线，讲解天文知识" });
+  expect(decision.route).toBe("explainer");
+  expect(describeRouteDecision(decision)).toContain("口播解说片管线");
+  expect(describeRouteDecision(decision)).not.toContain("叙事片管线");
+});
+
+it("MC-012 offers every route named in the route clarification question", async () => {
+  const decision = await routeVideoPipeline({ text: "帮我做个视频" });
+  expect(decision.route).toBe("clarify");
+  expect(decision.clarify?.question).toContain("口播解说片");
+  expect(decision.clarify?.options.map(option => option.key)).toEqual(["marketing", "narrative", "explainer"]);
+});
+
+describe("MC-012 finite local negation and modal grammar", () => {
+  const names = { marketing: "营销片", narrative: "通用管线", explainer: "解说管线" } as const;
+  const metadata = { dataMining: { name: "测试商品" }, brief: { product: "测试商品" } };
+  const pairs = [
+    { denied: "marketing", chosen: "narrative" }, { denied: "marketing", chosen: "explainer" },
+    { denied: "narrative", chosen: "marketing" }, { denied: "narrative", chosen: "explainer" },
+    { denied: "explainer", chosen: "marketing" }, { denied: "explainer", chosen: "narrative" },
+  ] as const;
+  const modalActions = ["不想走", "不希望用", "不愿意做", "不打算选择", "不准备跑", "不考虑使用", "没打算走", "没有计划用", "无意采用"];
+  it.each(pairs.flatMap(pair => modalActions.flatMap(modal => [false, true].map(reverse => ({ ...pair, modal, reverse })))))(
+    "handles $modal denied=$denied chosen=$chosen reverse=$reverse without activating an excluded pipeline",
+    async ({ denied, chosen, modal, reverse }) => {
+      const clauses = [`${modal}${names[denied]}`, `走${names[chosen]}`];
+      const decision = await routeVideoPipeline({ text: (reverse ? clauses.reverse() : clauses).join("，"), metadata });
+      expect(decision.route).toBe(chosen);
+      const applied = applyRouteToMetadata(metadata, decision);
+      expect(applied.pipelineRoute).toMatchObject({ kind: chosen });
+      expect(applied.dataMining).toEqual(chosen === "marketing" ? { name: "测试商品" } : undefined);
+    },
+  );
+
+  it.each(["marketing", "narrative", "explainer"] as const)("clarifies double negation around %s rather than inferring a paid route", async route => {
+    for (const prefix of ["不是不想走", "不要不走", "并非不希望用"]) {
+      const decision = await routeVideoPipeline({ text: `${prefix}${names[route]}`, metadata });
+      expect(decision.route).toBe("clarify");
+      expect(decision.clarify?.missing).toEqual(["route"]);
+    }
+  });
+
+  it.each(["不乐意尝试营销片", "没兴趣选营销片", "无意愿做营销片"])("does not use a product anchor to override a locally negative but unsupported phrasing: %s", async text => {
+    const decision = await routeVideoPipeline({ text, metadata });
+    expect(decision.route).toBe("clarify");
+  });
+});
+
+describe("MC-012 bounded postposed and coordinated exclusions", () => {
+  const metadata = { dataMining: { name: "测试商品" }, brief: { product: "测试商品" } };
+  const names = { marketing: "营销片", narrative: "通用管线", explainer: "解说管线" } as const;
+  it.each([
+    "禁止走营销片", "禁用营销片", "无兴致选择营销片", "非营销片",
+    "营销片不想走了", "营销片不希望使用", "营销片不考虑采用",
+  ])("honors clear local negative declaration: %s", async negative => {
+    expect((await routeVideoPipeline({ text: `${negative}，走通用管线`, metadata })).route).toBe("narrative");
+  });
+
+  it.each(["营销片不是不能走", "不是不走营销片，走通用管线"])("clarifies ambiguous double negatives including postposed forms: %s", async text => {
+    expect((await routeVideoPipeline({ text, metadata })).route).toBe("clarify");
+  });
+
+  it.each(["营销片不要用旁白", "营销片不需要配音"])("does not interpret an in-film audio restriction as a route exclusion: %s", async requirement => {
+    expect((await routeVideoPipeline({ text: `${requirement}，走营销片`, metadata })).route).toBe("marketing");
+  });
+
+  const groups = [
+    { denied: ["marketing", "narrative"], chosen: "explainer" },
+    { denied: ["marketing", "explainer"], chosen: "narrative" },
+    { denied: ["narrative", "explainer"], chosen: "marketing" },
+  ] as const;
+  const coordinatedCases = groups.flatMap(group =>
+    ["和", "及", "、"].flatMap(joiner =>
+      ["都不要", "均不用"].flatMap(negative =>
+        [false, true].map(reverse => ({ ...group, joiner, negative, reverse })))));
+  it.each(coordinatedCases)(
+    "excludes the whole $denied group with $joiner/$negative before choosing $chosen reverse=$reverse",
+    async ({ denied, chosen, joiner, negative, reverse }) => {
+      const clauses = [`${names[denied[0]]}${joiner}${names[denied[1]]}${negative}`, `走${names[chosen]}`];
+      const decision = await routeVideoPipeline({ text: (reverse ? clauses.reverse() : clauses).join("，"), metadata });
+      expect(decision.route).toBe(chosen);
+      const projected = applyRouteToMetadata(metadata, decision);
+      expect(projected.pipelineRoute).toMatchObject({ kind: chosen });
+      expect(projected.dataMining).toEqual(chosen === "marketing" ? { name: "测试商品" } : undefined);
+    },
+  );
+});

@@ -1,0 +1,42 @@
+{
+  "schema": "workloom.evidence-run/v1",
+  "id": "MC-008-0-1793634134590",
+  "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism packages/video-studio/src/requirement-contract.test.ts packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+  "exec": {
+    "file": "node",
+    "args": [
+      "engines/video-edit/node_modules/vitest/vitest.mjs",
+      "run",
+      "--root",
+      "engines/video-edit/",
+      "--maxWorkers=1",
+      "--no-file-parallelism",
+      "packages/video-studio/src/requirement-contract.test.ts",
+      "packages/video-studio/src/requirement-contract-production-bridge.test.ts"
+    ]
+  },
+  "actor": "codex-independent-review",
+  "role": "acceptance",
+  "subject": {
+    "card_id": "MC-008",
+    "assertion_index": 0
+  },
+  "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6",
+  "working_tree_dirty": false,
+  "started_at": "2026-11-02T15:42:14.590Z",
+  "finished_at": "2026-11-02T15:42:15.412Z",
+  "exit_code": 0,
+  "signal": null,
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "result": "pass",
+  "outputs": [
+    {
+      "path": "evidence/MC-008-0-1793634134590.txt",
+      "sha256": "5528966c5abbda47655a68dd69c4de3920bd9be94a3c589c65b7d14baf5e6679",
+      "commit": "0c5e5bb188d9562d32365578d7647b9ae0fdf9d6"
+    }
+  ]
+}

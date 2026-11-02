@@ -1827,6 +1827,21 @@ function fusionRecord(value: unknown, label: string): FusionRecord {
   return value as FusionRecord;
 }
 
+/** Native agents use degradeReason; legacy adapters also emitted degradedReason. */
+function fusionFallbackEvidence(shot: FusionRecord): boolean {
+  const fields = shot.degradedFields ?? shot.degraded_fields ?? shot._degradedFields;
+  return shot.degraded === true
+    || ["degradeReason", "degrade_reason", "degradedReason", "degraded_reason", "error"].some(key => Boolean(shot[key]))
+    || (Array.isArray(fields) && fields.length > 0)
+    || Boolean(fields && typeof fields === "object" && Object.keys(fields).length > 0)
+    || shot.usedRuleFallback === true || shot.ruleFallback === true || shot.promptRebuilt === true;
+}
+
+const fusionTerminalEvidence = new WeakMap<FusionAgent, Map<string, string>>();
+function fusionTerminalHash(shot: FusionRecord): string {
+  return cinematicSkillHash({ prompt: shot.prompt ?? shot.enhanced_prompt ?? null, fields: shot.fields ?? null });
+}
+
 /**
  * 每次执行独立的 agent 视图，避免并发 run 互改 deadline/retries/子服务回调。
  * 在真正 reasonStructured 调用前再检查预算，封住 BaseAgent 剩余时间保底 10s 的漏洞。
@@ -1836,6 +1851,22 @@ function scopedFusionAgent(agent: FusionAgent, remaining: () => number, deadline
   scoped._globalDeadline = deadline;
   scoped._remainingMs = remaining;
   scoped._callBudget = new Map(agent._callBudget instanceof Map ? agent._callBudget : []);
+  const terminals = new Map<string, string>();
+  fusionTerminalEvidence.set(scoped, terminals);
+  const nativeFuse = agent._fuseSingleShotWithDeadline;
+  if (typeof nativeFuse === "function") {
+    scoped._fuseSingleShotWithDeadline = async (...args: unknown[]) => {
+      const value = await (nativeFuse as (...args: unknown[]) => Promise<unknown>).apply(scoped, args);
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        const output = value as FusionRecord;
+        const id = String(output.shotId ?? output.shot_id ?? "").trim();
+        if (id && output.degraded === false && !fusionFallbackEvidence(output)) {
+          terminals.set(id, fusionTerminalHash(output));
+        }
+      }
+      return value;
+    };
+  }
   const guardEngine = (engine: FusionRecord | null): FusionRecord | null => {
     if (!engine || typeof engine.reasonStructured !== "function") return engine;
     const guarded = Object.create(engine) as FusionRecord;
@@ -2031,7 +2062,30 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
         }));
         requireBudget();
         const blueprintHash = cinematicSkillHash({ policy: PHASE3_FUSION_POLICY_VERSION, blueprint, registryHash, shots });
-        const pfResult = await scoped.process(this.cloneShots(shots), blueprint, { checkpointManager: this.checkpointManager, blueprintHash });
+        let pfResult = await scoped.process(this.cloneShots(shots), blueprint, { checkpointManager: this.checkpointManager, blueprintHash });
+        // Native process counts an initial exception before a successful quick retry,
+        // then leaves that counter in its final degraded summary. Reconcile only
+        // complete, explicitly non-degraded terminal results; keep the real history.
+        const nativeStats = pfResult.stats && typeof pfResult.stats === "object" ? pfResult.stats as FusionRecord : undefined;
+        const reportedFailures = Number(nativeStats?.failed ?? 0);
+        const completed = Array.isArray(pfResult.shots) ? pfResult.shots as FusionRecord[] : [];
+        const expectedTerminalIds = new Set(shots.map(shot => String(shot.shotId ?? shot.shot_id ?? "").trim()));
+        const terminalIds = completed.map(shot => String(shot?.shotId ?? shot?.shot_id ?? "").trim());
+        const verifiedRecovery = Number.isSafeInteger(reportedFailures) && reportedFailures > 0 && reportedFailures <= shots.length
+          && Number(nativeStats?.total) === shots.length && completed.length === shots.length
+          && expectedTerminalIds.size === shots.length && new Set(terminalIds).size === shots.length
+          && terminalIds.every(id => Boolean(id) && expectedTerminalIds.has(id))
+          && completed.every(shot => shot && typeof shot === "object" && !Array.isArray(shot)
+            && shot.degraded === false && !fusionFallbackEvidence(shot)
+            && fusionTerminalEvidence.get(scoped)?.get(String(shot.shotId ?? shot.shot_id ?? "").trim()) === fusionTerminalHash(shot)
+            && ((typeof shot.prompt === "string" && Boolean(shot.prompt.trim()))
+              || (typeof shot.enhanced_prompt === "string" && Boolean(shot.enhanced_prompt.trim()))));
+        const recoveredFailures = verifiedRecovery ? reportedFailures : 0;
+        if (verifiedRecovery) {
+          pfResult = { ...pfResult, degraded: false, stats: { ...nativeStats, failed: 0, success: shots.length } };
+          evidence.retryRecovery = { initialFailures: reportedFailures, recoveredFailures, finalFailures: 0, nativeStats: structuredClone(nativeStats) };
+          this.log("PROMPT-FUSION-RECOVERED", `${recoveredFailures} 个镜头首次失败后真实重试成功；保留原生失败统计，不重跑已通过镜头`);
+        }
         if (remaining() <= 0) throw new CinematicSkillError("PHASE3_BUDGET_EXHAUSTED", "融合返回时阶段预算已耗尽");
         const updated = pfResult.shots;
         if (!Array.isArray(updated) || updated.length !== shots.length || pfResult.degraded === true || Number((pfResult.stats as FusionRecord | undefined)?.failed ?? 0) > 0) {
@@ -2052,10 +2106,7 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
             : typeof shot.enhanced_prompt === "string" && shot.enhanced_prompt.trim()
               ? shot.enhanced_prompt
               : "";
-          const degradedFields = shot.degradedFields ?? shot.degraded_fields ?? shot._degradedFields;
-          const explicitDegradation = Boolean(shot.degradedReason ?? shot.degraded_reason ?? shot.error)
-            || (Array.isArray(degradedFields) && degradedFields.length > 0)
-            || (degradedFields && typeof degradedFields === "object" && Object.keys(degradedFields).length > 0);
+          const explicitDegradation = fusionFallbackEvidence(shot);
           if (!id || !expectedIds.has(id) || outputIds.has(id) || explicitDegradation || !prompt) {
             throw new CinematicSkillError(
               "PHASE3_FUSION_UNVERIFIED",
@@ -2098,7 +2149,8 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
         stages.skillQC = { status: qcRows.some((row) => row.status === "failed") ? "failed" : "passed", scope: "prompt-text-only", details: qcRows };
         if (qcRows.some((row) => row.status === "failed")) throw new CinematicSkillError("PHASE3_SKILL_QC_FAILED", "融合提示词包含所选技能的肯定式禁止内容");
         const llmStats = result.llmStats && typeof result.llmStats === "object" ? result.llmStats as FusionRecord : {};
-        llmStats.promptFusion = { stats: pfResult.stats ?? null, elapsedMs: Date.now() - start };
+        llmStats.promptFusion = { stats: pfResult.stats ?? null, elapsedMs: Date.now() - start,
+          ...(recoveredFailures ? { nativeStats: structuredClone(nativeStats), recoveredFailures } : {}) };
         result.llmStats = llmStats;
         // 清理或日志失败也不能留下可复用的通过断点；提交 checkpoint 是最后一个可能失败的步骤。
         if (healthEnabled && this.healthMonitor) {

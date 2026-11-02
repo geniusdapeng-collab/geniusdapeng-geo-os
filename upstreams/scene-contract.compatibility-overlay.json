@@ -26,8 +26,8 @@
       "sourceGitBlob": "52f18cd1bef5bada1a8a7956459f6ccf02516b04",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "targetMode": "100644",
-      "targetSha256": "6aa93b4026e350f761f605ca962e268d4b3e0fcdab3a2c2964c7048e3336b972",
-      "targetBytes": 30622,
+      "targetSha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41",
+      "targetBytes": 61407,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "61508a2c33f735eeac21ce1553acd3f36ede9f04",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "targetMode": "100644",
-      "targetSha256": "28631a2939ef870b2021d0396ca5065ad8eac5570025b161f332fea88e721603",
-      "targetBytes": 23429,
+      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
+      "targetBytes": 44261,
       "transform": "none"
     },
     {
@@ -50,8 +50,8 @@
       "sourceGitBlob": "5fd3c604257b241359afef7fffca72ec2362f0d3",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
       "targetMode": "100644",
-      "targetSha256": "0d6aed944d6022e19e95135127211da0fd45e728eebb80527f7aac3960c9a887",
-      "targetBytes": 40615,
+      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
+      "targetBytes": 64431,
       "transform": "none"
     },
     {
@@ -82,5 +82,6 @@
   "sourceMembershipEvidence": "exact successful candidate checks plus ordinary merged-main/blob readback; no mandatory source-main CI gate",
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
-  "bundleAssetCount": 644
+  "bundleAssetCount": 644,
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

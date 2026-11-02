@@ -1,0 +1,41 @@
+{
+  "schema": "workloom.evidence-run/v1",
+  "id": "MC-001-0-1793633391122",
+  "command": "node engines/video-edit/node_modules/vitest/vitest.mjs run --root engines/video-edit/ --maxWorkers=1 --no-file-parallelism apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts",
+  "exec": {
+    "file": "node",
+    "args": [
+      "engines/video-edit/node_modules/vitest/vitest.mjs",
+      "run",
+      "--root",
+      "engines/video-edit/",
+      "--maxWorkers=1",
+      "--no-file-parallelism",
+      "apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts"
+    ]
+  },
+  "actor": "codex-root-repair",
+  "role": "repair",
+  "subject": {
+    "card_id": "MC-001",
+    "assertion_index": 0
+  },
+  "commit": "35743d90898d41f08800ec47d1935a581336bcd3",
+  "working_tree_dirty": false,
+  "started_at": "2026-11-02T15:29:51.122Z",
+  "finished_at": "2026-11-02T15:29:52.880Z",
+  "exit_code": 0,
+  "signal": null,
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "result": "pass",
+  "outputs": [
+    {
+      "path": "evidence/MC-001-0-1793633391122.txt",
+      "sha256": "6f31baa6a6f165b40e552c614d9a3527b09860e426e7ab2a959d2b68ac5572fd",
+      "commit": "35743d90898d41f08800ec47d1935a581336bcd3"
+    }
+  ]
+}

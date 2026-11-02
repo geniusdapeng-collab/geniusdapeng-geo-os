@@ -1,0 +1,13 @@
+
+ RUN  v4.1.11 /Users/mac/Documents/Codex/2026-11-02/edit-ai-n-n-ai-github-2/work/pengmanager/engines/video-edit
+
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  23:40:32
+   Duration  651ms (transform 392ms, setup 0ms, import 497ms, tests 32ms, environment 0ms)
+
+
+
+exit_code=0 signal=none error=none
+assertion_validation={"ok":true,"errors":[]}

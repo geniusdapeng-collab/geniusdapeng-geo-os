@@ -27,9 +27,9 @@
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetSha256": "615f03de4699d0872908b6b69d1aea963c86b58017d9cd6a63e599000f3a30ff",
+      "targetSha256": "c546da4ed32c13977c88cda30c91df15d89abc5d1c8ef4d201ea4e0e5232abc2",
       "sourceBytes": 68733,
-      "targetBytes": 72790
+      "targetBytes": 90312
     },
     {
       "path": "bundles/geo-growth/agent-capabilities.json",
@@ -109,5 +109,6 @@
       "targetSha256": "136555767a49f52792136d936cc762197905cafb85b715887c67d9c209855600",
       "targetBytes": 17391
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

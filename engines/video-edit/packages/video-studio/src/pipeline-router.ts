@@ -226,6 +226,10 @@ export interface RuleVerdict {
   narrativeSignals: string[];
   explainerSignals: string[];
   explicit?: VideoPipelineKind;
+  /** Explicit user exclusions constrain every automatic fallback, never caller resume overrides. */
+  excluded?: VideoPipelineKind[];
+  /** Multiple local negations are ambiguous; automatic selection must stop. */
+  ambiguousNegation?: boolean;
 }
 
 /** 规则打分（确定性、可单测）：显式声明 > 关键词矩阵；同分视为判不准 */
@@ -233,20 +237,63 @@ export function scoreRoute(text: string): RuleVerdict {
   const marketingSignals: string[] = [];
   const narrativeSignals: string[] = [];
   const explainerSignals: string[] = [];
-  // 显式声明按「谁先出现」判定，避免用户说"不要营销片，走叙事片"时两边都命中
-  const explicitMarketing = text.match(EXPLICIT_MARKETING);
-  const explicitNarrative = text.match(EXPLICIT_NARRATIVE);
-  const explicitExplainer = text.match(EXPLICIT_EXPLAINER);
-  let explicit: VideoPipelineKind | undefined;
-  if (explicitExplainer && (!explicitMarketing || (explicitExplainer.index ?? 0) < (explicitMarketing.index ?? 0))) {
-    explicit = "explainer";
-  } else if (explicitMarketing && explicitNarrative) {
-    explicit = (explicitMarketing.index ?? 0) >= (explicitNarrative.index ?? 0) ? "narrative" : "marketing";
-  } else if (explicitMarketing) {
-    explicit = "marketing";
-  } else if (explicitNarrative) {
-    explicit = "narrative";
+  // Inspect every declaration and its local negation, rather than interpreting
+  // the first bare route name in “不要营销片，走叙事片” as a positive request.
+  const mentions: Array<{ route: VideoPipelineKind; index: number; end: number; denied: boolean }> = [];
+  for (const [route, pattern] of [["marketing", EXPLICIT_MARKETING], ["narrative", EXPLICIT_NARRATIVE],
+    ["explainer", EXPLICIT_EXPLAINER]] as const) {
+    for (const match of text.matchAll(new RegExp(pattern.source, "gu"))) {
+      const index = match.index! + match[0].lastIndexOf(match[2]!);
+      mentions.push({ route, index, end: index + match[2]!.length, denied: false });
+    }
   }
+  mentions.sort((left, right) => left.index - right.index);
+  // Classify a local declaration, not the entire request. Longest tokens keep
+  // 不愿意/不希望/不打算 as one negation; an unfamiliar modal after 不/没/无
+  // still cannot turn the following bare route name into paid authorization.
+  const negationTokens = /不是|并非|不要|不愿意|不希望|不打算|不准备|不考虑|不计划|不需要|不使用|不想|不用|不|没有|没|无需|无须|无意愿|无意|无|别|勿|禁止|禁用|拒绝|排除|避免|非(?!常|凡|得|要)/gu;
+  const postposedNegation = (following: string): { denied: boolean; ambiguous: boolean } => {
+    const phrase = /^[^，,。；;！？!?\n]*/u.exec(following)?.[0]?.trim() ?? "";
+    const negativeStart = /^(?:(?:就|先|暂时|这次|都|均)\s*)?(?:不|没|无|别|勿|禁止|禁用|拒绝|排除|避免)/u.test(phrase);
+    const completeRouteAction = /(?:做成|制作|做|走|用|按|跑|拍|选择|选|使用|采用|启动|开启)(?:了|掉|吧)?$/u.test(phrase);
+    const standalone = /^(?:(?:就|先|暂时|这次|都|均)\s*)?(?:不要|不用|不需要|禁用|禁止|排除|拒绝)(?:了|掉|吧)?$/u.test(phrase);
+    const denied = negativeStart && (completeRouteAction || standalone);
+    return { denied, ambiguous: denied && [...phrase.matchAll(negationTokens)].length > 1 };
+  };
+  let ambiguousNegation = false;
+  for (const [position, mention] of mentions.entries()) {
+    const preceding = text.slice(0, mention.index);
+    const clause = /[^，,。；;！？!?\n]*$/u.exec(preceding)?.[0] ?? "";
+    const clauseStart = mention.index - clause.length;
+    const previous = mentions[position - 1];
+    const start = previous && previous.end >= clauseStart ? previous.end : clauseStart;
+    const before = text.slice(start, mention.index);
+    const negatives = [...before.matchAll(negationTokens)].length;
+    const after = text.slice(mention.end);
+    const postposed = postposedNegation(after);
+    const sharedNegative = previous?.denied === true && start === previous.end
+      && /^\s*(?:和|及|或|或者|也|以及|、)\s*$/u.test(before);
+    mention.denied = negatives > 0 || postposed.denied || sharedNegative;
+    if (negatives > 1 || postposed.ambiguous) ambiguousNegation = true;
+  }
+  // A coordinated group with a shared 都/均 suffix excludes every named route,
+  // not just the final noun: “营销片和通用管线都不要，走解说管线”.
+  for (let first = 0; first < mentions.length; first += 1) {
+    let last = first;
+    while (last + 1 < mentions.length && /^\s*(?:和|及|、|以及|与|或)\s*$/u
+      .test(text.slice(mentions[last]!.end, mentions[last + 1]!.index))) last += 1;
+    if (last > first) {
+      const following = text.slice(mentions[last]!.end);
+      if (/^\s*(?:都|均)/u.test(following)) {
+        const shared = postposedNegation(following);
+        if (shared.denied) for (let index = first; index <= last; index += 1) mentions[index]!.denied = true;
+        if (shared.ambiguous) ambiguousNegation = true;
+      }
+      first = last;
+    }
+  }
+  const excluded = [...new Set(mentions.filter(mention => mention.denied).map(mention => mention.route))];
+  const explicit = mentions.find(mention => !mention.denied && !excluded.includes(mention.route))?.route;
 
   let marketingScore = 0;
   let narrativeScore = 0;
@@ -274,12 +321,23 @@ export function scoreRoute(text: string): RuleVerdict {
     marketingScore = Math.max(0, marketingScore - 1);
     marketingSignals.push("否定营销表述");
   }
-  return { marketingScore, narrativeScore, explainerScore, marketingSignals, narrativeSignals, explainerSignals, explicit };
+  if (excluded.includes("marketing")) marketingScore = 0;
+  if (excluded.includes("narrative")) { narrativeScore = 0; narrativeSignals.push("明确排除通用管线"); }
+  if (excluded.includes("explainer")) { explainerScore = 0; explainerSignals.push("明确排除解说管线"); }
+  return { marketingScore, narrativeScore, explainerScore, marketingSignals, narrativeSignals, explainerSignals, explicit,
+    ...(excluded.length ? { excluded } : {}), ...(ambiguousNegation ? { ambiguousNegation: true } : {}) };
 }
 
 /* ================= 澄清话术 ================= */
 
-export function routeClarifyQuestion(signals: { marketing: string[]; narrative: string[]; explainer?: string[] }): string {
+export function routeClarifyQuestion(signals: { marketing: string[]; narrative: string[]; explainer?: string[] }, excluded: VideoPipelineKind[] = []): string {
+  if (excluded.length) {
+    const labels: Record<VideoPipelineKind, string> = { marketing: "营销片", narrative: "叙事片（通用）", explainer: "口播解说片" };
+    const allowed = (["marketing", "narrative", "explainer"] as const).filter(route => !excluded.includes(route));
+    return `已按原文排除${excluded.map(route => labels[route]).join("、")}，不会由商品线索或自动分类重新启用。`
+      + (allowed.length ? `请补充本片内容与目标，明确选择剩余管线：${allowed.map(route => labels[route]).join("、")}。`
+        : "当前三条管线都已排除，请补充可执行的视频制作方式后再开工。");
+  }
   return [
     "这条片子走哪条管线？三条管线的成本与产物差别很大，先确认再开工：",
     "① 营销片：面向带货/种草/开箱/测评/商品与品牌推广。开跑前先过商品情报五站（联网采集商品事实、真实评价、竞品，含人工/AI 确认门 G1），全流程门更多、耗时更长。",
@@ -378,11 +436,12 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
 
   // ② 规则打分
   const verdict = scoreRoute(text);
+  const excluded = verdict.excluded ?? [];
   signals.marketing.push(...verdict.marketingSignals);
   signals.narrative.push(...verdict.narrativeSignals);
   signals.explainer.push(...verdict.explainerSignals);
 
-  if (verdict.explicit) {
+  if (verdict.explicit && !verdict.ambiguousNegation) {
     const kind = verdict.explicit;
     const rationale = kind === "marketing"
       ? "用户显式声明走营销片管线"
@@ -398,7 +457,7 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
    *   在营销片与叙事片的需求描述里也会出现（如"给筋膜枪做条讲解视频"），只有明确以讲为主的
    *   需求才该走这条线；摇摆就进 LLM 仲裁，仍不确定就澄清，不替用户选管线。
    */
-  const explainerLeads = verdict.explainerScore >= DECISIVE_MIN_SCORE
+  const explainerLeads = !verdict.ambiguousNegation && verdict.explainerScore >= DECISIVE_MIN_SCORE
     && verdict.explainerScore > verdict.marketingScore
     && verdict.explainerScore > verdict.narrativeScore;
   if (explainerLeads) {
@@ -414,7 +473,7 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
 
   const top = Math.max(verdict.marketingScore, verdict.narrativeScore);
   const margin = Math.abs(verdict.marketingScore - verdict.narrativeScore);
-  const decisive = top >= DECISIVE_MIN_SCORE && margin >= DECISIVE_MARGIN;
+  const decisive = !verdict.ambiguousNegation && top >= DECISIVE_MIN_SCORE && margin >= DECISIVE_MARGIN;
 
   if (decisive) {
     const kind: VideoPipelineKind = verdict.marketingScore > verdict.narrativeScore ? "marketing" : "narrative";
@@ -425,7 +484,7 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
   }
 
   // ③ 规则判不准：有商品锚点则营销（"要卖东西"这件事本身是硬信号）
-  if (product) {
+  if (product && !verdict.ambiguousNegation && !excluded.includes("marketing")) {
     return finish(
       "marketing",
       0.8,
@@ -437,7 +496,7 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
   }
 
   // ④ LLM 仲裁（可选）：只在规则摇摆时调用，超时即降级
-  if (options.llmCall && text.length > 0) {
+  if (options.llmCall && text.length > 0 && !verdict.ambiguousNegation) {
     try {
       const timeoutMs = options.llmTimeoutMs ?? 4_000;
       const raw = await Promise.race([
@@ -445,7 +504,7 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("route-llm-timeout")), timeoutMs)),
       ]);
       const parsed = parseLlmRoute(String(raw));
-      if (parsed && parsed.route !== "clarify" && parsed.confidence >= 0.7) {
+      if (parsed && parsed.route !== "clarify" && !excluded.includes(parsed.route) && parsed.confidence >= 0.7) {
         const kind = parsed.route;
         if (kind === "marketing") signals.marketing.push("模型仲裁");
         else signals.narrative.push("模型仲裁");
@@ -457,21 +516,24 @@ export async function routeVideoPipeline(input: RouteInput, options: RouteOption
     }
   }
 
-  // ⑤ 仍不确定 → 问用户
+  // ⑤ 仍不确定 → 问用户；双重否定不推断成正向授权或确定排除。
+  const excludedChoices = verdict.ambiguousNegation ? [] : excluded;
   return {
     route: "clarify",
     confidence: 0.3,
     via: "rule",
-    rationale: `营销线索 ${verdict.marketingScore} 条 / 叙事线索 ${verdict.narrativeScore} 条，不足以判定管线`,
+    rationale: verdict.ambiguousNegation ? "原文包含局部双重否定，无法据此确定管线；需要明确一次正向选择"
+      : `营销线索 ${verdict.marketingScore} 条 / 叙事线索 ${verdict.narrativeScore} 条，不足以判定管线`,
     signals,
     ...(product ? { product } : {}),
     clarify: {
-      question: routeClarifyQuestion(signals),
+      question: routeClarifyQuestion(signals, excludedChoices),
       missing: ["route"],
-      options: [
+      options: ([
         { key: "marketing", label: "营销片（带货/种草/商品与品牌推广）" },
         { key: "narrative", label: "叙事片（故事/知识/人文/形象，通用管线）" },
-      ],
+        { key: "explainer", label: "口播解说片（讲解/知识/教程）" },
+      ] as Array<{ key: VideoPipelineKind; label: string }>).filter(option => !excludedChoices.includes(option.key)),
     },
   };
 }
@@ -552,13 +614,13 @@ export function applyRouteToMetadata(
     return next;
   }
 
-  if (decision.route === "narrative") {
+  if (decision.route === "narrative" || decision.route === "explainer") {
     delete next.dataMining;
     delete brief.product;
     delete brief.products;
     if (Object.keys(brief).length > 0) next.brief = brief;
     else delete next.brief;
-    next.pipelineRoute = { kind: "narrative", via: decision.via, confidence: decision.confidence };
+    next.pipelineRoute = { kind: decision.route, via: decision.via, confidence: decision.confidence };
     return next;
   }
 
@@ -572,7 +634,10 @@ export function describeRouteDecision(decision: VideoRouteDecision): string {
   if (decision.route === "clarify") {
     return `管线待澄清（缺 ${decision.clarify?.missing.join("/")}）：${decision.rationale}`;
   }
-  const label = decision.route === "marketing" ? "营销片管线（含商品情报档案）" : "叙事片管线（通用）";
+  const labels: Record<VideoPipelineKind, string> = {
+    marketing: "营销片管线（含商品情报档案）", narrative: "叙事片管线（通用）", explainer: "口播解说片管线",
+  };
+  const label = labels[decision.route];
   return `走${label}（via=${decision.via}，置信度 ${decision.confidence}）：${decision.rationale}`;
 }
 
@@ -596,7 +661,10 @@ export function stripRoutingDirective(text: string): string {
 }
 
 export interface PipelineIntentProfile {
+  /** Explicit structured duration supplied by the customer-facing brief. */
   durationSec?: number;
+  /** Only inject a system default when the original text has no duration expression. */
+  defaultDurationSec?: number;
   aspectRatio?: string;
   platform?: string;
   goal?: string;
@@ -612,7 +680,17 @@ export interface PipelineIntentProfile {
 export function buildPipelineIntent(text: string, profile: PipelineIntentProfile = {}): string {
   const clean = stripRoutingDirective(text);
   const parts: string[] = [];
-  if (profile.durationSec && profile.durationSec > 0) parts.push(`时长：${profile.durationSec}秒`);
+  // Presence detection is deliberately conservative: per-shot timing, invalid values,
+  // ranges and multiple alternatives are not authority for a new whole-film duration.
+  // Preserve those expressions for the existing requirement flow instead of parsing
+  // one value or appending a conflicting 30-second total.
+  const hasDurationExpression = /时长|片长|全长|\bduration\b/iu.test(text)
+    || /(?:[+\-−]?\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万半]+)\s*(?:-\s*)?(?:秒(?:钟)?|分(?:钟)?|小时|seconds?|secs?|minutes?|mins?|hours?|hrs?|s|m|h)(?![a-z])/iu.test(text)
+    || /\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half|quarter|a|an)[\s-]+(?:seconds?|secs?|minutes?|mins?|hours?|hrs?)\b/iu.test(text);
+  const fallbackDuration = !hasDurationExpression && Number.isFinite(profile.defaultDurationSec)
+    ? profile.defaultDurationSec : undefined;
+  const duration = profile.durationSec ?? fallbackDuration;
+  if (duration && duration > 0) parts.push(`时长：${duration}秒`);
   if (profile.aspectRatio) parts.push(`画幅：${profile.aspectRatio}`);
   if (profile.platform) parts.push(`平台：${profile.platform}`);
   if (profile.goal) parts.push(`目标：${profile.goal}`);
