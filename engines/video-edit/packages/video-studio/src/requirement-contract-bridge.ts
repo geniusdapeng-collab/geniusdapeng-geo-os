@@ -20,6 +20,7 @@ type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 interface Scope {
   metadata: RequirementRecord;
   cast?: RequirementCast;
+  sceneSchema?: RequirementRecord;
   active: boolean;
   fatal?: { error: unknown };
   authority?: PrdAuthority;
@@ -450,7 +451,7 @@ export function installRequirementContractBridge(
       const original = await Reflect.apply(convert, this, [discovery, upstream]);
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "转换结束时运行作用域已经关闭");
       const bound = bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
-        typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null);
+        typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null, scope.sceneSchema);
       if (scope && !scope.authority && bound && typeof bound === "object") {
         scope.metadata._workloomRequirementContract = structuredClone(
           (bound as RequirementRecord)._workloomRequirementContract,
@@ -470,7 +471,7 @@ export function installRequirementContractBridge(
         throw new RequirementContractError("REQUIREMENT_AUDIENCE_CHANGED", "G3 与本次宿主冻结的客户受众口径不一致");
       }
       return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"))
-        + renderScenePolicyCoverage(scope.authority!.metadata, contract as unknown as RequirementRecord)
+        + renderScenePolicyCoverage(scope.authority?.metadata ?? scope.metadata, contract as unknown as RequirementRecord)
         + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
     });
   };
@@ -604,6 +605,7 @@ export function installRequirementContractBridge(
         requireActiveScope();
         finalSceneFailure = undefined;
         const effectiveSchema = structuredSceneSchema(schema);
+        scope.sceneSchema = structuredClone(effectiveSchema);
         const runView = Object.create(this) as RequirementRecord;
         let pendingFeedback = "", attemptFeedback = "";
         let currentValidationFailure: RequirementContractError | undefined;

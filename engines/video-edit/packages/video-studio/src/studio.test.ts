@@ -49,6 +49,8 @@ vi.mock("./vendor-requirement-entry.js", () => ({
         };
         creativeThemeGenerator = { generate: async () => ({}) };
         prdGenerator = { generate: async () => ({}) };
+        pipelineGuard = { check: () => ({ passed: true, source: "assembly-fixture" }) };
+        _generatePreproductionReport() { return "assembly fixture report"; }
         durationConstraintManager = {};
         constructor(options: unknown) { studioMocks.construct(options); }
         create(...input: unknown[]) { return studioMocks.create(...input); }
@@ -459,6 +461,60 @@ describe("vendor 核心可加载", () => {
     expect(typeof options!.approvedTheme).toBe("function");
     return options!;
   }
+  it.each(["references", "voice", "color"])("marketing assembly preserves explicit %s through G6 and final prompts", async kind => {
+    const value = prdFixture(`custom-${kind}`, [8, 14, 8], 0); owned.push(value);
+    const intent = "全片无人，仅使用抽象界面和示意图";
+    const metadata = structuredClone(value.metadata);
+    metadata.customerOriginalIntent = intent;
+    const brief = metadata.brief as Record<string, unknown>;
+    if (kind === "references") brief.visualReferences = ["客户授权参考：暖色曲线的构图和节奏"];
+    if (kind === "voice") brief.voice = "旁白：讲解本次已审能力";
+    if (kind === "color") brief.colorPalette = { dominant: "暖橙", accent: "金黄" };
+    const body = "01.【场景】暖橙色曲线保留客户授权参考的节奏\n02.【台词】旁白：本次已审能力";
+    const contracts = { shots: [{ shotId: "scene-1", duration: 30, prompt: body }] };
+    studioMocks.promptContracts[body] = contracts;
+    const nativeResult = { success: true, stages: { productionEngine: {
+      shots: [{ shotId: "scene-1", duration: 30, prompt: body, fields: { scene: "暖橙曲线" } }],
+      prompts: [{ shotId: "scene-1", duration: 30, prompt: body, fields: { scene: "暖橙曲线" } }],
+    } } };
+    const onApproval = vi.fn(async () => ({ approved: true }));
+    studioMocks.create.mockImplementation(async () => {
+      await globalThis.__HR_CONFIRMATION_HANDLER__!({ type: "prompt", content: body, runId: value.scope.runId });
+      return nativeResult;
+    });
+    const result = await marketing(privateProof(value), value.workDir, onApproval)
+      .runPreproduction({ projectId: value.scope.projectId, intent, isMarketing: true, metadata });
+    expect(onApproval).toHaveBeenCalledWith(expect.objectContaining({ gate: "G6_PROMPT", contentMd: body, contracts }));
+    expect(result).toBe(nativeResult);
+    expect(result.stages?.productionEngine).toEqual(nativeResult.stages.productionEngine);
+  });
+
+  it("marketing assembly preserves content duration when the final master includes a cover intro", async () => {
+    const value = prdFixture("cover-content", [8, 14, 8], 0); owned.push(value);
+    const metadata = structuredClone(value.metadata);
+    const production = (metadata.brief as Record<string, unknown>).productionRequirements as Record<string, unknown>;
+    production.openWithCover = true;
+    production.coverIntroSeconds = 5;
+    const intent = "全片无人，仅使用抽象界面和示意图，无对白，无口播";
+    metadata.customerOriginalIntent = intent;
+    const durations = [10, 10, 5];
+    const shots = durations.map((duration, index) => ({ shotId: `scene-${index + 1}`, duration,
+      prompt: "01.【场景】抽象画布", fields: { scene: "抽象画布" } }));
+    const body = "| 镜头 | 时长 | 字段 |\n|---|---|---|\n" + shots.map(shot => `| ${shot.shotId} | ${shot.duration}s | 已审 |`).join("\n");
+    const onApproval = vi.fn(async (_req: Parameters<ApprovalCallback>[0]) => ({ approved: true }));
+    studioMocks.create.mockImplementation(async () => {
+      await globalThis.__HR_CONFIRMATION_HANDLER__!({ type: "prompt", content: body, runId: value.scope.runId });
+      return { success: true, stages: { productionEngine: { shots, prompts: shots } } };
+    });
+    const result = await marketing(privateProof(value), value.workDir, onApproval)
+      .runPreproduction({ projectId: value.scope.projectId, intent, isMarketing: true, metadata });
+    expect(result.stages).toBeDefined();
+    const output = result.stages!.productionEngine as { shots: Array<{ duration: number }> };
+    expect(output.shots.reduce((sum, shot) => sum + shot.duration, 0)).toBe(25);
+    const content = (onApproval.mock.calls[0]?.[0] as { contentMd: string }).contentMd;
+    const total = [...content.matchAll(/^\|\s*scene-\d+\s*\|\s*(\d+)s\s*\|/gm)].reduce((sum, match) => sum + Number(match[1]), 0);
+    expect(total).toBe(25);
+  });
   it.each(["missing", "wrong-project", "wrong-hash", "missing-stage"])("%s在vendor构造与create之前拒绝", async kind => {
     let proof = { projectId: "P1", rawJson, sha256, productQuery: { name: "本次商品" } };
     if (kind === "wrong-project") proof.projectId = "other";

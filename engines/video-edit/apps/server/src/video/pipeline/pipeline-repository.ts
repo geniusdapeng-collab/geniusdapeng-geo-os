@@ -343,6 +343,21 @@ export class VideoPipelineRepository {
     );
   }
 
+  private async commandRunReplay(
+    client: pg.PoolClient,
+    idempotencyKey: string,
+    requestHash: string,
+  ): Promise<PipelineRunView | null> {
+    const replay = await this.commandReplay<PipelineRunView | { runId: string }>(client, idempotencyKey, requestHash);
+    if (!replay) return null;
+    if ("stages" in replay) return replay;
+    // Older commands stored only identifiers. Recover their current scoped view
+    // without applying the command again or rewriting its historical receipt.
+    const view = await this.readRunInTransaction(client, replay.runId);
+    if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "历史命令的 run 读取失败");
+    return view;
+  }
+
   private async appendOutbox(
     client: pg.PoolClient,
     runId: string,
@@ -384,7 +399,7 @@ export class VideoPipelineRepository {
       },
     });
     const response = await this.transaction(async (client) => {
-      const replay = await this.commandReplay<PipelineRunView>(client, input.idempotencyKey, requestHash);
+      const replay = await this.commandRunReplay(client, input.idempotencyKey, requestHash);
       if (replay) return replay;
 
       const project = await client.query<{ id: string }>(
@@ -429,12 +444,14 @@ export class VideoPipelineRepository {
       await this.appendOutbox(client, runId, "run.started", {
         projectId: input.projectId, planHash: plan.planHash, frontier: roots,
       });
+      const view = await this.readRunInTransaction(client, runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
       await this.recordCommand(client, {
         id: input.commandId, runId, kind: "startPipeline", idempotencyKey: input.idempotencyKey,
         requestHash, actor: input.actor, expectedRunRevision: 1,
-        response: { runId },
+        response: { ...view },
       });
-      return (await this.readRunInTransaction(client, runId))!;
+      return view;
     });
     return response;
   }
@@ -569,7 +586,7 @@ export class VideoPipelineRepository {
       },
     });
     return this.transaction(async (client) => {
-      const replay = await this.commandReplay<PipelineRunView>(client, input.idempotencyKey, requestHash);
+      const replay = await this.commandRunReplay(client, input.idempotencyKey, requestHash);
       if (replay) return replay;
       const run = await client.query<RunRow>(
         `SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE`,
@@ -625,13 +642,13 @@ export class VideoPipelineRepository {
       await this.appendOutbox(client, input.runId, "node.claimed", {
         stageRunId: row.id, stageKey: row.stage_key, owner: input.owner, leaseExpiresAt: leaseExpires.toISOString(),
       });
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
       await this.recordCommand(client, {
         id: input.commandId, runId: input.runId, kind: "claimStage", idempotencyKey: input.idempotencyKey,
         requestHash, actor: { id: input.owner, type: "worker" }, expectedRunRevision: input.expectedRunRevision,
-        expectedStageRevision: input.expectedStageRevision, response: { runId: input.runId, stageRunId: row.id },
+        expectedStageRevision: input.expectedStageRevision, response: { ...view },
       });
-      const view = await this.readRunInTransaction(client, input.runId);
-      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
       return view;
     });
   }
@@ -793,10 +810,18 @@ export class VideoPipelineRepository {
       },
     });
     return this.transaction(async (client) => {
-      const replay = await this.commandReplay<{ run: PipelineRunView; artifactManifestHash: string }>(
+      const replay = await this.commandReplay<{ run: PipelineRunView; artifactManifestHash: string }
+        | { runId: string; artifactManifestHash: string }>(
         client, input.idempotencyKey, requestHash,
       );
-      if (replay) return replay;
+      if (replay) {
+        if ("run" in replay) return replay;
+        // Legacy artifact receipts retain their original manifest while the run
+        // is read at its current revision; no artifact/file validation is rerun.
+        const view = await this.readRunInTransaction(client, replay.runId);
+        if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "历史命令的 run 读取失败");
+        return { run: view, artifactManifestHash: replay.artifactManifestHash };
+      }
       const run = await client.query<RunRow>(
         `SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE`,
         [this.scope.workspaceId, input.runId],
@@ -931,15 +956,15 @@ export class VideoPipelineRepository {
         artifactSha256: primaryArtifact.sha256,
         artifactManifestHash: manifestHash,
       });
-      const response = { runId: input.runId, artifactManifestHash: manifestHash };
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
+      const response = { run: view, artifactManifestHash: manifestHash };
       await this.recordCommand(client, {
         id: input.commandId, runId: input.runId, kind: "commitArtifact", idempotencyKey: input.idempotencyKey,
         requestHash, actor: input.actor, expectedRunRevision: input.expectedRunRevision,
         expectedStageRevision: input.expectedStageRevision, response,
       });
-      const view = await this.readRunInTransaction(client, input.runId);
-      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
-      return { run: view, artifactManifestHash: manifestHash };
+      return response;
     });
   }
 
@@ -975,7 +1000,7 @@ export class VideoPipelineRepository {
       },
     });
     return this.transaction(async (client) => {
-      const replay = await this.commandReplay<PipelineRunView>(client, input.idempotencyKey, requestHash);
+      const replay = await this.commandRunReplay(client, input.idempotencyKey, requestHash);
       if (replay) return replay;
       const run = await client.query<RunRow>(
         `SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE`,
@@ -1145,13 +1170,13 @@ export class VideoPipelineRepository {
           evidenceRefs: decision.evidenceRefs,
         });
       }
+      const view = await this.readRunInTransaction(client, input.runId);
+      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
       await this.recordCommand(client, {
         id: input.commandId, runId: input.runId, kind: "recordGateDecision", idempotencyKey: input.idempotencyKey,
         requestHash, actor: input.actor, expectedRunRevision: input.expectedRunRevision,
-        expectedStageRevision: input.expectedStageRevision, response: { runId: input.runId, decisionId: decision.id },
+        expectedStageRevision: input.expectedStageRevision, response: { ...view },
       });
-      const view = await this.readRunInTransaction(client, input.runId);
-      if (!view) throw new PipelineControlError("PIPELINE_RUN_NOT_FOUND", "run 读取失败");
       return view;
     });
   }
@@ -1169,7 +1194,7 @@ export class VideoPipelineRepository {
       payload: { kind: "refreshFrontier", runId: input.runId, planHash: plan.planHash },
     });
     return this.transaction(async (client) => {
-      const replay = await this.commandReplay<PipelineRunView>(client, input.idempotencyKey, requestHash);
+      const replay = await this.commandRunReplay(client, input.idempotencyKey, requestHash);
       if (replay) return replay;
       const run = await client.query<RunRow>(
         `SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE`,
@@ -1193,7 +1218,6 @@ export class VideoPipelineRepository {
       for (const row of stages.rows) {
         if (!latest.has(row.stage_key)) latest.set(row.stage_key, stageState(row));
       }
-      const ready: string[] = [];
       const gateDependencyReady = (state: StageRuntimeState | undefined): boolean => Boolean(
         state
         && state.artifact
@@ -1224,9 +1248,14 @@ export class VideoPipelineRepository {
           );
           const nextState = { ...state, executionStatus: "ready" as const, verificationStatus: "not_run" as const };
           latest.set(node.key, nextState);
-          ready.push(node.key);
         }
       }
+      // Frontier is a snapshot of all runnable nodes, including work made ready
+      // by an earlier refresh. Reconciliation/status refreshes must not consume it.
+      const ready = plan.nodes.filter((node) => {
+        const state = latest.get(node.key);
+        return state?.executionStatus === "ready" && state.disposition === "continue";
+      }).map((node) => node.key);
       const blockers = stages.rows.filter((row) => ["repair","reconcile","wait_human","blocked"].includes(row.disposition));
       const allDone = plan.nodes.every((node) => {
         const state = latest.get(node.key);
@@ -1263,7 +1292,7 @@ export class VideoPipelineRepository {
         requestHash,
         actor: input.actor,
         expectedRunRevision: input.expectedRunRevision,
-        response: { runId: input.runId },
+        response: { ...response },
       });
       return response;
     });
@@ -1628,7 +1657,7 @@ export class VideoPipelineRepository {
       payload: { kind: "markInterrupted", runId: input.runId, reason: input.reason, owner: input.owner },
     });
     return this.transaction(async (client) => {
-      const replay = await this.commandReplay<PipelineRunView>(client, input.idempotencyKey, requestHash);
+      const replay = await this.commandRunReplay(client, input.idempotencyKey, requestHash);
       if (replay) return replay;
       const run = await client.query<RunRow>(
         `SELECT * FROM video_pipeline_runs WHERE workspace_id=$1 AND id=$2 FOR UPDATE`,
@@ -1667,7 +1696,7 @@ export class VideoPipelineRepository {
         requestHash,
         actor: input.actor,
         expectedRunRevision: input.expectedRunRevision,
-        response: { runId: input.runId },
+        response: { ...view },
       });
       return view;
     });

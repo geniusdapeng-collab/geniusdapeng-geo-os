@@ -94,7 +94,7 @@ describe("marketing PRD host contract", () => {
     source.audienceProfile.emotionTriggers = ["第12秒已审场景节点：方块连接设备"];
     const result = normalizeMarketingPrdContract(source, {
       builtinCharacterSelection: { mode: "none" },
-      customerOriginalIntent: "全片无人，不显示未入 G1 的标签",
+      customerOriginalIntent: "全片无人，仅使用抽象界面，不显示未入 G1 的标签",
     }, {}, { scenes: [{ id: "opening" }, { id: "ending" }] });
     const requirements = (result.prd as any).scenePlan.scenes[0].visualRequirements.join(" ");
     expect(requirements).not.toContain("integration");
@@ -108,7 +108,7 @@ describe("marketing PRD host contract", () => {
     expect(ending).toContain("辅助脚注");
     const audio = (result.prd as any).audioSpecification.soundDesign;
     expect(audio).not.toMatch(/沿用已有任务|画面内烧录|烧录字幕核对/);
-    expect(audio).toContain("不生成字幕轨或 sidecar");
+    expect(audio).toContain("不生成字幕轨或 SRT/VTT");
     expect(audio).toContain("连续子串逐字符一致并保留原标点");
     expect(audio).toContain("辅助文字与脚注不豁免");
     expect((result.prd as any).audienceProfile.emotionTriggers.join(" ")).not.toContain("已审场景节点");
@@ -163,4 +163,70 @@ describe("marketing PRD host contract", () => {
       builtinCharacterSelection: { mode: "none" },
     }, {}, { scenes: [{ id: "opening" }] })).toThrow(/SCENE_AUTHORITY_CHANGED/);
   });
+});
+
+
+it("MC-003 preserves ordinary marketing direction and explicit customer subtitle/frame-rate authority", () => {
+  const source = prd() as any;
+  source.visualSpecification.visualReferences = ["客户提供的授权品牌参考片"];
+  source.referenceCases.adReferences = ["客户已授权参考片"];
+  source.audioSpecification.voicePolicy = "旁白+字幕";
+  source.deliveryStandard.deliverables.push({ item: "subtitle_sidecar", spec: "客户明确需要SRT", priority: "required" });
+  const result = normalizeMarketingPrdContract(source, {
+    customerOriginalIntent: "实物产品营销，保留授权参考片及旁白，明确烧录和侧车字幕",
+  }, { resolution: "1080p", aspectRatio: "16:9", targetDuration: 30, frameRate: 24, subtitleMode: "both" }, {
+    scenes: [{ id: "opening" }, { id: "ending" }],
+  }).prd as any;
+  expect(result.visualSpecification.visualReferences).toEqual(source.visualSpecification.visualReferences);
+  expect(result.referenceCases).toEqual(source.referenceCases);
+  expect(result.audioSpecification).toEqual(source.audioSpecification);
+  expect(JSON.stringify(result)).not.toContain("客户未明确要求字幕");
+  expect(JSON.stringify(result)).not.toContain("30fps");
+});
+
+
+it("MC-003 preserves explicit subtitles and 24fps in the abstract no-person PRD", () => {
+  const result = normalizeMarketingPrdContract(prd(), {
+    customerOriginalIntent: "全片无人，仅使用抽象界面，明确需要字幕侧车",
+    builtinCharacterSelection: { mode: "none" },
+  }, { resolution: "1080p", aspectRatio: "16:9", targetDuration: 30, frameRate: 24, subtitleMode: "sidecar" }, {
+    scenes: [{ id: "opening" }, { id: "ending" }],
+  }).prd as any;
+  expect(JSON.stringify(result)).not.toContain("客户未明确要求字幕");
+  expect(result.productionConstraints.technicalConstraints.join(" ")).toContain("1920x1080");
+  expect(result.productionConstraints.technicalConstraints.join(" ")).toContain("24fps");
+  expect(result.productionConstraints.technicalConstraints.join(" ")).not.toContain("30fps");
+  expect(result.productionConstraints.technicalConstraints.join(" ")).toContain("sidecar");
+});
+
+it("MC-003 retains an explicit abstract-film reference supplied in the customer brief", () => {
+  const source = prd() as any;
+  source.visualSpecification.visualReferences = ["客户指定的授权参考片A"];
+  source.referenceCases = { filmReferences: ["客户指定的授权参考片A"], adReferences: [], styleReferences: ["客户明确要求暖橙配色"] };
+  const result = normalizeMarketingPrdContract(source, {
+    customerOriginalIntent: "全片无人，仅使用抽象界面",
+    builtinCharacterSelection: { mode: "none" }, brief: { references: ["客户指定的授权参考片A"] },
+  }, {}, { scenes: [{ id: "opening" }, { id: "ending" }] }).prd as any;
+  expect(result.visualSpecification.visualReferences).toEqual(source.visualSpecification.visualReferences);
+  expect(result.referenceCases).toEqual(source.referenceCases);
+});
+
+it("MC-003 honors off-screen narration declared in brief metadata even if the original intent only describes visuals", () => {
+  const source = prd() as any;
+  source.audioSpecification.voicePolicy = "旁白：讲解系统能力";
+  const result = normalizeMarketingPrdContract(source, {
+    customerOriginalIntent: "全片无人，仅使用抽象界面", builtinCharacterSelection: { mode: "none" },
+    brief: { voice: "旁白：讲解系统能力" },
+  }, {}, { scenes: [{ id: "opening" }, { id: "ending" }] }).prd as any;
+  expect(result.audioSpecification).toEqual(source.audioSpecification);
+});
+
+it("MC-003 never changes a requested subtitle sidecar to a forbidden sidecar in rendered prose", () => {
+  const source = prd() as any;
+  source.audioSpecification.soundDesign = "所有屏幕文字为画面内烧录的等宽字体英文原文与来源标注，不另做 sidecar";
+  const result = normalizeMarketingPrdContract(source, {
+    customerOriginalIntent: "全片无人，仅使用抽象界面", builtinCharacterSelection: { mode: "none" },
+  }, { subtitleMode: "sidecar" }, { scenes: [{ id: "opening" }, { id: "ending" }] }).prd as any;
+  expect(JSON.stringify(result)).not.toMatch(/不生成字幕轨|不另做 sidecar/);
+  expect(result.audioSpecification.soundDesign).toContain("sidecar");
 });

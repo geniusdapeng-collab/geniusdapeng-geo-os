@@ -425,3 +425,41 @@ describe("PRD real model response and provenance", () => {
     expect(original.deliveryStandard.deliverables[0]!.spec).toContain("4K");
   });
 });
+
+describe("MC-010 final master and content timeline duration", () => {
+  it.each([1, 5])("centers the existing tolerance on content when a %ss cover intro is enabled", coverIntroSeconds => {
+    const value = fixture("CONTENT-LOWER", [6, 8, 6]);
+    const contentDuration = 20;
+    const profile = { ...value.authority.profile, targetDuration: contentDuration + coverIntroSeconds + 5,
+      openWithCover: true, coverIntroSeconds };
+    expect(() => validatePrdProduction(value.production, value.contract, profile)).not.toThrow();
+  });
+
+  it("rejects content above its budget even when its sum is close to the final master duration", () => {
+    const value = fixture("CONTENT-TOO-LONG", [8, 14.1, 8]);
+    const profile = { ...value.authority.profile, targetDuration: 30, openWithCover: true, coverIntroSeconds: 5 };
+    expect(() => validatePrdProduction(value.production, value.contract, profile)).toThrow("PRD_SCENE_DURATION_CONFLICT");
+  });
+
+  it("instructs the real PRD model to inherit content scenes and retain the separate final master duration", () => {
+    const value = fixture("CONTENT-PROMPT", [8, 9, 8]);
+    value.authority.profile = { ...value.authority.profile, targetDuration: 30, openWithCover: true, coverIntroSeconds: 5 };
+    const prompt = prdAuthorityPrompt(value.authority, value.contract);
+    expect(prompt).toContain("内容节点合计 25s");
+    expect(prompt).toContain("最终成片 30s");
+    expect(prompt).toContain("封面片头 5s");
+  });
+
+  it("keeps the existing no-cover duration tolerance and does not subtract an inactive intro", () => {
+    const value = fixture("CONTENT-NO-COVER", [8, 14, 8]);
+    const profile = { ...value.authority.profile, targetDuration: 30, openWithCover: false, coverIntroSeconds: 5 };
+    expect(() => validatePrdProduction(value.production, value.contract, profile)).not.toThrow();
+  });
+
+  it.each([-1, 30, 31, Number.NaN, Number.POSITIVE_INFINITY])("rejects an invalid enabled intro %s before validating scenes", coverIntroSeconds => {
+    const value = fixture("CONTENT-BAD-COVER");
+    expect(() => validatePrdProduction(value.production, value.contract, {
+      ...value.authority.profile, targetDuration: 30, openWithCover: true, coverIntroSeconds,
+    })).toThrow("PRD_PROFILE_INVALID");
+  });
+});

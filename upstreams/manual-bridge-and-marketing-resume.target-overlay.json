@@ -35,9 +35,9 @@
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetSha256": "5063cace776167d61aab96e2e2791c409d84a775f5cb9d12e50e7f927f584d4c",
+      "targetSha256": "c546da4ed32c13977c88cda30c91df15d89abc5d1c8ef4d201ea4e0e5232abc2",
       "sourceBytes": 68733,
-      "targetBytes": 68831
+      "targetBytes": 90312
     },
     {
       "path": "docs/ai-video-workbench-guide.md",
@@ -47,5 +47,6 @@
       "sourceBytes": 50616,
       "targetBytes": 54189
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }

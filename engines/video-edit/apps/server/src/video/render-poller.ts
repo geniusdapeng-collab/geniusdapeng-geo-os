@@ -341,7 +341,7 @@ export async function pollRenderJobs(
       const archiveWriter = archiveFor(job.project_id);
       if (archiveWriter) {
         try {
-          await logStageOutcome(archiveWriter.store, archiveWriter.ledger, {
+          const archiveReceipt = await logStageOutcome(archiveWriter.store, archiveWriter.ledger, {
             stageId: "renderPoll",
             status: done ? "done" : "failed",
             input: { jobId: job.id, taskId: job.task_id, provider: provider.providerId, scriptId: job.script_id },
@@ -362,6 +362,9 @@ export async function pollRenderJobs(
             cost: { cashCny: actualCny },
             runId: null,
           });
+          if (archiveReceipt.error) {
+            console.error(`[render-poller] 档案回执待对账 job=${job.id}：${archiveReceipt.error}；产物=${archiveReceipt.outputRef ?? "未落盘"}；保留原任务，禁止重复提交`);
+          }
         } catch (err) {
           console.error(`[render-poller] 档案记账失败（不影响回填）job=${job.id}：${(err as Error).message}`);
         }

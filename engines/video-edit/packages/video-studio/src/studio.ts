@@ -27,7 +27,7 @@ import {
   installVendorRequirementContractBridge,
   withRequirementContractScope,
 } from "./requirement-contract-bridge.js";
-import { preparePrdAuthority, type PrdAuthority, type PrdMarketingAuthority } from "./prd-authority.js";
+import { preparePrdAuthority, prdDurationContract, type PrdAuthority, type PrdMarketingAuthority } from "./prd-authority.js";
 import {
   assertPrdAuthorityBridge,
   consumePromptReviewContracts,
@@ -315,12 +315,15 @@ export class VideoStudio {
     const brief = metadata.brief && typeof metadata.brief === "object"
       ? metadata.brief as Record<string, unknown>
       : {};
-    const requestedDuration = Number(prdAuthority?.profile.targetDuration ?? brief.duration ?? 0);
+    const requestedDuration = Number((prdAuthority ? prdDurationContract(prdAuthority.profile).contentDurationSeconds : undefined) ?? brief.duration ?? 0);
     const promptOptions = {
       targetDuration: Number.isFinite(requestedDuration) && requestedDuration > 0 ? requestedDuration : 30,
       noPeople: Boolean(noPeople),
-      abstractOnly: input.isMarketing && isAbstractMarketingIntent(input.intent),
+      abstractOnly: input.isMarketing && isAbstractMarketingIntent(input.intent, metadata, prdAuthority?.profile),
       frameRate: prdAuthority?.profile.frameRate ?? 30,
+      aspectRatio: prdAuthority?.profile.aspectRatio,
+      resolution: prdAuthority?.profile.resolution,
+      subtitleMode: prdAuthority?.profile.subtitleMode,
       allowedVisibleText: prdAuthority ? marketingVisibleTextFromG1(prdAuthority.marketing.g1Artifact.content) : [],
     };
 
@@ -545,7 +548,7 @@ export class VideoStudio {
           charactersDir,
           durationConstraint: { maxSingleShot, minSingleShot }
         });
-        if (input.isMarketing && noPeople && isAbstractMarketingIntent(input.intent)) {
+        if (input.isMarketing && noPeople && isAbstractMarketingIntent(input.intent, metadata, prdAuthority?.profile)) {
           const guard = (system as unknown as { pipelineGuard?: { check?: unknown } }).pipelineGuard;
           if (!guard || typeof guard.check !== "function") {
             throw new Error("MARKETING_PIPELINE_GUARD_BRIDGE_UNAVAILABLE: vendor 缺少渲染前守卫");

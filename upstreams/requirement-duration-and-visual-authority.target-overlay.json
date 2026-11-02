@@ -19,25 +19,25 @@
       "path": "packages/video-studio/src/requirement-contract.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "22e0a25982432f20d2ea24eca43472e606178d6a229a2e14b61bdb2c25a0861b",
+      "targetSha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41",
       "sourceBytes": 38883,
-      "targetBytes": 45375
+      "targetBytes": 61407
     },
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
-      "targetSha256": "95add57edba44aba6bf0caccf13cc4c47a2e4d2505d8f7c39ce4678afd8bfe57",
+      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
       "sourceBytes": 27675,
-      "targetBytes": 36184
+      "targetBytes": 44261
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
       "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
-      "targetSha256": "2ce68c29056b5c83a08317b576fbbccf4b35bad41a5389bfb4cd61cb87c5ac43",
+      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
       "sourceBytes": 52098,
-      "targetBytes": 55848
+      "targetBytes": 64431
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
@@ -77,5 +77,6 @@
       "targetSha256": "36c78d5513c6acefadf49c6bada443729e697614a9c5e20bcf0464be3f00310a",
       "targetBytes": 2259
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
 }
