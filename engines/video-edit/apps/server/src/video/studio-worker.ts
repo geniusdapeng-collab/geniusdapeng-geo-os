@@ -897,7 +897,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
           status: deterministicStatus(check),
           detail: check.detail,
           evidenceRef: currentArtifact.path,
-          repairClass: deterministicStatus(check) === "failed" ? "local_patch" as const : undefined,
+          ...(deterministicStatus(check) === "failed" ? { repairClass: "local_patch" as const } : {}),
         })),
         ...(marketingReview?.deterministic ?? []).filter((check) => check.hard !== false).map((check) => ({
           id: check.id,
@@ -905,7 +905,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
           status: deterministicStatus(check),
           detail: check.detail,
           evidenceRef: currentArtifact.path,
-          repairClass: deterministicStatus(check) === "failed" ? "local_patch" as const : undefined,
+          ...(deterministicStatus(check) === "failed" ? { repairClass: "local_patch" as const } : {}),
         })),
       ];
       if (producerVerdict && !producerVerdict.approved && producerVerdict.status !== "not_applicable") {

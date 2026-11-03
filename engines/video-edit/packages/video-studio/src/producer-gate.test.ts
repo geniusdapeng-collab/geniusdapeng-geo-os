@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { creativeCanonical } from "./constraint-compiler.js";
 import { withCreativeBudget, type CreativeBudgetHooks, type CreativeModelOutcome } from "./creative-runtime.js";
 import {
   PRODUCER_RUBRICS,
@@ -167,6 +168,7 @@ describe("AI producer evidence gate", () => {
       fetchImpl: judge(good, bodies),
     }));
     expect(verdict.approved).toBe(true);
+    expect(() => creativeCanonical(verdict)).not.toThrow();
     expect(bodies).toHaveLength(1);
     const body = JSON.parse(bodies[0]!) as Record<string, unknown>;
     expect(body).toMatchObject({

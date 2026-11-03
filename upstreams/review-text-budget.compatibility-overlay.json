@@ -26,8 +26,8 @@
       "sourceGitBlob": "32c79c4ffad839761ffce1f40128f147b15f6088",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
       "targetMode": "100644",
-      "targetSha256": "d9907ecfbbfcd9dc6396f6940bd4727c94c9099c2ac5a5701c3534f746edd40f",
-      "targetBytes": 36905,
+      "targetSha256": "146bd47fb5b49a077ea534282141dee485fb516fe387e906cf2bd1ef64822c75",
+      "targetBytes": 36985,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "9a84f3a6289ad05b5865aed178af34c129e8cb40",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "targetMode": "100644",
-      "targetSha256": "1111ed7f2a1fa1d7a817c1bffab9cd6f4c30c28351c916cc9e72ba4183b78606",
-      "targetBytes": 20784,
+      "targetSha256": "51928a4b20c35e3b4bcdbaa12c068f6ae906a6c00429de0bfd91400b82e2dd7d",
+      "targetBytes": 20906,
       "transform": "none"
     },
     {
@@ -93,5 +93,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
 }

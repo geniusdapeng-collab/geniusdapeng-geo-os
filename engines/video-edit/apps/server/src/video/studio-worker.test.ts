@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { gatewayAppend, gatewayAppendOnClient } from "@workloom/base/workdata";
-import { applyScenePolicy, auditScenePolicy, loadScenePolicies, resolveShotCast, type ScenePolicyShot } from "@hyperreality/video-studio";
+import { applyScenePolicy, auditScenePolicy, creativeCanonical, loadScenePolicies, resolveShotCast, type ScenePolicyShot } from "@hyperreality/video-studio";
 import { verifyScenePolicyProductionSource } from "./scene-policy-render-gate.js";
 import { portraitReuseFixture } from "./portrait-reuse.test-support.js";
 import { builtinCatalogFixture } from "./builtin-character-selection.test-support.js";
@@ -892,6 +892,7 @@ describe("完整原生前期到正式 CLI 草稿交接", () => {
     expect(authority.g1Artifact.content).toBe(await readFile(file, "utf8"));
     expect(JSON.parse(authority.g1Artifact.content).facts.stages[0].review).toEqual(JSON.parse(prepared.g1Content).facts.stages[0].review);
     const proofs = (await archiveOutput(projectId, 1)).productionEvidence as { gates: Array<Record<string, unknown>> };
+    expect(() => creativeCanonical(authority.g1Proof)).not.toThrow();
     expect(authority.g1Proof).toEqual(proofs.gates.find(item => item.gate === "G1_DOSSIER"));
     expect(authority.g1Artifact.content).not.toBe(forged.g1Artifact.content);
     expect(doubles.runPreproduction.mock.calls[0]?.[0].metadata.prdAuthority).toEqual(forged);

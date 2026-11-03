@@ -145,8 +145,8 @@
       "sourceBytes": 86049,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
-      "targetSha256": "e50e99acae35351c3a86268097af719c273d0e531e5d0655840df033c8e7f9c0",
-      "targetBytes": 100109,
+      "targetSha256": "0d3572b2c2aed74fe46c6f08a9c45d7c029905ba5d904a5a61dd26390a81a95c",
+      "targetBytes": 100113,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -157,8 +157,8 @@
       "sourceBytes": 54207,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
-      "targetSha256": "50d5304a16ee56a2cc6889ebe25e30bf27609ff1a885eb9e8fcfcf5f48b19c26",
-      "targetBytes": 78897,
+      "targetSha256": "1aee5ed3ec57ed543ffa3c605201cb6108260d715e858f92210fd40a86fc69d6",
+      "targetBytes": 78986,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -217,5 +217,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
 }
