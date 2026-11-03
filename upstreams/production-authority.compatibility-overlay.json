@@ -26,8 +26,8 @@
       "sourceGitBlob": "5644364536be2697a7bbfd7d69e56af546ff6e68",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "targetMode": "100644",
-      "targetSha256": "3e4be0f93b37108957a34470c94dcb97fa9fed5be7a5f761e12af7273d564a68",
-      "targetBytes": 61621,
+      "targetSha256": "a737f5a420508b9a0bc190e9642fa79f0ea7ba618388c33afe7a8b6a0f7bbf70",
+      "targetBytes": 100550,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "675885bafdcd10e3ad160875e30510d3ff2d1cfd",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "targetMode": "100644",
-      "targetSha256": "edaa0e337c611b329acf8b78779442d52a395b05d0415b75f335ec2a71412116",
-      "targetBytes": 18153,
+      "targetSha256": "35ab444951e214758fe28f3b823a7ebdddc7fbef910ab11b9348c62142ef3aec",
+      "targetBytes": 18390,
       "transform": "none"
     },
     {
@@ -50,8 +50,8 @@
       "sourceGitBlob": "db7033aec156fc9007d87b22ff4cd5fae729ec77",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
       "targetMode": "100644",
-      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
-      "targetBytes": 41957,
+      "targetSha256": "535a5ebcbc42e15b8dd3150cb61e6a1bf3ebe6e6ddec9f566590d2aef7dfed67",
+      "targetBytes": 52239,
       "transform": "none"
     },
     {
@@ -110,8 +110,8 @@
       "sourceGitBlob": "3533af0a91b93ee190a6f8831429059510cbef64",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "targetMode": "100644",
-      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
-      "targetBytes": 42948,
+      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
+      "targetBytes": 49973,
       "transform": "none"
     },
     {
@@ -152,5 +152,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
 }

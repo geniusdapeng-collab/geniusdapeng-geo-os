@@ -2001,6 +2001,8 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     };
 
     prototype.execute = async function executeHostPhase3(this: FusionPhase, state: FusionRecord): Promise<FusionRecord> {
+      const creative = currentCreativeRuntime();
+      if (creative) return creative.executePhase3(state, this.agents.promptFusion);
       const start = Date.now();
       const result = fusionRecord(state.result, "result");
       const stages = result.stages && typeof result.stages === "object" ? result.stages as FusionRecord : {};
@@ -2224,3 +2226,4 @@ export function installVendorPhase3FusionBridge(options: { log?: (line: string) 
     };
   });
 }
+import { currentCreativeRuntime } from "./creative-runtime.js";

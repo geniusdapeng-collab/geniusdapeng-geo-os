@@ -54,6 +54,7 @@ import { normalizeShotIntent, shotIntentHash, type ShotIntentStatus } from "./sh
 import { devicePolicyPromptLines } from "./device-policy.js";
 import { environmentDefects, expandShotWithBible, environmentProfilePromptLines, propInteractionPromptLines, type SceneBible } from "./scene-bible.js";
 import { resolveEraProfile, type EraProfile } from "./era-profile.js";
+import { creativeBudgetActive, creativeBudgetedFetch, creativeExecutionSignal } from "./creative-runtime.js";
 
 export interface DeterministicCheck {
   status?: QualityStatus;
@@ -394,6 +395,7 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
   const tempPaths: string[] = [];
   const textContent: ModelContentPart[] = [];
   const images: Array<{ path: string; label: string }> = [];
+  let budgetFailure: unknown;
   try {
     if (options.artifacts.length === 0) throw new Error("缺少待评审产物");
     for (const artifact of options.artifacts) {
@@ -469,10 +471,15 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
     const batches = Math.max(1, Math.ceil(artifactImages / batchSize));
     const answers: Array<{ approved: boolean; score: number; issues: string[]; suggestions: string[]; reason: string }> = [];
     const receipts: NonNullable<ProducerVerdict["receipts"]> = [];
+    const budgeted = creativeBudgetActive();
+    const budgetedFetch = budgeted ? creativeBudgetedFetch(options.fetchImpl ?? fetch) : undefined;
     const provider = new OpenAiCompatibleProvider(llm.model, {
       baseUrl: llm.baseUrl,
       apiKey: llm.apiKey,
-      fetchImpl: options.fetchImpl,
+      fetchImpl: budgetedFetch ? async (input, init) => {
+        try { return await budgetedFetch(input, init); }
+        catch (error) { budgetFailure = error; throw error; }
+      } : options.fetchImpl,
     });
     for (let batch = 0; batch < batches; batch += 1) {
       const content: ModelContentPart[] = [{ type: "text", text: [
@@ -499,6 +506,7 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
           timeoutMs: 600_000,
           temperature: 0.2,
           retries: 0,
+          ...(budgeted ? { signal: creativeExecutionSignal() } : {}),
         });
         receipts.push({
           modelId: result.modelId,
@@ -555,7 +563,8 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       rerun: !approved, via: "llm", model: llm.model, ms: Date.now() - started,
       reason: answers.map((a) => a.reason).join("；") + (approved ? "" : `（所有证据批次需通过且评分≥${minScore}）`), degraded: false, evidence, receipts };
   } catch (err) {
-    return reject(err instanceof Error ? err.message : String(err), "fallback", llm.model);
+    const reason = budgetFailure ?? err;
+    return reject(reason instanceof Error ? reason.message : String(reason), "fallback", llm.model);
   } finally {
     for (const path of tempPaths) {
       try { rmSync(path, { recursive: true, force: true }); }

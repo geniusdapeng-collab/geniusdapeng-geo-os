@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { constants } from "node:fs";
 import { mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
-import { reviewStage, type ProducerVerdict } from "@hyperreality/video-studio";
+import { ABSTRACT_PRODUCT_VISUAL_MODE, assertProductVisualContent, assertProductVisualRenderPrompt,
+  explicitProductVisualMode, extractProductVisualAuthority, ProductVisualAuthorityError, reviewStage,
+  type ProducerVerdict, type ProductVisualAuthority } from "@hyperreality/video-studio";
 import { createDataMiningExecutor, type DataMiningStagePlan, type ExecutorLlm, type IntelStage, type SearchFn, type SearchHit } from "./data-mining-executor.js";
 import {
   fetchMarketingSource,
@@ -42,6 +44,8 @@ export interface MarketingFactsBundle {
   sources: ArchivedSource[]; stages: StageFactsReport[]; rawByAgent: Record<IntelStage, RecordValue>;
   rawSha256: string; dossier: RecordValue; cards: RecordValue; dossierSha256: string;
   restrictions: string[]; g1ContentSha256: string; outputReviews: OutputReview[];
+  /** New final reviews bind the exact archived G1, not a reconstructed mode flag. */
+  g1ContentRef?: string;
 }
 export interface PreparedMarketingFacts {
   bundle: MarketingFactsBundle; g1Content: string; raw: Record<IntelStage, RecordValue>; storeRoot: string;
@@ -54,6 +58,13 @@ interface DossierEngine {
   };
 }
 function fail(code: string, message: string): never { throw new SubmissionError(code, message); }
+function visualCheck<T>(check: () => T): T {
+  try { return check(); }
+  catch (error) {
+    if (error instanceof ProductVisualAuthorityError) fail(error.code, error.message.slice(error.code.length + 2));
+    throw error;
+  }
+}
 function object(value: unknown, name: string): RecordValue {
   if (!value || typeof value !== "object" || Array.isArray(value)) fail("MARKETING_FACTS_INVALID", `${name}不是有效对象`);
   return value as RecordValue;
@@ -299,10 +310,12 @@ export async function prepareMarketingFacts(input: {
 }): Promise<PreparedMarketingFacts> {
   const env = input.env ?? process.env;
   if (env.VM_DATA_MINING === "0" || env.VM_DATA_MINING_MODE === "spec") fail("MARKETING_SOURCE_REQUIRED", "正式营销不支持跳过来源采集或用任务书代替事实证据");
+  const intent = input.intent, metadata = structuredClone(input.metadata);
+  visualCheck(() => explicitProductVisualMode(intent, metadata));
   const scope = { ...input.scope }; Object.values({ ...scope, attempt: String(scope.attempt) }).forEach(component);
   if (!Number.isInteger(scope.attempt) || scope.attempt < 1) fail("MARKETING_SCOPE_INVALID", "来源执行编号非法");
   const root = await realpath(input.root), prefix = `stages/preproduction/attempt-${scope.attempt}.marketing`;
-  const storeRoot = path.join(root, `${prefix}-dossier`), product = productInput(input.metadata), collector = engine(storeRoot);
+  const storeRoot = path.join(root, `${prefix}-dossier`), product = productInput(metadata), collector = engine(storeRoot);
   const plan = collector.plan(product);
   const reports: StageFactsReport[] = [], sources: ArchivedSource[] = [];
   const cache = new Map<string, SourceSnapshot>();
@@ -390,7 +403,7 @@ export async function prepareMarketingFacts(input: {
       .flatMap((report) => report.facts.claims)
       .filter((claim) => /^\/identity\/official_selling_points\/\d+\/point$/.test(claim.pointer))
       .map((claim) => ({ pointer: claim.pointer, claimId: claim.claimId, sourceId: claim.sourceId })),
-    customerRestrictions: customerRestrictionLines(input.intent),
+    customerRestrictions: customerRestrictionLines(intent),
   });
   if (typeof presentation.dossier.product_id !== "string" || !presentation.dossier.product_id.trim()) {
     fail("MARKETING_DOSSIER_UNVERIFIED", "情报档案缺少有效商品ID");
@@ -412,7 +425,7 @@ export async function prepareMarketingFacts(input: {
     ...reports.filter(report => report.facts.status === "no_evidence").map(report => report.stage === "A2"
       ? "没有可核实用户评价：禁止用户口碑、评分、人数、销量或使用效果共识主张"
       : "没有可核实竞品证据：禁止对比、竞品弱点或市场领先主张"),
-    ...customerRestrictionLines(input.intent),
+    ...customerRestrictionLines(intent),
   ])];
   const bundle: MarketingFactsBundle = { schemaVersion: "workloom.marketing-facts/v1", issuer: "workloom.marketing-authority", scope,
     collectedAt: new Date().toISOString(), policyVersion: "source-claims/v1", productQuery: product, sources, stages: reports, rawByAgent: raw,
@@ -422,7 +435,7 @@ export async function prepareMarketingFacts(input: {
   // before that file exists (a self-hash has no stable finite solution).
   const factsForReview = structuredClone(bundle);
   delete (factsForReview as Partial<MarketingFactsBundle>).g1ContentSha256;
-  const g1Content = canonicalRenderJson({ facts: factsForReview, requestedIntent: input.intent, requestedMetadata: input.metadata,
+  const g1Content = canonicalRenderJson({ facts: factsForReview, requestedIntent: intent, requestedMetadata: metadata,
     instruction: "用户意图与Brief仅是需求，事实只能来自已核实claims；下游创意必须遵守restrictions" });
   if (g1Content.length > 100_000) fail("MARKETING_REVIEW_TOO_LARGE", "完整事实档案超过G1评审容量，不能只审摘要");
   bundle.g1ContentSha256 = renderSha256(g1Content);
@@ -430,13 +443,23 @@ export async function prepareMarketingFacts(input: {
 }
 
 export async function finalizeMarketingFacts(prepared: PreparedMarketingFacts, shots: Array<{ shotId: string; prompt: string; fields: unknown }>, env: NodeJS.ProcessEnv = process.env): Promise<{ ref: string; sha256: string }> {
+  // Snapshot all shots before the first await. A concurrent edit to a later
+  // shot must never reuse a review created for its previous bytes.
+  shots = structuredClone(shots);
   if (!shots.length || new Set(shots.map(shot => shot.shotId)).size !== shots.length) fail("MARKETING_PROMPTS_INVALID", "营销镜头为空或镜头标识重复");
+  const authority = checkedG1VisualContract(prepared.bundle, prepared.g1Content);
+  const boundVisual = { g1ContentSha256: prepared.bundle.g1ContentSha256, authority };
+  for (const shot of shots) {
+    if (!shot.prompt.trim()) fail("MARKETING_PROMPTS_INVALID", "营销镜头正文为空");
+    verifyShotVisual(authority, shot);
+  }
+  const original = await writeBound(prepared.root, `${prepared.prefix}-g1.json`, prepared.g1Content);
+  prepared.bundle.g1ContentRef = original.ref;
   for (const [index, item] of shots.entries()) {
     const shot = { shotId: item.shotId, prompt: item.prompt, fields: item.fields };
-    if (!shot.prompt.trim()) fail("MARKETING_PROMPTS_INVALID", "营销镜头正文为空");
     const evidence = await writeBound(prepared.root, `${prepared.prefix}-shot-${index + 1}.review.json`, canonicalRenderJson({
       scope: prepared.bundle.scope, sourceClaims: prepared.bundle.stages.map(stage => stage.facts),
-      restrictions: prepared.bundle.restrictions, shot,
+      restrictions: prepared.bundle.restrictions, productVisualContract: boundVisual, shot,
     }));
     const reviewed = await reviewMarketingSupportWithRetry(reviewStage, { stage: "prompt", projectId: prepared.bundle.scope.projectId, env,
       artifacts: [{ path: evidence.path, kind: "json", note: "完整最终镜头与逐主张事实证据；禁止无证据营销声明" }],
@@ -444,7 +467,8 @@ export async function finalizeMarketingFacts(prepared: PreparedMarketingFacts, s
       requiredCheckIds: ["marketing-current-facts"], minScore: 85,
       rubric: ["逐句核对shot.prompt与全部结构fields中的商品事实、数字、价格、效果、评价和竞品主张，仅sourceClaims可作为事实依据",
         "必须遵守restrictions；不得把用户意图、推断、生成情节、广告愿望、缺证据或无冲突当成事实支持；任一未支持或夸大主张必须拒绝",
-        "创意可以使用虚构人物与非事实的镜头设计，但不得以画面演示暗示没有来源的商品性能、认证或真实人物背书"],
+        "创意可以使用虚构人物与非事实的镜头设计，但不得以画面演示暗示没有来源的商品性能、认证或真实人物背书",
+        `productVisualContract 是同次 G1 客户原件的适用性合同。逐项核对实际 prompt 和 fields。${authority.rule}`],
       context: { purpose: "marketing-final-fact-review", shotId: shot.shotId, scope: prepared.bundle.scope },
     });
     const verdict = reviewed.verdict;
@@ -457,10 +481,30 @@ export async function finalizeMarketingFacts(prepared: PreparedMarketingFacts, s
   return { ref: saved.ref, sha256: saved.sha256 };
 }
 
+function checkedG1VisualContract(bundle: MarketingFactsBundle, content: string): ProductVisualAuthority {
+  if (renderSha256(content) !== bundle.g1ContentSha256) fail("MARKETING_G1_UNBOUND", "完整 G1 原件与本次事实包摘要不同");
+  const { outputReviews: _reviews, g1ContentSha256: _sha, g1ContentRef: _ref, ...facts } = bundle;
+  const current = object(JSON.parse(content), "G1 完整原件");
+  if (typeof current.requestedIntent !== "string" || !current.requestedMetadata
+    || canonicalRenderJson(current.facts) !== canonicalRenderJson({ ...facts, outputReviews: [] })) {
+    fail("MARKETING_G1_UNBOUND", "完整 G1 原件未绑定当前五域、来源和用途限制");
+  }
+  return visualCheck(() => extractProductVisualAuthority(content));
+}
+
+function verifyShotVisual(authority: ProductVisualAuthority, shot: { shotId: string; prompt: string; fields: unknown }): void {
+  visualCheck(() => {
+    assertProductVisualRenderPrompt(authority, shot.prompt, `最终提示词 ${shot.shotId}`);
+    assertProductVisualContent(authority, shot.fields, `最终结构字段 ${shot.shotId}`);
+  });
+}
+
 export async function verifyMarketingFacts(input: {
   root: string; ref: string; sha256: string; scope: MarketingScope;
+  /** The exact separately approved G1 bytes from the production proof. */
+  g1Content?: string;
   shots: Array<{ shotId: string; prompt: string; fields: unknown }>;
-}): Promise<MarketingFactsBundle> {
+}): Promise<MarketingFactsBundle & { productVisualAuthority: ProductVisualAuthority }> {
   const expectedPrefix = `stages/preproduction/attempt-${input.scope.attempt}.marketing`;
   if (input.ref !== `${expectedPrefix}-facts.json`) fail("MARKETING_PATH_INVALID", "营销事实包不是当前执行产物");
   const bundle = JSON.parse((await readBound(input.root, input.ref, input.sha256)).toString("utf8")) as MarketingFactsBundle;
@@ -469,6 +513,15 @@ export async function verifyMarketingFacts(input: {
     || !Array.isArray(bundle.outputReviews) || !/^[a-f0-9]{64}$/.test(bundle.g1ContentSha256)) fail("MARKETING_FACTS_INVALID", "营销事实包身份或结构无效");
   const age = Date.now() - Date.parse(bundle.collectedAt);
   if (!Number.isFinite(age) || age < -30_000 || age > 24 * 3600_000) fail("MARKETING_FACTS_EXPIRED", "营销事实来源超过24小时有效期，请刷新来源后重新预生产");
+  const currentG1 = bundle.g1ContentRef;
+  if (currentG1 !== undefined && currentG1 !== `${expectedPrefix}-g1.json`) fail("MARKETING_PATH_INVALID", "商品视觉模式必须绑定本次已接受 G1 原件");
+  const original = currentG1 === undefined ? input.g1Content : (await readBound(input.root, currentG1, bundle.g1ContentSha256)).toString("utf8");
+  if (original === undefined || (input.g1Content !== undefined && original !== input.g1Content)) fail("MARKETING_G1_UNBOUND", "缺少本次已通过 G1 的完整原件或归档副本不同");
+  const productVisualAuthority = checkedG1VisualContract(bundle, original);
+  if (currentG1 === undefined && productVisualAuthority.mode === ABSTRACT_PRODUCT_VISUAL_MODE) {
+    fail("MARKETING_G1_UNBOUND", "本次无外观镜头缺少与原始 G1 视觉模式绑定的完整终审");
+  }
+  const boundVisual = currentG1 === undefined ? {} : { productVisualContract: { g1ContentSha256: bundle.g1ContentSha256, authority: productVisualAuthority } };
   const pages: SourceSnapshot[] = [];
   if (new Set(bundle.sources.map(source => source.sourceId)).size !== bundle.sources.length) fail("MARKETING_SOURCE_INVALID", "营销来源ID重复");
   for (const source of bundle.sources) {
@@ -499,13 +552,14 @@ export async function verifyMarketingFacts(input: {
   if (bundle.outputReviews.length !== input.shots.length) fail("MARKETING_PROMPTS_UNVERIFIED", "并非每个最终镜头都有事实审核");
   for (const item of input.shots) {
     const shot = { shotId: item.shotId, prompt: item.prompt, fields: item.fields };
+    verifyShotVisual(productVisualAuthority, shot);
     const records = bundle.outputReviews.filter(record => record.shotId === shot.shotId), review = records[0];
     if (records.length !== 1 || !review || review.promptSha256 !== renderSha256(shot.prompt) || review.fieldsSha256 !== renderSha256(canonicalRenderJson(shot.fields))
       || !review.ref.startsWith(expectedPrefix) || !accepted(review.verdict, path.join(input.root, review.ref), review.sha256)) fail("MARKETING_PROMPTS_UNVERIFIED", "营销镜头不是已核实的完整最终内容");
     const reviewBytes = await readBound(input.root, review.ref, review.sha256);
-    if (reviewBytes.toString("utf8") !== canonicalRenderJson({ scope: input.scope, sourceClaims: bundle.stages.map(stage => stage.facts), restrictions: bundle.restrictions, shot })) {
+    if (reviewBytes.toString("utf8") !== canonicalRenderJson({ scope: input.scope, sourceClaims: bundle.stages.map(stage => stage.facts), restrictions: bundle.restrictions, ...boundVisual, shot })) {
       fail("MARKETING_PROMPTS_UNBOUND", "最终镜头审核未绑定当前完整镜头和事实用途限制");
     }
   }
-  return bundle;
+  return { ...bundle, productVisualAuthority };
 }

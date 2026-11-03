@@ -4,7 +4,8 @@ import {
   TARGET_DURATION_TOLERANCE_SECONDS,
   withinTargetDurationTolerance,
 } from "./duration-contract.js";
-import type { ProductVisualAuthority } from "./product-visual-authority.js";
+import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualContent,
+  ProductVisualAuthorityError, type ProductVisualAuthority } from "./product-visual-authority.js";
 
 export type RequirementRecord = Record<string, unknown>;
 export const REQUIREMENT_CONTRACT_VERSION = "workloom.requirement-contract/v1";
@@ -70,9 +71,13 @@ function withValidationFacts(error: RequirementContractError, details: Requireme
 export function structuredSceneFeedback(error: unknown): string {
   const facts = error instanceof RequirementContractError ? validationFacts.get(error) : undefined;
   if (!facts) return "";
+  if (facts.kind === "abstract-product-visual") {
+    return `\n\n## 上一次原生场景校验反馈\n${JSON.stringify(facts)}\n`
+      + "本次只有抽象无产品外观授权。修改冲突节点：不能用 $product 作为动作主体，不能新增产品/包装/真实界面或操作演示；保留客户人物、声音及其他创作要求。";
+  }
   if (facts.kind === "product-visual") {
     return `\n\n## 上一次原生场景校验反馈\n${JSON.stringify(facts)}\n`
-      + `仅依据这些校验事实重新生成完整合法响应。商品外观只能使用整车型号、车身整体和动作结果；`
+      + `仅依据这些校验事实重新生成完整合法响应。商品外观限于真实参考图中可核对的已知主体和可见特征；`
       + `不得新增未经本次图片逐项确认的部件名称、空间位置、局部形态或特定机位。重新完整生成全部节点，不补填上次节点。`;
   }
   const duration = finiteNumber(facts.durationSum), target = finiteNumber(facts.targetDuration);
@@ -433,6 +438,7 @@ export interface RequirementContract {
   props: RequirementProp[];
   actions: RequirementAction[];
   sceneStructureHash: string;
+  productVisualAuthority?: ProductVisualAuthority;
   hash: string;
 }
 
@@ -567,7 +573,23 @@ function assertProductVisualScenes(
   scenes: RequirementScene[],
   authority?: ProductVisualAuthority,
 ): void {
-  if (!authority?.required || !authority.images.length) return;
+  if (authority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE) {
+    for (const scene of scenes) {
+      try {
+        if (scene.props.some(prop => authority.product && prop.name.normalize("NFKC").toLowerCase() === authority.product.normalize("NFKC").toLowerCase())) {
+          throw new ProductVisualAuthorityError("物理道具不能绑定商品本体", "PRODUCT_VISUAL_CONTENT_CONFLICT");
+        }
+        assertProductVisualContent(authority, scene, `G3/${scene.id}`);
+      } catch (error) {
+        if (!(error instanceof ProductVisualAuthorityError)) throw error;
+        throw withValidationFacts(new RequirementContractError(error.code, `SceneArchitect response/${scene.source} 未满足抽象无产品外观合同`),
+          { kind: "abstract-product-visual", sceneId: scene.id });
+      }
+    }
+    return;
+  }
+  if (authority?.mode !== VERIFIED_PRODUCT_VISUAL_MODE) return;
+  if (!authority.images.length) throw new RequirementContractError("REQUIREMENT_PRODUCT_VISUAL_UNVERIFIED", "真实外观模式缺少已接受商品图");
   for (const scene of scenes) {
     const fields = [
       scene.purpose,
@@ -662,7 +684,7 @@ export function requirementScenes(
 
 export function bindRequirementContract(
   originalValue: unknown, discoveryValue: unknown, upstreamValue: unknown, metadataValue: unknown, expectedCastHash: string,
-  expectedOwnerAudience: string | null, sceneSchema?: unknown
+  expectedOwnerAudience: string | null, sceneSchema?: unknown, productVisualAuthority?: ProductVisualAuthority
 ): RequirementRecord {
   const original = requirementRecord(originalValue, "ProfileResolver 完成后的需求清单");
   const originalDiscovery = requirementRecord(discoveryValue, "需求洞察结果");
@@ -693,19 +715,22 @@ export function bindRequirementContract(
     originalDiscovery.sceneStructure = structuredClone(discovery.sceneStructure);
     originalDiscovery.audienceProfile = structuredClone(discovery.audienceProfile);
   }
-  const scenes = requirementScenes(discovery.sceneStructure, cast, upstream.duration_sec);
+  const scenes = requirementScenes(discovery.sceneStructure, cast, upstream.duration_sec, { productVisualAuthority });
   const brief = metadata.brief === undefined ? {} : requirementRecord(metadata.brief, "客户 Brief");
   const ownerAudience = expectedOwnerAudience;
   if (ownerAudience !== null && brief.audience !== ownerAudience) {
     throw new RequirementContractError("REQUIREMENT_AUDIENCE_CHANGED", "客户原始受众口径被生成内容覆盖");
   }
   const props = scenes.flatMap(scene => scene.props), actions = scenes.flatMap(scene => scene.actions);
-  if (typeof brief.product === "string" && brief.product.trim() && !props.length) {
+  if ((productVisualAuthority?.mode === VERIFIED_PRODUCT_VISUAL_MODE
+    || (productVisualAuthority?.mode !== ABSTRACT_PRODUCT_VISUAL_MODE && typeof brief.product === "string" && brief.product.trim())) && !props.length) {
     throw new RequirementContractError("REQUIREMENT_SCENE_UNVERIFIED", "商品片没有任何真实结构化物理道具");
   }
   const payload: Omit<RequirementContract, "hash"> = {
     schemaVersion: REQUIREMENT_CONTRACT_VERSION, status: "ready-for-g3" as const, cast, ownerAudience,
     modelAudienceHypothesis: structuredClone(discovery.audienceProfile ?? null), scenes, props, actions,
+    ...(productVisualAuthority && productVisualAuthority.mode !== "no_named_product"
+      ? { productVisualAuthority: structuredClone(productVisualAuthority) } : {}),
     sceneStructureHash: requirementHash(discovery.sceneStructure)
   };
   const contract: RequirementContract = { ...payload, hash: requirementHash(payload) };
@@ -723,14 +748,19 @@ export function bindRequirementContract(
   };
 }
 
-export function verifiedRequirementContract(listValue: unknown, metadataValue: unknown, discoveryValue: unknown): RequirementContract {
+export function verifiedRequirementContract(listValue: unknown, metadataValue: unknown, discoveryValue: unknown,
+  expectedProductVisualAuthority?: ProductVisualAuthority): RequirementContract {
   const list = requirementRecord(listValue, "G3 需求清单");
   const metadata = requirementRecord(metadataValue, "G3 metadata");
   const discovery = requirementRecord(discoveryValue, "G3 洞察结果");
   const contract = requirementRecord(list._workloomRequirementContract, "宿主需求合同") as unknown as RequirementContract;
   const brief = metadata.brief === undefined ? {} : requirementRecord(metadata.brief, "G3 Brief");
   const cast = requirementCast(metadata);
-  const scenes = requirementScenes(discovery.sceneStructure, cast);
+  const expected = expectedProductVisualAuthority?.mode === "no_named_product" ? undefined : expectedProductVisualAuthority;
+  if (requirementHash(contract.productVisualAuthority ?? null) !== requirementHash(expected ?? null)) {
+    throw new RequirementContractError("REQUIREMENT_CONTRACT_CHANGED", "G3 商品视觉模式与当前已接受的 G1 原件不一致");
+  }
+  const scenes = requirementScenes(discovery.sceneStructure, cast, undefined, { productVisualAuthority: expected });
   const { hash, ...payload } = contract;
   if (contract.schemaVersion !== REQUIREMENT_CONTRACT_VERSION || contract.status !== "ready-for-g3"
     || hash !== requirementHash(payload) || requirementHash(metadata._workloomRequirementContract) !== requirementHash(contract)
@@ -797,11 +827,11 @@ export function structuredSceneInstructions(
   const coverRule = target === undefined ? "" :
     `如果 openWithCover=true，静音封面 ${authority.coverIntroSeconds ?? 0} 秒不占内容节点；`
       + `内容节点加封面后的最终成片必须为 ${authority.finalDurationSeconds ?? target + (authority.coverIntroSeconds ?? 0)} 秒 ±${tolerance} 秒。`;
-  const productRule = authority.productVisualAuthority?.required
+  const productRule = authority.productVisualAuthority?.mode === VERIFIED_PRODUCT_VISUAL_MODE
     ? `本次商品外观只允许来自 G1 A1 的 ${authority.productVisualAuthority.images.length} 张真实图片：${JSON.stringify(authority.productVisualAuthority.images)}。`
-      + `在文字计划中只写整车型号、车身整体、赛道运动结果或图中明确可见的锚点；不得补写卡钳、排气口、轮辋、整流罩、配色分区、前/后 45 度视角或轮胎接地局部。`
-      + `连超对手、夺冠和领奖台是本片虚构叙事记忆点，不是商品卖点、性能证据、竞品对比或真实赛事成绩。`
-    : "";
+      + `在文字计划中只能使用已核身份和图片中明确可见的外观锚点。不得新增未经逐项确认的部件、配色、材质、视角或局部形态。`
+      + `虚构场景与动作只是叙事表达，不是商品卖点、性能证据、竞品对比或真实活动结果。`
+    : authority.productVisualAuthority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE ? authority.productVisualAuthority.rule : "";
   const disclosure = typeof authority.narrativeDisclosure === "string" && authority.narrativeDisclosure.trim()
     ? `本次叙事披露原文：${JSON.stringify(authority.narrativeDisclosure)}；只进入交付/发布元数据，除非客户明确要求，不改成画面文字。`
     : "";
@@ -811,11 +841,13 @@ export function structuredSceneInstructions(
     : "";
   return `\n\n## 宿主结构化需求合同（本次 SceneArchitect 同一响应，不新增提取调用）\n`
     + `唯一出镜人物：${JSON.stringify(cast.characters.map(character => ({ id: character.id, name: character.name, role: character.role })))}。`
-    + `动作 actorId 只能是这些 ID；非人物动作可用 "$product"（商品）或 "$scene"（环境）。\n`
+    + (authority.productVisualAuthority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE
+      ? `动作 actorId 只能是这些人物 ID 或 "$scene"（环境/抽象图形）；不得引用 "$product"。本模式允许没有物理商品道具。\n`
+      : `动作 actorId 只能是这些 ID；非人物动作可用 "$product"（商品）或 "$scene"（环境）。\n`)
     + `客户受众原文：${typeof audience === "string" ? audience : "未显式指定"}。不得把模型年龄/性别推测当作客户要求。\n`
     + `自行决定开场、零个或多个主体节点和结尾；sceneCount 必须等于 opening + scenes.length + ending 的真实节点总数；节点时长之和必须等于 totalDuration。${durationRule}${coverRule}\n`
     + `每个 opening、scenes[i]、ending 必须在原有 duration/purpose/keyElements 字段之外，直接输出 productionContract：\n`
-    + `有可见道具时：{"props":[{"name":"镜头中实际可见的物体","description":"这个物体的可见形态或本场用途"}],"actions":[{"actorId":"所选人物ID或$product/$scene","description":"完整可拍的动作过程、对象和结果，至少6字"}]}\n`
+    + `有可见道具时：{"props":[{"name":"镜头中实际可见的物体","description":"这个物体的可见形态或本场用途"}],"actions":[{"actorId":"${authority.productVisualAuthority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE ? "所选人物ID或$scene" : "所选人物ID或$product/$scene"}","description":"完整可拍的动作过程、对象和结果，至少6字"}]}\n`
     + `确实无可见道具时：{"props":[],"actions":[{"actorId":"$scene","description":"云影缓慢移过封闭场地的地面"}],"noPropsReason":"本场只展示环境光影变化，没有独立可见道具"}。有 props 时必须完全省略 noPropsReason，不能填空串或 null；两个示例互斥。\n`
     + `props 必须是当前场景中实际可见的物理对象，不得把性格、语气、摄影、履历、否定规则或人物日常爱好当道具；人物档案里的用品只有本场真正出现才可声明。`
     + `actions 不能只填“起身”“看向”等孤立动词；每个所选出镜人物至少在一个节点有明确动作。每个节点至少一个动作；真正没有可见道具时才允许显式空props并说明原因。`

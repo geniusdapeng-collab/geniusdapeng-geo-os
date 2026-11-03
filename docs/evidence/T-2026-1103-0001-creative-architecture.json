@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "pengmanager.creative-architecture-acceptance/v1",
+  "taskId": "T-2026-1103-0001",
+  "issue": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/68",
+  "auditBaseline": "d5b3322b198a964ee3e228078d4cf82eff081b64",
+  "sourceCommit": "fa916e1a5c13b55fd0e589c7d79e9d6ff7adaf8b",
+  "sourceTree": "59ef4c968fe60f0f7b1ba660f5d71fb545d71527",
+  "observedAt": "2026-11-03T04:02:52.735197+00:00",
+  "environment": "local-preview",
+  "coverage": {
+    "total": 437,
+    "A": 177,
+    "B": 238,
+    "C": 22,
+    "unread": 0
+  },
+  "coverageSha256": "5c9e4126f66922a7f5197317963904b017dbcf729a71cce278e10ace0173e90b",
+  "cards": [
+    {
+      "id": "MC-001",
+      "title": "enforce 没有接管实际视频创作执行",
+      "severity": "P1",
+      "repairActor": "codex-root-architecture-repair",
+      "acceptanceActor": "codex-independent-review",
+      "verified": true,
+      "runs": [
+        {
+          "assertion": "shadow 不引入额外请求；60 项原生阶段扰动运行；签发绑定已完成创作和当前档案，旧合同及未对账状态不能签发。",
+          "runSha256": "867beaefc35e838a5de518229b3b5c561ea145315da701a11f5e235db36f1756",
+          "outputs": [
+            "b2aec9fb1180d474caccdfe0868523a6842fcf6cdcb57114270fed414a42ff2c"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-002",
+      "title": "明确无商品外观的营销片仍被真实商品图拦住",
+      "severity": "P1",
+      "repairActor": "codex-root-architecture-repair",
+      "acceptanceActor": "codex-independent-review",
+      "verified": true,
+      "runs": [
+        {
+          "assertion": "无图抽象有效场景可取得资格；原文/事实或视觉引用篡改被拒且零重复派发；真实外观仍需要授权。",
+          "runSha256": "e1921913cff1143f16e261df761ea34830c324c48d4b881506b939b05ac4e642",
+          "outputs": [
+            "328294a543e6ce00c6de0acb27c305672a322c9df5c9456c869bfedc675fa958"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-003",
+      "title": "制作阶段的整体重做缺少独立镜头恢复",
+      "severity": "P1",
+      "repairActor": "codex-root-architecture-repair",
+      "acceptanceActor": "codex-independent-review",
+      "verified": true,
+      "runs": [
+        {
+          "assertion": "已验证先镜在后镜失败后可重用；重启后仍约束局部修复次数与来源；4 个认证接口持久化、CAS、幂等与隔离通过。",
+          "runSha256": "aa946fe1d262accf50e90b834e8412883a0dbc4594c8a6bba82c61086fb80f65",
+          "outputs": [
+            "adb3a1c3302fec304d1890fe5b3f2633420c861782f340971f44a5e18af88e5e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-004",
+      "title": "原生请求与搜索缺少统一的逐次预算预留",
+      "severity": "P0",
+      "repairActor": "codex-root-architecture-repair",
+      "acceptanceActor": "codex-independent-review",
+      "verified": true,
+      "runs": [
+        {
+          "assertion": "隔离协议替身观察预留先于真实传输；超时/硬退出保留状态和原额度，无新派发，已通过检查不受伪模型回执覆盖。",
+          "runSha256": "c9d0af1545216689f4b1da1653d2d533ae5345c6d32a77448e3c105de93b14fa",
+          "outputs": [
+            "b04869568d0561ec3dbeacea03aac77400f7871c7c28c72dce4318c3d2ce6d82"
+          ]
+        }
+      ]
+    }
+  ],
+  "fixtureMatrix": {
+    "executed": 60,
+    "passed": 60,
+    "actualBillableProviderRequests": 0,
+    "artifactSha256": "6ea859419250ead46c853752f592d9d5790ab56a2d50ffbb14d739f64fd295f8"
+  },
+  "limits": [
+    "Offline protocol fixtures; no authorized live paid run.",
+    "No deployment or production-art/cost/latency claim."
+  ]
+}

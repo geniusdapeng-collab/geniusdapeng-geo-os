@@ -21,6 +21,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, lstatSync, realpathSync,
 import { createHash, randomUUID } from "node:crypto";
 import { shotIntentHash } from "./shot-intent.js";
 import { isAbsolute, join, resolve, relative, dirname, sep } from "node:path";
+import { assertCreativeBudgetCurrent, creativeBudgetActive, creativeExecutionSignal, guardedCreativeExternalCall } from "./creative-runtime.js";
 
 /** vendor → 渲染核心要求的四个角度文件名（REQUIRED_ANGLES 口径） */
 const ANGLE_FILE_ALIASES: Record<string, string> = {
@@ -605,15 +606,26 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
 
   async function generateImage(payload: Record<string, unknown>): Promise<string> {
     let lastError: Error | null = null;
-    for (let attempt = 0; attempt <= retries; attempt += 1) {
+    // Enforced runs account for the actual HTTP request, including image requests.
+    // A lost or rejected response cannot establish that the provider did not charge.
+    const enforced = creativeBudgetActive();
+    const requestBody = JSON.stringify(payload), endpoint = `${base}/images/generations`;
+    for (let attempt = 0; attempt <= (enforced ? 0 : retries); attempt += 1) {
       try {
-        const res = await fetchImpl(`${base}/images/generations`, {
-          method: "POST",
-          headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(timeoutMs)
+        const { res, text } = await guardedCreativeExternalCall({ kind: "media", provider: model,
+          requestHash: shotIntentHash({ endpoint, body: requestBody }) }, async (signal) => {
+          const signals = [AbortSignal.timeout(timeoutMs), signal, creativeExecutionSignal()].filter((value): value is AbortSignal => Boolean(value));
+          const res = await fetchImpl(endpoint, {
+            method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+            body: requestBody, signal: AbortSignal.any(signals), ...(enforced ? { redirect: "error" } : {}),
+          });
+          return { res, text: await res.text() };
+        }, ({ res, text }) => {
+          if (!res.ok) return false;
+          try { const data: unknown = JSON.parse(text); return record(data) && Array.isArray(data.data)
+            && data.data.length === 1 && record(data.data[0]) && typeof data.data[0].url === "string" && Boolean(data.data[0].url); }
+          catch { return false; }
         });
-        const text = await res.text();
         if (!res.ok) {
           const err = new Error(`定妆照出图失败：HTTP ${res.status} ${text.slice(0, 200)}`);
           if (res.status === 429 || res.status >= 500) {
@@ -633,7 +645,7 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
         return url;
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        if ((err as { noRetry?: boolean })?.noRetry || attempt >= retries) break;
+        if (enforced || (err as { noRetry?: boolean })?.noRetry || attempt >= retries) break;
         await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
       }
     }
@@ -641,7 +653,8 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   }
 
   async function download(url: string): Promise<Buffer> {
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS) });
+    const timer = AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS), execution = creativeExecutionSignal();
+    const res = await fetchImpl(url, { signal: execution ? AbortSignal.any([timer, execution]) : timer });
     if (!res.ok) throw new Error(`定妆照下载失败：HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength < 1024) throw new Error(`定妆照下载内容过小（${buf.byteLength} 字节）`);
@@ -649,6 +662,7 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   }
 
   async function apiRender(task: PortraitTask, baseImage?: string | null): Promise<string> {
+    assertCreativeBudgetCurrent();
     if (!record(task)) throw new Error("PORTRAIT_TASK_INVALID: 任务必须为对象");
     const sourceHash = shotIntentHash(task);
     const angleRaw = String(task.angle || task.view || "view");
@@ -692,6 +706,7 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
       log(`[portrait] 出图：${name} / ${angle}，来源 ${requestHash.slice(0, 12)}，锚点 ${anchors.length}`);
       const url = await generateImage(payload);
       const bytes = await download(url);
+      assertCreativeBudgetCurrent();
       if (shotIntentHash(task) !== sourceHash) throw new Error("PORTRAIT_INPUT_CHANGED: 出图期间角色任务变化，产物未纳入索引");
       for (const anchor of anchors) verifySource(anchor.receipt);
       atomicWrite(file, bytes);

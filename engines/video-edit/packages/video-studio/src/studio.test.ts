@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveGate } from "./gates.js";
 import { autoApproveHandler, runWithConfirmationHandler } from "./confirmation.js";
@@ -9,6 +10,9 @@ import { VideoStudio, type ApprovalCallback, type EventSink, type StudioConfig }
 import { prdFixture } from "./prd-authority.test-support.js";
 import type { PrdAuthority } from "./prd-authority.js";
 import type { RequirementApprovedTheme } from "./requirement-authority.js";
+import { buildCreativeShots, compileCreativeContract, creativeHash, creativeTextHash, type CreativeContract } from "./constraint-compiler.js";
+import { CREATIVE_ART_DIMENSIONS, creativeCandidateHash, type CreativeCandidateAssessment } from "./creative-evaluation.js";
+import { withCreativeBudget } from "./creative-runtime.js";
 
 interface ObservedRequirementAuthority {
   authority: PrdAuthority;
@@ -55,7 +59,7 @@ vi.mock("./vendor-requirement-entry.js", () => ({
         constructor(options: unknown) { studioMocks.construct(options); }
         create(...input: unknown[]) { return studioMocks.create(...input); }
       } },
-      identity: { entryPath: "/fixture/vendor/index.js" },
+      identity: { entryPath: fileURLToPath(new URL("../../../vendor/supermickey/hyperreality-system/index.js", import.meta.url)) },
       release: () => { studioMocks.disposed.push("entry"); if (studioMocks.failDispose === "entry") throw new Error("dispose failed: entry"); }
     };
   }
@@ -74,7 +78,8 @@ vi.mock("./requirement-contract-bridge.js", () => ({
 }));
 // These are assembly/lifecycle tests. Native PRD generation and strict scope
 // behavior are exercised with the real generator/agents in prd-authority-bridge.test.ts.
-vi.mock("./prd-authority-bridge.js", () => ({
+vi.mock("./prd-authority-bridge.js", async importOriginal => ({
+  ...await importOriginal<typeof import("./prd-authority-bridge.js")>(),
   assertPrdAuthorityBridge: () => undefined,
   consumePromptReviewContracts: (report: string) => studioMocks.promptContracts[report],
   withPrdAuthorityScope: (authority: PrdAuthority | undefined, operation: () => unknown,
@@ -461,6 +466,86 @@ describe("vendor 核心可加载", () => {
     expect(typeof options!.approvedTheme).toBe("function");
     return options!;
   }
+  it.each([false, true])("enforced assembly keeps exact G1/source and sends selected candidate to early native requests and G2–G4 (expired=%s)", async expired => {
+    const value = prdFixture("creative-studio-proof", [10, 10], 0); owned.push(value);
+    const sourceMetadata = structuredClone(value.metadata);
+    const sourceBrief = sourceMetadata.brief as Record<string, unknown>;
+    delete sourceBrief.aspectRatio; delete sourceBrief.duration;
+    const intent = "成片20秒，画幅16:9。禁止展示产品外观，只用抽象光线示意。";
+    const factBytes = JSON.parse(value.content);
+    factBytes.requestedIntent = intent; factBytes.requestedMetadata = sourceMetadata;
+    const fetched = Date.now() - (expired ? 25 * 3600_000 : 30_000);
+    factBytes.facts.collectedAt = new Date().toISOString(); factBytes.facts.sources = [{ fetchedAt: new Date(fetched).toISOString() }];
+    const content = JSON.stringify(factBytes), hash = creativeTextHash(content);
+    writeFileSync(value.file, content);
+    const proof = privateProof(value);
+    proof.prdAuthority.g1Artifact = { ...proof.prdAuthority.g1Artifact, sha256: hash, content };
+    proof.prdAuthority.g1Proof.evidence = [{ path: value.file, sha256: hash, scope: "complete-text" }];
+    const { tenantId, workspaceId, projectId } = value.scope;
+    let contract = compileCreativeContract({ scope: { tenantId, workspaceId, projectId }, rawIntent: intent, metadata: sourceMetadata, isMarketing: true });
+    const stages: string[] = [], wire: string[] = [];
+    let selectedHash = "";
+    const llm = new WorkloomLLMEngine({ baseUrl: "https://creative-studio-fixture.invalid/v1", apiKey: "fixture", model: "deepseek-flash",
+      fetchImpl: (async (_url, init) => {
+        const body = JSON.parse(String(init?.body)); wire.push(body.messages.at(-1).content);
+        return new Response(JSON.stringify({ id: `studio-wire-${wire.length}`, model: "deepseek-flash",
+          choices: [{ index: 0, finish_reason: "stop", message: { content: '{"ok":true}' } }],
+          usage: { prompt_tokens: 13, completion_tokens: 7, total_tokens: 20 } }));
+      }) as typeof fetch });
+    const selectCandidate = vi.fn<NonNullable<StudioConfig["creativeExecution"]>["selectCandidate"]>(async ({ contract: current }) => {
+        stages.push("candidate-selected");
+        const shots = buildCreativeShots(current, ["s1", "s2"].map(shotId => ({ shotId, duration: 10,
+          purpose: "测试候选独有的可核对场面", fields: Object.fromEntries(current.requiredFields.map(field => [field, "保留窗边自然光"])), prompt: "真实候选提示词" })));
+        selectedHash = creativeCandidateHash(current.hash, shots);
+        return { candidateId: "fixture-candidate", shots,
+          generation: { model: llm.model, requestId: "fixture-generation", promptHash: creativeHash("generation") },
+          review: { model: llm.model, requestId: "fixture-review", promptHash: creativeHash("review"), contractHash: current.hash,
+            candidateHash: selectedHash, findings: [], scores: Object.fromEntries(CREATIVE_ART_DIMENSIONS.map(key => [key, { score: 85, evidence: "核对窗边构图" }])) as CreativeCandidateAssessment["review"]["scores"] } };
+      });
+    const onApproval = vi.fn<ApprovalCallback>(async request => ({ approved: request.gate !== "G4_PRD" }));
+    studioMocks.create.mockImplementation(async (_nativeIntent, nativeMetadata) => {
+      stages.push("native-create");
+      expect(nativeMetadata.brief).toMatchObject({ duration: 20, aspectRatio: "16:9" });
+      expect(requirementOptions(projectId).authority.profile).toMatchObject({ targetDuration: 20, aspectRatio: "16:9" });
+      for (const type of ["creative-theme", "requirement-list", "prd"]) {
+        await expect(llm.reasonStructured(`实际模型输入 ${type}`, { ok: true })).resolves.toMatchObject({ success: true });
+        await globalThis.__HR_CONFIRMATION_HANDLER__!({ type, content: `审核原文 ${type}`, runId: value.scope.runId });
+      }
+      return { success: false, stages: {} };
+    });
+    const actual = new VideoStudio({ llm, workDir: value.workDir, onApproval, log: () => undefined,
+      dataMining: { verifiedRaw: proof }, creativeExecution: { mode: "enforce", rawIntent: intent, sourceMetadata, selectCandidate,
+        session: { get contract() { return contract; },
+          bindContract: async (next: CreativeContract, authority) => {
+            expect(authority?.g1Artifact).toMatchObject({ content, sha256: hash });
+            expect(next.facts?.validUntil).toBe(new Date(fetched + 24 * 3600_000).toISOString());
+            expect(next.sourceMetadata).toEqual(sourceMetadata);
+            expect(next.profile).toMatchObject({ finalDuration: 20, aspectRatio: "16:9" });
+            stages.push("bound-g1"); contract = next;
+            if (next.feasibility.status !== "feasible") throw new Error("FACT_EVIDENCE_EXPIRED");
+            return next;
+          }, assertCurrent: async () => undefined,
+          beginStage: async key => { stages.push(`begin:${key}`); }, completeStage: async key => { stages.push(`complete:${key}`); },
+          readCache: async () => null, writeCache: async () => undefined, onEvent: async () => undefined,
+        } } });
+    const run = withCreativeBudget({ beforeModelCall: async () => wire.length, afterModelCall: async () => undefined }, () => actual.runPreproduction({
+      projectId, intent, isMarketing: true, metadata: value.metadata,
+    }));
+    if (expired) {
+      await expect(run).rejects.toThrow("FACT_EVIDENCE_EXPIRED");
+      expect(selectCandidate).not.toHaveBeenCalled(); expect(wire).toHaveLength(0); expect(studioMocks.create).not.toHaveBeenCalled();
+      return;
+    }
+    await expect(run).resolves.toMatchObject({ success: false, stages: { creativeSelection: { candidateHash: expect.stringMatching(/^[a-f0-9]{64}$/) } } });
+    expect(stages).toEqual(["bound-g1", "complete:preparation", "candidate-selected", "begin:native-preparation", "native-create"]);
+    expect(wire).toHaveLength(3);
+    for (const payload of wire) expect(payload).toContain(selectedHash);
+    expect(onApproval.mock.calls.map(([req]) => req.gate)).toEqual(["G2_THEME", "G3_INSIGHT", "G4_PRD"]);
+    for (const [req] of onApproval.mock.calls) {
+      expect(req.contentMd).toContain(selectedHash); expect(req.contentMd).toContain("测试候选独有的可核对场面");
+    }
+    expect((value.metadata.brief as Record<string, unknown>).aspectRatio).toBe("9:16");
+  });
   it.each(["references", "voice", "color"])("marketing assembly preserves explicit %s through G6 and final prompts", async kind => {
     const value = prdFixture(`custom-${kind}`, [8, 14, 8], 0); owned.push(value);
     const intent = "全片无人，仅使用抽象界面和示意图";

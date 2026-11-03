@@ -13,7 +13,7 @@ const env = { LLM_BASE_URL: "https://api.deepseek.com", LLM_API_KEY: "isolated-f
 const good = { approved: true, score: 95, issues: [], suggestions: [], reason: "只按完整已接受 claims 与当前门合同通过" };
 const nextGates = ["G2_THEME", "G3_INSIGHT", "G4_PRD", "G5_PORTRAIT", "G6_PROMPT", "G7_FINAL"];
 
-function fixture(attempt = 1, visual: "none" | "missing" | "present" = "none") {
+function fixture(attempt = 1, visual: "none" | "missing" | "present" | "abstract" = "none") {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), "marketing-gate-evidence-"))); roots.push(root);
   const guard = createMarketingGateEvidenceGuard({ workDir: root, scope });
   const currentScope = { ...scope, attempt };
@@ -32,7 +32,7 @@ function fixture(attempt = 1, visual: "none" | "missing" | "present" = "none") {
       { stage: "A3", facts: { status: "no_evidence", claims: [], payload: { competitors: [] } } },
     ],
     restrictions: ["竞品未提供证据，不能推断市场缺失；鱼鳞焊缝没有已接受 claim"] },
-    requestedIntent: "李英子与820RR-RC",
+    requestedIntent: visual === "abstract" ? "只用暖橙示意图，不展示产品外观。" : "李英子与820RR-RC",
     ...(visual === "none" ? {} : { requestedMetadata: { brief: { product: "820RR-RC" } } }),
   });
   const g1Path = file("G1_DOSSIER", content);
@@ -111,6 +111,24 @@ describe("current-attempt host-owned G1 evidence", () => {
       images: [{ url: "https://media.example.test/product.png", pageUrl: "https://source.example.test/product" }],
     });
     expect(binding.rubric.join("\n")).toContain("只能对照结构化 productVisualAuthority.images");
+  });
+
+  it("MC-011 keeps the abstract-only mode isolated across concurrent reviews and invalidates a changed binding", async () => {
+    const abstract = fixture(1, "abstract"), physical = fixture(2, "present");
+    abstract.accept(); physical.accept();
+    const a = abstract.current("G6_PROMPT", "暖橙光点组网，仅以文字读出型号。".repeat(8)), p = physical.current("G6_PROMPT");
+    const aBinding = abstract.guard.forReview("G6_PROMPT", a)!, pBinding = physical.guard.forReview("G6_PROMPT", p)!;
+    const ac: string[] = [], pc: string[] = [];
+    const [ar, pr] = await Promise.all([review(abstract, a, aBinding, ac), review(physical, p, pBinding, pc)]);
+    expect(ar.approved).toBe(true); expect(pr.approved).toBe(true);
+    expect(ac[0]).toContain("abstract_without_product_appearance");
+    expect(ac[0]).toContain("不得生成或展示产品外观");
+    expect(pc[0]).toContain("verified_product_appearance");
+    expect(pc[0]).not.toContain("abstract_without_product_appearance");
+    aBinding.context.productVisualAuthority = pBinding.context.productVisualAuthority;
+    expect(abstract.guard.verifyReview(aBinding, ar)).toMatchObject({ approved: false, reason: expect.stringContaining("证据被替换") });
+    abstract.guard.reset(3);
+    expect(() => abstract.guard.forPrd()).toThrow("缺少当前运行与尝试");
   });
 
   it.each(["unaccepted", "reset", "invalid-reset", "failed-replacement"])("does not export PRD authority after %s", kind => {

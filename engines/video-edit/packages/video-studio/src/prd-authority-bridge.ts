@@ -13,6 +13,8 @@ import {
 import { normalizeMarketingPrdContract } from "./marketing-prd-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
+import { currentCreativeModelSlice, currentCreativeRuntime, currentCreativeSelectionContext } from "./creative-runtime.js";
+import { assertProductVisualContent, extractProductVisualAuthority } from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 const QUALITY_KEYS = ["visual", "audio", "narrative", "consistency"] as const;
@@ -367,11 +369,14 @@ function assertProductionAuthority(scope: Scope): void {
 /** The existing request boundary uses this private run snapshot, never metadata declarations. */
 export function productionModelInput(prompt: string): { prompt: string; verify: () => void } {
   const scope = current();
-  if (!scope) return { prompt, verify: () => undefined };
+  const slice = currentCreativeModelSlice();
+  const selection = slice ? undefined : currentCreativeSelectionContext();
+  if (!scope) return { prompt: prompt + (slice ?? selection ?? ""), verify: () => undefined };
   const verify = () => assertProductionAuthority(scope);
   verify();
   // Before G4 the native theme/discovery/PRD paths retain their own prompts and contracts.
-  if (scope.g4Decision !== "approved" || !scope.reviewedHash) return { prompt, verify };
+  if (scope.g4Decision !== "approved" || !scope.reviewedHash) return { prompt: prompt + (selection ?? ""), verify };
+  if (slice) return { prompt: prompt + slice, verify };
   const addition = `\n\n## 本次宿主已审制作权威输入 ${scope.reviewedHash}\n`
     + `以下是当前运行的完整来源，不是新的创作稿或批准。客户完整 Brief 与 G1 的用途限定优先于通用模板、艺术参考和已审 PRD 中的创作句子。`
     + `G4 批准不把 PRD 新增的修辞、设计目的、未知颜色或部件推测升级为 G1 已接受事实。`
@@ -655,7 +660,8 @@ export function installPrdAuthorityBridge(
       const discovery = structuredClone(requirementRecord(discoveryValue, "PRD 原始 discovery"));
       const sourceHash = requirementHash(discovery.sceneStructure);
       const metadata = { ...scope.authority.metadata, _workloomRequirementContract: scope.list._workloomRequirementContract };
-      const contract = verifiedRequirementContract(scope.list, metadata, discovery);
+      const contract = verifiedRequirementContract(scope.list, metadata, discovery,
+        extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content));
       scope.contract = structuredClone(contract);
       const promptContext = prdAuthorityPrompt(scope.authority, contract)
         + (scope.truth ? `\n\n本次规则事实边界（仅作内部限制，不是创意任务；完整原件不变）：\n${JSON.stringify(scope.truth.constraints)}\n` : "");
@@ -812,6 +818,7 @@ export function installPrdAuthorityBridge(
           agentView._parseResult = function (this: RequirementRecord, value: unknown, ...args: unknown[]) {
             return guard(scope, () => {
               check(scope);
+              assertProductVisualContent(extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content), value, `raw-prd-${kind}`);
               const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile);
               const parseInput = typeof value === "string" ? JSON.stringify(raw) : raw;
               const result = Reflect.apply(parse, this, [parseInput, ...args]);
@@ -987,6 +994,12 @@ interface ProductionDependencies {
   systemPrototype: RequirementRecord;
   productionPrototype: RequirementRecord;
   phase1Prototype: RequirementRecord;
+  phase2Prototype?: RequirementRecord;
+  phase35Prototype?: RequirementRecord;
+  productPortraitPrototype?: RequirementRecord;
+  dualSyncPrototype?: RequirementRecord;
+  promptGuardianPrototype?: RequirementRecord;
+  emotionShotSyntaxPrototype?: RequirementRecord;
   refinerPrototype: RequirementRecord;
   costumePrototype: RequirementRecord;
   fieldGuardPrototype: RequirementRecord;
@@ -1067,6 +1080,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
   };
   const inspect = (shotsValue: unknown, context: unknown, noTitle: boolean) => {
     if (!Array.isArray(shotsValue) || shotsValue.length === 0) prdFail("PRD_PRODUCTION_INVALID", "制作镜头必须为非空数组");
+    const requiredFields = currentCreativeRuntime() ? [...fieldGroups.p0, ...fieldGroups.p1] : fields;
     const shots = (shotsValue as unknown[]).map(value => {
       const raw = requirementRecord(value, "当前制作镜头"), normalized = standardizeShot(raw);
       // Standardization may omit fields/unknown attributes or lose a textual timeline.
@@ -1089,7 +1103,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     });
     const details = shots.map(shot => {
       const native = validateShot(shot);
-      const missing = fields.filter(key => !(key === "dialogue" && (shot.dialogueFree === true
+      const missing = requiredFields.filter(key => !(key === "dialogue" && (shot.dialogueFree === true
         || (Array.isArray(shot.dialogueBlocks) && shot.dialogueBlocks.length > 0))) && !hasValue(shot[key]));
       const explicitDialogue = !missing.includes("dialogue") && !hasValue(shot.dialogue);
       const filter = (values: unknown): string[] => {
@@ -1108,20 +1122,20 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
           else errors.splice(index, 1);
         }
       }
-      if (missing.length) errors.push(`Production 25 fields missing: ${missing.join(", ")}`);
+      if (missing.length) errors.push(`Production ${requiredFields.length} fields missing: ${missing.join(", ")}`);
       if (!hasValue(shot.shotId) || !hasValue(shot.sceneType) || !hasValue(shot.prompt)) errors.push("Production common identity/prompt missing");
       const actualPrompt = shot.prompt;
       if (noTitle && typeof actualPrompt === "string" && RETIRED_TITLE_LABELS.some(label => actualPrompt.includes(label))) {
         errors.push("Retired title fields leaked into generation prompt");
       }
       return { ...native, passed: errors.length === 0, errors, warnings, missingSpecFields: missing,
-        applicableFields: fields.length, presentFields: fields.length - missing.length,
+        applicableFields: requiredFields.length, presentFields: requiredFields.length - missing.length,
         ...(noTitle ? { applicability: Object.fromEntries(RETIRED_TITLES.map(key => [key, "not_applicable"])) } : {}) };
     });
     const report = { passed: details.every(detail => detail.passed),
       errors: details.flatMap((detail, index) => detail.errors.map(error => `[${String(shots[index]!.shotId)}] ${error}`)),
       warnings: details.flatMap((detail, index) => detail.warnings.map(warning => `[${String(shots[index]!.shotId)}] ${warning}`)),
-      details, summary: { totalShots: shots.length, fixedShots: 0, applicableFieldsPerShot: fields.length } };
+      details, summary: { totalShots: shots.length, fixedShots: 0, applicableFieldsPerShot: requiredFields.length } };
     return { shots, report };
   };
   add(systemPrototype, "create", original => async function (...args) {
@@ -1132,16 +1146,19 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
   });
   add(systemPrototype, "_shouldUseTitleCard", original => function (...args) {
     const scope = productionScope(this);
+    if (currentCreativeRuntime()?.usesGeneratedTitle === false) return false;
     if (!scope) return Reflect.apply(original, this, args);
     return guard(scope, () => { check(scope); return scope.authority.profile.titleCard !== false; });
   }, true);
   add(systemPrototype, "_optimizeOpeningTitle", original => async function (...args) {
     const scope = productionScope(this);
+    if (currentCreativeRuntime()?.usesGeneratedTitle === false) return undefined;
     if (!scope) return Reflect.apply(original, this, args);
     return awaited(scope, () => { check(scope); return scope.authority.profile.titleCard === false ? undefined : Reflect.apply(original, this, args); });
   });
   add(phase1Prototype, "_shouldGenerateOpening", original => function (...args) {
     const scope = productionScope(this);
+    if (currentCreativeRuntime()?.usesGeneratedTitle === false) return false;
     if (!scope) return Reflect.apply(original, this, args);
     return guard(scope, () => { check(scope); return scope.authority.profile.titleCard === false ? false : Reflect.apply(original, this, args); });
   });
@@ -1203,7 +1220,13 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
   });
   add(productionPrototype, "produce", original => async function (blueprintValue, ...args) {
     const scope = productionScope(this);
-    if (!scope) return Reflect.apply(original, this, [blueprintValue, ...args]);
+    const creative = currentCreativeRuntime();
+    if (!scope) {
+      if (creative) await creative.startProduction({ blueprint: blueprintValue });
+      const output = await Reflect.apply(original, this, [blueprintValue, ...args]);
+      if (creative) await creative.verifyHandoff(requirementRecord(output, "native production output").shots);
+      return output;
+    }
     return awaited(scope, async () => {
       check(scope);
       const blueprint = requirementRecord(blueprintValue, "实际制作蓝图");
@@ -1213,9 +1236,59 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
         g4: scope.reviewedHash, scope: scope.authority.marketing.scope }), scope: structuredClone(scope.authority.marketing.scope),
         profile: structuredClone(profile), g4Hash: scope.reviewedHash };
       const view = { ...blueprint, config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}) }, _workloomProductionAuthority: marker };
+      if (creative) await creative.startProduction({ blueprint: view, reviewedG3: scope.contract,
+        reviewedG4: scope.reviewedResult, g4Hash: scope.reviewedHash });
       const result = await Reflect.apply(original, this, [view, ...args]);
+      if (creative) await creative.verifyHandoff(requirementRecord(result, "native production output").shots);
       check(scope);
       return result;
+    });
+  });
+  if (typeof productionPrototype.assemblePromptFromFields === "function") add(productionPrototype, "assemblePromptFromFields", original => function (shot, fields, ...args) {
+    const creative = currentCreativeRuntime();
+    return creative ? creative.compiledPromptFor(shot, fields) : Reflect.apply(original, this, [shot, fields, ...args]);
+  });
+  if (typeof systemPrototype._confirmPrompts === "function") add(systemPrototype, "_confirmPrompts", original => async function (shots, ...args) {
+    await currentCreativeRuntime()?.verifyHandoff(shots);
+    return Reflect.apply(original, this, [shots, ...args]);
+  });
+  if (deps.dualSyncPrototype) add(deps.dualSyncPrototype, "syncShotsToPrompts", original => function (stage, shots, prompts, ...args) {
+    if (stage === "DirectorSkills") currentCreativeRuntime()?.keepDirectorAdvice(shots, prompts);
+    return Reflect.apply(original, this, [stage, shots, prompts, ...args]);
+  });
+  if (deps.promptGuardianPrototype) add(deps.promptGuardianPrototype, "guard", original => function (prompts, ...args) {
+    const result = Reflect.apply(original, this, [prompts, ...args]);
+    return currentCreativeRuntime()?.reviewLegacyPromptAdvice(prompts, result) ?? result;
+  });
+  if (deps.emotionShotSyntaxPrototype) add(deps.emotionShotSyntaxPrototype, "inject", original => function (shots, ...args) {
+    return currentCreativeRuntime() ? shots : Reflect.apply(original, this, [shots, ...args]);
+  });
+  for (const [owner, stage] of [[phase1Prototype, "phase1"], [deps.phase2Prototype, "phase2"]] as const) {
+    if (!owner || typeof owner.execute !== "function") continue;
+    add(owner, "execute", original => async function (state, ...args) {
+      const creative = currentCreativeRuntime();
+      if (!creative) return Reflect.apply(original, this, [state, ...args]);
+      const scope = productionScope(this);
+      if (scope) check(scope);
+      const result = await creative.nativePhase(stage, state, () => Promise.resolve(Reflect.apply(original, this, [state, ...args])));
+      if (scope) check(scope); return result;
+    });
+  }
+  if (deps.phase35Prototype) add(deps.phase35Prototype, "execute", original => async function (state, ...args) {
+    const creative = currentCreativeRuntime();
+    if (!creative) return Reflect.apply(original, this, [state, ...args]);
+    const scope = productionScope(this); if (scope) check(scope);
+    const result = await creative.verifyCompiledPhase(state);
+    if (scope) check(scope); return result;
+  });
+  if (deps.productPortraitPrototype) add(deps.productPortraitPrototype, "plan", original => function (...args) {
+    const scope = current();
+    if (!scope) return Reflect.apply(original, this, args);
+    return guard(scope, () => {
+      check(scope);
+      const visual = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
+      // Product applicability changes only this branch; character portraits remain independent.
+      return visual.mode === "abstract_without_product_appearance" ? [] : Reflect.apply(original, this, args);
     });
   });
   // Native phase fingerprints only include scenes, and shot caches ignore enableResume.
@@ -1226,7 +1299,8 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     [fusionPrototype, "_saveSubCheckpoint", undefined], [fusionPrototype, "_clearSubCheckpoint", undefined]
   ] as Array<[RequirementRecord, string, unknown]>) add(owner, key, original => function (...args) {
     const scope = productionScope(this);
-    if (!scope) return Reflect.apply(original, this, args);
+    if (!scope && !currentCreativeRuntime()) return Reflect.apply(original, this, args);
+    if (!scope) return value;
     return guard(scope, () => { check(scope); return value; });
   });
   add(refinerPrototype, "_normalizeConstraint", original => function (...args) {
@@ -1306,17 +1380,20 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
   });
   for (const key of ["normalizeAndValidate", "check", "assertOpeningFields"]) add(fieldGuardPrototype, key, original => function (shots = [], context = "unknown", ...args) {
     const scope = productionScope(this);
-    if (!scope || scope.authority.profile.titleCard !== false) return Reflect.apply(original, this, [shots, context, ...args]);
-    return guard(scope, () => {
-      check(scope);
-      const result = inspect(shots, context, true);
+    const creative = currentCreativeRuntime();
+    if (!creative && (!scope || scope.authority.profile.titleCard !== false)) return Reflect.apply(original, this, [shots, context, ...args]);
+    const verify = () => {
+      if (scope) check(scope);
+      const result = inspect(shots, context, creative?.usesGeneratedTitle === false || scope?.authority.profile.titleCard === false);
       if (key !== "check" && !result.report.passed) {
         const error = new Error(`PRD_PRODUCTION_FIELDS_INVALID: ${result.report.errors.join("; ")}`);
         Object.assign(error, { report: result.report });
-        return fatal(scope, error);
+        if (scope) return fatal(scope, error);
+        throw error;
       }
       return key === "assertOpeningFields" ? true : key === "check" ? { ...result, passed: result.report.passed } : result;
-    });
+    };
+    return scope ? guard(scope, verify) : verify();
   });
   add(systemPrototype, "_generatePromptsReport", original => function (promptsValue, ...args) {
     const scope = productionScope(this);
@@ -1329,7 +1406,7 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
         `本次 titleCard=false；以下生成侧标题项 not_applicable：${RETIRED_TITLES.join("、")}。subtitle 指片头副标题，正式后期字幕仍按 Brief 执行。`,
         "当前提示词全文原样展示，不截断、不扩写情绪、不补标题占位、不把段落标签数量当字段覆盖率。", "", "## 镜头总览", "",
         "| 镜头 | 实际类型 | 时长 | 字符数 | 适用字段 | 校验 |", "|---|---|---:|---:|---:|---|"];
-      shots.forEach((shot, index) => lines.push(`| ${String(shot.shotId)} | ${String(shot.sceneType)} | ${String(shot.duration)} | ${String((prompts[index]!.prompt as string)?.length ?? 0)} | ${report.details[index]!.presentFields}/25 | ${report.details[index]!.passed ? "pass" : "fail"} |`));
+      shots.forEach((shot, index) => lines.push(`| ${String(shot.shotId)} | ${String(shot.sceneType)} | ${String(shot.duration)} | ${String((prompts[index]!.prompt as string)?.length ?? 0)} | ${report.details[index]!.presentFields}/${report.details[index]!.applicableFields} | ${report.details[index]!.passed ? "pass" : "fail"} |`));
       lines.push("", "## 完整提示词", "");
       prompts.forEach((prompt, index) => {
         if (typeof prompt.prompt !== "string") prdFail("PRD_PRODUCTION_INVALID", "G6 不能以空文本代替当前提示词");
@@ -1389,6 +1466,12 @@ export function installVendorPrdProductionBridge(constructor: { prototype: objec
     return installPrdProductionBridge({ systemPrototype: requirementRecord(constructor.prototype, "受控 system prototype"),
       productionPrototype: load("engines/production-engine/production-engine.js", "ProductionEngine"),
       phase1Prototype: load("engines/production-engine/phases/phase-1-scene-design.js", "Phase1SceneDesign"),
+      phase2Prototype: load("engines/production-engine/phases/phase-2-visual-audio.js", "Phase2VisualAudio"),
+      phase35Prototype: load("engines/production-engine/phases/phase-3-5-field-quality.js", "Phase35FieldQuality"),
+      productPortraitPrototype: load("engines/portrait-studio/product-branch.js", "ProductPortraitBranch"),
+      dualSyncPrototype: load("utils/dual-array-sync.js", "DualArraySync"),
+      promptGuardianPrototype: load("engines/prompt-guardian.js", "PromptGuardian"),
+      emotionShotSyntaxPrototype: load("engines/emotion/emotion-shot-syntax.js", "EmotionShotSyntaxInjector"),
       refinerPrototype: load("engines/production-engine/agents/field-content-refiner.js", "FieldContentRefiner"),
       costumePrototype: load("engines/character-system/character-costume-prompter.js", "CharacterCostumePrompter"),
       fieldGuardPrototype: load("engines/field-guard.js", "FieldGuard"),

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
+import { creativeBudgetActive, creativeExecutionSignal, creativeImageInputTokens, guardedCreativeModelCall, type CreativeModelOutcome } from "./creative-runtime.js";
 import {
   normalizeModelContent,
   planDeepSeekWindow,
@@ -94,7 +95,14 @@ const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestI
       headers: Object.fromEntries(headers.entries()),
     }, response => {
       const chunks: Buffer[] = [];
-      response.on("data", chunk => chunks.push(Buffer.from(chunk)));
+      let bytes = 0;
+      response.on("data", chunk => {
+        const buffer = Buffer.from(chunk);
+        bytes += buffer.length;
+        if (bytes > MAX_RESPONSE_BYTES) {
+          response.destroy(new VideoTextDispatchError("MODEL_RESPONSE_TOO_LARGE", "模型响应超过允许的字节上限。", { unknown: true }));
+        } else chunks.push(buffer);
+      });
       response.once("error", reject);
       response.once("end", () => {
         const responseHeaders = new Headers();
@@ -236,9 +244,17 @@ export async function completeVideoTextTask(input: {
     );
   }
 
-  const signal = input.signal
-    ? AbortSignal.any([input.signal, AbortSignal.timeout(input.timeoutMs ?? 600_000)])
-    : AbortSignal.timeout(input.timeoutMs ?? 600_000);
+  let billedFailure: CreativeModelOutcome | undefined;
+  const imageInputTokens = creativeImageInputTokens(body.messages);
+  return guardedCreativeModelCall({
+    requestHash: hashJson({ endpoint: input.endpoint.baseUrl, scene: input.scene, body }),
+    inputChars: Buffer.byteLength(JSON.stringify(body)), maxOutputTokens: budget.outputCeiling,
+    model: input.endpoint.model, ...(imageInputTokens ? { imageInputTokens } : {}),
+  }, async () => {
+  const executionSignal = creativeExecutionSignal();
+  const signals = [input.signal, executionSignal, AbortSignal.timeout(input.timeoutMs ?? 600_000)]
+    .filter((signal): signal is AbortSignal => Boolean(signal));
+  const signal = AbortSignal.any(signals);
   const fetchImpl = input.fetchImpl ?? nodeHttpFetch;
   let response: Response;
   try {
@@ -277,6 +293,7 @@ export async function completeVideoTextTask(input: {
   let envelope: Record<string, unknown>;
   try {
     envelope = JSON.parse(rawBody) as Record<string, unknown>;
+    if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) throw new Error("response envelope must be an object");
   } catch (error) {
     throw new VideoTextDispatchError("MODEL_RESPONSE_JSON_INVALID", "模型响应不是合法 JSON。", {
       retryable: false,
@@ -298,12 +315,23 @@ export async function completeVideoTextTask(input: {
       { retryable: false, unknown: true },
     );
   }
+  const usage = envelope.usage as {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number };
+  } | undefined;
+  // Billing is a separate receipt from content acceptance. A complete,
+  // identified response can have known usage and still be a failed output.
+  if (Number.isSafeInteger(usage?.prompt_tokens) && usage!.prompt_tokens! >= 0
+    && Number.isSafeInteger(usage?.completion_tokens) && usage!.completion_tokens! >= 0
+    && usage!.completion_tokens! <= budget.outputCeiling
+    && usage!.prompt_tokens! + usage!.completion_tokens! <= DEEPSEEK_FLASH_CONTEXT_TOKENS) {
+    billedFailure = { usageKnown: true, success: false, inputTokens: usage!.prompt_tokens, outputTokens: usage!.completion_tokens };
+  }
+  const outputFailure = { retryable: false, unknown: !creativeBudgetActive() || !billedFailure };
   const choices = Array.isArray(envelope.choices) ? envelope.choices : [];
-  if (choices.length !== 1) {
-    throw new VideoTextDispatchError("MODEL_CHOICE_INVALID", "模型响应必须包含唯一 choice。", {
-      retryable: false,
-      unknown: true,
-    });
+  if (choices.length !== 1 || !choices[0] || typeof choices[0] !== "object" || Array.isArray(choices[0])) {
+    throw new VideoTextDispatchError("MODEL_CHOICE_INVALID", "模型响应必须包含唯一 choice。", outputFailure);
   }
   const choice = choices[0] as {
     finish_reason?: string;
@@ -313,28 +341,20 @@ export async function completeVideoTextTask(input: {
     throw new VideoTextDispatchError(
       choice.finish_reason === "length" ? "MODEL_OUTPUT_TRUNCATED" : "MODEL_OUTPUT_INCOMPLETE",
       `模型未完整结束：${choice.finish_reason ?? "missing"}`,
-      { retryable: false, unknown: true },
+      outputFailure,
     );
   }
   if (policy.thinking.type === "disabled" && String(choice.message?.reasoning_content ?? "").trim()) {
     throw new VideoTextDispatchError(
       "MODEL_THINKING_POLICY_VIOLATION",
       "非思考场景返回了 reasoning_content。",
-      { retryable: false, unknown: true },
+      outputFailure,
     );
   }
   const text = normalizeModelContent(choice.message?.content).trim();
   if (!text) {
-    throw new VideoTextDispatchError("MODEL_CONTENT_EMPTY", "模型最终 content 为空。", {
-      retryable: false,
-      unknown: true,
-    });
+    throw new VideoTextDispatchError("MODEL_CONTENT_EMPTY", "模型最终 content 为空。", outputFailure);
   }
-  const usage = envelope.usage as {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    completion_tokens_details?: { reasoning_tokens?: number };
-  } | undefined;
   if (!Number.isSafeInteger(usage?.prompt_tokens) || usage!.prompt_tokens! < 0
     || !Number.isSafeInteger(usage?.completion_tokens) || usage!.completion_tokens! < 0) {
     throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 usage 缺失或无效。", {
@@ -345,16 +365,13 @@ export async function completeVideoTextTask(input: {
   const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
   if (!Number.isSafeInteger(reasoningTokens) || reasoningTokens < 0
     || reasoningTokens > usage!.completion_tokens!) {
-    throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 reasoning_tokens 无效。", {
-      retryable: false,
-      unknown: true,
-    });
+    throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 reasoning_tokens 无效。", outputFailure);
   }
   if (policy.thinking.type === "disabled" && reasoningTokens !== 0) {
     throw new VideoTextDispatchError(
       "MODEL_THINKING_POLICY_VIOLATION",
       "非思考场景返回了 reasoning tokens。",
-      { retryable: false, unknown: true },
+      outputFailure,
     );
   }
   if (usage!.prompt_tokens! > DEEPSEEK_FLASH_CONTEXT_TOKENS
@@ -372,8 +389,7 @@ export async function completeVideoTextTask(input: {
       value = JSON.parse(text);
     } catch (error) {
       throw new VideoTextDispatchError("MODEL_JSON_INVALID", "模型最终 content 不是完整 JSON。", {
-        retryable: false,
-        unknown: true,
+        ...outputFailure,
         cause: error,
       });
     }
@@ -394,4 +410,6 @@ export async function completeVideoTextTask(input: {
     outputCeiling: budget.outputCeiling,
     policyVersion: VIDEO_SCENE_POLICY_VERSION,
   };
+  }, result => ({ usageKnown: true, success: true,
+    inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }), () => billedFailure);
 }

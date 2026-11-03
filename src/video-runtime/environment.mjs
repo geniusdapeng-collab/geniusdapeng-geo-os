@@ -37,7 +37,7 @@ export function nativeEnvironment(config, privateState, urls, desktopKey, toolEn
     };
     for(const [key,value]of Object.entries(toolEnvironment)){
       if(['WORKLOOM_UI_RELEASE_READ_TOKEN','CNB_UI_RELEASE_TOKEN'].includes(key))throw new VideoRuntimeError('TOOL_ENV_INVALID','Installation release credentials cannot be supplied to the native runtime.');
-      if(/^(DATABASE|JWT_|APP_DB_|GATEWAY_DB_|SERVER_|BUNDLES_ROOT$|HR_(?:WORK_DIR|CHARACTER_LIBRARY|PRODUCT_LIBRARY|PORTRAIT_REUSE_MANIFEST)$|WORKLOOM_(?:DESKTOP_|RENDER_|DELIVERY_|AUDIO_STEM_SIGNING_SECRET$|CLOUD_SYNC$|SCHEDULER_MS$|STARTUP_THREAD_RESUME$|ENV_PERSIST_MODE$|DECLARED_SKILLS_REQUIRED$|PRESERVE_SHADOWED_ROLES$)|MEDIA_SIGNING_SECRET$|PII_SALT$|ARCHIVE_AUTO_RESUME$|SKILL_DIST_|LLM_|DEEPSEEK_|VOLCENGINE_|ARK_)/.test(key))throw new VideoRuntimeError('TOOL_ENV_INVALID','Tool setup attempted to replace native identity, database or authorization controls.');
+      if(/^(DATABASE|JWT_|APP_DB_|GATEWAY_DB_|SERVER_|BUNDLES_ROOT$|HR_(?:WORK_DIR|CHARACTER_LIBRARY|PRODUCT_LIBRARY|PORTRAIT_REUSE_MANIFEST)$|WORKLOOM_(?:DESKTOP_|RENDER_|DELIVERY_|AUDIO_STEM_SIGNING_SECRET$|CLOUD_SYNC$|SCHEDULER_MS$|STARTUP_THREAD_RESUME$|ENV_PERSIST_MODE$|DECLARED_SKILLS_REQUIRED$|PRESERVE_SHADOWED_ROLES$)|MEDIA_SIGNING_SECRET$|PII_SALT$|ARCHIVE_AUTO_RESUME$|SKILL_DIST_|LLM_|DEEPSEEK_|VOLCENGINE_|ARK_|PIPELINE_|VM_CREATIVE_)/.test(key))throw new VideoRuntimeError('TOOL_ENV_INVALID','Tool setup attempted to replace native identity, database or authorization controls.');
       if(typeof value!=='string')throw new VideoRuntimeError('TOOL_ENV_INVALID','Managed tool environment must contain strings only.');
       base[key]=value;
     }

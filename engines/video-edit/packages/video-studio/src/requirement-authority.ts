@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { GateVerdict } from "./gates.js";
 import { prdDurationContract, type PrdAuthority, type PrdMarketingScope } from "./prd-authority.js";
-import { extractProductVisualAuthority } from "./product-visual-authority.js";
+import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, extractProductVisualAuthority } from "./product-visual-authority.js";
 import { RequirementContractError, requirementHash, requirementRecord, type RequirementRecord } from "./requirement-contract.js";
 
 export interface RequirementApprovedTheme {
@@ -95,8 +95,12 @@ export function requirementAuthorityPrompt(authority: PrdAuthority, theme?: Requ
     + `二、下面本次真实非降级 G1 原件只授权已接受 claims 及其限定用途。完整遵守 restrictions，并阅读嵌套 A1/A2/A3 support review 的 issues、suggestions 和证据状态。`
     + `A1 来源主张不构成竞品证据；A2/A3 为 no_evidence 时不得补写口碑、评分、销量、共识、竞品弱点或市场领先。媒体事实保留媒体、日期和 reported 等来源限定，不升格为实测或厂家独立认证。`
     + `已核规格数字和宣传性来源用语仍保留在事实底账；本片是否可用及如何使用须服从完整客户 Brief。未知外观不因选入道具或动作就成为已核实配置。\n`
-    + `本次结构化商品视觉授权（只来自 G1 A1 已接受图片）：\n${JSON.stringify(productVisualAuthority)}\n`
-    + `required=true 时，场景/道具/动作/关键元素中的商品外观只能对照 images 的可见内容；不得从文字 claim、常识、影视参考或角色档案推出涂装、配色、比例、部件、材质或空气动力细节。无法确认的细节必须省略。\n`
+    + `本次结构化商品视觉授权（模式来自本次客户原件；真实外观只来自 G1 A1 已接受图片）：\n${JSON.stringify(productVisualAuthority)}\n`
+    + (productVisualAuthority.mode === ABSTRACT_PRODUCT_VISUAL_MODE
+      ? `${productVisualAuthority.rule}\n不得为该商品安排定妆、物理道具或 $product 动作；保留客户原有配色、旁白、声音、人物及其他创作要求。\n`
+      : productVisualAuthority.mode === VERIFIED_PRODUCT_VISUAL_MODE
+        ? `required=true 时，场景/道具/动作/关键元素中的商品外观只能对照 images 的可见内容；不得从文字 claim、常识、影视参考或角色档案推出涂装、配色、比例、部件、材质或空气动力细节。无法确认的细节必须省略。\n`
+        : "")
     + `本次时长与封面母版口径：最终成片 ${duration.finalDurationSeconds ?? "未指定"}s；静音封面片头 ${duration.coverIntroSeconds}s；`
     + `因此内容节点合计必须为 ${duration.contentDurationSeconds ?? "未指定"}s；容差 ${duration.toleranceSeconds ?? "未指定"}s。`
     + `封面片头是最终成片的一部分，不能再次计入内容节点，也不能把最终片长直接当内容节点合计。\n`

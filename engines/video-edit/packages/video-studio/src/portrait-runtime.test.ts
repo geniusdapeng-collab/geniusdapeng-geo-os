@@ -6,6 +6,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { createPortraitRuntime, REQUIRED_ANGLES } from "./portrait-runtime.js";
+import { withCreativeBudget, type CreativeBudgetHooks } from "./creative-runtime.js";
+import { shotIntentHash } from "./shot-intent.js";
 
 /** 假 Seedream：出图返回 URL，下载返回固定图片字节 */
 function fakeArk(options: { failStatus?: number } = {}) {
@@ -43,6 +45,66 @@ function writeRef(dir: string, name: string): string {
   writeFileSync(file, Buffer.alloc(2048, 3));
   return file;
 }
+
+describe("enforced image transport budget", () => {
+  const task = { characterId: "合成演员", angle: "front_full", description: "三十岁女性，深色长发和青色外套" };
+  const budget = { beforeModelCall: async () => { throw new Error("unexpected text call"); },
+    afterModelCall: async () => { throw new Error("unexpected text receipt"); } };
+  function runtime(fetchImpl: typeof fetch) {
+    return createPortraitRuntime({ workDir: workDir(), projectId: "VID-CREATIVE", apiKey: "fixture", model: "fixture-image-model",
+      baseUrl: "https://ark-fixture.invalid/v3", fetchImpl, retries: 5, requireCharacterDescription: true });
+  }
+  it("reserves before the exact images/generations request, settles one known result and reuses its output without a second dispatch", async () => {
+    const fake = fakeArk(), portrait = runtime(fake.fetchImpl);
+    const reserved: Array<{ kind: string; provider: string; requestHash: string }> = [];
+    const outcomes: boolean[] = [];
+    const hooks: CreativeBudgetHooks = { ...budget, externalCall: async (request, operation, isKnown) => {
+      expect(fake.calls).toHaveLength(0);
+      reserved.push(request);
+      const response = await operation(new AbortController().signal);
+      outcomes.push(isKnown(response));
+      return response;
+    } };
+    const first = await withCreativeBudget(hooks, () => portrait.apiRender(task));
+    expect(await withCreativeBudget(budget, () => portrait.apiRender(task))).toBe(first);
+    expect(fake.calls).toHaveLength(1); expect(outcomes).toEqual([true]);
+    expect(reserved).toEqual([{ kind: "media", provider: "fixture-image-model", requestHash: shotIntentHash({
+      endpoint: fake.calls[0]!.url, body: JSON.stringify(fake.calls[0]!.body),
+    }) }]);
+    expect(readFileSync(first)).toHaveLength(4096);
+  });
+
+  it("refuses absent journal and trusted price before network, even with native retries configured", async () => {
+    const fake = fakeArk(), portrait = runtime(fake.fetchImpl);
+    await expect(withCreativeBudget(budget, () => portrait.apiRender(task))).rejects.toThrow("CREATIVE_MEDIA_BUDGET_REQUIRED");
+    await expect(withCreativeBudget({ ...budget, externalCall: async () => { throw new Error("CREATIVE_BUDGET_UNCONFIGURED"); } },
+      () => portrait.apiRender(task))).rejects.toThrow("CREATIVE_BUDGET_UNCONFIGURED");
+    expect(fake.calls).toHaveLength(0);
+    expect(portrait.snapshot().characters).toEqual({});
+  });
+
+  it.each(["HTTP 429", "HTTP 503", "invalid JSON", "lost response"])("does not repeat an image charge after %s", async mode => {
+    let sent = 0, outcomes: boolean[] = [];
+    const portrait = runtime((async (url, init) => {
+      expect(String(url)).toMatch(/\/images\/generations$/);
+      expect(init?.redirect).toBe("error");
+      sent++;
+      if (mode === "lost response") throw new Error("fixture transport aborted");
+      return new Response(mode === "invalid JSON" ? "{" : "provider rejected", { status: mode.startsWith("HTTP") ? Number(mode.slice(5)) : 200 });
+    }) as typeof fetch);
+    const hooks: CreativeBudgetHooks = { ...budget, externalCall: async (_request, operation, isKnown) => {
+      try { const response = await operation(); outcomes.push(isKnown(response)); }
+      catch { outcomes.push(false); }
+      throw new Error("CREATIVE_USAGE_UNKNOWN");
+    } };
+    await expect(withCreativeBudget(hooks, async () => {
+      await expect(portrait.apiRender(task)).rejects.toThrow("CREATIVE_USAGE_UNKNOWN");
+      await expect(portrait.apiRender({ ...task, angle: "side_full" })).rejects.toThrow("CREATIVE_USAGE_UNKNOWN");
+    })).rejects.toThrow("CREATIVE_USAGE_UNKNOWN");
+    expect(sent).toBe(1); expect(outcomes).toEqual([false]);
+    expect(portrait.snapshot().characters).toEqual({});
+  });
+});
 
 describe("定妆照真实出图运行时", () => {
   it("角色角度按渲染核心口径落盘，并写入索引", async () => {

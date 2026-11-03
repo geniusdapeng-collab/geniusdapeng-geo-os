@@ -70,6 +70,15 @@ test('native environment owns identity and storage without inheriting old Edit p
   assert.notEqual(built.WORKLOOM_DELIVERY_SIGNING_SECRET,state.credentials.render);assert.equal(built.WORKLOOM_DELIVERY_SIGNING_SECRET,nativeEnvironment(config,state,urls,desktop).WORKLOOM_DELIVERY_SIGNING_SECRET);
   for(const key of ['DATABASE_URL','JWT_SECRET','WORKLOOM_DESKTOP_LOGIN_KEY','WORKLOOM_ENV_PERSIST_MODE','WORKLOOM_RENDER_AUTO','WORKLOOM_DECLARED_SKILLS_REQUIRED','WORKLOOM_PRESERVE_SHADOWED_ROLES','WORKLOOM_UI_RELEASE_READ_TOKEN','CNB_UI_RELEASE_TOKEN'])assert.throws(()=>nativeEnvironment(config,state,urls,desktop,{[key]:'replacement'}),{code:'TOOL_ENV_INVALID'});
 });
+test('only the owner runtime configuration can set creative rollout and spending limits',t=>{
+  const f=fixture(t), owner={PIPELINE_COORDINATOR:'shadow',PIPELINE_SCOPE:'marketing',VM_CREATIVE_BUDGET_CNY:'8',VM_CREATIVE_MAX_CALLS:'12'},
+    config=f.config({env:owner}), state=loadCredentials(config).value, urls=databaseUrls(config,state);
+  const built=nativeEnvironment(config,state,urls,'fixture-desktop-bootstrap');
+  for(const [key,value] of Object.entries(owner)) assert.equal(built[key],value);
+  for(const key of [...Object.keys(owner),'PIPELINE_CONTROL_PLANE','VM_CREATIVE_MODEL_PRICES','VM_CREATIVE_EXTERNAL_PRICES','VM_CREATIVE_MAX_TOKENS','VM_CREATIVE_MAX_WALL_MS']){
+    assert.throws(()=>nativeEnvironment(config,state,urls,'fixture-desktop-bootstrap',{[key]:'replacement'}),{code:'TOOL_ENV_INVALID'});
+  }
+});
 test('an occupied foreign port and linked PostgreSQL installation are rejected without reuse',async t=>{
   const f=fixture(t),config=f.config();loadCredentials(config);
   const server=net.createServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));

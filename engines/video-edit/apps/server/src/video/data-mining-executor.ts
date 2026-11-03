@@ -20,7 +20,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { LLMReasonResult } from "@hyperreality/video-studio";
+import { CreativeContractError, creativeHash, type LLMReasonResult } from "@hyperreality/video-studio";
+import { guardedCreativeExternalCall } from "./creative-external-budget.js";
 
 /** 情报站（与 vendor 的 rawByAgent 键一致） */
 export type IntelStage = "A1" | "A2" | "A3";
@@ -235,40 +236,48 @@ export function createApiSearchRunner(config: ApiSearchConfig = {}): ApiSearchRu
     search: async (query, limit) => {
       try {
         const isTavily = resolved.provider === "tavily";
-        const res = await fetchImpl(resolved.apiUrl, {
-          method: "POST",
-          signal: AbortSignal.timeout(timeoutMs),
-          headers: {
-            "content-type": "application/json",
-            ...(isTavily ? {} : { authorization: `Bearer ${resolved.apiKey}` }),
-          },
-          body: JSON.stringify(isTavily
-            ? { api_key: resolved.apiKey, query, max_results: Math.max(1, Math.min(limit, 20)), search_depth: "basic" }
-            : { query, count: Math.max(1, Math.min(limit, 20)) }),
-        });
-        if (!res.ok) {
-          log(`[intel] API 检索非 200（${res.status}，provider=${resolved.provider}）`);
-          return { hits: [], blocked: res.status === 403 || res.status === 429 };
-        }
-        const json = await res.json() as Record<string, unknown>;
-        /** 结果数组位置兼容：`results` / `items` / `data[]` / `data.items[]`（网关风格不统一） */
-        const candidates: unknown[] = [json.results, json.items, json.data];
-        const dataObj = (json.data && typeof json.data === "object") ? json.data as Record<string, unknown> : null;
-        if (dataObj) candidates.push(dataObj.results, dataObj.items, dataObj.list);
-        const rows = candidates.find((candidate) => Array.isArray(candidate)) as unknown[] | undefined;
-        const list = rows ?? [];
-        const hits: SearchHit[] = [];
-        for (const row of list) {
-          const record = (row && typeof row === "object") ? row as Record<string, unknown> : {};
-          const title = String(record.title ?? record.name ?? "").trim();
-          const url = String(record.url ?? record.link ?? "").trim();
-          const snippet = String(record.content ?? record.snippet ?? record.description ?? record.summary ?? "").trim();
-          if (!title || !url) continue;
-          hits.push({ title, url, snippet: snippet.slice(0, 400) });
-          if (hits.length >= limit) break;
-        }
-        return { hits, blocked: false };
+        const count = Math.max(1, Math.min(limit, 20));
+        const payload = isTavily ? { query, max_results: count, search_depth: "basic" } : { query, count };
+        const result = await guardedCreativeExternalCall({
+          kind: "search", provider: resolved.provider,
+          requestHash: creativeHash({ endpoint: resolved.apiUrl, provider: resolved.provider, payload }),
+        }, async signal => {
+          const timeout = AbortSignal.timeout(timeoutMs);
+          const res = await fetchImpl(resolved.apiUrl, {
+            method: "POST",
+            signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+            redirect: signal ? "error" : "follow",
+            headers: {
+              "content-type": "application/json",
+              ...(isTavily ? {} : { authorization: `Bearer ${resolved.apiKey}` }),
+            },
+            body: JSON.stringify(isTavily ? { ...payload, api_key: resolved.apiKey } : payload),
+          });
+          if (!res.ok) {
+            log(`[intel] API 检索非 200（${res.status}，provider=${resolved.provider}）`);
+            return { hits: [], blocked: res.status === 403 || res.status === 429, known: false };
+          }
+          const json = await res.json() as Record<string, unknown>;
+          /** 结果数组位置兼容：`results` / `items` / `data[]` / `data.items[]`（网关风格不统一） */
+          const candidates: unknown[] = [json.results, json.items, json.data];
+          const dataObj = (json.data && typeof json.data === "object") ? json.data as Record<string, unknown> : null;
+          if (dataObj) candidates.push(dataObj.results, dataObj.items, dataObj.list);
+          const rows = candidates.find((candidate) => Array.isArray(candidate)) as unknown[] | undefined;
+          const hits: SearchHit[] = [];
+          for (const row of rows ?? []) {
+            const record = (row && typeof row === "object") ? row as Record<string, unknown> : {};
+            const title = String(record.title ?? record.name ?? "").trim();
+            const url = String(record.url ?? record.link ?? "").trim();
+            const snippet = String(record.content ?? record.snippet ?? record.description ?? record.summary ?? "").trim();
+            if (!title || !url) continue;
+            hits.push({ title, url, snippet: snippet.slice(0, 400) });
+            if (hits.length >= limit) break;
+          }
+          return { hits, blocked: false, known: rows !== undefined };
+        }, receipt => receipt.known);
+        return { hits: result.hits, blocked: result.blocked };
       } catch (err) {
+        if (err instanceof CreativeContractError) throw err;
         log(`[intel] API 检索异常（provider=${resolved.provider}）：${err instanceof Error ? err.message : String(err)}`);
         return { hits: [], blocked: false };
       }
@@ -756,7 +765,11 @@ export function createDataMiningExecutor(options: DataMiningExecutorOptions): Da
     // ① 真检索（逐查询并发受限）
     const resultSets = await mapLimit(queries, 4, async (query) => {
       try { return await search(query.q, hitsPerQuery); }
-      catch (error) { log(`[intel] ${stage} 查询失败：${error instanceof Error ? error.message : String(error)}`); return []; }
+      catch (error) {
+        if (error instanceof CreativeContractError) throw error;
+        log(`[intel] ${stage} 查询失败：${error instanceof Error ? error.message : String(error)}`);
+        return [];
+      }
     });
     const hitMap = new Map<string, SearchHit>();
     for (const hits of resultSets) {
