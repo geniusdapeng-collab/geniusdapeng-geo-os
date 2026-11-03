@@ -307,6 +307,11 @@ export function authoritativeProduct(value: unknown, profile: PrdProductionProfi
   return result;
 }
 
+/** Media output declares delivery fields. The visual mode stays in source provenance. */
+export function prdDeliveryProfile({ visualMode: _visualMode, ...delivery }: PrdProductionProfile): Omit<PrdProductionProfile, "visualMode"> {
+  return delivery;
+}
+
 export function authoritativeDelivery(value: unknown, profile: PrdProductionProfile): RequirementRecord {
   const result = structuredClone(requirementRecord(value, "DeliveryStandard 原始输出"));
   const standard = requirementRecord(result.deliveryStandard, "交付标准");
@@ -314,7 +319,7 @@ export function authoritativeDelivery(value: unknown, profile: PrdProductionProf
   const deliverables = list(standard.deliverables, "原始交付物").map(value => ({ ...requirementRecord(value, "交付项") }));
   const masters = deliverables.filter(item => item.item === "video_master");
   if (masters.length !== 1) prdFail("PRD_DELIVERY_INVALID", "原始交付标准必须恰好包含一个视频母版");
-  const { visualMode: _visualMode, ...deliveryProfile } = profile;
+  const deliveryProfile = prdDeliveryProfile(profile);
   const declared = Object.entries(deliveryProfile).map(([key, value]) => `${key}=${String(value)}`).join("; ");
   if (profile.resolution) {
     masters[0]!.spec = `${nonempty(output.container, "容器")}/${nonempty(output.videoCodec, "视频编码")}, ${profile.resolution}; ${declared}; delivery declaration, native capability verified separately`;
@@ -366,7 +371,7 @@ export function effectivePrdDeliverySchema(schemaValue: RequirementRecord, profi
   deliverables.maxItems = Number(deliverables.maxItems) + additions.length;
   const outputFormat = structuredClone(requirementRecord(native.outputFormat, "outputFormat schema"));
   const outputProperties = requirementRecord(outputFormat.properties, "outputFormat properties");
-  const { visualMode: _visualMode, ...deliveryProfile } = profile;
+  const deliveryProfile = prdDeliveryProfile(profile);
   for (const [key, value] of Object.entries(deliveryProfile)) outputProperties[key] = { type: typeof value, enum: [value] };
   outputFormat.required = [...new Set([...list(outputFormat.required, "原生输出格式必需字段"), ...Object.keys(deliveryProfile)])];
   return { type: "object", required: ["deliverables", "outputFormat"],

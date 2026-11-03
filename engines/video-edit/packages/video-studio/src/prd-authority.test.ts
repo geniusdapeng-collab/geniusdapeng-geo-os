@@ -1,11 +1,13 @@
 import { symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
-import { requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { bindRequirementContract, requirementCast, requirementRecord, validateRequirementSchema, type RequirementRecord } from "./requirement-contract.js";
 import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdDeliverySchema, effectivePrdModelSchema, normalizeExplicitBriefDuration, normalizePrdProductionProfile,
   preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
 } from "./prd-authority.js";
-import { PRDSchema, prdFixture } from "./prd-authority.test-support.js";
+import { installPrdAuthorityBridge, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import { extractProductVisualAuthority, VERIFIED_PRODUCT_VISUAL_MODE } from "./product-visual-authority.js";
+import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
 const fixtures: ReturnType<typeof prdFixture>[] = [];
 function fixture(...args: Parameters<typeof prdFixture>) { const value = prdFixture(...args); fixtures.push(value); return value; }
@@ -252,6 +254,73 @@ describe("PRD rule-owned delivery projection and legacy byte compatibility", () 
     expect((delivery.deliverables as RequirementRecord[]).some(item => item.item === "cover")).toBe(false);
     (delivery.deliverables as RequirementRecord[]).push({ item: "cover", spec: "PNG/JPEG", priority: "required" });
     expect(() => validatePrdDelivery(result, profile, PRDSchema)).toThrow();
+  });
+});
+
+describe("verified product appearance through the native PRD generator", () => {
+  it.each(["clean", "changed-duration", "changed-visual-authority"] as const)("keeps the source and media authorities distinct with %s", async condition => {
+    const value = fixture();
+    requirementRecord(value.metadata.brief, "Brief").productionRequirements = { visualMode: VERIFIED_PRODUCT_VISUAL_MODE };
+    const g1 = JSON.parse(value.content);
+    g1.requestedMetadata = value.metadata;
+    g1.facts.stages[0].facts.payload = { images: [{ url: "https://fixture.invalid/product.jpg", page_url: "https://fixture.invalid/product" }] };
+    const content = JSON.stringify(g1), sha256 = digest(content);
+    writeFileSync(value.file, content);
+    value.marketing.g1Artifact = { path: value.file, content, sha256 };
+    value.marketing.g1Proof.evidence = [{ path: value.file, scope: "complete-text", sha256 }];
+    const authority = preparePrdAuthority({ metadata: value.metadata, marketing: value.marketing, workDir: value.workDir, projectId: value.scope.projectId });
+    const list = bindRequirementContract({ keyPoints: [] }, value.discovery, value.discovery.upstreamFields,
+      structuredClone(value.metadata), requirementCast(value.metadata).hash, "原始年轻消费者", undefined, extractProductVisualAuthority(content));
+
+    class System {
+      readonly prdGenerator = new PRDGenerator();
+      async _confirmRequirementList(_text: string, requirementList: RequirementRecord) { return { approved: true, requirementList }; }
+      async _confirmPRD(_text: string, prd: RequirementRecord) { return { approved: true, prd }; }
+      _generateMinimalPRD() { throw new Error("unexpected fallback"); }
+    }
+    vi.useFakeTimers();
+    const dispose = installPrdAuthorityBridge(System.prototype as unknown as RequirementRecord, PRDGenerator.prototype, PRDSchema);
+    try {
+      const system = new System();
+      const calls: string[] = [];
+      let reachedOutput = false;
+      for (const [key, payload] of [["agent2", value.creative], ["agent3", value.production]] as const) {
+        const agent = requirementRecord(system.prdGenerator[key], key);
+        agent._llmEngineLoaded = true;
+        agent._llmEngine = { reasonStructured: async () => { calls.push(key); return { success: true, data: structuredClone(payload) }; } };
+      }
+      await withPrdAuthorityScope(authority, async () => {
+        await system._confirmRequirementList("# fixture G3", list);
+        const generate = system.prdGenerator.generate as (discovery: unknown) => Promise<RequirementRecord>;
+        const result = await generate.call(system.prdGenerator, value.discovery);
+        reachedOutput = true;
+        const output = requirementRecord(requirementRecord(result.deliveryStandard, "delivery").outputFormat, "output");
+        const marker = requirementRecord(result._workloomPrdAuthority, "source marker");
+        const profile = requirementRecord(marker.profile, "source profile");
+        expect(profile).toEqual(authority.profile);
+        expect(profile.visualMode).toBe(VERIFIED_PRODUCT_VISUAL_MODE);
+        expect(output).not.toHaveProperty("visualMode");
+        expect(output.targetDuration).toBe(30);
+        const render = system.prdGenerator.generateMarkdown as (prd: unknown) => string;
+        if (condition === "changed-duration") output.targetDuration = 31;
+        if (condition === "changed-visual-authority") profile.visualMode = "abstract_without_product_appearance";
+        if (condition !== "clean") expect(() => render.call(system.prdGenerator, result)).toThrow("PRD_AUTHORITY_CHANGED");
+        else {
+          const markdown = render.call(system.prdGenerator, result);
+          expect(markdown).toContain(VERIFIED_PRODUCT_VISUAL_MODE);
+          expect(await system._confirmPRD(markdown, result)).toEqual({ approved: true, prd: result });
+        }
+      }).then(
+        () => { expect(condition).toBe("clean"); },
+        error => { if (condition === "clean") throw error; expect(error).toMatchObject({ code: "PRD_AUTHORITY_CHANGED" }); },
+      );
+      expect(reachedOutput).toBe(true);
+      expect(calls).toEqual(["agent2", "agent3"]);
+    } finally {
+      dispose();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 });
 

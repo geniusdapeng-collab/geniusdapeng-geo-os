@@ -308,8 +308,8 @@
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "a737f5a420508b9a0bc190e9642fa79f0ea7ba618388c33afe7a8b6a0f7bbf70",
-      "targetBytes": 100550,
+      "targetSha256": "56da73b19240c376e4236c182f99ff51b1e2457075df3864e35047a98c7c00c5",
+      "targetBytes": 100573,
       "evidence": "B",
       "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
       "sourceBytes": 82133
@@ -317,8 +317,8 @@
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "49945d682e98288e543d5cf2df0d781b33343a0ae5aea7316a2a0b26de8e99fc",
-      "targetBytes": 37112,
+      "targetSha256": "e6e29e9a87ee798e66cfcf554dbc8b5efc9641f5f8ad786a667a4e5a352d6dac",
+      "targetBytes": 37343,
       "evidence": "B",
       "sourceSha256": "a3af225eccf6df376bf4e35e433fbb1a7a5a02e546c49d5693586c3023611275",
       "sourceBytes": 33456
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:05:37.936690+00:00"
 }
