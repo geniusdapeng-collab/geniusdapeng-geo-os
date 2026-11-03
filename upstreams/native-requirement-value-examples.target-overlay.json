@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0004",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T17:50:22.875854+00:00",
+  "scope": "Use actual schema-valid structured values in requirement model prompts; source upstream pin unchanged.",
+  "sourceOverlayCount": 4,
+  "files": [
+    {
+      "path": "packages/video-studio/src/llm-adapter.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
+      "targetBytes": 20016,
+      "evidence": "B",
+      "sourceSha256": "6a49f7dd52babf538a948f809e51dbb6661f3737a4a111d0ef2970ffa1b0abb0",
+      "sourceBytes": 16655
+    },
+    {
+      "path": "packages/video-studio/src/requirement-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
+      "targetSha256": "23f57bb286a5f533c67f50da57a2afcac2cad7985591b30171fd59c0edfb679c",
+      "targetBytes": 15319,
+      "evidence": "B",
+      "sourceSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
+      "sourceBytes": 12270
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
+      "targetBytes": 46302,
+      "evidence": "B",
+      "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
+      "sourceBytes": 29194
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
+      "targetBytes": 74412,
+      "evidence": "B",
+      "sourceSha256": "56ec4894fb3b0ccb923213f81ac42a8b40f8b0cb676333334223ded13f2dca7c",
+      "sourceBytes": 60734
+    }
+  ]
+}

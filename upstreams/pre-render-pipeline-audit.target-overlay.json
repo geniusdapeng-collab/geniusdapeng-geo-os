@@ -226,8 +226,8 @@
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "e230acb4aff2725757bc035f353f818107c4c01d0afdeef2e4025d46b437d491",
-      "targetBytes": 45067,
+      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
+      "targetBytes": 46302,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

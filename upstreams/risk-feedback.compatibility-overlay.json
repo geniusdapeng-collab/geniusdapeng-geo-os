@@ -38,8 +38,8 @@
       "sourceGitBlob": "26d495a05e58d403cc0bf73f09e8e6d8c251c1c3",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "targetMode": "100644",
-      "targetSha256": "e230acb4aff2725757bc035f353f818107c4c01d0afdeef2e4025d46b437d491",
-      "targetBytes": 45067,
+      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
+      "targetBytes": 46302,
       "transform": "none"
     },
     {
@@ -62,8 +62,8 @@
       "sourceGitBlob": "0d2c0bd387cb5079c2a8ad662066af51155962f8",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetMode": "100644",
-      "targetSha256": "d90b50c06d3a3767b9022617a3d974485cf88f162c03610fab6f77ea74433a78",
-      "targetBytes": 59002,
+      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
+      "targetBytes": 74412,
       "transform": "none"
     },
     {
@@ -117,5 +117,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T03:13:38.844341+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

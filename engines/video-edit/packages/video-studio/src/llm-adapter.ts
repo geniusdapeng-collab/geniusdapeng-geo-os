@@ -44,6 +44,8 @@ export interface LLMReasonOptions {
   thinking?: Record<string, unknown>;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** A schema-valid JSON value supplied by a controlled structured caller. */
+  structuredOutputExample?: Record<string, unknown>;
   /** Optional registered scene. Vendor callers may leave this unset. */
   scene?: string;
 }
@@ -131,9 +133,9 @@ export class WorkloomLLMEngine {
     });
   }
 
-  private async callChat(prompt: string, opts: LLMReasonOptions): Promise<LLMReasonResult> {
+  private async callChat(prompt: string, opts: LLMReasonOptions, outputContract = ""): Promise<LLMReasonResult> {
     const input = productionModelInput(prompt);
-    try { return await this.requestChat(input.prompt, opts); }
+    try { return await this.requestChat(input.prompt + outputContract, opts); }
     finally { input.verify(); }
   }
 
@@ -244,8 +246,14 @@ export class WorkloomLLMEngine {
   }
 
   async reason(prompt: string, options: LLMReasonOptions = {}): Promise<LLMReasonResult> {
+    return this.reasonWithOutputContract(prompt, options);
+  }
+
+  private async reasonWithOutputContract(
+    prompt: string, options: LLMReasonOptions, outputContract = ""
+  ): Promise<LLMReasonResult> {
     this.stats.totalCalls++;
-    const result = await this.callChat(prompt, options);
+    const result = await this.callChat(prompt, options, outputContract);
     if (!result.success) this.stats.totalFailures++;
     if (result.success && options.forceJson && result.content) {
       try {
@@ -285,9 +293,12 @@ export class WorkloomLLMEngine {
     schema: unknown,
     options: LLMReasonOptions = {}
   ): Promise<LLMReasonResult> {
+    const { structuredOutputExample, ...reasonOptions } = options;
     let schemaText: string | undefined;
+    let exampleText: string | undefined;
     try {
       schemaText = JSON.stringify(schema, null, 2);
+      if (structuredOutputExample) exampleText = JSON.stringify(structuredOutputExample, null, 2);
     } catch (error) {
       return {
         success: false,
@@ -297,20 +308,25 @@ export class WorkloomLLMEngine {
     }
     // Match the vendor interface: its caller supplies the actual IDs and field
     // template here, independently of any illustrative examples in the prompt.
-    const structuredPrompt = [
-      prompt,
+    const outputContract = [
+      "",
       "",
       "【硬性输出要求】",
       "1. 只输出合法 JSON",
       "2. 不要输出 markdown 代码块",
       "3. 不要输出解释、前言、结尾",
-      "4. 所有字段必须存在",
+      exampleText ? "4. 遵守 schema 的必填字段、枚举和数量限制。每层只使用声明的键，不加总结、注释或包装字段。" : "4. 所有字段必须存在",
       "5. 输出必须能被 JSON.parse 直接解析",
       "",
-      "【目标JSON结构示例】",
+      ...(exampleText ? ["下面的 JSON Schema 只用于校验，末尾示例只说明结构。根据完整来源填写本次内容，不复制示例值或 schema 关键字。"] : []),
+      exampleText ? "【响应 JSON Schema，仅用于校验】" : "【目标JSON结构示例】",
       schemaText,
+      ...(exampleText ? ["", "【合规 JSON 对象示例，仅说明结构】", exampleText] : []),
     ].join("\n");
-    return this.reason(structuredPrompt, { ...options, forceJson: true });
+    const jsonOptions = { ...reasonOptions, forceJson: true };
+    // Keep the schema and valid value last after the host adds current creative evidence.
+    return exampleText ? this.reasonWithOutputContract(prompt, jsonOptions, outputContract)
+      : this.reason(prompt + outputContract, jsonOptions);
   }
 
   /**

@@ -164,8 +164,8 @@
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
-      "targetBytes": 18699,
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
+      "targetBytes": 20016,
       "evidence": "B",
       "sourceSha256": "6a49f7dd52babf538a948f809e51dbb6661f3737a4a111d0ef2970ffa1b0abb0",
       "sourceBytes": 16655
@@ -277,5 +277,5 @@
       "sourceBytes": 60979
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

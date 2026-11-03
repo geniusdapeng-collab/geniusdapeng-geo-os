@@ -435,9 +435,9 @@
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "sourceSha256": "36fe2821fb973c76222061c965a026a12c710c488aa962e8f64c6c48f005bac5",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
       "sourceBytes": 20113,
-      "targetBytes": 18699
+      "targetBytes": 20016
     },
     {
       "path": "packages/video-studio/src/llm-config.test.ts",
@@ -531,17 +531,17 @@
       "path": "packages/video-studio/src/requirement-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
       "sourceSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
-      "targetSha256": "0c8b12d6e6cf146b2aa2a2a83ef962b708167ef67d41ea794fa04de7a18f8c66",
+      "targetSha256": "23f57bb286a5f533c67f50da57a2afcac2cad7985591b30171fd59c0edfb679c",
       "sourceBytes": 12270,
-      "targetBytes": 15006
+      "targetBytes": 15319
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
-      "targetSha256": "1ddae7d01239914fdc699adb3bc95a197724adefe9e432299178d5f1d40586d4",
+      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
       "sourceBytes": 59825,
-      "targetBytes": 59791
+      "targetBytes": 74412
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:38:20.657072+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

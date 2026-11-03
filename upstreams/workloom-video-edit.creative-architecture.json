@@ -281,8 +281,8 @@
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
-      "targetBytes": 18699,
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
+      "targetBytes": 20016,
       "evidence": "B",
       "sourceSha256": "6a49f7dd52babf538a948f809e51dbb6661f3737a4a111d0ef2970ffa1b0abb0",
       "sourceBytes": 16655
@@ -360,8 +360,8 @@
     {
       "path": "packages/video-studio/src/requirement-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
-      "targetSha256": "0c8b12d6e6cf146b2aa2a2a83ef962b708167ef67d41ea794fa04de7a18f8c66",
-      "targetBytes": 15006,
+      "targetSha256": "23f57bb286a5f533c67f50da57a2afcac2cad7985591b30171fd59c0edfb679c",
+      "targetBytes": 15319,
       "evidence": "B",
       "sourceSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
       "sourceBytes": 12270
@@ -369,8 +369,8 @@
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "e230acb4aff2725757bc035f353f818107c4c01d0afdeef2e4025d46b437d491",
-      "targetBytes": 45067,
+      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
+      "targetBytes": 46302,
       "evidence": "B",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
       "sourceBytes": 29194
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:38:20.657072+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

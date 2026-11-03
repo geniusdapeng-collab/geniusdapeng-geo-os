@@ -38,8 +38,8 @@
       "sourceGitBlob": "675885bafdcd10e3ad160875e30510d3ff2d1cfd",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "targetMode": "100644",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
-      "targetBytes": 18699,
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
+      "targetBytes": 20016,
       "transform": "none"
     },
     {
@@ -152,5 +152,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

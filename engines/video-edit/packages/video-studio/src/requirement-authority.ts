@@ -125,7 +125,8 @@ function sameDescriptor(a: PropertyDescriptor | undefined, b: PropertyDescriptor
 
 /** A per-run facade preserves the original engine receiver, native retries, options and result. */
 export function scopedRequirementEngine(
-  value: unknown, protect: Protect, context: () => string, originalStory?: () => string
+  value: unknown, protect: Protect, context: () => string, originalStory?: () => string,
+  structuredOutputExample?: RequirementRecord,
 ): RequirementRecord {
   const engine = requirementRecord(value, "原始需求模型引擎"), prototype = Object.getPrototypeOf(engine);
   const methods: EngineMethod[] = [];
@@ -169,6 +170,10 @@ export function scopedRequirementEngine(
           const story = originalStory?.();
           if (story && !prompt.includes(story)) prompt += `\n\n## 本次原始故事文本（完整来源）\n${story}`;
           const result = [...args]; result[index] = prompt + addition;
+          if (item.key === "reasonStructured" && structuredOutputExample) {
+            result[2] = { ...requirementRecord(args[2] ?? {}, "原始结构化模型选项"),
+              structuredOutputExample: structuredClone(structuredOutputExample) };
+          }
           return result;
         });
         let result: unknown;
