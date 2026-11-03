@@ -11,17 +11,17 @@
       "path": "apps/server/src/video/gate-policy.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.test.ts",
       "sourceSha256": "b1645d72c9990cd758892684cb2f6f6d30f6e9ae9c31450955ef32d25ff3fcd3",
-      "targetSha256": "401b238ec1f8a3394989e07d3c84182991378c9db37a2ab49f91371568ed3624",
+      "targetSha256": "ed57df42d2f004f922616191b4ca3f9c18b9acaccc4a05b11a71c21392396717",
       "sourceBytes": 5411,
-      "targetBytes": 10165
+      "targetBytes": 10276
     },
     {
       "path": "apps/server/src/video/gate-policy.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.ts",
       "sourceSha256": "eab9513a95830cb23472792957f6d6002277254360ef6d75464ac93b591c4d0c",
-      "targetSha256": "7077a9d21e1ec45075291f1d2f2df3f69b5eda98718a73dec54ad44e99cee15f",
+      "targetSha256": "67acbd661022503575f54cb44f7f67c68576f0fa19fff1450217350114ee7983",
       "sourceBytes": 15416,
-      "targetBytes": 24936
+      "targetBytes": 17820
     },
     {
       "path": "apps/server/src/video/marketing-authority.test.ts",
@@ -215,5 +215,5 @@
       "targetBytes": 79572
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:15:51.734255+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:00:26.958166+00:00"
 }

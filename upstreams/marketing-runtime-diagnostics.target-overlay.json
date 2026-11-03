@@ -28,16 +28,16 @@
       "path": "apps/server/src/video/gate-policy.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.test.ts",
       "previousTargetSha256": "b1645d72c9990cd758892684cb2f6f6d30f6e9ae9c31450955ef32d25ff3fcd3",
-      "targetSha256": "506205ee754f50718b7ca4fdcef128d4ec4cf58490a69b0ce308f9aaf8220224",
-      "targetBytes": 6620,
+      "targetSha256": "ed57df42d2f004f922616191b4ca3f9c18b9acaccc4a05b11a71c21392396717",
+      "targetBytes": 10276,
       "targetMode": "100644"
     },
     {
       "path": "apps/server/src/video/gate-policy.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.ts",
       "previousTargetSha256": "eab9513a95830cb23472792957f6d6002277254360ef6d75464ac93b591c4d0c",
-      "targetSha256": "61dc403dbf1ad3986fdf1b38c7f25afaf6e0f568e4c4afa692639f4cc252335b",
-      "targetBytes": 16291,
+      "targetSha256": "67acbd661022503575f54cb44f7f67c68576f0fa19fff1450217350114ee7983",
+      "targetBytes": 17820,
       "targetMode": "100644"
     },
     {
@@ -273,5 +273,5 @@
       "targetMode": "100644"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:00:26.958166+00:00"
 }
