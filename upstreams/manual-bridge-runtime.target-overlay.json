@@ -88,8 +88,8 @@
     {
       "path": "pengmanager-capabilities.json",
       "targetPath": "engines/video-edit/pengmanager-capabilities.json",
-      "targetSha256": "3133cdbc1dcb3e9446e64283ab69101f50633496f6818bed62ce39481659940a",
-      "targetBytes": 1067383
+      "targetSha256": "a74d9cac8d674e93183594c116735b727f1a0bf0a3b68d2d39eb81d34212a0cb",
+      "targetBytes": 1085144
     },
     {
       "path": "apps/server/src/video/manual-bridge-router.test.ts",
@@ -110,5 +110,5 @@
       "targetBytes": 17391
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
 }

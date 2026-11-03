@@ -8,6 +8,7 @@ export function withoutInstallationCredentials(environment) {
 }
 
 export function nativeEnvironment(config, privateState, urls, desktopKey, toolEnvironment = {}) {
+    const textModel = textModelReadiness(config.env);
     const base = { ...withoutInstallationCredentials(config.env), ...urls,
       NODE_ENV:'production', SERVER_HOST:'127.0.0.1', SERVER_PORT:String(config.ports.backend), WEB_PORT:String(config.ports.web),
       JWT_SECRET:privateState.credentials.jwt, JWT_ISSUER:'pengmanager-video', PII_SALT:privateState.credentials.pii,
@@ -32,9 +33,15 @@ export function nativeEnvironment(config, privateState, urls, desktopKey, toolEn
       WORKLOOM_BGM_ALLOWED_ROOTS:[config.dataRoot,config.engineRoot].join(path.delimiter),
       WORKLOOM_SUBTITLE_ALLOWED_ROOTS:[config.dataRoot,config.engineRoot].join(path.delimiter),
       PATH:[path.dirname(config.node),config.env.PATH||''].join(path.delimiter),
-      LLM_PROVIDER:textModelReadiness(config.env).provider,
+      LLM_PROVIDER:textModel.provider,
       VOLCENGINE_ARK_API_KEY:String(config.env.VOLCENGINE_ARK_API_KEY||'').trim()||String(config.env.ARK_API_KEY||'').trim(),
     };
+    if(textModel.configured){
+      // Native onboarding and request verification read the canonical process variables.
+      base.LLM_BASE_URL=config.env.LLM_BASE_URL||config.env.DEEPSEEK_BASE_URL;
+      base.LLM_API_KEY=config.env.LLM_API_KEY||config.env.DEEPSEEK_API_KEY;
+      base.LLM_MODEL=textModel.model;
+    }
     for(const [key,value]of Object.entries(toolEnvironment)){
       if(['WORKLOOM_UI_RELEASE_READ_TOKEN','CNB_UI_RELEASE_TOKEN'].includes(key))throw new VideoRuntimeError('TOOL_ENV_INVALID','Installation release credentials cannot be supplied to the native runtime.');
       if(/^(DATABASE|JWT_|APP_DB_|GATEWAY_DB_|SERVER_|BUNDLES_ROOT$|HR_(?:WORK_DIR|CHARACTER_LIBRARY|PRODUCT_LIBRARY|PORTRAIT_REUSE_MANIFEST)$|WORKLOOM_(?:DESKTOP_|RENDER_|DELIVERY_|AUDIO_STEM_SIGNING_SECRET$|CLOUD_SYNC$|SCHEDULER_MS$|STARTUP_THREAD_RESUME$|ENV_PERSIST_MODE$|DECLARED_SKILLS_REQUIRED$|PRESERVE_SHADOWED_ROLES$)|MEDIA_SIGNING_SECRET$|PII_SALT$|ARCHIVE_AUTO_RESUME$|SKILL_DIST_|LLM_|DEEPSEEK_|VOLCENGINE_|ARK_|PIPELINE_|VM_CREATIVE_)/.test(key))throw new VideoRuntimeError('TOOL_ENV_INVALID','Tool setup attempted to replace native identity, database or authorization controls.');

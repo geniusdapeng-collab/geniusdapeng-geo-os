@@ -239,7 +239,7 @@ async function assertInvalidPasswordRejected({ Client, config, user, database })
   if (accepted) throw new Error(`数据库认证围栏未生效：${user} 的错误凭据被接受`);
 }
 
-export async function bootstrapDatabase({ Client, env = process.env }) {
+export async function bootstrapDatabase({ Client, env = process.env, log = console.log }) {
   if (typeof Client !== "function") throw new Error("pg Client 不可用");
   const config = readDesktopDatabaseConfig(env);
   const candidatePasswords = config.mode !== "verify"
@@ -255,7 +255,7 @@ export async function bootstrapDatabase({ Client, env = process.env }) {
   const { client: admin, identity } = adminConnection;
   if (config.mode === "inspect") {
     await admin.end().catch(() => undefined);
-    console.log(`workloom-db-identity ${JSON.stringify(identity)}`);
+    log(`workloom-db-identity ${JSON.stringify(identity)}`);
     return identity;
   }
   try {
@@ -268,7 +268,7 @@ export async function bootstrapDatabase({ Client, env = process.env }) {
       const result = await admin.query("SELECT 1 FROM pg_database WHERE datname = 'workloom'");
       if (result.rowCount === 0) {
         await admin.query("CREATE DATABASE workloom");
-        console.log("✓ database workloom created");
+        log("✓ database workloom created");
       }
     } else {
       await assertScramConfiguration(admin);
@@ -316,7 +316,7 @@ export async function bootstrapDatabase({ Client, env = process.env }) {
     await assertInvalidPasswordRejected({ Client, config, user: "workloom_app", database: "workloom" });
     await assertInvalidPasswordRejected({ Client, config, user: "workloom_gateway", database: "workloom" });
   }
-  console.log(config.mode === "prepare" ? "bootstrap-db prepare ok" : "bootstrap-db verify ok");
+  log(config.mode === "prepare" ? "bootstrap-db prepare ok" : "bootstrap-db verify ok");
   return identity;
 }
 

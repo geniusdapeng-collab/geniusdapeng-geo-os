@@ -4,6 +4,14 @@
 
 ## 安装与启动
 
+从 GitHub 首次接入 Codex 或其他本机 Agent，先按[视频快速接入指南](CODEX-VIDEO-QUICKSTART.md)配置并运行预检。仅使用无界面的核心运行时，可以独立完成固定依赖、行业合约和私有工作区的准备：
+
+```sh
+node scripts/video-setup.mjs --core-only --install --postgres-root /absolute/postgresql-17-prefix
+```
+
+此入口在安装后返回 doctor 结果，无需启动 Web 工作台或安装可选媒体工位，也不会请求模型供应商。使用工作台或某项后期能力时，按对应路径完成构建或工具准备。
+
 要求 Node.js 24 或以上。内置引擎有自己的完整 workspace 和锁文件；安装、构建使用它的 `packageManager` 精确版本，根仓的包管理器版本不代替该版本。`PENGMANAGER_PNPM_BIN` 可以指定相应 pnpm 可执行文件或 JavaScript 入口，运行时会先核对版本。
 
 固定 UI 包从生产者的[官方公开 release](https://github.com/geniusdapeng-collab/workloom-im/releases/tag/ui-v0.1.19)下载，无需额外发布凭据。下载器核对固定 release、制品身份、大小、SHA-256 和 SRI，再预热本实例自己的私有依赖 store，按原始锁文件离线安装。历史 canonical 锁身份和原包字节不变；临时下载传输不会改写包版本、锁文件或 CAFS 身份。发布凭据不传给 pnpm、构建、工具或视频后端；安装期间只在内存中处理原包，不写入或上传仓库。显式 legacy CNB 下载接口仅用于兼容和边界回归，不是当前默认安装路径。
@@ -46,7 +54,7 @@ macOS 默认私有目录为 `~/Library/Application Support/PengManager/video-run
 - `WORKLOOM_PRESERVE_SHADOWED_ROLES=1` 保留 97 个原兼容岗位键，并把 4 个同名岗位各自保留为 `bundle--preset` 别名，共 101 个独立岗位。别名保留原岗位正文、工具、技能、风险和重试声明，来源可追溯。
 - `WORKLOOM_DECLARED_SKILLS_REQUIRED=1` 要求岗位引用的技能有当前安装版本和非空正文，规划执行使用实际已安装技能内容；缺失或版本不符时拒绝继续。
 
-原生初始化安装 108 个包内技能和 12 个官方技能，共 120 个。完整目录另列出 3 个可选 registry 技能，其代码随仓分发，依赖、签名和安装状态单独显示。目录中的 334 个工具声明与 80 项能力是可核验的源码目录信息，各工具的运行依赖与实际产出由相应回执说明。
+当前原生初始化安装 109 个包内技能和 12 个官方技能。完整目录另列出 3 个可选 registry 技能，其代码随仓分发，依赖、签名和安装状态单独显示。以当前构建生成的目录和初始化回执为准；工具声明与能力目录只记录源码，运行依赖与实际产出分别核验。
 
 ## 模型设置与审批
 

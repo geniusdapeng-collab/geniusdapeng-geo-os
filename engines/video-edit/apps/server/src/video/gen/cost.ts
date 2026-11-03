@@ -69,17 +69,17 @@ export interface CapCheck {
   estCny: number | null;
   caps: CostCaps;
   reason?: string;
-  /** 放行但有保留（例：模型未核价，预估按 0 计可能低估） */
-  warning?: string;
 }
 
-/** 上限闸：预估金额 + 已花 > 上限 → 拒绝（预估缺失时只按已花判断，并在 reason 里说明） */
+/** 上限闸预检；启用上限时要求当前报价。持久预占在派发事务内复核。 */
 export function checkCostCaps(args: {
   spentDayCny: number; spentMonthCny: number; estCny: number | null; caps: CostCaps;
 }): CapCheck {
   const { spentDayCny, spentMonthCny, estCny, caps } = args;
-  const capsConfigured = caps.monthlyCapCny !== null || caps.dailyCapCny !== null;
-  const missingPrice = "该模型未核价：预估按 0 计，可能低估，请以供应商账单为准";
+  if (estCny === null && (caps.monthlyCapCny !== null || caps.dailyCapCny !== null)) {
+    return { allowed: false, spentDayCny, spentMonthCny, estCny, caps,
+      reason: "已设置渲染成本上限，当前供应商报价未核实" };
+  }
   const overMonth = caps.monthlyCapCny !== null && spentMonthCny + (estCny ?? 0) > caps.monthlyCapCny;
   const overDay = caps.dailyCapCny !== null && spentDayCny + (estCny ?? 0) > caps.dailyCapCny;
   if (overMonth || overDay) {
@@ -88,12 +88,11 @@ export function checkCostCaps(args: {
       : `今日渲染成本将达 ¥${(spentDayCny + (estCny ?? 0)).toFixed(2)}，超过上限 ¥${caps.dailyCapCny!.toFixed(2)}`;
     return {
       allowed: false, spentDayCny, spentMonthCny, estCny, caps,
-      reason: `${which}${estCny === null ? `（${missingPrice}）` : ""}——请调高 VIDEO_MONTHLY_CAP_CNY / VIDEO_DAILY_CAP_CNY，或改用低成本档位`,
+      reason: `${which}——请调高 VIDEO_MONTHLY_CAP_CNY / VIDEO_DAILY_CAP_CNY，或改用低成本档位`,
     };
   }
   return {
     allowed: true, spentDayCny, spentMonthCny, estCny, caps,
-    ...(capsConfigured && estCny === null ? { warning: missingPrice } : {}),
   };
 }
 

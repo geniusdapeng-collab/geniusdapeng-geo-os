@@ -1,0 +1,195 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1103-0003",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T14:06:39.052754+00:00",
+  "scope": "PengManager native production preflight, exact visual qualification and clean Agent setup; embedded upstream pin unchanged.",
+  "sourceOverlayCount": 16,
+  "files": [
+    {
+      "path": "apps/server/src/video/gen/cost.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gen/cost.ts",
+      "targetSha256": "3921d77ce13ed610eb1efc679d489762b5534ba05c130ffaa2231588f19d9ffa",
+      "targetBytes": 6339,
+      "evidence": "B",
+      "sourceSha256": "917f72908053925e579d939f34b51d693ab24d6c3280fe98083ef97846f5f930",
+      "sourceBytes": 6446
+    },
+    {
+      "path": "apps/server/src/video/gen/gen.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gen/gen.test.ts",
+      "targetSha256": "adedb81cec8ff3bef5bf1abbee7013bf2498aaf60be1d26ab00247ab04f4c449",
+      "targetBytes": 25154,
+      "evidence": "B",
+      "sourceSha256": "019aaa100c949e6f349d66e90268830272cdc49dd8750f427126409e69e2872f",
+      "sourceBytes": 23721
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
+      "targetBytes": 42753,
+      "evidence": "B",
+      "sourceSha256": "1896554a3d7b320fa68792b76b52aef5d8374656ff01cfeb15fcaf08391a17cc",
+      "sourceBytes": 38616
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
+      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
+      "targetBytes": 48383,
+      "evidence": "B",
+      "sourceSha256": "e3cb6c7ed60b6c29d1f182104532c0176fda9a3b86accaa45bc6e389b87202a3",
+      "sourceBytes": 42833
+    },
+    {
+      "path": "apps/server/src/video/portrait-reuse-acceptance.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/portrait-reuse-acceptance.ts",
+      "targetSha256": "c61a48c2ce520ebb2712da2c33ae65bd16f4cb6daf0361471df982974e63e317",
+      "targetBytes": 11668,
+      "evidence": "B",
+      "sourceSha256": "8fa14135482958ea46c153644195a34b7fe758c14a9317534fafe500cac1ed13",
+      "sourceBytes": 11497
+    },
+    {
+      "path": "apps/server/src/video/production-authority.pg.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/production-authority.pg.test.ts",
+      "targetSha256": "9a2a349f27211b4f9e2a733336b844b157e44f9ca2505854efa1a5147ba6cca6",
+      "targetBytes": 58251,
+      "evidence": "B",
+      "sourceSha256": "ce8b6c4963155e5fc98b07103c631c110ea1df8e478c6ae0fbd0d353cc3dff8e",
+      "sourceBytes": 23233
+    },
+    {
+      "path": "apps/server/src/video/production-authority.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/production-authority.ts",
+      "targetSha256": "32e7fbe8199d2a45a20bdd0f4e946f0594b70d8b73826e5e50ef2c1ef6dae41e",
+      "targetBytes": 58499,
+      "evidence": "B",
+      "sourceSha256": "ac7bbb5a4e7b0962a21b30e89332b997d98c03dc137c77ec1472c5e87aecbe2e",
+      "sourceBytes": 40321
+    },
+    {
+      "path": "apps/server/src/video/studio-product-references.pg.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-product-references.pg.test.ts",
+      "targetSha256": "9519dba88692bf71bfeef7a89ce77ad296cf1ebbf9a38244f640e936e2ebb8ad",
+      "targetBytes": 16421,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/studio-product-references.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-product-references.ts",
+      "targetSha256": "45b3b47d2068035719dcaed8fd50358b1f0a43c2715ecc9ca4238707fe16b1fd",
+      "targetBytes": 14300,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "targetSha256": "e50e99acae35351c3a86268097af719c273d0e531e5d0655840df033c8e7f9c0",
+      "targetBytes": 100109,
+      "evidence": "B",
+      "sourceSha256": "7d2daeecf78627f1e22f6b385b332e649da655922606626aac843a3bcadcf418",
+      "sourceBytes": 92419
+    },
+    {
+      "path": "bundles/ai-video/bundle.json",
+      "targetPath": "engines/video-edit/bundles/ai-video/bundle.json",
+      "targetSha256": "20f00798c3d887c96698fd0f9bd0101d0ab9af64d0f883be1e3b13178e0642de",
+      "targetBytes": 143389,
+      "evidence": "B",
+      "sourceSha256": "1ccefd2276959ccdc06ec6dc95a7b5c45ec14a0f94d4c30406b3b92a6bd58983",
+      "sourceBytes": 143105
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/gates.jsonl",
+      "targetPath": "engines/video-edit/bundles/ai-video/library/characters/model-01-young-rider/gates.jsonl",
+      "targetSha256": "f522137c406294b897702b5962443166e55f23e86ace0f0b5c3292c5d7b63ce9",
+      "targetBytes": 8360,
+      "evidence": "B",
+      "sourceSha256": "8a6817477c270b7b0f29e651fd311a5d6e1f5c70bdfe16539857c60124c35da8",
+      "sourceBytes": 4672,
+      "authoritySourceRepository": "geniusdapeng-collab/WorkLoom-video-edit",
+      "authoritySourceCommit": "1480df103ae4d9f66ae5d944d947f81fe0d66d15",
+      "authoritySourcePR": 109,
+      "scope": "Exact v2 archived synthetic asset-use authorization only; does not issue project approval"
+    },
+    {
+      "path": "bundles/ai-video/library/characters/model-01-young-rider/reviews/v2-owner-acceptance-2026-11-01T12-58-27-887Z.json",
+      "targetPath": "engines/video-edit/bundles/ai-video/library/characters/model-01-young-rider/reviews/v2-owner-acceptance-2026-11-01T12-58-27-887Z.json",
+      "targetSha256": "d493341455809af8517d2aa14078e48b29eda9cacf3bf8bb42f329a228918a6a",
+      "targetBytes": 4621,
+      "evidence": "B",
+      "targetOwned": true,
+      "authoritySourceRepository": "geniusdapeng-collab/WorkLoom-video-edit",
+      "authoritySourceCommit": "1480df103ae4d9f66ae5d944d947f81fe0d66d15",
+      "authoritySourcePR": 109,
+      "scope": "Exact v2 archived synthetic asset-use authorization only; does not issue project approval"
+    },
+    {
+      "path": "packages/video-studio/src/portrait-runtime.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/portrait-runtime.ts",
+      "targetSha256": "2352cd37ff9fc5af3bbecba0e92ddd900377dd0a2fa0057891b3c1d2265e0f1b",
+      "targetBytes": 49907,
+      "evidence": "B",
+      "sourceSha256": "6b3bb0d9e043390e66a781d5ec75e9ecebf29e897e3483b5c062812db4820ec0",
+      "sourceBytes": 42457
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
+      "targetSha256": "1111ed7f2a1fa1d7a817c1bffab9cd6f4c30c28351c916cc9e72ba4183b78606",
+      "targetBytes": 20784,
+      "evidence": "B",
+      "sourceSha256": "7285c2949e62d2f59dff44e57458be4df5e32d8005c2b5d9e6aec7df8cad0b78",
+      "sourceBytes": 9866
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
+      "targetSha256": "d9907ecfbbfcd9dc6396f6940bd4727c94c9099c2ac5a5701c3534f746edd40f",
+      "targetBytes": 36905,
+      "evidence": "B",
+      "sourceSha256": "42acea30e0f749e9dfab13145d2ebf15da0a86a351a29343dbe3a00374a52380",
+      "sourceBytes": 32345
+    },
+    {
+      "path": "pengmanager-capabilities.json",
+      "targetPath": "engines/video-edit/pengmanager-capabilities.json",
+      "targetSha256": "a74d9cac8d674e93183594c116735b727f1a0bf0a3b68d2d39eb81d34212a0cb",
+      "targetBytes": 1085144,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "scripts/ci/ui-auth-bootstrap.mjs",
+      "targetPath": "engines/video-edit/scripts/ci/ui-auth-bootstrap.mjs",
+      "targetSha256": "6461ba023b81168f29daa15ebaede9cd5b3ff3e53563d084eb920ade21e6b758",
+      "targetBytes": 34673,
+      "evidence": "B",
+      "sourceSha256": "a61509f99b217d13cf52b5f903c7af36a5875a11df559c9682642cef54307920",
+      "sourceBytes": 32389
+    },
+    {
+      "path": "scripts/desktop-bootstrap-db.mjs",
+      "targetPath": "engines/video-edit/scripts/desktop-bootstrap-db.mjs",
+      "targetSha256": "455c6ea6d93ee535e8e3444646025c6210aa72b7af11811bdd45905f56070f39",
+      "targetBytes": 14247,
+      "evidence": "B",
+      "sourceSha256": "a4f34d75a6eb765d72b02c714664b4eecffd600fa13ad8f881070e728ab2fc9f",
+      "sourceBytes": 14252
+    },
+    {
+      "path": "scripts/desktop-bootstrap-db.test.mjs",
+      "targetPath": "engines/video-edit/scripts/desktop-bootstrap-db.test.mjs",
+      "targetSha256": "f4f53414e5fc428c194a427f4c0080d9e8bf82156346f50b43fe98747d462005",
+      "targetBytes": 14421,
+      "evidence": "B",
+      "sourceSha256": "562a5e70ce704efce5204146284e0e944afff74c3cd2711bb172ce7995b350d1",
+      "sourceBytes": 13534
+    }
+  ]
+}

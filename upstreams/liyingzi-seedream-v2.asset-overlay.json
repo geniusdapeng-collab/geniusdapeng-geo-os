@@ -410,9 +410,10 @@
       "sourceSha256": "46263b270acb66e202503b564439735114d2a73638ea96d7dc725db7bfc2344f",
       "targetPath": "engines/video-edit/bundles/ai-video/bundle.json",
       "targetMode": "100644",
-      "targetBytes": 142775,
-      "targetSha256": "8e4aa9df488947045eb056f31691a9be12eb7d910ed22596573f04213238a325",
+      "targetBytes": 143389,
+      "targetSha256": "20f00798c3d887c96698fd0f9bd0101d0ab9af64d0f883be1e3b13178e0642de",
       "transform": "preserve-PengManager-existing-manifest-closure-and-add-exact-v2-assets"
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-03T13:43:29.647692+00:00"
 }

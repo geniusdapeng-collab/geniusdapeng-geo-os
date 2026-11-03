@@ -60,7 +60,7 @@ export function postmasterIdentity(config) {
   if (!Number.isSafeInteger(pid) || pid <= 0 || port !== config.ports.postgres || fs.realpathSync(lines[1]) !== fs.realpathSync(config.pgData)) throw new VideoRuntimeError('POSTGRES_OWNERSHIP_MISMATCH', 'PostgreSQL process metadata does not match this managed data directory and port.');
   return { pid, port };
 }
-export function createPostgresManager(config, credentialRecord, safe) {
+export function createPostgresManager(config, credentialRecord, safe = String) {
   const { Client } = requireEngineModule(config, 'pg');
   const state = credentialRecord.value;
   let started = false;
@@ -68,7 +68,7 @@ export function createPostgresManager(config, credentialRecord, safe) {
   const helperEnv = mode => ({ WORKLOOM_PG_BOOTSTRAP_MODE: mode, WORKLOOM_PG_PORT: String(config.ports.postgres), WORKLOOM_PG_ADMIN_PASSWORD: state.credentials.owner, WORKLOOM_PG_APP_PASSWORD: state.credentials.app, WORKLOOM_PG_GATEWAY_PASSWORD: state.credentials.gateway, WORKLOOM_PG_LEGACY_PASSWORDS_JSON: '[]', WORKLOOM_EXPECTED_PGDATA: config.pgData, WORKLOOM_EXPECTED_HBA_FILE: path.join(config.pgData, 'pg_hba.conf'), ...(state.cluster ? { WORKLOOM_EXPECTED_SYSTEM_IDENTIFIER: state.cluster.systemIdentifier } : {}) });
   async function inspect(mode = 'inspect') {
     const { bootstrapDatabase } = await helperPromise;
-    const identity = await bootstrapDatabase({ Client, env: helperEnv(mode) });
+    const identity = await bootstrapDatabase({ Client, env: helperEnv(mode), log: message => config.logger?.(safe(message)) });
     if (state.cluster && (state.cluster.systemIdentifier !== identity.systemIdentifier || state.cluster.dataDirectory !== identity.dataDirectory || state.cluster.port !== identity.port)) throw new VideoRuntimeError('POSTGRES_CLUSTER_CHANGED', 'The persisted PostgreSQL cluster identity changed.');
     if (!state.cluster) { state.cluster = identity; atomicJson(credentialRecord.file, state); }
     return identity;

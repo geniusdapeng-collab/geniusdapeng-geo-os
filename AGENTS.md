@@ -13,6 +13,11 @@ memory for the guide. Re-read it when these instructions or the guide change.
 If the guide is unavailable, report that missing prerequisite rather than
 guessing its authorization and receipt rules.
 
+For Codex or another local AI client producing a video, follow the
+[video setup and production quickstart](docs/CODEX-VIDEO-QUICKSTART.md) after
+the required guide. Use the registered preflight to verify local readiness
+before any paid work. A plan or configured provider is not a production receipt.
+
 Use the guide's actual distinction between administrator preparation, scoped
 HTTP Agent execution, local browser actions, and native video CLI/MCP. In
 particular, an Agent bearer token cannot create or approve content or operations.

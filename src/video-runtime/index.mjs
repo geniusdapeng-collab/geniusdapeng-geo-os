@@ -83,10 +83,10 @@ export function createVideoRuntime(options = {}) {
     if(settings.installDependencies){
       await installEngineDependencies({config,signal,safe,logger:log});
     }
-    if(settings.buildWeb){
-      await packageCommand(['-C','packages/industry-contract','build'],{signal,log:'web-build.log',timeoutMs:300000});
-      await packageCommand(['-C','apps/web','build'],{signal,log:'web-build.log',timeoutMs:300000});
+    if(settings.buildWeb||settings.buildIndustryContract){
+      await packageCommand(['-C','packages/industry-contract','build'],{signal,log:settings.buildWeb?'web-build.log':'core-build.log',timeoutMs:300000});
     }
+    if(settings.buildWeb)await packageCommand(['-C','apps/web','build'],{signal,log:'web-build.log',timeoutMs:300000});
     verifyEngine({inventoryVerified:true});
     await installPostgres(config,{sourceRoot:settings.postgresSourceRoot,signal,safe});
     assertActive(signal);pg=createPostgresManager(config,credentials,safe);dbHealth=await pg.start({signal});
@@ -95,8 +95,9 @@ export function createVideoRuntime(options = {}) {
     await runCommand(config.node,[cli,path.join(config.engineRoot,'scripts','migrate.ts')],{cwd:config.dataRoot,env,signal,safe,log:path.join(config.logs,'migrate.log'),timeoutMs:180000});
     assertActive(signal);
     await runCommand(config.node,[cli,path.join(config.rootDir,'src','video-runtime','initialize.mjs')],{cwd:config.dataRoot,env,signal,safe,log:path.join(config.logs,'workspace-init.log'),timeoutMs:180000});
-    assertActive(signal);await loadTools(signal);
+    assertActive(signal);
     if(settings.installTools===true){
+      await loadTools(signal);
       const installed=await tools.setup();
       if(!installed||!Array.isArray(installed.steps)||!Array.isArray(installed.tools))throw new VideoRuntimeError('TOOL_SETUP_INVALID','Managed tool supervisor returned an invalid installation receipt.');
       const failed=[...new Set([...installed.steps.filter(item=>!item.ok).map(item=>item.id),...installed.tools.filter(item=>!item.installed||item.missing?.length).map(item=>item.id)])];
@@ -163,6 +164,7 @@ export function createVideoRuntime(options = {}) {
         controller=new AbortController();const signal=controller.signal;
         try{
           await prepare(signal,settings);assertActive(signal);state='starting';
+          await loadTools(signal);
           toolsResult=await tools.start();assertActive(signal);
           if(!toolsResult||typeof toolsResult.environment!=='object'||!Array.isArray(toolsResult.tools)||!Array.isArray(toolsResult.missing))throw new VideoRuntimeError('TOOL_START_INVALID','Managed tool supervisor returned an invalid start receipt.');
           env=nativeEnvironment(toolsResult.environment);

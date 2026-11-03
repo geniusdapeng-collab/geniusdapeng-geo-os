@@ -29,6 +29,7 @@ import { SubmissionError } from "./gen/submission-ledger.js";
 import { reviewMarketingSupportWithRetry } from "./marketing-review-retry.js";
 
 type RecordValue = Record<string, unknown>;
+type SelectedImageSource = { productName: string; sourceUrl: string; pageUrl: string };
 export interface MarketingScope { tenantId: string; workspaceId: string; projectId: string; runId: string; attempt: number }
 interface ArchivedSource extends Omit<SourceSnapshot, "text"> { rawRef: string; textRef: string }
 interface StageFactsReport {
@@ -163,6 +164,7 @@ function citationStructureError(error: unknown): boolean {
 async function extractStageFacts(input: {
   stage: IntelStage; plan: DataMiningStagePlan; pages: SourceSnapshot[]; product: RecordValue;
   scope: MarketingScope; root: string; prefix: string; llm: ExecutorLlm;
+  selectedImageSources?: readonly SelectedImageSource[];
 }): Promise<{ facts: ValidatedStageFacts; extractions: Array<{ ref: string; sha256: string }> }> {
   const extractions: Array<{ ref: string; sha256: string }> = [];
   let correction: { previous: unknown; payload: unknown; error: string; pointers: string[] } | undefined;
@@ -173,7 +175,11 @@ async function extractStageFacts(input: {
       "citations必须恰好覆盖requiredCitationPointers，每条一次；不能出现来源元数据路径；只选择提供的quoteId，不生成或复述quote。",
     ].join("\n") + "\n" : "";
     const prompt = `${schemaExtractionContract}\n${repair}本次查询线索（不是事实）：${canonicalRenderJson(input.product)}\n当前阶段：${input.stage}\n` +
-      canonicalRenderJson({ sources: quoteIndexedSources(input.pages), plan: input.plan, payloadJsonSchema: stagePayloadJsonSchema(input.stage) });
+      canonicalRenderJson({ sources: quoteIndexedSources(input.pages), plan: input.plan, payloadJsonSchema: stagePayloadJsonSchema(input.stage),
+        ...(input.selectedImageSources?.length ? { selectedImages: {
+          instruction: "从已保存实际来源核对下列本次已选商品图片。逐项保留原始 sourceUrl 与 pageUrl 到 A1 images；若与商品不符则不得列入。",
+          items: input.selectedImageSources.map(({ sourceUrl, pageUrl }) => ({ sourceUrl, pageUrl }))
+        } } : {}) });
     if (prompt.length > 90_000) fail("MARKETING_REVIEW_TOO_LARGE", "完整来源或纠错上下文超单次提取预算，禁止裁剪后声称核实");
     const result = await input.llm.reason(prompt, { forceJson: true, temperature: 0, maxTokens: 16384, thinking: { type: "disabled" } });
     let parsed: unknown, boundExtraction: ReturnType<typeof extractionSchema.parse> | undefined;
@@ -306,6 +312,8 @@ export function toJennyMarketingRaw(
 export async function prepareMarketingFacts(input: {
   scope: MarketingScope; root: string; metadata: RecordValue; intent: string; llm: ExecutorLlm; env?: NodeJS.ProcessEnv;
   searchCacheFile?: string;
+  /** Supplied by the host only after its exact owner/registered-media precheck. */
+  selectedImageSources?: readonly SelectedImageSource[];
   dependencies?: { search?: SearchFn; fetchSource?: typeof fetchMarketingSource; review?: typeof reviewStage };
 }): Promise<PreparedMarketingFacts> {
   const env = input.env ?? process.env;
@@ -316,6 +324,8 @@ export async function prepareMarketingFacts(input: {
   if (!Number.isInteger(scope.attempt) || scope.attempt < 1) fail("MARKETING_SCOPE_INVALID", "来源执行编号非法");
   const root = await realpath(input.root), prefix = `stages/preproduction/attempt-${scope.attempt}.marketing`;
   const storeRoot = path.join(root, `${prefix}-dossier`), product = productInput(metadata), collector = engine(storeRoot);
+  const selectedImages = input.selectedImageSources ?? [];
+  if (selectedImages.some(item => item.productName !== product.name)) fail("PRODUCT_VISUAL_AUTHORITY_REQUIRED", "已登记图片与本次商品查询身份不一致");
   const plan = collector.plan(product);
   const reports: StageFactsReport[] = [], sources: ArchivedSource[] = [];
   const cache = new Map<string, SourceSnapshot>();
@@ -325,15 +335,16 @@ export async function prepareMarketingFacts(input: {
     searchCacheFile: input.searchCacheFile,
     evidenceCollector: async (stage, stagePlan, hits: SearchHit[]) => {
       const pages: SourceSnapshot[] = [], failures: Array<{ url: string; reason: string }> = [];
-      const candidates = [...new Map(hits.map(hit => [hit.url, hit])).values()]; let attempted = 0;
-      for (const hit of candidates.slice(0, 6)) {
+      const currentImages = stage === "A1" ? selectedImages : [];
+      const candidates = [...new Set([...currentImages.map(item => item.pageUrl), ...hits.map(hit => hit.url)])]; let attempted = 0;
+      for (const url of candidates.slice(0, 6)) {
         if (pages.length === 3) break;
         attempted++;
-        let snapshot = cache.get(hit.url);
+        let snapshot = cache.get(url);
         if (!snapshot) {
           let result: Awaited<ReturnType<typeof fetchMarketingSource>>;
-          try { result = await sourceFetch(hit.url); }
-          catch (error) { failures.push({ url: hit.url, reason: error instanceof Error ? error.message : String(error) }); continue; }
+          try { result = await sourceFetch(url); }
+          catch (error) { failures.push({ url, reason: error instanceof Error ? error.message : String(error) }); continue; }
           snapshot = result.snapshot;
           // 网络不可用可换候选；证据写盘失败必须终止，不能伪装成来源不可用继续。
           if (!sources.some(source => source.sourceId === snapshot!.sourceId)) {
@@ -342,7 +353,7 @@ export async function prepareMarketingFacts(input: {
             const { text: _text, ...stored } = snapshot;
             sources.push({ ...stored, rawRef: raw.ref, textRef: text.ref });
           }
-          cache.set(hit.url, snapshot);
+          cache.set(url, snapshot);
         }
         if (!pages.some(page => page.sourceId === snapshot!.sourceId)) pages.push(snapshot);
       }
@@ -359,7 +370,17 @@ export async function prepareMarketingFacts(input: {
         const facts = validateStageFacts(stage, { payload, citations: [], noEvidenceReason: "本次未取得可核实正文；不能生产用户口碑、评分、对比或竞品主张" }, []);
         reports.push({ stage, facts, sourceIds: [], discovery }); return facts.payload;
       }
-      const { facts, extractions } = await extractStageFacts({ stage, plan: stagePlan, pages, product, scope, root, prefix, llm: input.llm });
+      if (currentImages.some(item => !pages.some(page => (page.requestedUrl === item.pageUrl || page.finalUrl === item.pageUrl)
+        && page.assetUrls.includes(item.sourceUrl)))) {
+        fail("PRODUCT_VISUAL_AUTHORITY_REQUIRED", "本次实际来源网页未包含已登记商品图片的精确地址");
+      }
+      const { facts, extractions } = await extractStageFacts({ stage, plan: stagePlan, pages, product, scope, root, prefix,
+        llm: input.llm, selectedImageSources: currentImages });
+      const acceptedImages = Array.isArray(facts.payload.images) ? facts.payload.images : [];
+      if (currentImages.some(item => !acceptedImages.some(image => {
+        const fact = object(image, "商品图片");
+        return fact.url === item.sourceUrl && fact.page_url === item.pageUrl;
+      }))) fail("PRODUCT_VISUAL_AUTHORITY_REQUIRED", "本次 A1 未接受全部已登记商品图片");
       if (!requiresMarketingSupportReview(facts)) {
         // Empty stations have no claims to semantically review. Persist the
         // actual empty payload and source lineage; do not ask a reviewer to

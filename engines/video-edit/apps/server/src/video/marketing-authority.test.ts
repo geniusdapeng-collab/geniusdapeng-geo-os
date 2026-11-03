@@ -65,10 +65,12 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
   syntheticTokenCharge?: number;
   absoluteSellingPoint?: boolean;
   conflictingBrand?: string;
+  selectedImageUrl?: string;
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
   const imageMetadata = options.imageMetadata ?? (!options.noImages && !options.imageExtras ? "minimal" : undefined);
   return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: options.intent ?? "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
+    ...(options.selectedImageUrl ? { selectedImageSources: [{ productName: "星野 F3", pageUrl: sourceUrl, sourceUrl: options.selectedImageUrl }] } : {}),
     llm: { reason: async (prompt, llmOptions) => {
       extractionOptions.push(llmOptions);
       extractionCalls.push(prompt); if (options.modelFailure) return { success: false, error: "LLM unavailable" };
@@ -108,6 +110,20 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
     } });
 }
 const shots = [{ shotId: "S1", prompt: "窗边展示星野 F3 风扇，字幕说明风量 9 档。", fields: { 场景: "窗边", 产品: "星野 F3", 规格: "9 档" } }];
+
+it("uses the actual owner-selected A1 page when search returns no hits and retains the exact accepted image pair", async () => {
+  const image = sourceUrl + "/hero.png";
+  const result = await prepare({ noSearch: true, selectedImageUrl: image });
+  expect(extractProductVisualAuthority(result.g1Content).images).toEqual([{
+    url: image, pageUrl: sourceUrl, angle: "unknown", licenseRisk: "high",
+  }]);
+  expect(extractionCalls[0]).toContain('"selectedImages"');
+});
+
+it("fails before extraction when the owner-selected image URL is absent from the actual A1 page", async () => {
+  await expect(prepare({ noSearch: true, selectedImageUrl: sourceUrl + "/other.png" })).rejects.toThrow("实际来源网页未包含");
+  expect(extractionCalls).toHaveLength(0);
+});
 describe("营销事实宿主完整执行", () => {
   it("支持审核只读取文本事实，旧档案中的图片角度 claim 不进入审核事实包", () => {
     const facts = {

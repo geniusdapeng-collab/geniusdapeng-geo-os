@@ -98,8 +98,8 @@
       "sourceGitBlob": "117542d2fd0e43829cba72f9e6246f315b3d9aa4",
       "targetPath": "engines/video-edit/bundles/ai-video/bundle.json",
       "targetMode": "100644",
-      "targetSha256": "1e14264c643983da8b10a89b70dc0f759cf1dbd3ddae0829f83236465e12be7b",
-      "targetBytes": 142775,
+      "targetSha256": "20f00798c3d887c96698fd0f9bd0101d0ab9af64d0f883be1e3b13178e0642de",
+      "targetBytes": 143389,
       "transform": "preserve-PM-manifest-and642-assets-update-exact-two-subtitle-digests-and-canonical"
     },
     {
@@ -199,5 +199,6 @@
       "README.md",
       "docs/AI-AGENT-GUIDE.md"
     ]
-  }
+  },
+  "targetDigestsRefreshedAt": "2026-11-03T13:43:29.647692+00:00"
 }

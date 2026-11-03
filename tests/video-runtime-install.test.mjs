@@ -5,7 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
 import {fileURLToPath} from 'node:url';
-import {downloadPinnedArchive,runProcess,childEnvironment} from '../engines/video-edit/scripts/ci/ui-auth-bootstrap.mjs';
+import {PIN,downloadPinnedArchive,runProcess,childEnvironment} from '../engines/video-edit/scripts/ci/ui-auth-bootstrap.mjs';
+import {OFFICIAL_UI} from '../engines/video-edit/scripts/ci/ui-public-release.mjs';
 import {installEngineDependencies,packageManagerInvocation} from '../src/video-runtime/install.mjs';
 import {withoutInstallationCredentials} from '../src/video-runtime/environment.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -23,6 +24,23 @@ test('installation credentials are downloader-only and excluded from operation a
   assert.deepEqual(withoutInstallationCredentials(env),{PATH:env.PATH,HOME:env.HOME,LLM_API_KEY:env.LLM_API_KEY,GITHUB_TOKEN:env.GITHUB_TOKEN});
   assert.deepEqual(childEnvironment(env),{PATH:env.PATH,HOME:env.HOME,CI:'true'});
   assert.deepEqual(packageManagerInvocation({node:process.execPath,env:{PENGMANAGER_PNPM_BIN:'/explicit/pnpm.cjs'}}),{command:process.execPath,prefix:['/explicit/pnpm.cjs']});
+});
+test('runtime installer rejects a mutable producer release before downloading or launching pnpm',async t=>{
+  const base=fs.mkdtempSync(path.join(os.tmpdir(),'pengmanager-install-proof-'));
+  t.after(()=>fs.rmSync(base,{recursive:true,force:true}));
+  const requested=[];
+  t.mock.method(globalThis,'fetch',async (url,options)=>{
+    requested.push({url:String(url),authorization:new Headers(options.headers).has('authorization')});
+    if(String(url)!==PIN.releaseUrl)return new Response('',{status:403});
+    return Response.json({id:PIN.releaseId,tag_name:PIN.tag,draft:false,prerelease:false,immutable:false,
+      url:OFFICIAL_UI.releaseIdentityUrl,html_url:OFFICIAL_UI.releasePage,target_commitish:OFFICIAL_UI.sourceCommit,
+      assets:[{name:PIN.assetName,id:PIN.assetId,state:'uploaded',size:PIN.bytes,digest:'sha256:'+PIN.sha256,browser_download_url:PIN.canonicalUrl,url:PIN.apiUrl}]});
+  });
+  await assert.rejects(installEngineDependencies({config:{env:{WORKLOOM_UI_RELEASE_READ_TOKEN:'test-only-release'},
+    node:process.execPath,engineRoot:path.join(root,'engines/video-edit'),dataRoot:base}}),
+  error=>error.code==='ENGINE_DEPENDENCY_INSTALL_FAILED'&&error.message.includes('UI_PUBLIC_RELEASE_IDENTITY'));
+  assert.deepEqual(requested,[{url:PIN.releaseUrl,authorization:false}]);
+  assert.equal(fs.existsSync(path.join(base,'dependency-install-receipt.json')),false);
 });
 test('an already cancelled authenticated download makes no network request',async()=>{
   const controller=new AbortController();controller.abort();let calls=0;

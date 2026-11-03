@@ -3,8 +3,8 @@
   "generatedAt": "2026-10-24",
   "source": {
     "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
-    "pin": "c0aca4a62a1d53fd4eccab7865668b7250c22ebc",
-    "tree": "006fc470b6c911f5cc89daccbf3d16ebbe51c208"
+    "pin": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+    "tree": "2f1a5835d4363496efd692fd4434506e28254e70"
   },
   "evidenceNotice": "B级完整声明/源码引用目录；发现、已接线、依赖就绪和真实产出分开记录。目录导入不等于模型调用或经营完成。",
   "bundles": [
@@ -77,6 +77,7 @@
           "skills/bgm-library-license/SKILL.md",
           "skills/bgm-score-design/SKILL.md",
           "skills/bgm-vocal-separation/SKILL.md",
+          "skills/bullet-time-shotcraft/SKILL.md",
           "skills/caption-burnin-ops/SKILL.md",
           "skills/cinematography-kb/SKILL.md",
           "skills/color-delivery-spec/SKILL.md",
@@ -110,6 +111,7 @@
           "skills/post-quality-inspection/SKILL.md"
         ],
         "schemas": [
+          "schemas/bullet-time-effect.schema.json",
           "schemas/objects.json",
           "schemas/stages.json"
         ],
@@ -127,8 +129,10 @@
           "pipelines/explainer-film.yml"
         ],
         "library": [
-          "library/account-profiles/chen-zhuo.yml",
+          "library/README.md",
           "library/account-profiles/README.md",
+          "library/account-profiles/chen-zhuo.yml",
+          "library/bgm-library-curated/README.md",
           "library/bgm-library-curated/acoustic-warm-ghostrifter-official-zeal-456.m4a",
           "library/bgm-library-curated/acoustic-warm-john-bartmann-a-kwela-fella-461.m4a",
           "library/bgm-library-curated/acoustic-warm-liqwyd-shine-552.m4a",
@@ -171,7 +175,6 @@
           "library/bgm-library-curated/modern-pop-keys-of-moon-the-success-633.m4a",
           "library/bgm-library-curated/modern-pop-salvation-inspiring-uplifting-orchestra-617.m4a",
           "library/bgm-library-curated/modern-pop-scott-buckley-soar-640.m4a",
-          "library/bgm-library-curated/README.md",
           "library/bgm-library-curated/sports-hype-crusaders-approaching-104.m4a",
           "library/bgm-library-curated/sports-hype-luke-bergs-tropical-soulmp3-496.m4a",
           "library/bgm-library-curated/sports-hype-red-convertible-35.m4a",
@@ -185,7 +188,6 @@
           "library/bgm-library/README.md",
           "library/bgm-library/tracks.example.json",
           "library/bgm-recipes/recipes.json",
-          "library/characters/model-01-chen-zhuo/gates.jsonl",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-actionPose.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-back.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-closeup.png",
@@ -195,12 +197,8 @@
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-side.png",
           "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-threeQuarter.png",
           "library/characters/model-01-chen-zhuo/profile.json",
-          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-22-40-535Z.json",
-          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-23-24-545Z.json",
-          "library/characters/model-01-chen-zhuo/reviews/v3-2026-09-24T16-42-00-544Z.json",
           "library/characters/model-01-young-rider/gates.jsonl",
           "library/characters/model-01-young-rider/portrait-sets/v1.json",
-          "library/characters/model-01-young-rider/portrait-sets/v2.json",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-actionPose.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-back.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-closeup.png",
@@ -209,35 +207,10 @@
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-handDetail.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-side.png",
           "library/characters/model-01-young-rider/portraits/v1/young-rider-01-threeQuarter.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-actionPose.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-back.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-closeup.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-emotionCloseup.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-handDetail.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-side.png",
-          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-threeQuarter.png",
           "library/characters/model-01-young-rider/profile.json",
           "library/characters/model-01-young-rider/provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2.json",
-          "library/characters/model-01-young-rider/provenance/v2/actionPose.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/actionPose.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/back.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/back.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/closeup.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/closeup.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/front.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/front.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/handDetail.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/side.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/side.provenance.json",
-          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json",
-          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json",
-          "library/characters/model-01-young-rider/README.md",
           "library/characters/model-01-young-rider/reviews/v1-owner-acceptance-2026-10-24T05-46-51-679Z.json",
+          "library/characters/model-01-young-rider/reviews/v2-owner-acceptance-2026-11-01T12-58-27-887Z.json",
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-actionPose.jpg",
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-back.jpg",
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-closeup.jpg",
@@ -248,20 +221,8 @@
           "library/characters/model-02-lin-yu-an/portraits/v1/林予安-threeQuarter.jpg",
           "library/characters/model-02-lin-yu-an/profile.json",
           "library/characters/model-02-lin-yu-an/provenance.json",
-          "library/characters/nc-commuter-metro/portraits/portrait.png",
-          "library/characters/nc-commuter-metro/profile.json",
-          "library/characters/nc-elder-taichi/portraits/portrait.png",
-          "library/characters/nc-elder-taichi/profile.json",
-          "library/characters/nc-vendor-noodle/portraits/portrait.png",
-          "library/characters/nc-vendor-noodle/profile.json",
-          "library/characters/nc-vendor-soup/portraits/portrait.png",
-          "library/characters/nc-vendor-soup/profile.json",
-          "library/characters/nc-visitor-tower/portraits/portrait.png",
-          "library/characters/nc-visitor-tower/profile.json",
-          "library/characters/README.md",
           "library/characters/registry.json",
           "library/color-recipes/recipes.json",
-          "library/cover-kb/_INDEX.md",
           "library/cover-kb/ACCT-001-账号定位到视觉锤.md",
           "library/cover-kb/ACCT-002-系列化与主页拼图.md",
           "library/cover-kb/CRAFT-001-封面构图与视觉层次.md",
@@ -276,12 +237,14 @@
           "library/cover-kb/PLAT-006-海外平台封面规范.md",
           "library/cover-kb/THEME-001-题材到版式映射.md",
           "library/cover-kb/THEME-002-题材到配色与字体映射.md",
-          "library/font-catalog/font_db.json",
+          "library/cover-kb/_INDEX.md",
           "library/font-catalog/LICENSES.md",
           "library/font-catalog/README.md",
+          "library/font-catalog/font_db.json",
+          "library/fonts/LICENSES.md",
+          "library/fonts/cn/LXGWWenKai-Regular.ttf",
           "library/fonts/cn/LiuJianMaoCao-Regular.ttf",
           "library/fonts/cn/LongCang-Regular.ttf",
-          "library/fonts/cn/LXGWWenKai-Regular.ttf",
           "library/fonts/cn/MaShanZheng-Regular.ttf",
           "library/fonts/cn/NotoSansSC-Variable.ttf",
           "library/fonts/cn/NotoSerifSC-Variable.ttf",
@@ -308,15 +271,6 @@
           "library/fonts/en/Poppins-Bold.ttf",
           "library/fonts/en/Poppins-Regular.ttf",
           "library/fonts/en/Roboto-Variable.ttf",
-          "library/fonts/LICENSE-SOURCES.json",
-          "library/fonts/LICENSES.md",
-          "library/fonts/licenses/EMBEDDED-NOTICES.txt",
-          "library/fonts/licenses/lxgw-wen-kai-OFL.txt",
-          "library/fonts/licenses/noto-sans-sc-OFL.txt",
-          "library/fonts/licenses/noto-serif-sc-OFL.txt",
-          "library/fonts/licenses/smiley-sans-OFL.txt",
-          "library/fonts/licenses/source-han-sans-OFL.txt",
-          "library/fonts/licenses/zcool-xiaowei-OFL.txt",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卡梅隆_情感手持.md",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卡梅隆_紧张手持.md",
           "library/hollywood-factory/技能系列/镜头级专项/剧情_卢卡斯_告别斯坦尼康.md",
@@ -534,6 +488,7 @@
           "library/luts/slog3-to-rec709.cube",
           "library/media-catalog/media-catalog.json",
           "library/products/README.md",
+          "library/products/zxmoto-820rr-rc/README.md",
           "library/products/zxmoto-820rr-rc/photos/01-sina-release-8.jpg",
           "library/products/zxmoto-820rr-rc/photos/02-chejiahao-1.jpg",
           "library/products/zxmoto-820rr-rc/photos/03-chejiahao-2.jpg",
@@ -543,7 +498,6 @@
           "library/products/zxmoto-820rr-rc/photos/07-rc-release-02.jpg",
           "library/products/zxmoto-820rr-rc/photos/08-rc-release-03.jpg",
           "library/products/zxmoto-820rr-rc/profile.json",
-          "library/products/zxmoto-820rr-rc/README.md",
           "library/products/zxmoto-820rr-rc/research-import.json",
           "library/products/zxmoto-820rr-rc/research/dossier.json",
           "library/products/zxmoto-820rr-rc/research/gallery-source-mapping.json",
@@ -577,24 +531,16 @@
           "library/products/zxmoto-820rr-rc/research/source-assessment.json",
           "library/products/zxmoto-820rr-rc/research/summary-cards.json",
           "library/products/zxmoto-820rr-rc/research/support-review-summary.json",
+          "library/products/zxmoto/README.md",
           "library/products/zxmoto/photos/01-sina-release-1.jpg",
           "library/products/zxmoto/photos/02-sina-release-9.jpg",
           "library/products/zxmoto/photos/03-founder-xinhua-portrait.jpg",
           "library/products/zxmoto/profile.json",
-          "library/products/zxmoto/README.md",
           "library/products/zxmoto/research-import.json",
           "library/products/zxmoto/research/dossier.json",
           "library/products/zxmoto/research/summary-cards.json",
           "library/products/zxmoto/research/support-review-summary.json",
-          "library/products/携住科技.search-report.json",
-          "library/products/携住科技/photos/01-data-op-y-d9ebc9ee-data--web2.jpg",
-          "library/products/携住科技/photos/02-data-op-y-d9ebc9ee-data--web2.jpg",
-          "library/products/携住科技/photos/03-data-op-y-d9ebc9ee-data--web2.jpg",
-          "library/products/携住科技/photos/04-data-op-y-d9ebc9ee-data--web.jpg",
-          "library/products/携住科技/profile.json",
-          "library/products/携住科技/sources.json",
-          "library/products/睿沃科技.search-report.json",
-          "library/README.md",
+          "library/scene-policies/README.md",
           "library/scene-policies/beauty-fashion.json",
           "library/scene-policies/beauty-fashion.source.md",
           "library/scene-policies/commerce-seeding.json",
@@ -609,7 +555,6 @@
           "library/scene-policies/knowledge-talking-head.source.md",
           "library/scene-policies/professional-service.json",
           "library/scene-policies/professional-service.source.md",
-          "library/scene-policies/README.md",
           "library/scene-policies/tech-review.json",
           "library/scene-policies/tech-review.source.md",
           "library/seedance-references/audio-tags.md",
@@ -648,7 +593,33 @@
           "library/templates/scene-card-template.md",
           "library/templates/shot-card-v4-template.md",
           "library/transitions/catalog.json",
-          "library/typography-recipes/recipes.json"
+          "library/typography-recipes/recipes.json",
+          "library/characters/model-01-young-rider/portrait-sets/v2.json",
+          "library/characters/model-01-young-rider/provenance/v2.json",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-threeQuarter.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-closeup.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-side.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-back.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-actionPose.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-emotionCloseup.png",
+          "library/characters/model-01-young-rider/portraits/v2/young-rider-01-handDetail.png",
+          "library/characters/model-01-young-rider/provenance/v2/front.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/front.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/closeup.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/closeup.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/side.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/side.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/back.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/back.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/actionPose.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/actionPose.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/emotionCloseup.provenance.json",
+          "library/characters/model-01-young-rider/provenance/v2/handDetail.dispatch.json",
+          "library/characters/model-01-young-rider/provenance/v2/handDetail.provenance.json"
         ],
         "segmentDefaults": [],
         "connectors": [
@@ -712,7 +683,7 @@
         "modelPolicy": "model-policy.yml",
         "evalQuestions": "eval/questions.json"
       },
-      "manifestSha256": "2a818093f2cfd53a7a6b9678fd7cbef97601ad9dd4848e78332d5a92251148c7",
+      "manifestSha256": "20f00798c3d887c96698fd0f9bd0101d0ab9af64d0f883be1e3b13178e0642de",
       "evidence": "B"
     },
     {
@@ -811,7 +782,7 @@
         "modelPolicy": "model-policy.yml",
         "evalQuestions": "eval/questions.json"
       },
-      "manifestSha256": "d13538cec70df9198ca89f441377441e891d615995cef3c12fc7557db1d1a1f4",
+      "manifestSha256": "1b373f898f3f18bdcc3f5a14a77116789a36df2c4a581fb0139fbfe6ec48da76",
       "evidence": "B"
     },
     {
@@ -2119,8 +2090,14 @@
             "step_key": "threshold-check",
             "name": "阈值检查与告警",
             "owner": "metrics-watcher",
+            "inputs": [
+              "account_metric"
+            ],
             "outputs": [
               "account_metric"
+            ],
+            "depends_on": [
+              "metrics-collect"
             ]
           },
           {
@@ -2128,8 +2105,14 @@
             "name": "早八点日报",
             "owner": "metrics-watcher",
             "cron": "0 8 * * *",
+            "inputs": [
+              "account_metric"
+            ],
             "outputs": [
               "account_metric"
+            ],
+            "depends_on": [
+              "threshold-check"
             ]
           },
           {
@@ -2145,8 +2128,14 @@
             "step_key": "comment-classify",
             "name": "评论意图分类",
             "owner": "comment-operator",
+            "inputs": [
+              "comment"
+            ],
             "outputs": [
               "comment"
+            ],
+            "depends_on": [
+              "comment-collect"
             ]
           },
           {
@@ -2154,17 +2143,45 @@
             "name": "G10 三级分流",
             "owner": "comment-operator",
             "gate": "G10",
+            "inputs": [
+              "comment"
+            ],
+            "outputs": [
+              "comment"
+            ],
+            "depends_on": [
+              "comment-classify"
+            ]
+          },
+          {
+            "step_key": "comment-dispatch",
+            "name": "按 G10 结论生成回复或转人工",
+            "owner": "comment-operator",
+            "inputs": [
+              "comment"
+            ],
             "outputs": [
               "comment_reply"
-            ]
+            ],
+            "depends_on": [
+              "g10-dispatch"
+            ],
+            "side_effect": "public"
           },
           {
             "step_key": "comment-reply",
             "name": "回复外发或转人工",
             "owner": "comment-operator",
+            "inputs": [
+              "comment_reply"
+            ],
             "outputs": [
               "comment_reply"
-            ]
+            ],
+            "depends_on": [
+              "comment-dispatch"
+            ],
+            "side_effect": "public"
           },
           {
             "step_key": "trend-scan",
@@ -2260,8 +2277,14 @@
             "name": "加投审批",
             "owner": "director",
             "gate": "G12",
+            "inputs": [
+              "ads_campaign"
+            ],
             "outputs": [
               "ads_campaign"
+            ],
+            "depends_on": [
+              "launch-bind"
             ]
           },
           {
@@ -2324,58 +2347,101 @@
             "step_key": "voice-produce",
             "name": "配音制作",
             "owner": "voice-artist",
+            "inputs": [
+              "explainer_script"
+            ],
             "outputs": [
               "voice_track"
+            ],
+            "depends_on": [
+              "script-intake"
             ]
           },
           {
             "step_key": "voice-trim",
             "name": "配音预剪（真人录音必经）",
             "owner": "voice-artist",
+            "inputs": [
+              "voice_track"
+            ],
             "outputs": [
               "voice_track",
               "cut_report"
+            ],
+            "depends_on": [
+              "voice-produce"
             ]
           },
           {
             "step_key": "align",
             "name": "字级时间戳对齐",
             "owner": "explainer-director",
+            "inputs": [
+              "voice_track"
+            ],
             "outputs": [
               "timestamps",
               "timing"
+            ],
+            "depends_on": [
+              "voice-trim"
             ]
           },
           {
             "step_key": "semantics",
             "name": "语义标注（②-1）",
             "owner": "explainer-director",
+            "inputs": [
+              "timestamps",
+              "timing"
+            ],
             "outputs": [
               "semantics"
+            ],
+            "depends_on": [
+              "align"
             ]
           },
           {
             "step_key": "shotbook",
             "name": "SHOTBOOK 分镜",
             "owner": "explainer-director",
+            "inputs": [
+              "semantics"
+            ],
             "outputs": [
               "shotbook"
+            ],
+            "depends_on": [
+              "semantics"
             ]
           },
           {
             "step_key": "assemble",
             "name": "工程装配",
             "owner": "explainer-director",
+            "inputs": [
+              "shotbook"
+            ],
             "outputs": [
               "explainer_job"
+            ],
+            "depends_on": [
+              "shotbook"
             ]
           },
           {
             "step_key": "preflight",
             "name": "素材体检（进渲染前的闸）",
             "owner": "director",
+            "inputs": [
+              "explainer_job"
+            ],
             "outputs": [
               "preflight_report"
+            ],
+            "depends_on": [
+              "assemble"
             ]
           },
           {
@@ -2383,25 +2449,59 @@
             "name": "渲染提交审批（花钱/烧算力门）",
             "owner": "director",
             "gate": "G8",
+            "inputs": [
+              "preflight_report"
+            ],
+            "outputs": [
+              "preflight_report"
+            ],
+            "depends_on": [
+              "preflight"
+            ]
+          },
+          {
+            "step_key": "render-submit",
+            "name": "提交本机分段渲染",
+            "owner": "render-operator",
+            "inputs": [
+              "preflight_report"
+            ],
             "outputs": [
               "render_job"
-            ]
+            ],
+            "depends_on": [
+              "g8-render-submit"
+            ],
+            "side_effect": "provider"
           },
           {
             "step_key": "render",
             "name": "本机分段渲染与回填",
             "owner": "render-operator",
+            "inputs": [
+              "render_job"
+            ],
             "outputs": [
               "render_job",
               "video_asset"
-            ]
+            ],
+            "depends_on": [
+              "render-submit"
+            ],
+            "side_effect": "provider"
           },
           {
             "step_key": "machine-gates",
             "name": "机器闸六条（第一重验收）",
             "owner": "review-analyst",
+            "inputs": [
+              "video_asset"
+            ],
             "outputs": [
               "qa_report"
+            ],
+            "depends_on": [
+              "render"
             ],
             "note": "静止/抖动 · 音效在场 · 音效可听 · 卡保真 · 词落点 · 评审材料抽帧拼图；任一 FAIL 不交付"
           },
@@ -2409,8 +2509,14 @@
             "step_key": "producer-review",
             "name": "制片评审（第二重验收 · 全新上下文）",
             "owner": "review-analyst",
+            "inputs": [
+              "qa_report"
+            ],
             "outputs": [
               "review_report"
+            ],
+            "depends_on": [
+              "machine-gates"
             ],
             "note": "材料 = contact_sheet 拼图 + qa_report + SHOTBOOK 可读版；rubric = 摄影八条 + 字幕安全区 + 真图硬规；P0/P1 修完才放行（≤3 轮）"
           },
@@ -2418,26 +2524,46 @@
             "step_key": "deliver",
             "name": "交付（两遍 loudnorm → 媒资库）",
             "owner": "post-editor",
+            "inputs": [
+              "review_report"
+            ],
             "outputs": [
               "final_video",
               "video_asset"
-            ]
+            ],
+            "depends_on": [
+              "producer-review"
+            ],
+            "side_effect": "local"
           },
           {
             "step_key": "revise",
             "name": "单镜返修（--changed）",
             "owner": "explainer-director",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "explainer_job",
               "final_video"
-            ]
+            ],
+            "depends_on": [
+              "deliver"
+            ],
+            "side_effect": "local"
           },
           {
             "step_key": "publish-plan",
             "name": "发布计划编排（可选）",
             "owner": "publish-operator",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "revise"
             ]
           },
           {
@@ -2445,9 +2571,30 @@
             "name": "公网发布审批（可选）",
             "owner": "director",
             "gate": "G9",
+            "inputs": [
+              "publish_task"
+            ],
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "publish-plan"
             ]
+          },
+          {
+            "step_key": "publish",
+            "name": "单目标发布与回读",
+            "owner": "publish-operator",
+            "inputs": [
+              "publish_task"
+            ],
+            "outputs": [
+              "publish_receipt"
+            ],
+            "depends_on": [
+              "g9-publish-confirm"
+            ],
+            "side_effect": "public"
           }
         ]
       }
@@ -2493,90 +2640,173 @@
             "step_key": "intel-collect",
             "name": "情报·商品信息采集",
             "owner": "intel-collector",
+            "inputs": [
+              "brief",
+              "product_query"
+            ],
             "outputs": [
               "dossier"
-            ]
+            ],
+            "depends_on": [],
+            "budget_ms": 180000
           },
           {
             "step_key": "intel-review",
             "name": "情报·评价挖掘",
             "owner": "intel-reviewer",
+            "inputs": [
+              "product_query"
+            ],
             "outputs": [
               "dossier"
-            ]
+            ],
+            "depends_on": [],
+            "budget_ms": 180000
           },
           {
             "step_key": "intel-competitor",
             "name": "情报·竞品侦察",
             "owner": "intel-competitor",
+            "inputs": [
+              "product_query"
+            ],
             "outputs": [
               "dossier"
-            ]
+            ],
+            "depends_on": [],
+            "budget_ms": 180000
           },
           {
             "step_key": "intel-verify",
             "name": "情报·交叉核验",
             "owner": "intel-verifier",
+            "inputs": [
+              "dossier"
+            ],
             "outputs": [
               "dossier"
-            ]
+            ],
+            "depends_on": [
+              "intel-collect",
+              "intel-review",
+              "intel-competitor"
+            ],
+            "repair_owner": "intel-verifier",
+            "max_repair_attempts": 2,
+            "budget_ms": 180000
           },
           {
             "step_key": "intel-bind",
             "name": "情报·档案装订",
             "owner": "intel-binder",
+            "inputs": [
+              "dossier"
+            ],
             "outputs": [
               "dossier"
-            ]
+            ],
+            "depends_on": [
+              "intel-verify"
+            ],
+            "budget_ms": 60000
           },
           {
             "step_key": "g1-dossier-confirm",
             "name": "情报档案确认",
             "owner": "director",
+            "inputs": [
+              "dossier"
+            ],
             "gate": "G1",
             "outputs": [
               "dossier"
+            ],
+            "depends_on": [
+              "intel-bind"
             ]
           },
           {
             "step_key": "creative",
             "name": "创意主题生成",
             "owner": "creative-planner",
+            "inputs": [
+              "dossier",
+              "brief"
+            ],
             "outputs": [
               "theme"
-            ]
+            ],
+            "depends_on": [
+              "g1-dossier-confirm"
+            ],
+            "repair_owner": "creative-planner",
+            "max_repair_attempts": 2,
+            "budget_ms": 180000
           },
           {
             "step_key": "g2-theme-confirm",
             "name": "主题/Brief 确认",
             "owner": "director",
+            "inputs": [
+              "theme",
+              "brief"
+            ],
             "gate": "G2",
             "outputs": [
               "theme"
+            ],
+            "depends_on": [
+              "creative"
             ]
           },
           {
             "step_key": "truth-check",
             "name": "事实红线阻断闸",
             "owner": "continuity-reviewer",
+            "inputs": [
+              "theme",
+              "dossier"
+            ],
             "outputs": [
               "review_report"
+            ],
+            "depends_on": [
+              "g2-theme-confirm"
             ]
           },
           {
             "step_key": "insight",
             "name": "业务需求对齐",
             "owner": "insight-analyst",
+            "inputs": [
+              "theme",
+              "review_report",
+              "brief"
+            ],
             "outputs": [
               "insight"
-            ]
+            ],
+            "depends_on": [
+              "truth-check"
+            ],
+            "repair_owner": "insight-analyst",
+            "max_repair_attempts": 2,
+            "budget_ms": 420000
           },
           {
             "step_key": "g3-insight-confirm",
             "name": "对齐清单确认",
             "owner": "director",
+            "inputs": [
+              "insight",
+              "theme",
+              "review_report"
+            ],
             "gate": "G3",
             "outputs": [
+              "insight"
+            ],
+            "depends_on": [
               "insight"
             ]
           },
@@ -2584,16 +2814,33 @@
             "step_key": "prd",
             "name": "PRD 编制",
             "owner": "prd-specialist",
+            "inputs": [
+              "insight",
+              "dossier",
+              "brief"
+            ],
             "outputs": [
               "prd"
-            ]
+            ],
+            "depends_on": [
+              "g3-insight-confirm"
+            ],
+            "repair_owner": "prd-specialist",
+            "max_repair_attempts": 2,
+            "budget_ms": 300000
           },
           {
             "step_key": "g4-prd-confirm",
             "name": "PRD 确认",
             "owner": "director",
+            "inputs": [
+              "prd"
+            ],
             "gate": "G4",
             "outputs": [
+              "prd"
+            ],
+            "depends_on": [
               "prd"
             ]
           },
@@ -2601,53 +2848,93 @@
             "step_key": "production",
             "name": "预生产（叙事片同构段）",
             "owner": "director",
+            "inputs": [
+              "prd",
+              "dossier",
+              "theme"
+            ],
             "outputs": [
               "prompt_package",
               "portrait_set",
               "video_project"
             ],
+            "depends_on": [
+              "g4-prd-confirm"
+            ],
+            "subgraph": "narrative-film",
             "note": "复用 narrative-film 的 script→…→g7-preproduction 步骤序列（含 G6/G5/G7 门）"
           },
           {
             "step_key": "render",
             "name": "渲染与后期（叙事片同构段）",
             "owner": "director",
+            "inputs": [
+              "video_project"
+            ],
             "outputs": [
               "final_video"
             ],
+            "depends_on": [
+              "production"
+            ],
+            "subgraph": "narrative-film",
             "note": "复用 narrative-film 的 render-script→…→archive 步骤序列（含 G8 门）"
           },
           {
             "step_key": "publish-plan",
             "name": "发布计划编排",
             "owner": "publish-operator",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "render"
             ]
           },
           {
             "step_key": "g9-publish-confirm",
             "name": "公网发布审批",
             "owner": "director",
+            "inputs": [
+              "publish_task"
+            ],
             "gate": "G9",
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "publish-plan"
             ]
           },
           {
             "step_key": "publish",
             "name": "全平台 RPA 发布",
             "owner": "publish-operator",
+            "inputs": [
+              "publish_task"
+            ],
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "g9-publish-confirm"
             ]
           },
           {
             "step_key": "watch",
             "name": "发布后监控",
             "owner": "metrics-watcher",
+            "inputs": [
+              "publish_task"
+            ],
             "outputs": [
               "account_metric"
+            ],
+            "depends_on": [
+              "publish"
             ]
           }
         ]
@@ -2694,209 +2981,414 @@
             "step_key": "script",
             "name": "剧本蓝图",
             "owner": "scriptwriter",
+            "inputs": [
+              "brief",
+              "route"
+            ],
             "outputs": [
               "script_blueprint"
-            ]
+            ],
+            "depends_on": [],
+            "repair_owner": "scriptwriter",
+            "max_repair_attempts": 2,
+            "budget_ms": 180000
           },
           {
             "step_key": "scene",
             "name": "场景设计",
             "owner": "scene-designer",
+            "inputs": [
+              "script_blueprint"
+            ],
             "outputs": [
               "scene_card"
+            ],
+            "depends_on": [
+              "script"
             ]
           },
           {
             "step_key": "opening",
             "name": "片头设计",
             "owner": "opening-designer",
+            "inputs": [
+              "scene_card"
+            ],
             "outputs": [
               "shot_card"
+            ],
+            "depends_on": [
+              "scene"
             ]
           },
           {
             "step_key": "visual",
             "name": "视觉语言设计",
             "owner": "visual-director",
+            "inputs": [
+              "shot_card"
+            ],
             "outputs": [
               "shot_card"
+            ],
+            "depends_on": [
+              "opening"
             ]
           },
           {
             "step_key": "audio",
             "name": "音频设计",
             "owner": "audio-designer",
+            "inputs": [
+              "shot_card"
+            ],
             "outputs": [
               "shot_card"
+            ],
+            "depends_on": [
+              "visual"
             ]
           },
           {
             "step_key": "continuity",
             "name": "连贯性导演评审",
             "owner": "continuity-reviewer",
+            "inputs": [
+              "shot_card"
+            ],
             "outputs": [
               "review_report"
+            ],
+            "depends_on": [
+              "audio"
             ]
           },
           {
             "step_key": "prompt-fuse",
             "name": "逐镜提示词融合",
             "owner": "prompt-fuser",
+            "inputs": [
+              "review_report",
+              "shot_card"
+            ],
             "outputs": [
               "prompt_package"
+            ],
+            "depends_on": [
+              "continuity"
             ]
           },
           {
             "step_key": "field-check",
             "name": "字段质检与修复",
             "owner": "field-inspector",
+            "inputs": [
+              "prompt_package"
+            ],
             "outputs": [
               "prompt_package"
-            ]
-          },
-          {
-            "step_key": "g6-prompt-confirm",
-            "name": "提示词审核",
-            "owner": "director",
-            "gate": "G6",
-            "outputs": [
-              "prompt_package"
+            ],
+            "depends_on": [
+              "prompt-fuse"
             ]
           },
           {
             "step_key": "micromotion",
             "name": "微动作增强",
             "owner": "micromotion-stylist",
+            "inputs": [
+              "prompt_package"
+            ],
             "outputs": [
               "prompt_package"
+            ],
+            "depends_on": [
+              "field-check"
+            ]
+          },
+          {
+            "step_key": "g6-prompt-confirm",
+            "name": "提示词审核",
+            "owner": "director",
+            "inputs": [
+              "prompt_package"
+            ],
+            "gate": "G6",
+            "outputs": [
+              "prompt_package"
+            ],
+            "depends_on": [
+              "micromotion"
             ]
           },
           {
             "step_key": "portrait",
             "name": "定妆照制作",
             "owner": "portrait-artist",
+            "inputs": [
+              "shot_card",
+              "prompt_package"
+            ],
             "outputs": [
               "portrait_set"
+            ],
+            "depends_on": [
+              "g6-prompt-confirm"
             ]
           },
           {
             "step_key": "g5-portrait-confirm",
             "name": "定妆照确认",
             "owner": "director",
+            "inputs": [
+              "portrait_set"
+            ],
             "gate": "G5",
             "outputs": [
               "portrait_set"
+            ],
+            "depends_on": [
+              "portrait"
             ]
           },
           {
             "step_key": "g7-preproduction",
             "name": "预生产最终确认",
             "owner": "director",
+            "inputs": [
+              "prompt_package",
+              "portrait_set"
+            ],
             "gate": "G7",
             "outputs": [
-              "video_project"
+              "prompt_package",
+              "portrait_set"
+            ],
+            "depends_on": [
+              "g5-portrait-confirm"
             ]
+          },
+          {
+            "step_key": "preproduction-finalize",
+            "name": "冻结预生产工程",
+            "owner": "director",
+            "inputs": [
+              "prompt_package",
+              "portrait_set"
+            ],
+            "outputs": [
+              "video_project"
+            ],
+            "depends_on": [
+              "g7-preproduction"
+            ],
+            "side_effect": "local"
           },
           {
             "step_key": "render-script",
             "name": "渲染脚本生成入 CMS",
             "owner": "render-operator",
+            "inputs": [
+              "video_project"
+            ],
             "outputs": [
               "render_script"
+            ],
+            "depends_on": [
+              "preproduction-finalize"
+            ]
+          },
+          {
+            "step_key": "material-authorize",
+            "name": "素材用途与生成方式授权",
+            "owner": "render-operator",
+            "inputs": [
+              "render_script"
+            ],
+            "gate": "G-MAT1",
+            "outputs": [
+              "render_script"
+            ],
+            "depends_on": [
+              "render-script"
             ]
           },
           {
             "step_key": "material-generate",
             "name": "真实素材 → 构建视频场景（素材只作实景依据）",
             "owner": "render-operator",
-            "gate": "G-MAT1",
+            "inputs": [
+              "render_script"
+            ],
             "outputs": [
               "render_job",
               "video_asset"
-            ]
+            ],
+            "depends_on": [
+              "material-authorize"
+            ],
+            "side_effect": "provider"
           },
           {
             "step_key": "g8-render-submit",
             "name": "渲染提交审批",
             "owner": "director",
+            "inputs": [
+              "render_script",
+              "render_job"
+            ],
             "gate": "G8",
             "outputs": [
               "render_job"
+            ],
+            "depends_on": [
+              "material-generate"
             ]
           },
           {
             "step_key": "render",
             "name": "Seedance 渲染与回填",
             "owner": "render-operator",
+            "inputs": [
+              "render_job"
+            ],
             "outputs": [
               "render_job",
               "video_asset"
+            ],
+            "depends_on": [
+              "g8-render-submit",
+              "material-generate"
             ]
           },
           {
             "step_key": "post",
             "name": "成功素材直接后期合成",
             "owner": "post-editor",
+            "inputs": [
+              "video_asset"
+            ],
             "outputs": [
               "final_video"
+            ],
+            "depends_on": [
+              "render"
             ]
           },
           {
             "step_key": "color",
             "name": "成片调色",
             "owner": "colorist",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "color_report",
               "final_video"
+            ],
+            "depends_on": [
+              "post"
             ]
           },
           {
             "step_key": "subtitle",
             "name": "标题字幕制作",
             "owner": "subtitle-stylist",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "subtitle_track",
               "subtitle_report",
               "final_video"
+            ],
+            "depends_on": [
+              "color"
             ]
           },
           {
             "step_key": "voice",
             "name": "原声保留或显式配音",
             "owner": "voice-artist",
+            "inputs": [
+              "final_video"
+            ],
             "outputs": [
               "voice_track",
               "voice_report",
               "final_video"
+            ],
+            "depends_on": [
+              "subtitle"
             ]
           },
           {
             "step_key": "bgm",
             "name": "成片配乐",
             "owner": "bgm-composer",
+            "inputs": [
+              "final_video",
+              "voice_track"
+            ],
             "outputs": [
               "bgm_track",
               "bgm_report",
               "final_video"
+            ],
+            "depends_on": [
+              "voice"
+            ]
+          },
+          {
+            "step_key": "delivery-authorize",
+            "name": "交付包完整性授权",
+            "owner": "post-editor",
+            "inputs": [
+              "final_video",
+              "subtitle_track",
+              "bgm_track"
+            ],
+            "gate": "G-DLV1",
+            "outputs": [
+              "final_video",
+              "subtitle_track",
+              "bgm_track"
+            ],
+            "depends_on": [
+              "bgm"
             ]
           },
           {
             "step_key": "deliver",
             "name": "多风格交付包",
             "owner": "post-editor",
-            "gate": "G-DLV1",
+            "inputs": [
+              "final_video",
+              "subtitle_track",
+              "bgm_track"
+            ],
             "outputs": [
               "delivery_package",
               "final_video",
               "subtitle_track"
-            ]
+            ],
+            "depends_on": [
+              "delivery-authorize"
+            ],
+            "side_effect": "local"
           },
           {
             "step_key": "post-quality",
             "name": "交付前后期技术质检",
             "owner": "post-quality-inspector",
+            "inputs": [
+              "delivery_package"
+            ],
             "outputs": [
               "qa_report"
+            ],
+            "depends_on": [
+              "deliver"
             ],
             "note": "重新读取当前媒体与真实加工链；失败仅本地返修，技术状态与艺术审片分别记录"
           },
@@ -2904,18 +3396,32 @@
             "step_key": "archive",
             "name": "成片入库",
             "owner": "post-editor",
+            "inputs": [
+              "delivery_package",
+              "qa_report"
+            ],
             "outputs": [
               "final_video",
               "video_asset"
+            ],
+            "depends_on": [
+              "post-quality"
             ]
           },
           {
             "step_key": "revise",
             "name": "返修闭环（反馈 → 分诊 → 本地重合成）",
             "owner": "post-editor",
+            "inputs": [
+              "qa_report",
+              "delivery_package"
+            ],
             "outputs": [
               "revision_report",
               "delivery_package"
+            ],
+            "depends_on": [
+              "archive"
             ]
           }
         ]
@@ -2989,8 +3495,14 @@
             "name": "差异超 ±10% 告警",
             "owner": "settlement-clerk",
             "gate": "G13",
+            "inputs": [
+              "settlement_statement"
+            ],
             "outputs": [
               "settlement_statement"
+            ],
+            "depends_on": [
+              "diff-mark"
             ]
           },
           {
@@ -2998,8 +3510,14 @@
             "name": "月度结账汇总",
             "owner": "settlement-clerk",
             "cron": "0 2 1 * *",
+            "inputs": [
+              "settlement_statement"
+            ],
             "outputs": [
               "settlement_statement"
+            ],
+            "depends_on": [
+              "g13-diff-alert"
             ]
           }
         ]
@@ -3055,34 +3573,60 @@
             "step_key": "production-split",
             "name": "实拍/AI 生成分流编排",
             "owner": "production-planner",
+            "inputs": [
+              "script_package"
+            ],
             "outputs": [
               "shoot_list"
-            ]
+            ],
+            "depends_on": [
+              "script-package"
+            ],
+            "side_effect": "local"
           },
           {
             "step_key": "human-review",
             "name": "脚本人审（G9 系列前置）",
             "owner": "company-ceo",
             "gate": "G9",
+            "inputs": [
+              "script_package"
+            ],
             "outputs": [
               "script_package"
+            ],
+            "depends_on": [
+              "production-split"
             ]
           },
           {
             "step_key": "geo-rewrite",
             "name": "GEO 六段式改写（AI 答案版）",
             "owner": "geo-content-planner",
+            "inputs": [
+              "script_package"
+            ],
             "outputs": [
               "geo_content"
-            ]
+            ],
+            "depends_on": [
+              "human-review"
+            ],
+            "side_effect": "model"
           },
           {
             "step_key": "fact-check",
             "name": "事实红线校验",
             "owner": "entity-inspector",
             "gate": "G-GEO2",
+            "inputs": [
+              "geo_content"
+            ],
             "outputs": [
               "geo_content"
+            ],
+            "depends_on": [
+              "geo-rewrite"
             ]
           },
           {
@@ -3090,44 +3634,122 @@
             "name": "GEO 外发必审",
             "owner": "company-ceo",
             "gate": "G-GEO1",
+            "inputs": [
+              "geo_content"
+            ],
             "outputs": [
               "geo_content"
+            ],
+            "depends_on": [
+              "fact-check"
+            ]
+          },
+          {
+            "step_key": "visual-authorize",
+            "name": "视觉素材授权",
+            "owner": "visual-designer",
+            "gate": "G-VIS1",
+            "inputs": [
+              "geo_content"
+            ],
+            "outputs": [
+              "geo_content"
+            ],
+            "depends_on": [
+              "geo-review"
             ]
           },
           {
             "step_key": "visual-package",
             "name": "视觉素材成套（封面/图文/信源配图）",
             "owner": "visual-designer",
-            "gate": "G-VIS1",
+            "inputs": [
+              "geo_content"
+            ],
             "outputs": [
               "visual_asset"
+            ],
+            "depends_on": [
+              "visual-authorize"
+            ],
+            "side_effect": "local"
+          },
+          {
+            "step_key": "social-publish-confirm",
+            "name": "社媒组分发授权",
+            "owner": "publish-operator",
+            "gate": "G9",
+            "inputs": [
+              "visual_asset"
+            ],
+            "outputs": [
+              "visual_asset"
+            ],
+            "depends_on": [
+              "visual-package"
             ]
           },
           {
             "step_key": "social-publish",
             "name": "社媒组分发",
             "owner": "publish-operator",
-            "gate": "G9",
+            "inputs": [
+              "visual_asset"
+            ],
             "outputs": [
               "publish_task"
+            ],
+            "depends_on": [
+              "social-publish-confirm"
+            ],
+            "side_effect": "public"
+          },
+          {
+            "step_key": "source-publish-confirm",
+            "name": "信源组分发授权",
+            "owner": "source-distributor",
+            "gate": "G-GEO1",
+            "inputs": [
+              "visual_asset"
+            ],
+            "outputs": [
+              "visual_asset"
+            ],
+            "depends_on": [
+              "visual-package"
             ]
           },
           {
             "step_key": "source-publish",
             "name": "信源组分发",
             "owner": "source-distributor",
-            "gate": "G-GEO1",
+            "inputs": [
+              "visual_asset"
+            ],
             "outputs": [
               "source_task"
-            ]
+            ],
+            "depends_on": [
+              "source-publish-confirm"
+            ],
+            "side_effect": "public"
           },
           {
             "step_key": "write-back",
             "name": "结果回写一客一档",
             "owner": "publish-operator",
+            "inputs": [
+              "publish_task",
+              "source_task"
+            ],
             "outputs": [
               "client_archive"
-            ]
+            ],
+            "depends_on": [
+              "social-publish",
+              "source-publish"
+            ],
+            "side_effect": "local"
           }
         ]
       }
@@ -3277,9 +3899,27 @@
             "owner": "private-domain-operator",
             "cron": "*/30 * * * *",
             "gate": "G10",
+            "inputs": [
+              "comment"
+            ],
+            "outputs": [
+              "comment"
+            ]
+          },
+          {
+            "step_key": "comment-route",
+            "name": "按分类生成回复或转人工",
+            "owner": "private-domain-operator",
+            "inputs": [
+              "comment"
+            ],
             "outputs": [
               "comment_reply"
-            ]
+            ],
+            "depends_on": [
+              "comment-30m"
+            ],
+            "side_effect": "public"
           },
           {
             "step_key": "inquiry-tag",
@@ -4198,7 +4838,7 @@
     {
       "id": "cap:ff70108c12d005c7",
       "name": "bundles/ai-video/",
-      "description": "43 条岗位定义 / 36 项技能路径 / 6 条管线；版本 1.0.0，状态 candidate；不等于已接通功能数",
+      "description": "43 条岗位定义 / 37 项技能路径 / 6 条管线；版本 1.0.0，状态 candidate；不等于已接通功能数",
       "bundle": "source-catalog",
       "category": "行业包声明资产",
       "bindings": {
@@ -5730,7 +6370,7 @@
     {
       "id": "ai-video:ads-optimizer",
       "name": "投放优化师",
-      "description": "投流数据监控：阈值告警+调价建议；加投必审（G12，涉预算不可降级）；素材淘汰清单维护。",
+      "description": "投流数据监控：阈值告警+调价建议；加投由 G12 系统策略校验预算与围栏；素材淘汰清单维护。",
       "bundle": "ai-video",
       "category": "ai-video-production",
       "bindings": {
@@ -5956,7 +6596,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:cinematography-kb"
+          "ai-video:cinematography-kb",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "cineread.index",
@@ -6227,7 +6868,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:director-review"
+          "ai-video:director-review",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "review.score",
@@ -6259,7 +6901,9 @@
         "reason": "目录和文件已发现；运行依赖、实际接线与产出需以独立验收为准"
       },
       "tests": {
-        "paths": [],
+        "paths": [
+          "packages/video-studio/src/creative-evaluation.test.ts"
+        ],
         "executed": "unverified",
         "report": null
       },
@@ -6470,7 +7114,7 @@
     {
       "id": "ai-video:deal-manager",
       "name": "商单经理",
-      "description": "商单全流程：线索捕获→报价带锚定→履约节点跟踪→账期催款→48h 结案报告；对外文件必审（G15）。",
+      "description": "商单全流程：线索捕获→报价带锚定→履约节点跟踪→账期催款→48h 结案报告；对外文件由 G15 系统策略裁决。",
       "bundle": "ai-video",
       "category": "ai-video-production",
       "bindings": {
@@ -6743,7 +7387,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:shot-prompt-craft"
+          "ai-video:shot-prompt-craft",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "field.check",
@@ -7325,7 +7970,9 @@
       "category": "ai-video-production",
       "bindings": {
         "roleIds": [],
-        "skillIds": [],
+        "skillIds": [
+          "ai-video:bullet-time-shotcraft"
+        ],
         "toolIds": [
           "motion.inject"
         ],
@@ -7591,7 +8238,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:post-quality-inspection"
+          "ai-video:post-quality-inspection",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "postread.quality",
@@ -7715,7 +8363,7 @@
     {
       "id": "ai-video:producer",
       "name": "制片人",
-      "description": "预生产内部门的 AI 监制：对 G1–G4/G6/G7 各环节产物做确定性硬闸 + 模型评审，放行或打回；打回即停、默认不自动重跑（T-2026-1001-0007）。G5 定妆照默认人审（机器只留证）；花钱（G8）与对外（G9/G10）仍由人审。",
+      "description": "预生产门的 AI 监制：对 G1–G7 各环节产物做确定性硬闸 + 模型评审；版本化系统策略结合事实哈希、预算、资格、权限和围栏输出 passed/repair/blocked，不生成 approvals。",
       "bundle": "ai-video",
       "category": "ai-video-production",
       "bindings": {
@@ -7790,7 +8438,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:shot-prompt-craft"
+          "ai-video:shot-prompt-craft",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "prompt.fuse",
@@ -7910,7 +8559,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:render-ops"
+          "ai-video:render-ops",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "render.script.gen",
@@ -8377,7 +9027,8 @@
       "bindings": {
         "roleIds": [],
         "skillIds": [
-          "ai-video:shot-prompt-craft"
+          "ai-video:shot-prompt-craft",
+          "ai-video:bullet-time-shotcraft"
         ],
         "toolIds": [
           "visual.design"
@@ -8486,6 +9137,7 @@
       },
       "tests": {
         "paths": [
+          "apps/server/src/video/explainer/voice-prep-scoped.test.ts",
           "bundles/ai-video/connectors/voice-bridge/executor.test.ts",
           "bundles/ai-video/connectors/voice-bridge/verify.test.ts",
           "packages/base/bundles/color-capability.test.ts",
@@ -12448,6 +13100,82 @@
       "signedDeclaration": true
     },
     {
+      "id": "ai-video:bullet-time-shotcraft",
+      "name": "子弹时间镜头工艺",
+      "description": "name: bullet-time-shotcraft",
+      "bundle": "ai-video",
+      "category": "ai-video-production",
+      "bindings": {
+        "roleIds": [
+          "ai-video:cinematographer",
+          "ai-video:continuity-reviewer",
+          "ai-video:field-inspector",
+          "ai-video:micromotion-stylist",
+          "ai-video:post-quality-inspector",
+          "ai-video:prompt-fuser",
+          "ai-video:render-operator",
+          "ai-video:visual-director"
+        ],
+        "skillIds": [],
+        "toolIds": [
+          "cineread.aperture",
+          "cineread.index",
+          "cineread.recipe",
+          "cineread.search",
+          "cinewrite.enrich",
+          "field.check",
+          "field.repair",
+          "motion.inject",
+          "postread.impact",
+          "postread.quality",
+          "prompt.fuse",
+          "prompt.refine",
+          "prompt.verify",
+          "render.poll",
+          "render.script.gen",
+          "render.submit",
+          "review.block",
+          "review.score",
+          "visual.design"
+        ],
+        "capabilityIds": []
+      },
+      "sourcePaths": [
+        "bundles/ai-video/skills/bullet-time-shotcraft/SKILL.md"
+      ],
+      "entrypoints": [],
+      "dependencies": [
+        {
+          "id": "ffmpeg",
+          "installId": "ffmpeg",
+          "kind": "system-tool",
+          "reason": "绑定岗位声明工具的运行环境"
+        },
+        {
+          "id": "generation-providers",
+          "installId": "generation-providers",
+          "kind": "provider",
+          "reason": "绑定岗位声明工具的运行环境"
+        }
+      ],
+      "evidence": "B",
+      "status": {
+        "declared": true,
+        "codePresent": true,
+        "dependencyState": "unchecked",
+        "validated": "unverified",
+        "reason": "目录和文件已发现；运行依赖、实际接线与产出需以独立验收为准"
+      },
+      "tests": {
+        "paths": [],
+        "executed": "unverified",
+        "report": null
+      },
+      "key": "bullet-time-shotcraft",
+      "contentSha256": "60e59a2dc36f960751383a3e8ff43c8f90cb998eada799745e7479c10ce27762",
+      "signedDeclaration": true
+    },
+    {
       "id": "ai-video:caption-burnin-ops",
       "name": "字幕烧录执行纪律",
       "description": "name: caption-burnin-ops",
@@ -13741,7 +14469,7 @@
     {
       "id": "ai-video:talkcraft-ops",
       "name": "技能：口播解说片制作（talkcraft-ops）",
-      "description": "用（口播解说片）：",
+      "description": "name: talkcraft-ops",
       "bundle": "ai-video",
       "category": "ai-video-production",
       "bindings": {
@@ -13789,7 +14517,7 @@
         "report": null
       },
       "key": "talkcraft-ops",
-      "contentSha256": "9bfa7996abbe2f56478b48eb074e456a130de3e7cb7282bc1d576bfa9f7b0ff6",
+      "contentSha256": "b4753d066349c3d3951692e1f27a293e52e59d1c89fa6548dcf23ea465c59651",
       "signedDeclaration": true
     },
     {
@@ -17858,7 +18586,7 @@
     {
       "id": "ads.boost.request",
       "name": "ads.boost.request",
-      "description": "加投申请单（必审）",
+      "description": "加投申请单（系统策略）",
       "bundle": "shared",
       "category": "ai-video-production",
       "bindings": {
@@ -29250,6 +29978,7 @@
       "declarations": [],
       "implementationReferences": [
         "apps/server/src/video/explainer/router.ts",
+        "apps/server/src/video/gen/submission-ledger.ts",
         "apps/server/src/video/gen/submit.ts",
         "apps/server/src/video/render-poller.ts",
         "apps/server/src/video/router.ts",
@@ -29834,7 +30563,8 @@
         "capabilityIds": []
       },
       "sourcePaths": [
-        "apps/server/src/industry/hotel/inspection-adapter.ts"
+        "apps/server/src/industry/hotel/inspection-adapter.ts",
+        "packages/video-studio/src/creative-evaluation.ts"
       ],
       "entrypoints": [],
       "dependencies": [],
@@ -29847,7 +30577,9 @@
         "reason": "发现对应源码引用；尚未证明当前工位已接线或真实调用成功"
       },
       "tests": {
-        "paths": [],
+        "paths": [
+          "packages/video-studio/src/creative-evaluation.test.ts"
+        ],
         "executed": "unverified",
         "report": null
       },
@@ -29857,7 +30589,8 @@
       "access": "read",
       "declarations": [],
       "implementationReferences": [
-        "apps/server/src/industry/hotel/inspection-adapter.ts"
+        "apps/server/src/industry/hotel/inspection-adapter.ts",
+        "packages/video-studio/src/creative-evaluation.ts"
       ],
       "implementationState": "literal-reference-found"
     },
@@ -34304,6 +35037,7 @@
       },
       "tests": {
         "paths": [
+          "apps/server/src/video/explainer/voice-prep-scoped.test.ts",
           "bundles/ai-video/connectors/voice-bridge/executor.test.ts",
           "packages/base/bundles/color-capability.test.ts"
         ],
@@ -34773,11 +35507,11 @@
     "capabilities": 83,
     "roles": 101,
     "uniqueRoleKeys": 97,
-    "skills": 123,
-    "bundledSkills": 108,
+    "skills": 124,
+    "bundledSkills": 109,
     "officialSkills": 12,
     "registrySkills": 3,
-    "uniqueSkillKeys": 123,
+    "uniqueSkillKeys": 124,
     "runtimeRoles": 101,
     "tools": 334,
     "pipelines": 13,
@@ -34824,7 +35558,7 @@
     ],
     "sourceDeclarationTotals": {
       "presets": 101,
-      "skills": 108,
+      "skills": 109,
       "pipelines": 13,
       "uniquePresetKeys": 97
     },

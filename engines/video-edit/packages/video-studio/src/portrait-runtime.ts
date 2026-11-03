@@ -165,6 +165,8 @@ export interface PortraitRuntimeOptions {
   archivedCharacters?: ArchivedPortraitCharacters;
   /** Strict reuse run: every portrait task must belong to the selected archive; no new image request. */
   archivedCharactersOnly?: boolean;
+  /** Host-only current G1 reference receipts replace product portrait work in the strict reuse run. */
+  archivedProductReferences?: Array<{ productId: string; productName: string }>;
 }
 
 export interface ReferenceSearchStageLike {
@@ -567,6 +569,15 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   }
 
   function preparePlan(plan: PortraitRuntimePlan): PortraitRuntimePlan {
+    if (options.archivedCharactersOnly && options.archivedProductReferences?.length && plan.productTasks?.length) {
+      for (const task of plan.productTasks) {
+        if (!record(task) || !options.archivedProductReferences.some(item => task.productName === item.productName
+          && (task.productId === item.productId || task.productId === task.productName))) {
+          throw new Error("PORTRAIT_ARCHIVE_PRODUCT_INVALID: 只能复用本次 G1 已核验的同商品参考图，不能生成新商品角度");
+        }
+      }
+      plan = { ...plan, productTasks: [], summary: "本次商品参考沿用当前 G1 已登记的原始图片，商品定妆生成 0 张。" };
+    }
     if (trustedProducts && plan.productTasks?.length) {
       const productTasks = plan.productTasks.map(task => {
         if (!record(task) || !record(task.stages) || !record(task.stages.referenceSearch) || !record(task.stages.processing)

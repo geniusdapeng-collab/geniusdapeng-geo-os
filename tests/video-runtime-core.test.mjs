@@ -53,6 +53,34 @@ test('text readiness follows the native provider contract rather than vendor-onl
   assert.equal(textModelReadiness({LLM_PROVIDER:'deepseek',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'deepseek-chat'}).configured,false);
   assert.equal(textModelReadiness({LLM_PROVIDER:'deepseek',LLM_API_KEY:'present',LLM_BASE_URL:'http://127.0.0.1',LLM_MODEL:'deepseek-flash'}).configured,true);
 });
+test('validated DeepSeek launch aliases and default model reach the native process without changing host config',t=>{
+  const f=fixture(t);
+  for(const aliasModel of ['deepseek-v4-flash',undefined]){
+    const env={LLM_PROVIDER:undefined,LLM_BASE_URL:undefined,LLM_API_KEY:undefined,LLM_MODEL:undefined,
+      DEEPSEEK_BASE_URL:'https://model.example.test',DEEPSEEK_API_KEY:'test-only-deepseek-alias',DEEPSEEK_MODEL:aliasModel};
+    const config=f.config({env}),before={...config.env},state=loadCredentials(config).value;
+    assert.equal(textModelReadiness(config.env).configured,true);
+    const child=nativeEnvironment(config,state,databaseUrls(config,state),'fixture-desktop-bootstrap');
+    assert.equal(child.LLM_PROVIDER,'deepseek');
+    assert.equal(child.LLM_BASE_URL,env.DEEPSEEK_BASE_URL);
+    assert.equal(child.LLM_API_KEY,env.DEEPSEEK_API_KEY);
+    assert.equal(child.LLM_MODEL,'deepseek-flash');
+    assert.equal(child.WORKLOOM_ENV_PERSIST_MODE,'process-only');
+    assert.deepEqual(config.env,before);
+  }
+});
+test('explicit launch settings take precedence and invalid configurations are passed through unchanged',t=>{
+  const f=fixture(t),aliases={DEEPSEEK_BASE_URL:'https://alias.example.test',DEEPSEEK_API_KEY:'test-only-alias',DEEPSEEK_MODEL:'deepseek-flash'};
+  const explicit={LLM_PROVIDER:'deepseek',LLM_BASE_URL:'https://explicit.example.test',LLM_API_KEY:'test-only-explicit',LLM_MODEL:'deepseek-flash'};
+  const configs=[explicit,{...explicit,LLM_MODEL:'deepseek-chat',LLM_BASE_URL:undefined,LLM_API_KEY:undefined},
+    {...explicit,LLM_PROVIDER:'mock',LLM_MODEL:undefined,LLM_BASE_URL:undefined,LLM_API_KEY:undefined}];
+  for(const [index,settings] of configs.entries()){
+    const config=f.config({env:{...aliases,...settings}}),state=loadCredentials(config).value;
+    assert.equal(textModelReadiness(config.env).configured,index===0);
+    const child=nativeEnvironment(config,state,databaseUrls(config,state),'fixture-desktop-bootstrap');
+    for(const [name,value] of Object.entries(settings))assert.equal(child[name],value);
+  }
+});
 test('Codex CLI and MCP mode is headless by default with an explicit future workbench opt-in',t=>{
   const f=fixture(t);assert.equal(f.config({env:{PENGMANAGER_VIDEO_WORKBENCH:'0'}}).serveWorkbench,false);
   assert.equal(f.config({serveWorkbench:true}).serveWorkbench,true);assert.equal(f.config({env:{PENGMANAGER_VIDEO_WORKBENCH:'1'}}).serveWorkbench,true);
@@ -127,4 +155,14 @@ test('CLI arguments reject unsupported or missing options',()=>{
   assert.deepEqual(parseVideoArgs(['--install','--build']).settings,{installDependencies:true,buildWeb:true});
   assert.throws(()=>parseVideoArgs(['--data-dir']),{code:'ARGUMENT_INVALID'});
   assert.throws(()=>parseVideoArgs(['--unknown']),{code:'ARGUMENT_INVALID'});
+});
+test('core setup requires pinned install inputs, stays headless, and rejects other command modes',()=>{
+  const args=['--core-only','--install','--postgres-root','fixture-pg','--data-dir','fixture-private'];
+  assert.deepEqual(parseVideoArgs(args,'setup'),{
+    coreOnly:true,serveWorkbench:false,dataDir:path.resolve('fixture-private'),
+    settings:{installDependencies:true,postgresSourceRoot:path.resolve('fixture-pg'),buildIndustryContract:true,installTools:false},
+  });
+  for(const mode of ['start','doctor'])assert.throws(()=>parseVideoArgs(args,mode),{code:'ARGUMENT_INVALID'});
+  for(const option of ['--build','--with-workbench'])assert.throws(()=>parseVideoArgs([...args,option],'setup'),{code:'ARGUMENT_INVALID'});
+  for(const missing of [['--core-only','--install'],['--core-only','--postgres-root','fixture-pg']])assert.throws(()=>parseVideoArgs(missing,'setup'),{code:'ARGUMENT_INVALID'});
 });

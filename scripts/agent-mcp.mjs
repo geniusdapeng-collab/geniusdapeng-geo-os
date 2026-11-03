@@ -10,7 +10,15 @@ async function handle(request) {
   if (request?.jsonrpc !== '2.0' || typeof request.method !== 'string') { failure(request?.id ?? null, -32600, 'Invalid request.'); return; }
   if (request.id === undefined) return;
   const { id, method, params } = request;
-  if (method === 'initialize') { reply(id, { protocolVersion: versions.has(params?.protocolVersion) ? params.protocolVersion : '2025-11-25', capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'pengmanager-system', version: '1.0.0' } }); return; }
+  if (method === 'initialize') {
+    reply(id, {
+      protocolVersion: versions.has(params?.protocolVersion) ? params.protocolVersion : '2025-11-25',
+      capabilities: { tools: { listChanged: false } },
+      serverInfo: { name: 'pengmanager-system', version: '1.0.0' },
+      instructions: '先用 pengmanager_video_preflight 检查本机工位。生产计划是预览；原生工作台负责项目预生产、当前镜头资格和生成提交。目录或已配置凭据不证明模型可用、预算已批或已出片。结果未知时按原任务查询，不重新派发。工作结束后，关闭客户端前先用 pengmanager_video_stop 停止本会话启动的私有工位。详见仓库 docs/CODEX-VIDEO-QUICKSTART.md。',
+    });
+    return;
+  }
   if (method === 'ping') { reply(id, {}); return; }
   if (method === 'tools/list') { reply(id, { tools: agent.tools() }); return; }
   if (method !== 'tools/call') { failure(id, -32601, 'Method not found.'); return; }
