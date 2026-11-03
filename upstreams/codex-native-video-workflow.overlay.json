@@ -36,8 +36,8 @@
     {
       "path": "packages/video-studio/src/native-project-delivery.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/native-project-delivery.ts",
-      "targetSha256": "4dbaeb72fd27b6507f7f76e23382f1f9b7749cb6d8e84d0ede6f34c06b8a5ece",
-      "targetBytes": 25302,
+      "targetSha256": "42e47e367ba48f3c9531b0f7c21d8f10e5856c5b9fdf776cf4a14e442955cf8e",
+      "targetBytes": 26306,
       "evidence": "B",
       "targetOwned": true
     },
