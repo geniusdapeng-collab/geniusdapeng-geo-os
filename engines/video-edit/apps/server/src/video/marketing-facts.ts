@@ -208,7 +208,7 @@ export function stageFactPointers(stage: IntelStage, payload: unknown): string[]
   return [...factLeaves(stagePayloadShape(stage, payload)).keys()];
 }
 
-export function validateStageFacts(stage: IntelStage, raw: unknown, sources: SourceSnapshot[]): ValidatedStageFacts {
+export function validateStageFacts(stage: IntelStage, raw: unknown, sources: SourceSnapshot[], identityOnly = false): ValidatedStageFacts {
   let normalizedRaw = raw && typeof raw === "object" && !Array.isArray(raw)
     ? { ...(raw as Record<string, unknown>) }
     : raw;
@@ -266,7 +266,14 @@ export function validateStageFacts(stage: IntelStage, raw: unknown, sources: Sou
   walk(payload);
   if (stage === "A1") {
     const identity = payload.identity as { specs: Record<string, unknown>; official_selling_points: unknown[] };
-    if (!Object.keys(identity.specs).length && !identity.official_selling_points.length) throw new Error("MARKETING_A1_INCOMPLETE：缺少任何有证据的商品规格或卖点");
+    if (identityOnly) {
+      if (leaves.size !== 2 || !leaves.has("/identity/name") || !leaves.has("/identity/model")
+        || !Array.isArray(payload.images) || !payload.images.length) {
+        throw new Error("MARKETING_IDENTITY_SCOPE_INVALID：身份范围仅接受精确名称、型号和已登记图片");
+      }
+    } else if (!Object.keys(identity.specs).length && !identity.official_selling_points.length) {
+      throw new Error("MARKETING_A1_INCOMPLETE：缺少任何有证据的商品规格或卖点");
+    }
   }
   if (!claims.length && (stage === "A1" || !extraction.noEvidenceReason)) throw new Error("MARKETING_EVIDENCE_EMPTY：空站必须明确缺证据原因，不能假称采集通过");
   const noEvidenceReason = claims.length

@@ -66,6 +66,10 @@ macOS 默认私有目录为 `~/Library/Application Support/PengManager/video-run
 
 运行时固定 `WORKLOOM_RENDER_AUTO=0`，生成提交保留脚本审批、预算、资格签发、一次性消费与当前来源/字节校验。后台自动巡检、启动时线程自动恢复、档案自动恢复及云同步默认关闭。需要恢复已有任务时，通过原生任务/档案入口检查持久状态和未决供应商结果，再执行原生恢复流程。
 
+虚构营销短片若只需展示商品名称、型号和已授权实物外观，可在原生 `video.studio.start` 请求中同时指定 `metadata.dataMining.claimScope: "product-identity-only"`、`metadata.dataMining.name`、`metadata.dataMining.model` 和 `metadata.brief.productionRequirements.visualMode: "verified_product_appearance"`，并用 `metadata.products[].referenceManifest.reference_images[].assetId` 选择已登记的商品原图。名称须含精确型号，已选图片及该型号须可在实际来源页核对。仍需通过原文语义审核、G1、商品原图绑定和逐镜事实审核。片中禁止价格、规格性能、卖点、口碑、竞品对比、真实赛事结果或背书。普通营销继续按完整事实范围运行。
+
+已有营销项目变更此范围时，先核对原尝试终态和外部账本。使用带原 `projectId` 的 `video.studio.start` 提交明确的修订请求，原始意图和其他元数据继续携带，旧尝试保留。`video.studio.resume` 校验原合同，适合输入未变的恢复。
+
 视频约束编译、逐镜修复、候选评价与灰度配置见[创作架构与操作边界](VIDEO-CREATIVE-ARCHITECTURE.md)。灰度与费用参数来自受控的进程启动配置，工具装配不能覆盖。
 
 渲染查询、本地素材入库和成本入账分别留痕。供应商的查询限流、网络异常、未配置或缺少有效产物地址时，回填保留原任务 ID，显示 `poll_pending`；`RENDER_JOB_TIMEOUT_H` 只提示超龄待对账。取得成功回执后记录 `render.complete`；下载失败时，可通过再次轮询使用同一回执补做入库，成功才记录 `render.ingest` 和素材 ID。远端下载只连接核验后的公网地址，不跟随重定向。素材时长由实际视频探测，供应商回报的单位另存。回执地址若已失效，先向原供应商核对该任务，不能把入库失败当作重渲授权。已记录的金额可以用原时间补写流水，真实费用无法核实时仍保留未知状态；模拟结果始终单独标记。
