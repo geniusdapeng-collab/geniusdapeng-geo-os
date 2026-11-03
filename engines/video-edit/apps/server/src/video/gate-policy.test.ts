@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -6,9 +6,15 @@ import {
   AUTO_GATES, GATE_PRODUCER_STAGE, appliedApprovalFeedback, gateDeterministicChecks, portraitGateEvidence, portraitReviewManifest,
   renderSubmitAutoAllowed, systemAutoApprovalEnabled,
 } from "./gate-policy.js";
+const selectionContext = vi.hoisted(() => vi.fn<() => string | undefined>());
+vi.mock("@hyperreality/video-studio", () => ({ currentCreativeSelectionContext: selectionContext }));
+
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(path.join(tmpdir(), "portrait-proof-")); });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  selectionContext.mockReset();
+  rmSync(dir, { recursive: true, force: true });
+});
 function fixture() {
   const root = path.join(dir, "characters", "P1"); mkdirSync(root, { recursive: true });
   const files: Record<string, string> = {};
@@ -117,6 +123,50 @@ it("G2允许无人合同的可空字段以旧Markdown措辞出现，但不豁免
   expect(gateDeterministicChecks("G2_THEME", allowed).every((check) => check.pass)).toBe(true);
   expect(gateDeterministicChecks("G2_THEME", `${allowed}\n未知字段为 null`)
     .some((check) => check.hard && !check.pass)).toBe(true);
+});
+
+describe("宿主当前选定候选的初版父摘要", () => {
+  const body = "# 主题与制作要求\n" + "现有选定创意仍须经过本次确认门。".repeat(12);
+  const approved = { schemaVersion: "workloom.creative-shot/v1", revision: 1, parentHash: null };
+  const selection = (shot: Record<string, unknown> = approved) => "\n\n## 本次已独立评审的创意候选（仍须经过当前正式确认门）\n"
+    + "后续主题、洞察与PRD应消费完整候选。\n"
+    + JSON.stringify({ assessment: { shots: [shot] }, candidateHash: "a".repeat(64), contractHash: "b".repeat(64) }) + "\n";
+  const placeholder = (gate: "G2_THEME" | "G4_PRD" | "G6_PROMPT", content: string) =>
+    gateDeterministicChecks(gate, content).find(check => check.id === "no-placeholder")?.pass;
+
+  it.each(["G2_THEME", "G4_PRD"] as const)("接收 %s 完整当前来源的初版 parentHash 协议空值", gate => {
+    const context = selection();
+    selectionContext.mockReturnValue(context);
+    expect(gateDeterministicChecks(gate, body + context).every(check => check.pass)).toBe(true);
+  });
+
+  it("相同正文中的其他占位、伪造来源和不适用的门仍失败", () => {
+    const context = selection();
+    expect(placeholder("G2_THEME", body + context)).toBe(false);
+    selectionContext.mockReturnValue(context);
+    expect(placeholder("G6_PROMPT", body + context)).toBe(false);
+    expect(placeholder("G2_THEME", body + context.replace("后续主题", "伪造主题"))).toBe(false);
+    for (const marker of ["null", "undefined", "NaN", "[object Object]"]) {
+      expect(placeholder("G2_THEME", body + "\n未填写字段为 " + marker + context)).toBe(false);
+    }
+  });
+
+  it.each([
+    { ...approved, fields: { 缺失必填值: null } },
+    { ...approved, prompt: "未解决占位 null" },
+    { ...approved, revision: 2 },
+    { ...approved, schemaVersion: "other" },
+  ])("仅允许初版镜头的指定路径", shot => {
+    const context = selection(shot);
+    selectionContext.mockReturnValue(context);
+    expect(placeholder("G2_THEME", body + context)).toBe(false);
+  });
+
+  it("不解析和放行损坏的当前候选 JSON", () => {
+    const broken = selection().replace(/}\n$/, ",}\n");
+    selectionContext.mockReturnValue(broken);
+    expect(placeholder("G2_THEME", body + broken)).toBe(false);
+  });
 });
 
 it("批准后的建议只作审核注解，不得作为改写已批准产物的用户反馈", () => {
