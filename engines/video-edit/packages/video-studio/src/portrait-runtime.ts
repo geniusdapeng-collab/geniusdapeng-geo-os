@@ -17,11 +17,13 @@
  *
  * 幂等：完整请求与参考图字节相同、输出收据仍可核验才复用；不同请求写独立文件。
  */
-import { existsSync, mkdirSync, readFileSync, statSync, lstatSync, realpathSync, writeFileSync, renameSync, unlinkSync, openSync, closeSync } from "node:fs";
+import { constants, existsSync, fstatSync, mkdirSync, readFileSync, readSync, statSync, lstatSync, realpathSync,
+  writeFileSync, renameSync, unlinkSync, openSync, closeSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { shotIntentHash } from "./shot-intent.js";
 import { isAbsolute, join, resolve, relative, dirname, sep } from "node:path";
-import { assertCreativeBudgetCurrent, creativeBudgetActive, creativeExecutionSignal, guardedCreativeExternalCall } from "./creative-runtime.js";
+import { assertCreativeBudgetCurrent, creativeExecutionSignal, guardedCreativeExternalCall } from "./creative-runtime.js";
+import { portraitDownloadUrl, portraitSubmissionJournal } from "./portrait-submission.js";
 
 /** vendor → 渲染核心要求的四个角度文件名（REQUIRED_ANGLES 口径） */
 const ANGLE_FILE_ALIASES: Record<string, string> = {
@@ -55,6 +57,7 @@ export interface PortraitTask {
 }
 
 export interface PortraitInputReceipt { path: string; realPath: string; sha256: string; bytes: number }
+export interface TrustedProductReference { productId: string; productName: string; files: PortraitInputReceipt[] }
 export interface PortraitCacheReceipt {
   schemaVersion: "workloom.portrait-cache/v2";
   requestHash: string; sourceHash: string; kind: "character" | "product"; id: string; angle: string;
@@ -140,6 +143,8 @@ export interface PortraitRuntimeOptions {
   timeoutMs?: number;
   /** 商品（服务）参考图：真实实拍图绝对/相对路径，顺序即优先级 */
   referenceImages?: string[];
+  /** Private Studio authority. When present, each product must use its own current scoped asset receipts. */
+  trustedProductReferences?: TrustedProductReference[];
   /** 角色锚定参考图（例如实拍人物），缺省不锚定 */
   characterAnchorImages?: string[];
   /**
@@ -154,7 +159,7 @@ export interface PortraitRuntimeOptions {
   maxReferenceImages?: number;
   log?: (line: string) => void;
   fetchImpl?: typeof fetch;
-  /** 失败重试次数（仅网络/限流/5xx 类，默认 2） */
+  /** @deprecated 保留配置兼容。付费请求结果未知时不能自动重发。 */
   retries?: number;
   /** Server-controlled, explicitly selected existing synthetic-character version. No generation fallback. */
   archivedCharacters?: ArchivedPortraitCharacters;
@@ -170,6 +175,7 @@ export interface ReferenceSearchStageLike {
 }
 
 export interface ProcessingStageLike {
+  productId?: string;
   outputBaseImage?: string | null;
   [key: string]: unknown;
 }
@@ -193,15 +199,29 @@ const hashBytes = (bytes: Buffer): string => createHash("sha256").update(bytes).
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 function snapshotFile(path: string, minBytes = 1024): { receipt: PortraitInputReceipt; bytes: Buffer } {
   const realPath = realpathSync(path);
-  const stat = statSync(realPath);
-  if (!stat.isFile() || stat.size < minBytes || stat.size > 100_000_000) throw new Error(`PORTRAIT_INPUT_INVALID: 来源不是有效大小的普通文件：${path}`);
-  const bytes = readFileSync(realPath);
-  if (bytes.length !== stat.size || realpathSync(path) !== realPath) throw new Error(`PORTRAIT_INPUT_CHANGED: 读取期间来源变化：${path}`);
-  return { receipt: { path: resolve(path), realPath, sha256: hashBytes(bytes), bytes: bytes.length }, bytes };
+  const fd = openSync(realPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size < minBytes || stat.size > 100_000_000) throw new Error(`PORTRAIT_INPUT_INVALID: 来源不是有效大小的普通文件：${path}`);
+    const bytes = Buffer.allocUnsafe(stat.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (!count) throw new Error(`PORTRAIT_INPUT_CHANGED: 读取期间来源变化：${path}`);
+      offset += count;
+    }
+    const current = lstatSync(realPath), after = fstatSync(fd);
+    if (current.ino !== stat.ino || current.dev !== stat.dev || after.size !== stat.size
+      || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs || realpathSync(path) !== realPath) {
+      throw new Error(`PORTRAIT_INPUT_CHANGED: 读取期间来源变化：${path}`);
+    }
+    return { receipt: { path: resolve(path), realPath, sha256: hashBytes(bytes), bytes: bytes.length }, bytes };
+  } finally { closeSync(fd); }
 }
-function verifySource(source: PortraitInputReceipt, minBytes = 1024): void {
-  const current = snapshotFile(source.path, minBytes).receipt;
-  if (shotIntentHash(current) !== shotIntentHash(source)) throw new Error(`PORTRAIT_INPUT_CHANGED: 请求期间参考图发生变化：${source.path}`);
+function verifySource(source: PortraitInputReceipt, minBytes = 1024): ReturnType<typeof snapshotFile> {
+  const current = snapshotFile(source.path, minBytes);
+  if (shotIntentHash(current.receipt) !== shotIntentHash(source)) throw new Error(`PORTRAIT_INPUT_CHANGED: 请求期间参考图发生变化：${source.path}`);
+  return current;
 }
 function safeComponent(value: string, label: string): string {
   if (!value || value === "." || value === ".." || /[\\/\u0000-\u001f]/.test(value)) throw new Error(`PORTRAIT_PATH_INVALID: ${label}`);
@@ -303,6 +323,9 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   const charactersRoot = scopePath;
   const rootRealPath = realpathSync(charactersRoot);
   const indexFile = join(charactersRoot, "portrait-index.json");
+  const submissions = portraitSubmissionJournal(charactersRoot, projectId, apiKey);
+  const trustedProducts = options.trustedProductReferences === undefined ? undefined
+    : new Map(structuredClone(options.trustedProductReferences).map(item => [item.productId, item]));
   const archived = options.archivedCharacters;
   let manifestReceipt: PortraitInputReceipt | undefined;
   if (options.archivedCharactersOnly && !archived) throw new Error("PORTRAIT_ARCHIVE_REQUIRED: archivedCharactersOnly 缺少归档清单");
@@ -316,9 +339,10 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
       || !Number.isFinite(Date.parse(archived.approvedSelection.selectedAt))) {
       throw new Error("PORTRAIT_ARCHIVE_INVALID: 缺少本次用户选择或完整四角度数量");
     }
-    manifestReceipt = snapshotFile(archived.manifestPath, 1).receipt;
+    const manifestSnapshot = snapshotFile(archived.manifestPath, 1);
+    manifestReceipt = manifestSnapshot.receipt;
     if (manifestReceipt.sha256 !== archived.manifestSha256) throw new Error("PORTRAIT_ARCHIVE_CHANGED: 归档清单摘要不一致");
-    const manifest = JSON.parse(readFileSync(manifestReceipt.realPath, "utf8"));
+    const manifest = JSON.parse(manifestSnapshot.bytes.toString("utf8"));
     if (manifest.schemaVersion !== "workloom.portrait-reuse-manifest/v1"
       || shotIntentHash(manifest.characters) !== shotIntentHash(archived.characters)
       || shotIntentHash(manifest.approvedSelection) !== shotIntentHash(archived.approvedSelection)) {
@@ -335,8 +359,7 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
         if (typeof alias !== "string" || !alias.trim() || aliases.has(alias)) throw new Error("PORTRAIT_ARCHIVE_INVALID: 角色别名为空或有歧义");
         aliases.add(alias);
       }
-      verifySource(item.profile, 1);
-      const profile = JSON.parse(readFileSync(item.profile.realPath, "utf8"));
+      const profile = JSON.parse(verifySource(item.profile, 1).bytes.toString("utf8"));
       if (!["synthetic-digital-human", "generated"].includes(profile.kind) || profile.authorization?.status !== "synthetic-no-real-person") {
         throw new Error("PORTRAIT_ARCHIVE_INVALID: 源角色档案不支持纯AI归档复用");
       }
@@ -468,10 +491,35 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
     const { output, ...storedRequest } = stored;
     return shotIntentHash(storedRequest) === shotIntentHash(receipt) && validOutput(output, expected) ? expected : null;
   }
-  function anchorsFor(kind: "character" | "product", baseImage?: string | null): Array<ReturnType<typeof snapshotFile>> {
+  function requireProductReferences(productId: string | undefined): TrustedProductReference {
+    const authority = productId ? trustedProducts?.get(productId) : undefined;
+    if (!authority?.files.length) throw new Error("PORTRAIT_PRODUCT_REFERENCE_REQUIRED: 当前商品缺少已核验的同商品参考图");
+    return authority;
+  }
+
+  function boundReference(expected: PortraitInputReceipt): ReturnType<typeof snapshotFile> {
+    const current = snapshotFile(expected.path);
+    if (shotIntentHash(current.receipt) !== shotIntentHash(expected)) {
+      throw new Error("PORTRAIT_PRODUCT_REFERENCE_CHANGED: 商品参考图字节或路径已改变");
+    }
+    return current;
+  }
+
+  function anchorsFor(kind: "character" | "product", id: string, baseImage?: string | null): Array<ReturnType<typeof snapshotFile>> {
+    if (kind === "product" && trustedProducts) {
+      const product = requireProductReferences(id);
+      const basePath = baseImage ? resolveLocal(baseImage, workDir) : null;
+      const base = Object.values(index.baseImages ?? {}).find(item => item.output.path === basePath);
+      if (!base || base.schemaVersion !== "workloom.portrait-base/v1" || !product.files.some(item =>
+        shotIntentHash(item) === shotIntentHash(base.source)) || base.output.sha256 !== base.source.sha256) {
+        throw new Error("PORTRAIT_PRODUCT_REFERENCE_INVALID: 商品基准图缺少本次同商品字节凭据");
+      }
+      const current = product.files.slice(0, maxReferenceImages).map(boundReference);
+      return [boundReference(base.output), ...current.filter(item => item.receipt.sha256 !== base.source.sha256)].slice(0, maxReferenceImages);
+    }
     const configured = kind === "character" ? characterAnchorImages : referenceImages;
     const paths = [...(baseImage ? [resolveLocal(baseImage, workDir)] : []), ...configured.map((file) => resolveLocal(file, workDir))];
-    return [...new Set(paths)].slice(0, maxReferenceImages).map(snapshotFile);
+    return [...new Set(paths)].slice(0, maxReferenceImages).map(file => snapshotFile(file));
   }
 
   async function reusePortrait(task: PortraitTask, id: string, name: string, angle: string): Promise<string> {
@@ -485,8 +533,8 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
     const file = join(dir, "portraits", `${key}-archive-v${item.version}-${source.sha256}-${angle}.${extension}`);
     return locked(async () => {
       if (shotIntentHash(task) !== taskHash) throw new Error("PORTRAIT_INPUT_CHANGED: 复用等待期间任务变化");
-      verifySource(manifestReceipt!, 1); verifySource(item.profile, 1); verifySource(source);
-      const bytes = snapshotFile(source.path).bytes;
+      verifySource(manifestReceipt!, 1); verifySource(item.profile, 1);
+      const { bytes } = verifySource(source);
       const previous = index.characters[key];
       const own = previous?.id === id && previous.kind === "character" ? previous : undefined;
       const mainViews = <T>(values: Record<string, T> | undefined): Record<string, T> => Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => REQUIRED_ANGLES.includes(key as typeof REQUIRED_ANGLES[number])));
@@ -519,6 +567,22 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   }
 
   function preparePlan(plan: PortraitRuntimePlan): PortraitRuntimePlan {
+    if (trustedProducts && plan.productTasks?.length) {
+      const productTasks = plan.productTasks.map(task => {
+        if (!record(task) || !record(task.stages) || !record(task.stages.referenceSearch) || !record(task.stages.processing)
+          || !record(task.stages.stylization) || !Array.isArray(task.stages.stylization.portraits)) {
+          throw new Error("PORTRAIT_PRODUCT_REFERENCE_INVALID: 商品定妆计划结构无法绑定当前参考图");
+        }
+        const byName = [...trustedProducts.values()].filter(product => product.productName === task.productName);
+        const exact = typeof task.productId === "string" ? trustedProducts.get(task.productId) : undefined;
+        const selected = exact && exact.productName === task.productName ? exact : !exact && byName.length === 1 ? byName[0] : undefined;
+        const { productId } = requireProductReferences(selected?.productId);
+        return { ...task, stages: { ...task.stages, referenceSearch: { ...task.stages.referenceSearch, productId },
+          processing: { ...task.stages.processing, productId },
+          stylization: { ...task.stages.stylization, portraits: task.stages.stylization.portraits.map(portrait => ({ ...portrait, productId, productName: task.productName })) } } };
+      });
+      plan = { ...plan, productTasks };
+    }
     if (!archived) return plan;
     verifySource(manifestReceipt!, 1);
     if (!record(plan) || !Array.isArray(plan.characterTasks)) throw new Error("PORTRAIT_ARCHIVE_PLAN_INVALID: 缺少角色计划");
@@ -604,57 +668,49 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
     return text.length >= 8 && descriptive.test(text) ? raw.trim() : null;
   }
 
-  async function generateImage(payload: Record<string, unknown>): Promise<string> {
-    let lastError: Error | null = null;
-    // Enforced runs account for the actual HTTP request, including image requests.
-    // A lost or rejected response cannot establish that the provider did not charge.
-    const enforced = creativeBudgetActive();
+  async function generateImage(payload: Record<string, unknown>, requestHash: string): Promise<string> {
     const requestBody = JSON.stringify(payload), endpoint = `${base}/images/generations`;
-    for (let attempt = 0; attempt <= (enforced ? 0 : retries); attempt += 1) {
+    const wireRequestHash = shotIntentHash({ endpoint, body: requestBody });
+    const result = await guardedCreativeExternalCall({ kind: "media", provider: model,
+      requestHash: wireRequestHash }, async (signal) => {
+      const signals = [AbortSignal.timeout(timeoutMs), signal, creativeExecutionSignal()].filter((value): value is AbortSignal => Boolean(value));
+      const requestSignal = AbortSignal.any(signals);
+      requestSignal.throwIfAborted();
+      const receipt = submissions.dispatch(requestHash, wireRequestHash);
+      let res: Response, data: unknown;
       try {
-        const { res, text } = await guardedCreativeExternalCall({ kind: "media", provider: model,
-          requestHash: shotIntentHash({ endpoint, body: requestBody }) }, async (signal) => {
-          const signals = [AbortSignal.timeout(timeoutMs), signal, creativeExecutionSignal()].filter((value): value is AbortSignal => Boolean(value));
-          const res = await fetchImpl(endpoint, {
-            method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-            body: requestBody, signal: AbortSignal.any(signals), ...(enforced ? { redirect: "error" } : {}),
-          });
-          return { res, text: await res.text() };
-        }, ({ res, text }) => {
-          if (!res.ok) return false;
-          try { const data: unknown = JSON.parse(text); return record(data) && Array.isArray(data.data)
-            && data.data.length === 1 && record(data.data[0]) && typeof data.data[0].url === "string" && Boolean(data.data[0].url); }
-          catch { return false; }
+        res = await fetchImpl(endpoint, {
+          method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+          body: requestBody, signal: requestSignal, redirect: "error",
         });
-        if (!res.ok) {
-          const err = new Error(`定妆照出图失败：HTTP ${res.status} ${text.slice(0, 200)}`);
-          if (res.status === 429 || res.status >= 500) {
-            lastError = err;
-            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-            continue;
-          }
-          Object.assign(err, { noRetry: true });
-          throw err;
-        }
-        let data: { data?: Array<{ url?: string; size?: string }> };
-        try { data = JSON.parse(text) as typeof data; }
-        catch { throw Object.assign(new Error("定妆照出图成功响应不是有效JSON，禁止自动重复收费"), { noRetry: true }); }
-        const url = data?.data?.[0]?.url;
-        if (!url) throw Object.assign(new Error(`定妆照出图响应缺少 url：${text.slice(0, 200)}`), { noRetry: true });
-        log(`[portrait] 出图成功（${data.data?.[0]?.size ?? "?"}）`);
-        return url;
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-        if (enforced || (err as { noRetry?: boolean })?.noRetry || attempt >= retries) break;
-        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        data = await res.json();
+      } catch {
+        throw new Error("PORTRAIT_SUBMISSION_UNKNOWN: 定妆请求已派发，未取得完整供应商回执");
       }
-    }
-    throw lastError ?? new Error("定妆照出图失败：未知错误");
+      if (!res.ok) {
+        const providerError = record(data) && record(data.error) ? data.error : undefined;
+        const code = providerError?.code;
+        if (res.status === 400 && typeof code === "string" && /^(InvalidParameter|MissingParameter)(?:\.[a-zA-Z0-9_-]{1,64})?$/.test(code)) {
+          submissions.reject(receipt, res.status, code);
+          return { status: res.status, url: null };
+        }
+        throw new Error(`PORTRAIT_SUBMISSION_UNKNOWN: 定妆请求已派发，未核实 HTTP ${res.status} 的接受结果`);
+      }
+      if (!record(data) || !Array.isArray(data.data) || data.data.length !== 1 || !record(data.data[0])) {
+        throw new Error("PORTRAIT_SUBMISSION_UNKNOWN: 定妆请求已派发，单图回执结构无效");
+      }
+      const url = portraitDownloadUrl(data.data[0].url);
+      submissions.accept(receipt, url);
+      return { status: res.status, url };
+    }, ({ url }) => url !== null);
+    if (!result.url) throw new Error(`定妆照出图失败：HTTP ${result.status} 参数被供应商拒绝`);
+    log("[portrait] 出图已接受，原请求回执已保存");
+    return result.url;
   }
 
   async function download(url: string): Promise<Buffer> {
     const timer = AbortSignal.timeout(IMAGE_DOWNLOAD_TIMEOUT_MS), execution = creativeExecutionSignal();
-    const res = await fetchImpl(url, { signal: execution ? AbortSignal.any([timer, execution]) : timer });
+    const res = await fetchImpl(url, { signal: execution ? AbortSignal.any([timer, execution]) : timer, redirect: "error" });
     if (!res.ok) throw new Error(`定妆照下载失败：HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength < 1024) throw new Error(`定妆照下载内容过小（${buf.byteLength} 字节）`);
@@ -681,8 +737,11 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
     if (kind === "character" && archived) return reusePortrait(task, id, name, angle);
     // Build and validate all actual request inputs before considering the cache.
     const prompt = buildPrompt(task, kind, angleRaw);
-    const anchors = anchorsFor(kind, baseImage);
-    const images = anchors.map(({ receipt, bytes }) => `data:image/${receipt.path.toLowerCase().endsWith(".png") ? "png" : "jpeg"};base64,${bytes.toString("base64")}`);
+    const anchors = anchorsFor(kind, id, baseImage);
+    const images = anchors.map(({ receipt, bytes }) => {
+      const format = portraitImageExtension(bytes, receipt.path);
+      return `data:image/${format === "jpg" ? "jpeg" : format};base64,${bytes.toString("base64")}`;
+    });
     const payload: Record<string, unknown> = { model, prompt, response_format: "url", watermark: false, ...(size ? { size } : {}), ...(images.length ? { image: images.length === 1 ? images[0] : images } : {}) };
     const endpoint = `${base}/images/generations`;
     const requestHash = shotIntentHash({ schemaVersion: CACHE_VERSION, projectId, kind, id, angle, sourceHash, endpoint, payload, references: anchors.map((anchor) => anchor.receipt) });
@@ -702,17 +761,29 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
       for (const anchor of anchors) verifySource(anchor.receipt);
       const cached = existingPortrait(bucket, key, planned, file);
       if (cached) { log(`[portrait] 完整请求及产物哈希一致，复用：${kind}/${key}/${angle}`); return cached; }
+      const previous = submissions.find(requestHash);
+      if (!previous.acceptedUrl && previous.unresolved) {
+        throw new Error("PORTRAIT_SUBMISSION_UNKNOWN: 项目已有未核实的定妆请求，暂停后续付费生成");
+      }
+      const stored = index[bucket][key]?.receipts?.[angle];
+      if (!previous.acceptedUrl && (stored?.requestHash === requestHash || existsSync(file))) {
+        throw new Error("PORTRAIT_ACCEPTED_RECEIPT_MISSING: 旧定妆产物已失效且缺可核验的下载回执");
+      }
       ensureOutputDirectory(dirname(file));
-      log(`[portrait] 出图：${name} / ${angle}，来源 ${requestHash.slice(0, 12)}，锚点 ${anchors.length}`);
-      const url = await generateImage(payload);
+      log(`[portrait] ${previous.acceptedUrl ? "取回已接受出图" : "出图"}：${name} / ${angle}，来源 ${requestHash.slice(0, 12)}，锚点 ${anchors.length}`);
+      const url = previous.acceptedUrl ?? await generateImage(payload, requestHash);
       const bytes = await download(url);
       assertCreativeBudgetCurrent();
       if (shotIntentHash(task) !== sourceHash) throw new Error("PORTRAIT_INPUT_CHANGED: 出图期间角色任务变化，产物未纳入索引");
       for (const anchor of anchors) verifySource(anchor.receipt);
+      if (stored?.requestHash === requestHash && stored.output.sha256 !== hashBytes(bytes)) {
+        throw new Error("PORTRAIT_OUTPUT_CHANGED: 同一接受回执下载的字节与历史产物不一致");
+      }
       atomicWrite(file, bytes);
       const output = snapshotFile(file).receipt;
       if (output.sha256 !== hashBytes(bytes)) throw new Error("PORTRAIT_OUTPUT_CHANGED: 落盘期间产物变化");
       upsert(bucket, key, name, dir, { ...planned, output });
+      log(`[portrait] 出图成功，产物已核验并写入索引：${kind}/${key}/${angle}`);
       return file;
     });
     inFlight.set(flightKey, operation);
@@ -721,7 +792,9 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
   }
 
   /** 情报档案预填：直接返回真实实拍参考图（prefilled 分支，免外部检索） */
-  async function searchReferences(_stage: ReferenceSearchStageLike): Promise<string[]> {
+  async function searchReferences(stage: ReferenceSearchStageLike): Promise<string[]> {
+    if (trustedProducts) return requireProductReferences(stage.productId).files.slice(0, maxReferenceImages)
+      .map(source => boundReference(source).receipt.path);
     const images = referenceImages
       .map((image) => resolveLocal(image, workDir))
       .filter((file) => nonEmptyFile(file));
@@ -739,12 +812,15 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
    * 作为后续 5 视角风格化的唯一真实锚点。
    */
   async function processImage(stage: ProcessingStageLike, images?: string[]): Promise<string> {
-    const candidates = [...(images ?? []), ...referenceImages].map((image) => resolveLocal(String(image), workDir));
-    const sourcePath = candidates[0] ?? (stage.outputBaseImage ? resolveLocal(stage.outputBaseImage, workDir) : undefined);
+    const approved = trustedProducts ? requireProductReferences(stage.productId).files : undefined;
+    if (approved && (!images?.length || images.some(file => !approved.some(item => item.path === file)))) {
+      throw new Error("PORTRAIT_PRODUCT_REFERENCE_INVALID: 商品基准图只能由本次已核验的同商品图片派生");
+    }
+    const sourcePath = (images?.[0] ?? referenceImages[0] ?? stage.outputBaseImage) || undefined;
     if (!sourcePath) throw new Error("参考图标准化失败：没有可用的真实参考图（禁止无参考生成）");
-    const source = snapshotFile(sourcePath);
+    const source = approved ? boundReference(approved.find(item => item.path === sourcePath)!) : snapshotFile(resolveLocal(sourcePath, workDir));
     const sourceHash = shotIntentHash(source.receipt);
-    const ext = sourcePath.toLowerCase().endsWith(".png") ? "png" : "jpg";
+    const ext = portraitImageExtension(source.bytes, sourcePath);
     const out = join(charactersRoot, "_product-base", `base-${sourceHash}.${ext}`);
     return locked(async () => {
       verifySource(source.receipt);
@@ -763,6 +839,6 @@ export function createPortraitRuntime(options: PortraitRuntimeOptions): Portrait
     processImage,
     snapshot: () => structuredClone(index),
     indexPath: () => indexFile,
-    ...(archived ? { preparePlan } : {})
+    ...(archived || trustedProducts ? { preparePlan } : {})
   };
 }

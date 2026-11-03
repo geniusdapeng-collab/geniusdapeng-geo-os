@@ -13,9 +13,14 @@ vi.mock("../production-authority.js", () => ({ authorizeRenderSubmission: async 
   return { compiled: built.compiled, requestHash: built.requestHash, reconciliationOnly: false, release: async () => undefined };
 } }));
 const providers = vi.hoisted(() => ({ submit: vi.fn() }));
-vi.mock("./providers.js", () => ({ videoGenPool: () => new Map([
-  ["seedance", { healthy: async () => true, submit: providers.submit }],
-]) }));
+vi.mock("./providers.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./providers.js")>();
+  return { ...real, videoGenPool: () => new Map([
+    ["seedance", Object.assign(new real.ArkVideoProvider({ apiKey: "test-only" }), {
+      healthy: async () => true, submitCompiled: providers.submit,
+    })],
+  ]) };
+});
 const RUN_DB = process.env.RUN_DB_TESTS === "1" && Boolean(process.env.DATABASE_APP_URL);
 
 describe.runIf(RUN_DB)("生成预占与接受回执活库契约", () => {
@@ -58,7 +63,7 @@ describe.runIf(RUN_DB)("生成预占与接受回执活库契约", () => {
   }
   function submitInput(row: RenderScriptLike, pool = app): SubmitGenJobInput {
     return { app: pool, gateway, scope, actor: "MEM-T", script: row, modelId: "doubao-seedance-2-5",
-      params: { durationSec: 5, aspectRatio: "16:9", extra: { source: "pg-test" } },
+      params: { durationSec: 5, aspectRatio: "16:9" },
       mode: "manual", fenceLevel: "auto", fenceImpacts: [], env: { VOLCENGINE_ARK_API_KEY: "test-only" } };
   }
   async function counts(id: string) {
@@ -177,14 +182,14 @@ describe.runIf(RUN_DB)("生成预占与接受回执活库契约", () => {
     expect(await counts(source.id)).toEqual({ jobs: 1, actions: ["model.call", "render.submit"] });
     expect(providers.submit).toHaveBeenCalledTimes(1);
   });
-  it.each(["commit-before", "commit-after"] as const)("accepted %s 故障后不重复提交，已提交者可补账", async (mode) => {
+  it.each(["before", "commit-before", "commit-after"] as const)("accepted %s 故障后恢复原回执，补账且无二次提交", async (mode) => {
     const source = await script();
-    await expect(submitGenJob(submitInput(source, faultPool("SET state='accepted'", mode))))
-      .rejects.toMatchObject({ code: "SUBMISSION_ACCEPTANCE_UNVERIFIED", details: { taskId: expect.any(String) } });
-    const stored = await owner.query("SELECT state FROM generation_submissions WHERE script_id=$1", [source.id]);
-    expect(stored.rows[0].state).toBe(mode === "commit-after" ? "accepted" : "submitting");
-    if (mode === "commit-after") expect((await submitGenJob(submitInput(source))).deduped).toBe(true);
-    else await expect(submitGenJob(submitInput(source))).rejects.toThrow("SUBMISSION_UNVERIFIED");
+    const result = await submitGenJob(submitInput(source, faultPool("SET state='accepted'", mode)));
+    const stored = await owner.query("SELECT state, task_id, dispatch_count FROM generation_submissions WHERE script_id=$1", [source.id]);
+    expect(stored.rows[0]).toEqual({ state: "finalized", task_id: result.taskId, dispatch_count: 1 });
+    expect(await submitGenJob({ ...submitInput(source), actor: "MEM-RETRY" }))
+      .toMatchObject({ jobId: result.jobId, taskId: result.taskId, deduped: true });
+    expect(await counts(source.id)).toEqual({ jobs: 1, actions: ["model.call", "render.submit"] });
     expect(providers.submit).toHaveBeenCalledTimes(1);
   });
   it("finalize COMMIT ack 丢失后重试读 finalized，不重复事件", async () => {

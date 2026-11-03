@@ -64,14 +64,18 @@ var/tcvenv/                    # ASR 依赖（mlx-whisper；Apple Silicon）
 ```ts
 video.explainer.create       // 立项 + shotbook v1(draft)
 video.explainer.shotbook     // 生成分镜（LLM 或规则兜底）→ 新版本(validated)
-video.explainer.submit       // 准备段（配音/对齐/语义/装配/体检）+ G8 + submitGenJob
-video.explainer.finalize     // 渲染 done 后：机器闸六条 → 两遍 loudnorm → 媒资库 final_cut
+video.explainer.submit       // 核对项目/素材/围栏 → 准备段 → G8 裁决 → 本机渲染提交
+video.explainer.finalize     // 核对同一任务与实际文件 → 保留原片原声（可选 loudnorm）→ 媒资库 final_cut
 video.explainer.versions     // 版本链
 video.explainer.engine       // 引擎体检（安装/许可/卡数/commit）
 ```
 
 渲染提交后由既有 `render-poller` 回填（`render_jobs.provider='remotion-local'`，产物按 `clip` 入库、
 `pipeline_kind='explainer'`）；`finalize` 再把交付件按 `final_cut` 入媒资库。
+
+- TTS 使用服务器配置的 `WORKLOOM_VOICE_PROFILE`。服务端和工位的 `WORKLOOM_VOICE_BRIDGE_TENANT` 必须设为允许使用该工位的同一个工作区 ID。收到字节回执后按原请求复用逐句 WAV，派发回执缺失时保留待核对记录。
+- 录音使用 `voiceSource: "upload"` 和 `uploadAssetId`，指向当前工作区已通过媒资上传登记的 WAV。预剪后用 `uploadConfirmed: true` 确认。视觉素材用 `hostAssetIds`（人物形态对应已登记 MP4）或 `assets: [{ assetId, to }]`（已登记 PNG/JPEG，目标位于 `assets/`），提交时用 `mediaUseConfirmed: true` 记录使用确认。
+- 分镜版本保存 `aspect`，准备、提交和实际成片核验使用同一画幅。旧分镜缺少画幅记录时沿用其既有 9:16 提交口径。
 
 ### 4.2 命令行（真机验收 / 运维路径）
 

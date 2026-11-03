@@ -105,15 +105,23 @@ const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestI
       });
       response.once("error", reject);
       response.once("end", () => {
-        const responseHeaders = new Headers();
-        for (const [key, value] of Object.entries(response.headers)) {
-          if (value !== undefined) responseHeaders.set(key, Array.isArray(value) ? value.join(", ") : String(value));
+        try {
+          const status = response.statusCode ?? 502;
+          const responseHeaders = new Headers();
+          for (const [key, value] of Object.entries(response.headers)) {
+            if (value !== undefined) responseHeaders.set(key, Array.isArray(value) ? value.join(", ") : String(value));
+          }
+          // Fetch's null-body statuses reject even an empty Buffer as a body.
+          // Constructor errors in this event callback must reject the request.
+          const bodyless = status === 204 || status === 205 || status === 304;
+          resolve(new Response(bodyless ? null : Buffer.concat(chunks), {
+            status,
+            statusText: response.statusMessage ?? "",
+            headers: responseHeaders,
+          }));
+        } catch (error) {
+          reject(error);
         }
-        resolve(new Response(Buffer.concat(chunks), {
-          status: response.statusCode ?? 502,
-          statusText: response.statusMessage ?? "",
-          headers: responseHeaders,
-        }));
       });
     });
     request.once("error", reject);
@@ -275,7 +283,15 @@ export async function completeVideoTextTask(input: {
       { retryable: false, unknown: true, cause: error },
     );
   }
-  const rawBody = await readBoundedBody(response);
+  let rawBody: string;
+  try {
+    rawBody = response.body === null ? "" : await readBoundedBody(response);
+  } catch (error) {
+    if (error instanceof VideoTextDispatchError) throw error;
+    throw new VideoTextDispatchError("MODEL_RESPONSE_BODY_INVALID", "模型响应正文未完整读取或编码无效。", {
+      retryable: false, unknown: true, status: response.status, cause: error,
+    });
+  }
   if (!response.ok) {
     let parsedFailure: unknown;
     try { parsedFailure = JSON.parse(rawBody); } catch { /* non-JSON failures stay bounded */ }
@@ -285,7 +301,7 @@ export async function completeVideoTextTask(input: {
       `模型调用失败：HTTP ${response.status}${detail ? `（${detail}）` : ""}`,
       {
         retryable: response.status === 429,
-        unknown: response.status >= 500,
+        unknown: response.status >= 500 || (response.status >= 300 && response.status < 400),
         status: response.status,
       },
     );
@@ -298,6 +314,7 @@ export async function completeVideoTextTask(input: {
     throw new VideoTextDispatchError("MODEL_RESPONSE_JSON_INVALID", "模型响应不是合法 JSON。", {
       retryable: false,
       unknown: true,
+      status: response.status,
       cause: error,
     });
   }

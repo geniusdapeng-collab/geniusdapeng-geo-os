@@ -16,7 +16,8 @@
 import path from "node:path";
 import { newId } from "@workloom/shared";
 import { getAppPool, getOwnerPool } from "@workloom/db";
-import { ArchiveStore, listManualBridges, readContextBundle, type ContextBundle, type ManualBridgeRecord } from "@hyperreality/video-studio";
+import { ArchiveStore, assertCreativeContract, creativeHash, listManualBridges, readContextBundle,
+  type ContextBundle, type CreativeContract, type ManualBridgeRecord } from "@hyperreality/video-studio";
 import { scopedRows, archiveWorkDir, projectRunLockKey } from "./archive-host.js";
 
 interface Scope {
@@ -49,6 +50,7 @@ export interface ResumeOptions {
     intent: string;
     isMarketing: boolean;
     metadata?: Record<string, unknown>;
+    resumeContract?: CreativeContract;
   }) => string | Promise<string>;
   actor: { id: string; type: "human" | "system" };
 }
@@ -68,7 +70,7 @@ export async function readStageBreakpoints(scope: Scope, projectId: string): Pro
               row_number() OVER (PARTITION BY stage_id ORDER BY attempt DESC) AS rn,
               min(started_at) OVER (PARTITION BY stage_id) AS first_at
          FROM production_stage_runs
-        WHERE workspace_id=$1 AND project_id=$2
+        WHERE workspace_id=$1 AND project_id=$2 AND pipeline_run_id IS NULL
      ) latest
       WHERE rn=1 AND status = ANY($3::text[])
       ORDER BY first_at ASC, stage_id ASC`,
@@ -89,12 +91,29 @@ async function findPendingApproval(scope: Scope, projectId: string): Promise<str
        JOIN biz_events e ON e.event_id = a.event_id AND e.workspace_id = a.workspace_id
       WHERE a.workspace_id = $1
         AND a.status = 'pending'
-        AND (e.payload->'object'->>'id' = $2 OR e.payload->'object'->>'id' LIKE $2 || ':%')
+        AND (e.payload->'object'->>'id' = $2 OR starts_with(e.payload->'object'->>'id', $2 || ':'))
       ORDER BY a.created_at DESC
       LIMIT 1`,
     [scope.workspaceId, projectId],
   );
   return rows[0]?.approval_id ?? null;
+}
+
+/** Read the exact interrupted/failed attempt's bound contract, never a same-title candidate. */
+async function boundResumeContract(scope: Scope, projectId: string, attempt: number) {
+  const [row] = await scopedRows<{ contract: CreativeContract; current_hash: string }>(scope,
+    `SELECT c.contract,
+       (SELECT latest.contract_hash FROM video_creative_contracts latest
+        WHERE latest.tenant_id=b.tenant_id AND latest.workspace_id=b.workspace_id AND latest.project_id=b.project_id
+        ORDER BY latest.revision DESC LIMIT 1) AS current_hash
+     FROM video_creative_run_contracts b
+     JOIN video_creative_contracts c USING (tenant_id,workspace_id,project_id,contract_hash)
+     JOIN production_stage_runs s ON s.workspace_id=b.workspace_id AND s.project_id=b.project_id AND s.run_id=b.run_id
+     WHERE b.tenant_id=$1 AND b.workspace_id=$2 AND b.project_id=$3
+       AND s.stage_id='preproduction' AND s.pipeline_run_id IS NULL AND s.attempt=$4
+     ORDER BY c.revision DESC LIMIT 1`,
+    [scope.tenantId, scope.workspaceId, projectId, attempt]);
+  return row;
 }
 
 /**
@@ -139,10 +158,22 @@ export async function resumeProject(
       };
     }
 
+    const { rows: [usage] } = await client.query<{ pending: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM video_pipeline_operations
+        WHERE tenant_id=$1 AND workspace_id=$2 AND project_id=$3 AND state IN ('reserved','dispatched','unknown'))
+        OR EXISTS (SELECT 1 FROM video_pipeline_runs
+        WHERE tenant_id=$1 AND workspace_id=$2 AND project_id=$3 AND status='reconciling') AS pending`,
+      [scope.tenantId, scope.workspaceId, opts.projectId],
+    );
+    if (usage?.pending === true) {
+      await client.query("ROLLBACK");
+      return { kind: "noaction", stage: opts.fromStage ?? "preproduction", message: "创作执行或费用回执待对账，禁止重新提交外部动作。" };
+    }
+
     /* 旧账归位：进程已死，状态不能继续撒谎 */
     const interrupted = await client.query(
       `UPDATE production_stage_runs SET status='interrupted', finished_at=now()
-        WHERE workspace_id=$1 AND project_id=$2 AND status='running' RETURNING id`,
+        WHERE workspace_id=$1 AND project_id=$2 AND status='running' AND pipeline_run_id IS NULL RETURNING id`,
       [scope.workspaceId, opts.projectId],
     );
     interruptedRows = interrupted.rowCount ?? 0;
@@ -153,7 +184,7 @@ export async function resumeProject(
          JOIN biz_events e ON e.event_id = a.event_id AND e.workspace_id = a.workspace_id
         WHERE a.workspace_id = $1
           AND a.status = 'pending'
-          AND (e.payload->'object'->>'id' = $2 OR e.payload->'object'->>'id' LIKE $2 || ':%')
+          AND (e.payload->'object'->>'id' = $2 OR starts_with(e.payload->'object'->>'id', $2 || ':'))
         ORDER BY a.created_at DESC
         LIMIT 1`,
       [scope.workspaceId, opts.projectId],
@@ -220,28 +251,49 @@ export async function resumeProject(
     if (!project) {
       return { kind: "noaction", stage: stuckStage, message: `项目 ${opts.projectId} 不存在或不属于当前工作区` };
     }
-    if (project.kind === "marketing" && (!opts.metadata || Object.keys(opts.metadata).length === 0)) {
+    if (project.kind !== "marketing" && project.kind !== "narrative") {
+      return { kind: "noaction", stage: stuckStage, message: "该项目片型使用其专属入口恢复。" };
+    }
+    const attempt = breakpoints.find(stage => stage.stageId === "preproduction")?.attempt ?? null;
+    const previous = attempt === null ? undefined : await boundResumeContract(scope, opts.projectId, attempt);
+    const contract = previous?.contract;
+    if (contract) {
+      try { assertCreativeContract(contract, { allowNeedsInput: true }); }
+      catch (error) {
+        return { kind: "noaction", stage: stuckStage, message: `原执行合同无法继续：${error instanceof Error ? error.message : String(error)}` };
+      }
+      if (contract.hash !== previous.current_hash || contract.route !== project.kind
+        || contract.scope.tenantId !== scope.tenantId || contract.scope.workspaceId !== scope.workspaceId || contract.scope.projectId !== opts.projectId
+        || (opts.intent !== undefined && opts.intent !== contract.rawIntent)
+        || (opts.metadata !== undefined && creativeHash(opts.metadata) !== contract.sourceMetadataHash)) {
+        return { kind: "noaction", stage: stuckStage, message: "原执行合同或客户输入已变化，请从明确的新预生产请求启动。" };
+      }
+    }
+    if (!contract && project.kind === "marketing" && (!opts.intent || !opts.metadata || Object.keys(opts.metadata).length === 0)) {
       return {
         kind: "noaction",
         stage: stuckStage,
-        message: `营销项目 ${opts.projectId} 的预生产恢复必须重新提交本次完整 metadata；项目标题只有截断后的意图，不能替代商品、人物或事实来源。`,
+        message: `营销项目 ${opts.projectId} 的预生产恢复必须重新提交本次完整 metadata 和原始意图；项目标题不能替代客户输入。`,
       };
     }
+    const metadata = contract?.sourceMetadata ?? opts.metadata;
     const runId = await opts.startRun({
       projectId: opts.projectId,
-      intent: opts.intent ?? project.title ?? "",
+      intent: contract?.rawIntent ?? opts.intent ?? project.title ?? "",
       isMarketing: project.kind === "marketing",
-      ...(opts.metadata ? { metadata: structuredClone(opts.metadata) } : {}),
+      ...(metadata ? { metadata: structuredClone(metadata) } : {}),
+      ...(contract ? { resumeContract: contract } : {}),
     });
-    const attempt = breakpoints[0]?.attempt ?? null;
     return {
       kind: "resumed",
       stage: "preproduction",
       runId,
       attempt,
       message:
-        `预生产断点（attempt=${attempt ?? "-"}，状态=${breakpoints[0]?.status ?? "无记录"}）→ 走既有补跑入口续跑。`
-        + `注意：vendor Phase checkpoint 仅在 blueprint 指纹一致时命中（真实模型下常不一致 → 全量重跑，重复计费风险）；`
+        `预生产断点（attempt=${attempt ?? "-"}）已提交恢复。`
+        + (contract ? "采用该尝试绑定的完整原始客户输入。" : "")
+        + (project.kind === "marketing" ? "新尝试会按现行政策重新采集和核验 G1。" : "")
+        + "只有依赖摘要相同且完整核验的缓存可复用。"
         + `本轮开跑前已把 checkpoint 快照进档案（checkpoints/attempt-<n>-before/），跑完看输出里的 resumed 标记。`
         + (interruptedRows > 0 ? `已把 ${interruptedRows} 条 running 台账归位为 interrupted。` : ""),
     };
@@ -370,7 +422,7 @@ export async function scanStaleRunsOnStartup(env: NodeJS.ProcessEnv = process.en
     `SELECT r.workspace_id, w.tenant_id, r.project_id, r.stage_id, r.attempt, r.started_at
        FROM production_stage_runs r
        JOIN workspaces w ON w.id = r.workspace_id
-      WHERE r.status='running' AND COALESCE(r.last_heartbeat_at, r.started_at) < now() - ($1 || ' minutes')::interval
+      WHERE r.pipeline_run_id IS NULL AND r.status='running' AND COALESCE(r.last_heartbeat_at, r.started_at) < now() - ($1 || ' minutes')::interval
       ORDER BY r.started_at ASC
       LIMIT 100`,
     [String(staleAfterMinutes)],
@@ -405,6 +457,7 @@ export async function scanStaleRunsOnStartup(env: NodeJS.ProcessEnv = process.en
           const updated = await client.query(
             `UPDATE production_stage_runs SET status='interrupted', finished_at=now()
               WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$4 AND status='running'
+                AND pipeline_run_id IS NULL
                 AND COALESCE(last_heartbeat_at, started_at) < now() - ($5 || ' minutes')::interval
               RETURNING id`,
             [workspaceId, row.project_id, row.stage_id, row.attempt, String(staleAfterMinutes)],

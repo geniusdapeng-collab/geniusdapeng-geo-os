@@ -30,6 +30,7 @@ export async function scopedQuery<T extends QueryRow>(
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     const r = await client.query<T>(sql, params);
     await client.query("COMMIT");
     return r.rows;
@@ -83,6 +84,7 @@ export async function insertShotbook(
     shotbook: ExplainerShotbook;
     enginePin?: Record<string, unknown>;
     voiceRef?: Record<string, unknown>;
+    aspect?: "9:16" | "16:9";
     by: string;
   },
 ): Promise<string> {
@@ -95,12 +97,12 @@ export async function insertShotbook(
     await client.query(
       `INSERT INTO explainer_shotbooks
          (id, workspace_id, project_id, version, status, script_text, script_sha256, shotbook,
-          engine_pin, voice_ref, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          engine_pin, voice_ref, created_by, render_scope)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         id, scope.workspaceId, input.projectId, input.version, input.status, input.scriptText,
         input.scriptSha256, JSON.stringify(input.shotbook), JSON.stringify(input.enginePin ?? {}),
-        JSON.stringify(input.voiceRef ?? {}), input.by,
+        JSON.stringify(input.voiceRef ?? {}), input.by, JSON.stringify({ mode: "full", ...(input.aspect ? { aspect: input.aspect } : {}) }),
       ],
     );
     await gatewayAppendOnClient(client, { ...scope, actor: { id: input.by, type: "human" } }, {
@@ -109,7 +111,8 @@ export async function insertShotbook(
       object: { type: "video_project", id: input.projectId },
       decision: {
         action: "explainer.shotbook.create",
-        after: { shotbookId: id, version: input.version, status: input.status, shots: input.shotbook.shots.length },
+        after: { shotbookId: id, version: input.version, status: input.status, shots: input.shotbook.shots.length,
+          ...(input.aspect ? { aspect: input.aspect } : {}) },
       },
       rule_impact: [],
     });
@@ -168,8 +171,9 @@ export interface ExplainerProjectRow {
 
 export async function projectOf(scope: Scope, projectId: string): Promise<ExplainerProjectRow | null> {
   const rows = await scopedQuery<ExplainerProjectRow>(
-    `SELECT id, title, kind, status FROM video_projects WHERE workspace_id=$1 AND id=$2`,
-    [scope.workspaceId, projectId],
+    `SELECT p.id,p.title,p.kind,p.status FROM video_projects p JOIN workspaces w ON w.id=p.workspace_id
+     WHERE p.workspace_id=$1 AND p.id=$2 AND w.tenant_id=$3`,
+    [scope.workspaceId, projectId, scope.tenantId],
     scope,
   );
   return rows[0] ?? null;
@@ -245,13 +249,13 @@ function sha256(text: string): string {
 export async function renderJobOf(
   scope: Scope,
   idempotencyKey: string,
-): Promise<{ id: string; status: string; task_id: string | null; result_url: string | null; asset_id: string | null; actual_seconds: number | null } | null> {
-  const rows = await scopedQuery<{
-    id: string; status: string; task_id: string | null; result_url: string | null; asset_id: string | null; actual_seconds: number | null;
-  }>(
-    `SELECT id, status, task_id, result_url, asset_id, actual_seconds
-       FROM render_jobs WHERE workspace_id=$1 AND idempotency_key=$2`,
-    [scope.workspaceId, idempotencyKey],
+  projectId: string,
+) {
+  const rows = await scopedQuery<{ id: string; status: string; task_id: string | null; mock: boolean; provider: string }>(
+    `SELECT j.id,j.status,j.task_id,j.mock,j.provider
+       FROM render_jobs j JOIN workspaces w ON w.id=j.workspace_id
+      WHERE j.workspace_id=$1 AND j.idempotency_key=$2 AND j.project_id=$3 AND w.tenant_id=$4`,
+    [scope.workspaceId, idempotencyKey, projectId, scope.tenantId],
     scope,
   );
   return rows[0] ?? null;

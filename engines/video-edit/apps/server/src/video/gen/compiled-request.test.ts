@@ -34,7 +34,7 @@ describe("完整最终请求编译", () => {
     expect(() => buildRenderPrompt({ md: "字".repeat(limit + 1) }, model)).toThrow("PROMPT_TOO_LONG");
     expect(() => buildRenderPrompt({ md: " " }, model)).toThrow("REQUEST_INVALID");
   });
-  it("正文、模型覆盖、端点、参考顺序和全部额外参数改变都会改变资格指纹", () => {
+  it("正文、模型覆盖、端点、参考顺序和已支持的供应商字段均进入资格指纹", () => {
     const input = { script, model, params: { durationSec: 5, referenceImageUrls: ["asset://a", "asset://b"] },
       scope: { tenantId: "t", workspaceId: "w" }, mode: "manual" as const, env: {} };
     const original = compileRenderRequest(input);
@@ -42,7 +42,7 @@ describe("完整最终请求编译", () => {
       { script: { ...script, md: script.md + "更多细节" } }, { env: { SEEDANCE_MODEL: "new-model" } },
       { env: { SEEDANCE_ENDPOINT: "https://another.example.test" } },
       { params: { durationSec: 5, referenceImageUrls: ["asset://b", "asset://a"] } },
-      { params: { durationSec: 5, extra: { cfg_scale: 9 } } },
+      { params: { ...input.params, watermark: true } },
     ]) expect(compileRenderRequest({ ...input, ...patch }).requestHash).not.toBe(original.requestHash);
   });
   it("对象顺序规范化、数组保序，__proto__ 不会消失", () => {
@@ -50,7 +50,7 @@ describe("完整最终请求编译", () => {
     expect(canonicalRenderJson([1, 2])).not.toBe(canonicalRenderJson([2, 1]));
     expect(canonicalRenderJson(JSON.parse('{"__proto__":{"x":1}}'))).toContain('"__proto__"');
   });
-  it.each(["model", "prompt", "content", "duration", "image_url", "jobDir", "__proto__"])("extra.%s 不能替换源内容", key => {
+  it.each(["model", "prompt", "content", "duration", "image_url", "jobDir", "cfg_scale", "callback_url", "__proto__"])("正式资格不接受 extra.%s", key => {
     expect(() => validateProductionParams({ extra: JSON.parse(`{"${key}":"forged"}`) })).toThrow("REQUEST_INVALID");
   });
   it("非法 JSON、空模型、未编译供应商和模型路径穿越都拒绝", () => {

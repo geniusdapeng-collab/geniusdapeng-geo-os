@@ -74,8 +74,8 @@
       "sourceGitBlob": "57e33be06763c409fe173a2fb0d51487a0671ed8",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "targetMode": "100644",
-      "targetSha256": "06c6b9fd188b78654e40a66db6c963b00235c9b1430c117aa70caec9dfbf6c02",
-      "targetBytes": 99710,
+      "targetSha256": "5a8f136e1da546c12bae80f6901619f14b2fe63dd0e6e31bd9600b282f11ce41",
+      "targetBytes": 98761,
       "transform": "none"
     },
     {
@@ -86,8 +86,8 @@
       "sourceGitBlob": "3b42bb02f768b1e1ba35f62e8ccc8985004272e8",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
       "targetMode": "100644",
-      "targetSha256": "cd5de28e7c0358a71aa1065488a6bd3afd285a786e8aefd8bf0db3356d72c26d",
-      "targetBytes": 76951,
+      "targetSha256": "50d5304a16ee56a2cc6889ebe25e30bf27609ff1a885eb9e8fcfcf5f48b19c26",
+      "targetBytes": 78897,
       "transform": "none"
     },
     {
@@ -141,5 +141,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

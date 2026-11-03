@@ -236,8 +236,8 @@ export async function registerStoredMedia(
   });
 
   if (r.deduped && input.expectedSha256 !== undefined
-    && (r.asset.project_id !== (input.projectId ?? null) || r.asset.source_type !== "generated")) {
-    throw new Error("同内容媒资已属于其他项目或来源，不允许通过交付补录改写归属");
+    && (r.asset.project_id !== (input.projectId ?? null) || r.asset.source_type !== sourceType)) {
+    throw new Error("同内容媒资已属于其他项目或来源，不能改写原有归属");
   }
 
   await applyMediaColumns(app, scope, r.asset.id, {

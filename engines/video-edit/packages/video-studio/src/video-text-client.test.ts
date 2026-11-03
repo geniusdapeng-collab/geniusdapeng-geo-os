@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import { completeVideoTextTask } from "./video-text-client.js";
 import { withCreativeBudget, type CreativeModelOutcome } from "./creative-runtime.js";
@@ -25,6 +27,41 @@ function envelope(content = '{"ok":true}', overrides: Record<string, unknown> = 
 }
 
 describe("embedded video text dispatcher", () => {
+  it("handles empty native HTTP responses without crashing the worker or repeating a POST", async () => {
+    const program = `
+      import assert from 'node:assert/strict';
+      import { createServer } from 'node:http';
+      import { completeVideoTextTask } from './packages/video-studio/src/video-text-client.ts';
+      const codes = [204, 205, 304];
+      let count = 0;
+      const server = createServer((req, res) => {
+        req.resume();
+        req.once('end', () => res.writeHead(codes[count++]).end());
+      });
+      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      try {
+        for (const status of codes) {
+          await assert.rejects(completeVideoTextTask({
+            endpoint: {baseUrl: 'http://127.0.0.1:' + server.address().port, apiKey: 'fixture', model: 'deepseek-flash'},
+            scene: 'video.quality.producer-review', messages: [{role:'user', content:'离线验证空响应'}], timeoutMs: 3000,
+          }), error => {
+            assert.equal(error.code, status === 304 ? 'MODEL_HTTP_304' : 'MODEL_RESPONSE_JSON_INVALID');
+            assert.equal(error.options.status, status);
+            assert.equal(error.options.retryable, false);
+            assert.equal(error.options.unknown, true);
+            return true;
+          });
+        }
+        assert.equal(count, codes.length);
+      } finally {
+        await new Promise(resolve => server.close(resolve));
+      }
+    `;
+    await promisify(execFile)(process.execPath, ["--import", "tsx", "--input-type=module", "-e", program], {
+      cwd: new URL("../../../", import.meta.url), timeout: 8_000,
+    });
+  }, 10_000);
+
   it.each(["malformed-content", "truncated"])("settles known usage for %s without masking the output error or freezing later calls", async kind => {
     const outcomes: CreativeModelOutcome[] = [], requests: string[] = [];
     const first = kind === "truncated"

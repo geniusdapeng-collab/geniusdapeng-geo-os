@@ -19,17 +19,17 @@
       "path": "apps/server/src/video/archive-resume.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.ts",
       "sourceSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
-      "targetSha256": "f766213d1149b13c6ab0a1e4ef9061a790c1ea71994ce5e27d2e3641f6c01aee",
+      "targetSha256": "a477c3aefbc54ce651e57cb3ab995586e9895a1b5951e4ad9f4c7dbe7e1e1601",
       "sourceBytes": 20036,
-      "targetBytes": 20804
+      "targetBytes": 24274
     },
     {
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetSha256": "f782cbd5a7141a7f21c9abfbc40f20d09121626d4ca8fcbd4c5ce27c9979937c",
+      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
       "sourceBytes": 68733,
-      "targetBytes": 90462
+      "targetBytes": 92097
     },
     {
       "path": "bundles/geo-growth/agent-capabilities.json",
@@ -82,8 +82,8 @@
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
-      "targetSha256": "97226b83682c7261cf7cbc60bc8f32f5aae006f3c5314b2e5783b05cb5929636",
-      "targetBytes": 15983
+      "targetSha256": "7bb1de72d0ce31631e819463e8ad8c87b81f4f2c6ed5888891e0b8f483928023",
+      "targetBytes": 16795
     },
     {
       "path": "pengmanager-capabilities.json",
@@ -110,5 +110,5 @@
       "targetBytes": 17391
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

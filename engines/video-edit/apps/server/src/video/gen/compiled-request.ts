@@ -6,6 +6,7 @@ import type { Scope } from "./db.js";
 import type { RenderScriptLike } from "./submit.js";
 import { SubmissionError, submissionRequestHash } from "./submission-ledger.js";
 import { resolveProviderModel } from "./catalog.js";
+import { serviceTierRejectionReason } from "./params.js";
 
 export interface CompiledProviderRequest {
   schemaVersion: "workloom.provider-request/v1";
@@ -125,9 +126,14 @@ export function buildRenderPrompt(script: Pick<RenderScriptLike, "md">, model: M
 export function validateProductionParams(params: VideoGenParams): void {
   submissionRequestHash(params);
   if (params.prompt !== undefined) throw new SubmissionError("REQUEST_INVALID", "正式提示词只能来自服务预生产档案");
-  const reserved = new Set(["model", "prompt", "content", "duration", "frames", "ratio", "aspect_ratio", "resolution", "size", "seed", "generate_audio", "image_url", "reference_images", "image", "video", "audio", "providerModel", "jobDir", "__proto__", "constructor", "prototype"]);
-  if (params.extra) for (const key of Object.keys(params.extra)) {
-    if (reserved.has(key)) throw new SubmissionError("REQUEST_INVALID", `extra.${key} 不能覆盖已绑定的生成内容`);
+  if (params.extra && Object.keys(params.extra).length) {
+    throw new SubmissionError("REQUEST_INVALID", "正式资格只接受明确绑定的供应商字段");
+  }
+  if (params.frames !== undefined) {
+    throw new SubmissionError("REQUEST_INVALID", "正式资格已绑定镜头计划时长，不能另传帧数");
+  }
+  if (params.callbackUrl !== undefined) {
+    throw new SubmissionError("REQUEST_INVALID", "正式生成仅使用宿主配置的回读通道，不能指定外部回调");
   }
   for (const [key, value] of Object.entries(params)) {
     if (typeof value === "number" && !Number.isFinite(value)) throw new SubmissionError("REQUEST_INVALID", `参数 ${key} 不是有限数`);
@@ -140,6 +146,8 @@ export function compileRenderRequest(input: {
   mode: "manual" | "batch" | "auto"; env: NodeJS.ProcessEnv;
 }): { compiled: CompiledProviderRequest; requestHash: string; prompt: string } {
   validateProductionParams(input.params);
+  const tierError = input.model.provider === "seedance" ? serviceTierRejectionReason(input.params.serviceTier) : null;
+  if (tierError) throw new SubmissionError("REQUEST_INVALID", tierError);
   const prompt = buildRenderPrompt(input.script, input.model);
   const compiled = compileProviderRequest(input.model.provider, {
     prompt, estimatedUnits: input.params.durationSec ?? 5, refId: input.script.id,

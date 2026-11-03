@@ -378,6 +378,9 @@ function assertAbstractRenderRequest(authority: ProductVisualAuthority, compiled
 interface BoundCharacterReference extends CharacterReference { dataUrl: string; mediaType: string; bytes: number }
 async function compileQualifiedRequest(source: Source, input: Parameters<typeof compileRenderRequest>[0]) {
   const { params, model } = input;
+  if (model.kind !== "video" || !model.supports.includes("duration")) {
+    fail("MODEL_UNAVAILABLE", "正式镜头需要支持计划时长的视频生成模型");
+  }
   const visual = source.productVisualAuthority;
   const characterImages: BoundCharacterReference[] = [];
   if (visual?.mode !== ABSTRACT_PRODUCT_VISUAL_MODE) return { ...compileRenderRequest(input), characterImages };
@@ -450,12 +453,30 @@ export async function qualifyProductionShot(input: {
     const dispatched = await scopedTx(leased.app, scope, async client => {
       const found = await client.query<QualificationRow & { submission_state: string }>(`SELECT q.*,s.state AS submission_state
         FROM production_qualifications q JOIN generation_submissions s
-          ON s.tenant_id=q.tenant_id AND s.workspace_id=q.workspace_id AND s.request_hash=q.request_hash
+          ON s.tenant_id=q.tenant_id AND s.workspace_id=q.workspace_id AND s.project_id=q.project_id
+          AND s.script_id=q.script_id AND s.script_version=q.script_version
+          AND s.request_hash=q.request_hash AND s.idempotency_key='render:' || q.request_hash
         WHERE q.tenant_id=$1 AND q.workspace_id=$2 AND q.project_id=$3 AND q.shot_id=$4
           AND q.source_stage_run_id=$5 AND q.payload_hash=$6 AND q.model_id=$7 AND q.mode=$8 AND q.params=$9::jsonb
-          AND q.status='passed' AND s.state IN ('submitting','unknown','accepted','finalized') ORDER BY q.seq DESC LIMIT 1`,
-        [scope.tenantId, scope.workspaceId, input.projectId, input.shotId, source.row.id, built.compiled.payloadHash, model.id, mode, JSON.stringify(params)]);
-      return found.rows[0];
+          AND q.status='passed' AND s.state IN ('submitting','unknown','accepted','finalized')
+          AND (s.state<>'submitting' OR s.dispatch_count>0 OR (q.expires_at>$10 AND NOT EXISTS (
+            SELECT 1 FROM production_qualifications newer
+             WHERE newer.tenant_id=q.tenant_id AND newer.workspace_id=q.workspace_id AND newer.project_id=q.project_id
+               AND newer.shot_id=q.shot_id AND newer.seq>q.seq
+          )))
+        ORDER BY q.seq DESC LIMIT 1`,
+        [scope.tenantId, scope.workspaceId, input.projectId, input.shotId, source.row.id, built.compiled.payloadHash, model.id, mode,
+          JSON.stringify(params), new Date(Date.now()).toISOString()]);
+      if (found.rows[0]) return found.rows[0];
+      const pending = await client.query(
+        `SELECT s.id FROM generation_submissions s JOIN render_scripts r
+           ON r.id=s.script_id AND r.workspace_id=s.workspace_id AND r.project_id=s.project_id AND r.version=s.script_version
+         WHERE s.tenant_id=$1 AND s.workspace_id=$2 AND s.project_id=$3 AND r.shot_id=$4
+           AND (s.state IN ('unknown','accepted') OR (s.state='submitting' AND s.dispatch_count>0))
+         LIMIT 1`, [scope.tenantId, scope.workspaceId, input.projectId, input.shotId],
+      );
+      if (pending.rowCount) fail("QUALIFICATION_RECONCILIATION_REQUIRED", "当前镜头已有待对账提交，请核对原请求，禁止用新参数重新生成");
+      return undefined;
     });
     if (dispatched) {
       const existingPayload = payloadFor(dispatched);
@@ -475,7 +496,7 @@ export async function qualifyProductionShot(input: {
     await writeFile(requestFile, evidenceJson, { encoding: "utf8", flag: "wx", mode: 0o600 });
     const verdict = await reviewStage({ stage: "prompt", projectId: input.projectId,
       artifacts: [{ path: requestFile, kind: "json", expectedSha256: renderSha256(evidenceJson), note: "完整实际请求。人物图以绑定摘要的附件供视觉审核" },
-        ...built.characterImages.map(item => ({ path: item.path, kind: "image" as const, expectedSha256: item.sha256,
+        ...built.characterImages.map(item => ({ path: item.path, kind: "image" as const, expectedSha256: item.sha256, requireOriginalImage: true,
           note: `人物角色参考 ${item.characterId}/${item.angle}，用途为 reference_image` }))],
       deterministic: [{ id: "source-current", pass: true, hard: true, detail: `当前服务执行 ${source.row.id} attempt=${source.row.attempt}，文件摘要一致` },
         { id: "request-complete", pass: true, hard: true, detail: "完整最终 JSON、端点、模型、素材引用与参数，无截断或后置补写" }],
@@ -489,7 +510,8 @@ export async function qualifyProductionShot(input: {
         payloadHash: built.compiled.payloadHash, requestHash: built.requestHash }, env });
     const approved = verdict.status === "passed" && verdict.approved === true && verdict.via === "llm" && verdict.degraded === false
       && verdict.evidence?.some(item => item.path === requestFile && item.sha256 === renderSha256(evidenceJson) && item.scope === "complete-text") === true
-      && built.characterImages.every(image => verdict.evidence?.some(item => item.path === image.path && item.sha256 === image.sha256 && item.scope === "image"));
+      && built.characterImages.every(image => verdict.visualEvidence?.some(item => item.path === image.path
+        && item.sourceSha256 === image.sha256 && item.sha256 === image.sha256 && item.kind === "original"));
     await readBytes(source.root, requestRef, renderSha256(evidenceJson));
     const latest = await sourceForShot(leased.app, scope, input.projectId, input.shotId, input.workDir ?? archiveWorkDir(env));
     if (latest.row.id !== source.row.id || latest.row.output_sha256 !== source.row.output_sha256 || latest.promptsHash !== source.promptsHash) fail("SOURCE_CHANGED", "评审期间预生产证据发生变化");
@@ -542,8 +564,9 @@ async function readQualified(app: AppPool, scope: Scope, token: string, env: Nod
     const row = result.rows[0];
     if (!row || row.status !== "passed" || row.signature !== decoded.signature || canonicalRenderJson(payloadFor(row)) !== canonicalRenderJson(payload)) fail("QUALIFICATION_INVALID", "签名与不可变资格记录不一致");
     const previous = await client.query<{ state: string }>(`SELECT state FROM generation_submissions
-      WHERE tenant_id=$1 AND workspace_id=$2 AND idempotency_key=$3 AND request_hash=$4`,
-      [scope.tenantId, scope.workspaceId, `render:${row.request_hash}`, row.request_hash]);
+      WHERE tenant_id=$1 AND workspace_id=$2 AND idempotency_key=$3 AND request_hash=$4
+        AND project_id=$5 AND script_id=$6 AND script_version=$7`,
+      [scope.tenantId, scope.workspaceId, `render:${row.request_hash}`, row.request_hash, row.project_id, row.script_id, row.script_version]);
     const reconciliationOnly = ["accepted", "finalized"].includes(previous.rows[0]?.state ?? "");
     if (!reconciliationOnly) {
       if (!Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.now()

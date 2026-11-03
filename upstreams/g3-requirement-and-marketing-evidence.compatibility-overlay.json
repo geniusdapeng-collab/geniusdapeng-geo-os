@@ -29,8 +29,8 @@
       "sourceSha256": "13932792dae9c5b004d420368134626b2c0d217425327045bdd15ae5b26798c4",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "targetMode": "100644",
-      "targetBytes": 99710,
-      "targetSha256": "06c6b9fd188b78654e40a66db6c963b00235c9b1430c117aa70caec9dfbf6c02",
+      "targetBytes": 98761,
+      "targetSha256": "5a8f136e1da546c12bae80f6901619f14b2fe63dd0e6e31bd9600b282f11ce41",
       "transform": "none"
     },
     {
@@ -41,8 +41,8 @@
       "sourceSha256": "ec7824008a53d7fb8cb45d3876a1952486c0d7bf2fe35bf63d43817a1c11e100",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
       "targetMode": "100644",
-      "targetBytes": 76951,
-      "targetSha256": "cd5de28e7c0358a71aa1065488a6bd3afd285a786e8aefd8bf0db3356d72c26d",
+      "targetBytes": 78897,
+      "targetSha256": "50d5304a16ee56a2cc6889ebe25e30bf27609ff1a885eb9e8fcfcf5f48b19c26",
       "transform": "none"
     },
     {
@@ -77,8 +77,8 @@
       "sourceSha256": "605167eb88b5483ed951399c26228bd334bd8ddfcf3dd8c7ffb326097a56344f",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
       "targetMode": "100644",
-      "targetBytes": 32920,
-      "targetSha256": "bdd5ebd6ee1f62cb9463ba542d9400d380ec21040cb5bb9e9add290d10e8db06",
+      "targetBytes": 35339,
+      "targetSha256": "5dcc325d3b92fa487e4c0f1ce6218171feee8b8eef7e2ff0b2afd00eb18ce254",
       "transform": "none"
     },
     {
@@ -89,8 +89,8 @@
       "sourceSha256": "2e866861e24fdb098916ac9fba8e843911a7b24aeb5c052bdff5d83b48042eca",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "targetMode": "100644",
-      "targetBytes": 14089,
-      "targetSha256": "d708d36e5fd1eccaa51dead9be05d34573148395ed64089cbdd4f69f5aa73e28",
+      "targetBytes": 18574,
+      "targetSha256": "c1170eafe9e12106b5bbf365be98431a2e96fed45ffeaef56740fa0ec7112d0d",
       "transform": "none"
     },
     {
@@ -252,5 +252,5 @@
       "transform": "none"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

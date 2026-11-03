@@ -6,8 +6,9 @@
  *      asset-cms.register(kind=final_cut)（sha256 幂等去重）→ 返回 assetId 用于 render_jobs 回链。
  * 播放：签名 URL（HMAC + 过期时间），`/media/*` 路由校验后才吐文件——不做无鉴权裸目录。
  */
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { closeSync, constants, existsSync, fstatSync, fsyncSync, linkSync, mkdirSync, openSync, readSync, rmSync, writeFileSync } from "node:fs";
+import { open } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, normalize, resolve, sep } from "node:path";
 import type { getAppPool, getGatewayPool } from "@workloom/db";
@@ -15,6 +16,7 @@ import { register } from "@workloom/base/asset-cms";
 import { newId } from "@workloom/shared";
 import type { Scope } from "./db.js";
 import { probeMedia } from "../media/ffmpeg.js";
+import { fetchPublicProviderMedia } from "./public-provider-media.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "../../../../..");
@@ -32,12 +34,67 @@ export interface DownloadedMedia {
 }
 
 const DEFAULT_MAX_BYTES = 300 * 1024 * 1024; // 300MB：短视频上限；超限拒收，避免磁盘被写爆
+type MediaStoreOptions = { workspaceId: string; maxBytes?: number };
+
+function ingestDestination(opts: MediaStoreOptions) {
+  const { workspaceId } = opts;
+  if (!workspaceId || /[\/\\\0]/.test(workspaceId) || workspaceId === "." || workspaceId === "..") {
+    throw new Error("工作区标识不能用作安全的媒体仓目录");
+  }
+  const maxBytes = opts.maxBytes ?? DEFAULT_MAX_BYTES;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > DEFAULT_MAX_BYTES) throw new Error("媒体下载大小上限无效");
+  const relativeDirectory = join("video", workspaceId);
+  const directory = join(mediaRoot(), relativeDirectory);
+  return { maxBytes, relativeDirectory, directory, tempPath: join(directory, `.ingest-${randomUUID()}.tmp`) };
+}
+
+/** The same file descriptor supplies both digest and stored bytes. Never follow an input symlink. */
+function readLocalSnapshot(path: string, maxBytes: number, onChunk?: (buffer: Buffer) => void): { sha256: string; bytes: number } {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) throw new Error("本地产物不是普通文件");
+    if (stat.size > maxBytes) throw new Error("成片超过大小上限，已拒收");
+    const hash = createHash("sha256"), buffer = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1));
+    let bytes = 0;
+    for (;;) {
+      const size = readSync(fd, buffer, 0, Math.min(buffer.length, maxBytes - bytes + 1), null);
+      if (size === 0) break;
+      bytes += size;
+      if (bytes > maxBytes) throw new Error("成片超过大小上限，已拒收");
+      const chunk = buffer.subarray(0, size);
+      hash.update(chunk);
+      onChunk?.(chunk);
+    }
+    if (bytes === 0) throw new Error("本地产物为空");
+    return { sha256: hash.digest("hex"), bytes };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function publishMediaSnapshot(destination: ReturnType<typeof ingestDestination>, digest: { sha256: string; bytes: number },
+  extension: string, contentType: string | null): DownloadedMedia {
+  const name = `${digest.sha256}.${extension}`;
+  const absPath = join(destination.directory, name);
+  try {
+    // Same-directory hard link publishes the complete file atomically without overwriting existing evidence.
+    linkSync(destination.tempPath, absPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    const prior = readLocalSnapshot(absPath, destination.maxBytes);
+    if (prior.bytes !== digest.bytes || prior.sha256 !== digest.sha256) {
+      throw new Error("媒体仓现有内容地址与实际字节不符");
+    }
+  }
+  return { relPath: join(destination.relativeDirectory, name).split(sep).join("/"), absPath, ...digest, contentType };
+}
 
 /**
  * 取供应商/本地产物到媒体库（sha256 幂等；超限拒收）。
  *
  * 支持两种来源：
- *   · `http(s)://` —— 远端供应商产物（原行为：整段取回后落盘并算 sha256）；
+ *   · `http(s)://` —— 远端供应商产物（限量流式落盘、同一份字节计算 sha256）；
  *   · `file://`    —— **本地渲染产物**（T-2026-0926-0020 新增）。
  *     为什么必须支持：手绘白板引擎是本地确定性渲染器，产物天然在磁盘上，
  *     没有远端 URL。若这里只认 http(s)，白板片就永远进不了媒资库，
@@ -45,55 +102,86 @@ const DEFAULT_MAX_BYTES = 300 * 1024 * 1024; // 300MB：短视频上限；超限
  */
 export async function downloadToMediaStore(
   uri: string,
-  opts: { workspaceId: string; maxBytes?: number; fetchImpl?: typeof fetch } = { workspaceId: "unknown" },
+  opts: MediaStoreOptions & { fetchImpl?: typeof fetch } = { workspaceId: "unknown" },
 ): Promise<DownloadedMedia> {
   if (/^file:\/\//i.test(uri)) return storeLocalFile(uri, opts);
   if (uri.startsWith("/")) return storeLocalFile(uri, opts);   // 本仓产物的裸绝对路径写法
-  if (!/^https?:\/\//i.test(uri)) throw new Error(`只支持 http(s) 产物地址：${uri.slice(0, 80)}`);
-  const fetchImpl = opts.fetchImpl ?? fetch;
-  const maxBytes = opts.maxBytes ?? DEFAULT_MAX_BYTES;
+  const url = new URL(uri);
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("不支持该远端产物地址");
+  const destination = ingestDestination(opts);
+  const { maxBytes } = destination;
   // C-06 修复：大文件下载 5 分钟超时（此前无超时，慢源/断流会永久拖住整个 poll 批次）
-  const res = await fetchImpl(uri, { signal: AbortSignal.timeout(Number(process.env.MEDIA_DOWNLOAD_TIMEOUT_MS ?? 300_000)) });
-  if (!res.ok) throw new Error(`成片下载失败：HTTP ${res.status}`);
+  const signal = AbortSignal.timeout(Number(process.env.MEDIA_DOWNLOAD_TIMEOUT_MS ?? 300_000));
+  const res = opts.fetchImpl
+    ? await opts.fetchImpl(uri, { redirect: "error", signal })
+    : await fetchPublicProviderMedia(uri, signal);
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`成片下载失败：HTTP ${res.status}`);
+  }
+  const declared = res.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) {
+    await res.body?.cancel();
+    throw new Error("成片超过大小上限或声明长度无效，已拒收");
+  }
+  if (!res.body) throw new Error("成片下载响应为空");
   const contentType = res.headers.get("content-type");
   const ext = contentType?.includes("webm") ? "webm" : contentType?.includes("png") ? "png"
     : contentType?.includes("jpeg") || contentType?.includes("jpg") ? "jpg" : "mp4";
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.byteLength > maxBytes) throw new Error(`成片超过大小上限（${buf.byteLength} > ${maxBytes} 字节），已拒收`);
-  const sha256 = createHash("sha256").update(buf).digest("hex");
-  const relPath = join("video", opts.workspaceId, `${sha256}.${ext}`);
-  const absPath = join(mediaRoot(), relPath);
-  mkdirSync(dirname(absPath), { recursive: true });
-  writeFileSync(absPath, buf);
-  return { relPath: relPath.split(sep).join("/"), absPath, sha256, bytes: buf.byteLength, contentType };
+  const reader = res.body.getReader();
+  let file: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    mkdirSync(destination.directory, { recursive: true });
+    file = await open(destination.tempPath, "wx", 0o600);
+    const hash = createHash("sha256");
+    let bytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) throw new Error("成片超过大小上限，已拒收");
+      const chunk = Buffer.from(value);
+      await file.writeFile(chunk);
+      hash.update(chunk);
+    }
+    if (bytes === 0) throw new Error("成片下载响应为空");
+    await file.sync();
+    return publishMediaSnapshot(destination, { sha256: hash.digest("hex"), bytes }, ext, contentType);
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined); // stream may already be closed after transport failure
+    throw error;
+  } finally {
+    reader.releaseLock();
+    if (file) {
+      try { await file.close(); }
+      finally { rmSync(destination.tempPath, { force: true }); }
+    }
+  }
 }
 
 /** 本地文件 → 媒体仓（拷贝 + sha256 + 同名幂等；超限拒收，不落半成品） */
 export function storeLocalFile(
   uri: string,
-  opts: { workspaceId: string; maxBytes?: number },
+  opts: MediaStoreOptions,
 ): DownloadedMedia {
   // 兼容三种写法：file:///abs/path、file://localhost/abs/path、裸绝对路径。
   // 裸路径支持是刻意的：调用方（白板 provider / 渲染器产物）拿到的是文件系统路径，
   // 强制先拼 file:// 反而容易拼错（相对路径会变成 URL 的 host，见 ERR_INVALID_FILE_URL_HOST）。
-  const srcPath = uri.startsWith("file://") ? fileURLToPath(uri) : uri;
-  const st = statSync(srcPath); // 不存在 → 抛错（调用方按入库失败处理，不静默）
-  if (!st.isFile()) throw new Error(`本地产物不是文件：${srcPath}`);
-  const maxBytes = opts.maxBytes ?? DEFAULT_MAX_BYTES;
-  if (st.size > maxBytes) throw new Error(`成片超过大小上限（${st.size} > ${maxBytes} 字节），已拒收`);
+  const srcPath = /^file:\/\//i.test(uri) ? fileURLToPath(uri) : uri;
+  const destination = ingestDestination(opts);
   const ext = srcPath.toLowerCase().endsWith(".webm") ? "webm"
     : srcPath.toLowerCase().endsWith(".png") ? "png"
       : /\.jpe?g$/i.test(srcPath) ? "jpg" : "mp4";
-  // 先算 sha256 再落盘：与远端分支同一口径（内容寻址 + 同内容幂等）
-  const bytes = readFileSync(srcPath);
-  const sha256 = createHash("sha256").update(bytes).digest("hex");
-  const relPath = join("video", opts.workspaceId, `${sha256}.${ext}`);
-  const absPath = join(mediaRoot(), relPath);
-  if (!existsSync(absPath)) {
-    mkdirSync(dirname(absPath), { recursive: true });
-    copyFileSync(srcPath, absPath);
+  mkdirSync(destination.directory, { recursive: true });
+  const fd = openSync(destination.tempPath, "wx", 0o600);
+  try {
+    const digest = readLocalSnapshot(srcPath, destination.maxBytes, chunk => writeFileSync(fd, chunk));
+    fsyncSync(fd);
+    return publishMediaSnapshot(destination, digest, ext, null);
+  } finally {
+    try { closeSync(fd); }
+    finally { rmSync(destination.tempPath, { force: true }); }
   }
-  return { relPath: relPath.split(sep).join("/"), absPath, sha256, bytes: bytes.byteLength, contentType: null };
 }
 
 /* ================= 成片注册（asset-cms） ================= */
@@ -166,6 +254,18 @@ export async function registerRenderedClip(
   scope: Scope,
   input: RegisterRenderedClipInput,
 ): Promise<{ assetId: string; deduped: boolean }> {
+  const [category, workspace, name, ...rest] = input.localRelPath.split("/");
+  if (category !== "video" || workspace !== scope.workspaceId || rest.length
+    || !/^[a-f0-9]{64}$/.test(input.sha256)
+    || (name !== `${input.sha256}.mp4` && name !== `${input.sha256}.webm`)) {
+    throw new Error("素材路径与当前工作区或内容地址不符");
+  }
+  const localAbs = resolveMediaPath(input.localRelPath);
+  const format = localAbs.endsWith(".mp4") ? "mov" : localAbs.endsWith(".webm") ? "matroska" : null;
+  if (!format) throw new Error("本地渲染产物需要 MP4 或 WebM 视频");
+  if (readLocalSnapshot(localAbs, DEFAULT_MAX_BYTES).sha256 !== input.sha256) throw new Error("待登记视频字节与入库摘要不符");
+  const probed = await probeMedia(localAbs, process.env, format);
+  if (!probed.width || !probed.height || !probed.durationSeconds) throw new Error("渲染结果无法核实为有效的视频文件");
   const assetId = input.assetId ?? newId("VA");
   const r = await register(app, gateway, scope, {
     id: assetId,
@@ -184,7 +284,8 @@ export async function registerRenderedClip(
     licenseRisk: "none",
     sha256: input.sha256,
     meta: {
-      durationSeconds: input.seconds ?? null,
+      durationSeconds: probed.durationSeconds,
+      ...(input.seconds === null || input.seconds === undefined ? {} : { providerReportedSeconds: input.seconds }),
       localPath: input.localRelPath,
       jobId: input.jobId,
       scriptId: input.scriptId,
@@ -195,15 +296,13 @@ export async function registerRenderedClip(
     by: input.by,
   });
   const { applyMediaColumns } = await import("../media/columns.js");
-  const localAbs = join(mediaRoot(), input.localRelPath);
-  const probed = existsSync(localAbs) ? await probeMedia(localAbs) : null;
   await applyMediaColumns(app, scope, r.asset.id, {
     title: input.title ?? null,
     prompt: input.prompt ?? null,
     pipelineKind: input.pipelineKind ?? null,
-    durationSeconds: input.seconds ?? probed?.durationSeconds ?? null,
-    width: probed?.width ?? null,
-    height: probed?.height ?? null,
+    durationSeconds: probed.durationSeconds,
+    width: probed.width,
+    height: probed.height,
     sourceType: "generated",
     aspectRatio: input.aspectRatio ?? null,
   }, { fillOnlyEmpty: r.deduped });

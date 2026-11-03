@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({ connect: vi.fn(), query: vi.fn(), release: vi.fn() }));
 vi.mock("@workloom/db", () => ({ getAppPool: () => ({ connect: db.connect }) }));
 
-import { acquireProjectLease, makeLedgerWriter, projectRunLockKey, scopedRows } from "./archive-host.js";
+import { acquireProjectLease, makeLedgerWriter, projectRunLockKey, readProjectMeta, scopedRows } from "./archive-host.js";
 
 const scope = { tenantId: "tenant:a", workspaceId: "ws:b" };
 beforeEach(() => {
@@ -65,6 +65,13 @@ describe("权威阶段台账", () => {
     projectId: "VID-1", stageId: "preproduction", attempt: 2, status: "done" as const,
     outputRef: "out.json", outputSha256: "abc", errorClass: null, errorMsg: null, durationMs: 10,
   };
+
+  it.each(["explainer", "account_ops"])("读取项目保留真实片型 %s，不转成叙事片", async (kind) => {
+    db.query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes("FROM video_projects") ? [{ kind, title: "项目", thread_id: null, created_at: null }] : [],
+    }));
+    await expect(readProjectMeta(scope, row.projectId)).resolves.toMatchObject({ kind });
+  });
 
   it("UPDATE 未命中且无精确终态回执，不能虚报完成", async () => {
     await expect(makeLedgerWriter(scope).finishRun(row)).rejects.toThrow("STAGE_RECEIPT_CONFLICT");

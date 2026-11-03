@@ -85,8 +85,9 @@ describe.runIf(RUN_DB)("固定影片工位台账活库契约（T-2026-0927-0039�
     expect(deduped.deduped).toBe(true);
     expect(deduped.row.id).toBe(reserved.row.id);
     await expect(ledger.reserveComponent({ ...base, payloadHash: hash("q") })).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
-    await expect(ledger.reserveComponent({ ...base, idempotencyKey: "image:plates:SC-01:2", reservedCny: 4.8 })).rejects.toMatchObject({ code: "FILM_BUDGET_EXCEEDED" });
-    await expect(ledger.reserveComponent({ ...base, idempotencyKey: "image:plates:SC-01:3", stepKey: "not-frozen:1" })).resolves.toMatchObject({ deduped: false });
+    await expect(ledger.reserveComponent({ ...base, idempotencyKey: "image:plates:SC-02:2", shotId: "SC-02", stepKey: "plates:SC-02", reservedCny: 4.8 })).rejects.toMatchObject({ code: "FILM_BUDGET_EXCEEDED" });
+    await expect(ledger.reserveComponent({ ...base, idempotencyKey: "image:plates:SC-02:3", shotId: "SC-02", stepKey: "not-frozen:1" })).resolves.toMatchObject({ deduped: false });
+    await ledger.finishJob(job.id, { status: "interrupted", errorMsg: "fixture with no dispatch" });
   });
 
   it("组件状态机：认领一次、dispatch 记账、接受回执不可返回、作业终态后拒绝新调用", async () => {
@@ -122,5 +123,30 @@ describe.runIf(RUN_DB)("固定影片工位台账活库契约（T-2026-0927-0039�
     expect(view?.components).toHaveLength(1);
     expect(view?.reservedCny).toBeCloseTo(0.2, 4);
     expect(view?.spentCny).toBeCloseTo(0, 4);
+  });
+
+  it("blocks another paid film attempt while a previous project request remains unverified", async () => {
+    const first = await claim("old-attempt");
+    const replacement = await claim("new-attempt");
+    const old = { jobId: first.id, component: "video" as const, stepKey: "videos:SC-77", shotId: "SC-77",
+      idempotencyKey: "wire-original", requestHash: hash("old request"), payloadHash: hash("old body"), reservedCny: 2 };
+    const { row } = await ledger.reserveComponent(old);
+    await ledger.claimComponent(row.id, "wire-owner");
+    await ledger.recordDispatch(row.id, "wire-owner", "seedance", "fixture-video");
+    await expect(ledger.reserveComponent({ ...old, idempotencyKey: "same-shot-new-key" }))
+      .rejects.toMatchObject({ code: "FILM_GENERATION_RECONCILIATION_REQUIRED" });
+    await ledger.recordComponentFailure(row.id, "wire-owner", { state: "unknown", failureClass: "PROVIDER_TIMEOUT_UNKNOWN" });
+    await ledger.recordVideoTaskReceipt(row.id, "wire-owner", "cgt-original-fixture", hash("actual wire body"));
+    await expect(ledger.recordVideoTaskReceipt(row.id, "wire-owner", "cgt-different-fixture", hash("actual wire body")))
+      .rejects.toMatchObject({ code: "FILM_COMPONENT_STATE_CONFLICT" });
+    await ledger.finishJob(first.id, { status: "failed", errorClass: "WORKER_TIMEOUT", errorMsg: "fixture timed out after dispatch" });
+    await expect(ledger.reserveComponent({ ...old, jobId: replacement.id, stepKey: "material-gen:SC-78", shotId: "SC-78",
+      idempotencyKey: "wire-replacement", requestHash: hash("changed request"), payloadHash: hash("changed body") }))
+      .rejects.toMatchObject({ code: "FILM_GENERATION_RECONCILIATION_REQUIRED" });
+    await expect(ledger.reserveComponent({ ...old, jobId: replacement.id, component: "media", idempotencyKey: "local-only", reservedCny: 0 }))
+      .resolves.toMatchObject({ row: { state: "reserved" } });
+    expect(await ledger.componentById(row.id)).toMatchObject({ state: "unknown", dispatch_count: 1, actual_cny: null,
+      evidence: { providerTaskId: "cgt-original-fixture", providerRequestHash: hash("actual wire body"), failureClass: "PROVIDER_TIMEOUT_UNKNOWN" } });
+    expect((await ledger.jobStatus(first.id))?.components).toMatchObject([{ providerTaskId: "cgt-original-fixture", state: "unknown" }]);
   });
 });

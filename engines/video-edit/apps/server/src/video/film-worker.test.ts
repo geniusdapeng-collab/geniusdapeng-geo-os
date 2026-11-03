@@ -1,13 +1,102 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { filmWorkerEnvironment, handleFilmChannelRequest, validateFilmChannelScope } from "./film-worker.js";
 import { FILM_CHANNEL_METHOD_COMPONENT, filmRequestHash, resolveEraProfile, type FilmChannelRequestFrame } from "@hyperreality/video-studio";
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 describe("film worker child environment", () => {
   it("keeps public local tools while dropping every account, database, model and signing credential", () => {
     const env = filmWorkerEnvironment({ PATH: "/local/bin", WL_FFMPEG: "/local/ffmpeg", SEEDANCE_MODEL: "test-model", LLM_API_KEY: "test-secret", LLM_THINKING_TYPE: "enabled", DEEPSEEK_API_KEY: "test-secret", DEEPSEEK_BASE_URL: "https://api.deepseek.com", JWT_SECRET: "test-secret", CNB_TOKEN: "test-secret", DATABASE_URL: "test-secret", CUSTOMER_OAUTH_TOKEN: "test-secret", NODE_OPTIONS: "--import arbitrary" });
     expect(env).toEqual({ PATH: "/local/bin", WL_FFMPEG: "/local/ffmpeg", SEEDANCE_MODEL: "test-model" });
+  });
+});
+
+describe("film worker transport boundary", () => {
+  it("stops an oversized streamed result without writing a partial job artifact", async () => {
+    const workDir = realpathSync(mkdtempSync(join(tmpdir(), "film-bounded-download-")));
+    let pulls = 0, cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (++pulls <= 10) controller.enqueue(new Uint8Array(32).fill(pulls));
+        else controller.close();
+      },
+      cancel() { cancelled = true; },
+    });
+    try {
+      const url = "https://fixture.invalid/already-issued.mp4";
+      const method = "media.fetch", stepKey = "videos:S1", shotId = "S1";
+      const params = { url, targetRef: "clip.mp4" };
+      const frame: FilmChannelRequestFrame = { kind: "film.request", id: "fixture", method, component: "media",
+        stepKey, shotId, params, requestHash: filmRequestHash({ method, stepKey, shotId, params }), idempotencyKey: "film-fixture" };
+      const ctx = {
+        env: { FILM_MEDIA_FETCH_LIMIT_BYTES: "64" },
+        job: { id: "job-fixture", project_id: "project-fixture", stages: ["videos"], options: {} },
+        worker: { capabilities: ["media"] }, workDir, shots: new Map([[shotId, {}]]),
+        issuedUrls: new Map([[url, { stepKey, shotId }]]),
+        mediaFetchImpl: async () => new Response(body),
+        signal: new AbortController().signal, deadlineAt: Date.now() + 30_000, ownerToken: "fixture",
+        ledger: {
+          reserveComponent: async () => ({ row: { id: "component-fixture" }, deduped: false }),
+          claimComponent: async () => ({ id: "component-fixture" }),
+          recordDispatch: async () => undefined,
+          recordComponentAccepted: async () => undefined,
+          recordComponentFailure: async () => undefined,
+        },
+      } as unknown as Parameters<typeof handleFilmChannelRequest>[0];
+      await expect(handleFilmChannelRequest(ctx, frame)).rejects.toMatchObject({ code: "MEDIA_TOO_LARGE" });
+      expect(cancelled).toBe(true);
+      expect(pulls).toBeLessThan(10);
+      expect(readdirSync(workDir)).toEqual([]);
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["dispatch-mark", "task-receipt"] as const)("honors cancellation at %s before another provider request", async checkpoint => {
+    const workDir = realpathSync(mkdtempSync(join(tmpdir(), "film-dispatch-deadline-")));
+    const abort = new AbortController();
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ id: "cgt-fixture-original" })));
+    const seenReceipts: string[][] = [];
+    vi.stubGlobal("fetch", fetchImpl);
+    try {
+      const method = "video.generate", stepKey = "videos:S1", shotId = "S1";
+      const params = { prompt: "fixture prompt", seconds: 5, targetRef: "clip.mp4" };
+      const frame: FilmChannelRequestFrame = { kind: "film.request", id: "fixture", method, component: "video",
+        stepKey, shotId, params, requestHash: filmRequestHash({ method, stepKey, shotId, params }), idempotencyKey: "film-fixture" };
+      const ctx = {
+        env: { VOLCENGINE_ARK_API_KEY: "fixture", SEEDANCE_ENDPOINT: "https://fixture.invalid" },
+        job: { id: "job-fixture", project_id: "project-fixture", stages: ["videos"], options: {} },
+        worker: { capabilities: ["video"] }, workDir, shots: new Map([[shotId, {}]]),
+        signal: abort.signal, deadlineAt: Date.now() + 30_000, ownerToken: "fixture",
+        ledger: {
+          reserveComponent: async () => ({ row: { id: "component-fixture" }, deduped: false }),
+          claimComponent: async () => ({ id: "component-fixture" }),
+          recordDispatch: async () => { if (checkpoint === "dispatch-mark") abort.abort(); },
+          recordVideoTaskReceipt: async (...args: string[]) => {
+            seenReceipts.push(args);
+            abort.abort();
+          },
+          recordComponentFailure: async () => undefined,
+        },
+      } as unknown as Parameters<typeof handleFilmChannelRequest>[0];
+      await expect(handleFilmChannelRequest(ctx, frame)).rejects.toMatchObject({ code: "JOB_DEADLINE_EXCEEDED" });
+      await new Promise<void>(resolve => setImmediate(resolve));
+      if (checkpoint === "dispatch-mark") {
+        expect(fetchImpl).not.toHaveBeenCalled();
+        expect(seenReceipts).toEqual([]);
+      } else {
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+        const [url, request] = fetchImpl.mock.calls[0]!;
+        expect(request?.method).toBe("POST");
+        const body = JSON.parse(String(request?.body));
+        expect(seenReceipts).toEqual([["component-fixture", "fixture", "cgt-fixture-original",
+          createHash("sha256").update(JSON.stringify({ body, endpoint: url, method: "POST", provider: "seedance", providerModel: body.model })).digest("hex")]]);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+      rmSync(workDir, { recursive: true, force: true });
+    }
   });
 });
 

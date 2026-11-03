@@ -7,8 +7,8 @@ import { gatewayAppendOnClient, type EventDraft } from "@workloom/base/workdata"
 import { GenSubmissionError, GatewayEventSink, currentWindow } from "@workloom/base/model-router";
 import type { RuleImpact } from "@workloom/base/fence-engine";
 import { newId } from "@workloom/shared";
-import { getModel, findFallbackModels, resolveProviderModel } from "./catalog.js";
-import { estimateCost } from "./cost.js";
+import { getModel, resolveProviderModel } from "./catalog.js";
+import { costCaps, estimateCost } from "./cost.js";
 import { compiledSubmitter, videoGenPool } from "./providers.js";
 import type { VideoGenParams } from "./types.js";
 import type { Scope } from "./db.js";
@@ -48,6 +48,8 @@ export interface SubmitGenJobInput {
   fenceLevel: string;
   fenceImpacts: RuleImpact[];
   budgetOverageSeconds?: number;
+  /** Supplied only by the authenticated remote render route. */
+  planBudget?: { plan: string; allowOverage: boolean };
   env?: NodeJS.ProcessEnv;
   /** 正式远端生成必须来自服务当前预生产的不可变资格。 */
   qualificationToken?: string;
@@ -63,6 +65,7 @@ export interface SubmitGenJobResult {
   estCny: number | null;
   deduped: boolean;
   degraded: Array<{ from: string; to: string | null; reason: string }>;
+  budget?: SubmissionReceipt["budget"];
   idempotencyKey: string;
   requestHash: string;
 }
@@ -111,12 +114,8 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
     throw new SubmissionError("MODEL_UNAVAILABLE", `模型 ${input.modelId} 不存在或未接入适配器`);
   }
   const primaryModel = authorization?.compiled.providerModel ?? resolveProviderModel(model, env);
-  const chain = [{ model, provider: model.provider, providerModel: primaryModel },
-    ...(authorization ? [] : findFallbackModels(model, 2, env)).map((fallback) => ({
-      model: fallback, provider: fallback.provider, providerModel: fallback.effectiveProviderModel,
-    }))];
-  const pool = videoGenPool(env);
-  const mock = authorization ? false : pool.size === 0;
+  const selected = { model, provider: model.provider, providerModel: primaryModel };
+  const mock = false;
   const prompt = authorization?.reconciliationOnly ? script.md : buildRenderPrompt(script, model);
   const requestHash = authorization?.requestHash ?? submissionRequestHash({
     version: 1, scope,
@@ -163,11 +162,23 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
     }
   };
   if (row.state === "accepted" || row.state === "finalized") return finalize(row, true);
-  if (row.state !== "reserved") throw pending(row);
+  const recoverUndispatched = Boolean(authorization?.leasedApp && row.state === "submitting" && row.dispatch_count === 0);
+  if (row.state !== "reserved" && !recoverUndispatched) throw pending(row);
   if (authorization?.reconciliationOnly) throw pending(row, "SUBMISSION_UNVERIFIED");
 
+  // Historical accepted receipts reconcile even when the original provider is unavailable.
+  const provider = videoGenPool(env).get(selected.provider);
+  if (!provider || !(await provider.healthy())) {
+    const sink = new GatewayEventSink(input.gateway, scope, { id: "render-operator" });
+    await sink.recordDegradation({ from: selected.provider, to: null, reason: "unhealthy", action: "gen.submit" });
+    throw new SubmissionError("PROVIDERS_UNAVAILABLE", "指定生成供应商不可用；没有已接受任务");
+  }
+  const sendCompiled = authorization && compiledSubmitter(provider, authorization.compiled);
+  if (authorization && !sendCompiled) throw new SubmissionError("PROVIDER_COMPILER_UNAVAILABLE", "该供应商不能直接发送已审核的请求字节");
+  const est = estimateCost(selected.model,
+    { seconds: params.durationSec ?? selected.model.limits?.durationSec?.default ?? 5 }, env);
   const owner = newId("GSO");
-  const claimed = await ledger.claim(row, owner);
+  const claimed = await ledger.claim(row, owner, recoverUndispatched);
   if (!claimed) {
     const raced = await ledger.read(row.id);
     if (raced?.state === "accepted" || raced?.state === "finalized") return finalize(raced, true);
@@ -175,77 +186,50 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
   }
   row = claimed;
   const degraded: SubmissionReceipt["degraded"] = [];
-  const sink = new GatewayEventSink(input.gateway, scope, { id: "render-operator" });
-  let selected = chain[0]!;
-  let taskId: string | undefined;
+  let taskId: string;
+  let budget: SubmissionReceipt["budget"];
   let dispatchUnresolved = false;
   try {
-    if (mock) {
-      await ledger.recordDispatch(row.id, owner, selected.provider, selected.providerModel);
-      taskId = `mock-${newId("gen")}`;
-    } else {
-      for (let i = 0; i < chain.length; i++) {
-        const step = chain[i]!;
-        const provider = pool.get(step.provider);
-        const to = chain[i + 1]?.provider ?? null;
-        if (!provider || !(await provider.healthy())) {
-          const degradation = { from: step.provider, to, reason: "unhealthy" };
-          degraded.push(degradation);
-          await sink.recordDegradation({ ...degradation, action: "gen.submit" });
-          continue;
-        }
-        const sendCompiled = authorization && compiledSubmitter(provider, authorization.compiled);
-        if (authorization && !sendCompiled) throw new SubmissionError("PROVIDER_COMPILER_UNAVAILABLE", "该供应商不能直接发送已审核的请求字节");
-        await ledger.recordDispatch(row.id, owner, step.provider, step.providerModel);
-        dispatchUnresolved = true;
-        try {
-          const submitted = sendCompiled ? await sendCompiled() : await provider.submit({ prompt,
-            estimatedUnits: params.durationSec ?? 5, refId: script.id,
-            params: { ...params, providerModel: step.providerModel },
-          });
-          if (typeof submitted?.taskId !== "string" || !submitted.taskId.trim()) {
-            throw new GenSubmissionError("供应商未返回有效任务号", "unknown");
-          }
-          taskId = submitted.taskId;
-          selected = step;
-          break;
-        } catch (err) {
-          if (!(err instanceof GenSubmissionError) || err.acceptance !== "not-accepted") throw err;
-          dispatchUnresolved = false;
-          if (!err.fallbackAllowed) throw err;
-          const degradation = { from: step.provider, to, reason: failureReason(err) };
-          degraded.push(degradation);
-          await sink.recordDegradation({ ...degradation, action: "gen.submit" });
-        }
-      }
+    const quota = input.planBudget && { ...input.planBudget, requestSeconds: params.durationSec ?? 0 };
+    const checkedBudget = await ledger.recordDispatch(row.id, owner, selected.provider, selected.providerModel,
+      authorization ? { estimateCny: est.cny, caps: costCaps(env), quota } : undefined);
+    dispatchUnresolved = true;
+    if (checkedBudget) budget = { usedSeconds: checkedBudget.usedSeconds, overageSeconds: checkedBudget.overageSeconds };
+    const submitted = sendCompiled ? await sendCompiled() : await provider.submit({
+      prompt, estimatedUnits: params.durationSec ?? 5, refId: script.id,
+      params: { ...params, providerModel: selected.providerModel },
+    });
+    if (typeof submitted?.taskId !== "string" || !submitted.taskId.trim()) {
+      throw new GenSubmissionError("供应商未返回有效任务号", "unknown");
     }
-    if (!taskId) throw new SubmissionError("PROVIDERS_UNAVAILABLE", "生成供应商全链不可用；没有已接受任务");
+    taskId = submitted.taskId;
   } catch (error) {
+    if (error instanceof GenSubmissionError && error.acceptance === "not-accepted") dispatchUnresolved = false;
     try {
       await ledger.recordFailure(row.id, owner, dispatchUnresolved ? "unknown" : "rejected", failureReason(error));
     } catch (ledgerError) {
       throw new AggregateError([error, ledgerError], `生成提交 ${row.id} 状态未核实，禁止重新提交`);
     }
     if (dispatchUnresolved) throw pending({ ...row, state: "unknown" }, "SUBMISSION_UNKNOWN");
+    if (error instanceof GenSubmissionError && error.fallbackAllowed) {
+      throw new SubmissionError("PROVIDERS_UNAVAILABLE", "指定生成供应商拒绝请求；没有已接受任务");
+    }
     throw error;
   }
 
   // 接受回执先持久化。即使此时进程崩溃/DB ack 丢失，预占行仍阻止后续 submit。
-  const est = estimateCost(selected.model, { seconds: params.durationSec ?? selected.model.limits?.durationSec?.default ?? 5 });
   const time = new Date().toISOString();
   const context = { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time, channel: "inapp" };
   const events: EventDraft[] = [];
-  if (!mock) {
-    events.push({
-      who: { type: "system", id: "model-router" }, context,
-      object: { type: "store", id: scope.workspaceId },
-      decision: { action: "model.call", after: { action: "gen.submit", model: `gen:${selected.provider}:${selected.providerModel}`,
-        model_tier: selected.model.tier, jobId: row.job_id, submissionId: row.id, reused: false, scene: "video-gen", bill_to: "tenant" } },
-      model_trace: { model_id: `gen:${selected.provider}:${selected.providerModel}`, tier: "gen",
-        window: currentWindow(new Date(time)), credits: Math.max(0.01, (params.durationSec ?? 5) * 0.1) },
-      rule_impact: [],
-    });
-  }
+  events.push({
+    who: { type: "system", id: "model-router" }, context,
+    object: { type: "store", id: scope.workspaceId },
+    decision: { action: "model.call", after: { action: "gen.submit", model: `gen:${selected.provider}:${selected.providerModel}`,
+      model_tier: selected.model.tier, jobId: row.job_id, submissionId: row.id, reused: false, scene: "video-gen", bill_to: "tenant" } },
+    model_trace: { model_id: `gen:${selected.provider}:${selected.providerModel}`, tier: "gen",
+      window: currentWindow(new Date(time)), credits: Math.max(0.01, (params.durationSec ?? 5) * 0.1) },
+    rule_impact: [],
+  });
   events.push({
     who: { type: "human", id: input.actor }, context,
     object: { type: "render_script", id: script.id },
@@ -257,13 +241,13 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
         estimated_seconds: params.durationSec ?? null, duration_provenance: input.durationProvenance ?? null,
         est_usd: est.usd, est_cny: est.cny, provider: selected.provider, provider_model: selected.providerModel,
         idempotency_key: key, request_hash: requestHash,
-        budget_overage_seconds: input.budgetOverageSeconds ?? 0, fence_level: input.fenceLevel,
+        budget_overage_seconds: budget?.overageSeconds ?? input.budgetOverageSeconds ?? 0, fence_level: input.fenceLevel,
         request: { durationSec: params.durationSec ?? null, aspectRatio: params.aspectRatio ?? null,
           resolution: params.resolution ?? null, generateAudio: params.generateAudio ?? null,
           firstFrame: Boolean(params.firstFrameUrl), referenceCount: params.referenceImageUrls?.length ?? 0 },
         degraded,
       },
-      basis: [mock ? "G8 已过，mock 提交（无供应商密钥，不触真实生成）" : `G8 已过，供应商已接受：${selected.provider}`,
+      basis: [`G8 已过，供应商已接受：${selected.provider}`,
         `报价口径：${est.usd === null ? "未核价（以供应商账单为准）" : `$${est.usd} ≈ ¥${est.cny}`}`],
     },
     rule_impact: input.fenceImpacts as EventDraft["rule_impact"],
@@ -271,15 +255,20 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
   });
   const receipt: SubmissionReceipt = {
     jobId: row.job_id, taskId, provider: selected.provider, providerModel: selected.providerModel,
-    mock, estUsd: est.usd, estCny: est.cny, degraded, events,
+    mock, estUsd: est.usd, estCny: est.cny, degraded, ...(budget ? { budget } : {}), events,
   };
   try {
     await ledger.recordAccepted(row.id, owner, receipt);
   } catch (error) {
-    // 保留已知任务号供对账；不把落账故障当成供应商拒绝，更不进入 fallback。
-    const reconciliation = pending(row, "SUBMISSION_ACCEPTANCE_UNVERIFIED", taskId, selected.provider);
-    reconciliation.cause = error;
-    throw reconciliation;
+    try {
+      // Keep the in-memory provider receipt across a transient write or COMMIT acknowledgement failure.
+      // The ledger accepts an already-written receipt only when all its identity and event bytes match.
+      await ledger.recordAccepted(row.id, owner, receipt);
+    } catch (retryError) {
+      const reconciliation = pending(row, "SUBMISSION_ACCEPTANCE_UNVERIFIED", taskId, selected.provider);
+      reconciliation.cause = new AggregateError([error, retryError], "generation-acceptance-write-failed");
+      throw reconciliation;
+    }
   }
   return finalize({ ...row, state: "accepted", task_id: taskId, provider: selected.provider, receipt }, false);
 }

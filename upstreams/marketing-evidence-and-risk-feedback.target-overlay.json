@@ -51,9 +51,9 @@
       "path": "apps/server/src/video/marketing-source-fetcher.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-source-fetcher.ts",
       "sourceSha256": "e1dbfb8e6b034880084245573d242f0b93f7e9b200287fd9319ededfd46252da",
-      "targetSha256": "5bac85c007b11c15178f6593d51374f517548d05f3668fb734d403bcf03b4656",
+      "targetSha256": "28c656b18b2efc0f1b235a0c60480b64e55f94f4af9fd6b053055989d347601e",
       "sourceBytes": 13204,
-      "targetBytes": 13386
+      "targetBytes": 20261
     },
     {
       "path": "apps/server/src/video/product-research-archive.test.ts",
@@ -215,5 +215,5 @@
       "targetBytes": 79572
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

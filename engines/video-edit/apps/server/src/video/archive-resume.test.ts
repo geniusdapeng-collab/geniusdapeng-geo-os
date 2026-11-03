@@ -5,7 +5,7 @@ vi.mock("@workloom/db", () => ({
   getOwnerPool: () => ({ query: db.ownerQuery }),
   getAppPool: () => ({ connect: db.connect }),
 }));
-import { ArchiveStore } from "@hyperreality/video-studio";
+import { ArchiveStore, compileCreativeContract } from "@hyperreality/video-studio";
 import { projectRunLockKey } from "./archive-host.js";
 import { resumeProject, scanStaleRunsOnStartup } from "./archive-resume.js";
 
@@ -93,6 +93,37 @@ describe("启动恢复不打断仍在运行的阶段", () => {
 
 describe("人工恢复共用运行锁", () => {
   const scope = { tenantId: "tenant-1", workspaceId: "ws-1" };
+  const original = "原始完整意图。".repeat(45);
+  const metadata = { brief: { audience: "店主", style: "纪录片" } };
+  const contract = compileCreativeContract({ scope: { ...scope, projectId: "VID-1" }, rawIntent: original, metadata, isMarketing: false });
+  function creativeFixture(options: { kind?: string; pending?: boolean; currentHash?: string } = {}) {
+    db.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_try_advisory_xact_lock")) return { rows: [{ ok: true }], rowCount: 1 };
+      if (sql.includes("FROM video_pipeline_operations")) return { rows: [{ pending: Boolean(options.pending) }], rowCount: 1 };
+      if (sql.startsWith("SELECT stage_id AS")) return { rows: [{ stageId: "preproduction", attempt: 3, status: "failed", errorClass: null, startedAt: "2026-10-30" }], rowCount: 1 };
+      if (sql.includes("FROM video_creative_run_contracts")) return { rows: [{ contract, current_hash: options.currentHash ?? contract.hash }], rowCount: 1 };
+      if (sql.startsWith("SELECT title, kind FROM video_projects")) return { rows: [{ title: "截断标题", kind: options.kind ?? "narrative" }], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    });
+  }
+
+  it("恢复使用本次运行的不可变原意图和 metadata，而非项目截断标题", async () => {
+    creativeFixture();
+    const startRun = vi.fn(() => "RUN-RESUMED");
+    await expect(resumeProject(scope, { projectId: "VID-1", startRun, actor: { id: "MEM-1", type: "human" } }))
+      .resolves.toMatchObject({ kind: "resumed", runId: "RUN-RESUMED", attempt: 3 });
+    expect(startRun).toHaveBeenCalledWith(expect.objectContaining({ intent: original, metadata, isMarketing: false }));
+  });
+
+  it.each(["caller changed", "contract changed", "pending usage", "explainer"])("%s 拒绝在旧恢复入口启动", async which => {
+    creativeFixture({ currentHash: which === "contract changed" ? "a".repeat(64) : undefined,
+      pending: which === "pending usage", kind: which === "explainer" ? "explainer" : undefined });
+    const startRun = vi.fn();
+    await expect(resumeProject(scope, { projectId: "VID-1",
+      ...(which === "caller changed" ? { intent: "换一个需求" } : {}), startRun, actor: { id: "MEM-1", type: "human" } }))
+      .resolves.toMatchObject({ kind: "noaction" });
+    expect(startRun).not.toHaveBeenCalled();
+  });
   it("resume 锁取得但 run 锁 busy，不调用启动函数", async () => {
     let lockCount = 0;
     db.query.mockImplementation(async (sql: string) => ({ rows: sql.includes("pg_try_advisory_xact_lock") ? [{ ok: ++lockCount === 1 }] : [], rowCount: 0 }));
