@@ -19,7 +19,10 @@ async function fixture(t, { fetchImplementation, env = {} } = {}) {
 test('PengManager CLI and MCP expose the complete reviewed catalog and local inventory without starting services', async t => {
   const { agent, calls, runtime } = await fixture(t);
   const actual = JSON.parse(await readFile(path.join(root, 'engines/video-edit/pengmanager-capabilities.json'), 'utf8'));
-  runtime.capabilities = async () => ({ schemaVersion: actual.schemaVersion, scope: 'complete-edit', sourceMain: actual.source.pin, state: 'stopped', ready: false, catalog: actual, inventory: {} });
+  const pin = JSON.parse(await readFile(path.join(root, 'upstreams/workloom-video-edit.pin.json'), 'utf8'));
+  assert.equal(actual.source.pin, pin.commit);
+  assert.equal(actual.source.tree, pin.tree);
+  runtime.capabilities = async () => ({ schemaVersion: actual.schemaVersion, scope: 'complete-edit', sourceMain: pin.commit, state: 'stopped', ready: false, catalog: actual, inventory: {} });
   assert.equal(agent.list().productId, 'pengmanager-system');
   assert.ok(agent.list().capabilities.some(item => item.id === 'growth.video.production.shots'));
   assert.ok(agent.tools().some(item => item.name === 'pengmanager_core_agents_list'));

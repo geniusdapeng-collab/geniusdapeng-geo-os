@@ -40,6 +40,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 import {
+  DEEPSEEK_FLASH_MODEL,
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
   resolveVideoModel,
@@ -247,6 +248,8 @@ export interface ProducerGateOptions {
   batchSize?: number;
   context?: Record<string, unknown>;
   contracts?: ProducerReviewContracts;
+  /** Formal prompt qualification may attach bounded, digest-bound original image files on direct DeepSeek. */
+  allowExactQualificationImages?: boolean;
   /** @deprecated 仅为旧调用方保留；不会授予正式通过资格。 */
   allowFallbackApprove?: boolean;
   env?: Record<string, string | undefined>;
@@ -289,6 +292,8 @@ function summarizeArtifacts(artifacts: ProducerArtifact[]): string {
  * 超预算先缩到720宽JPEG；压缩不可用或仍超预算时返回未验证，不静默丢图或赌超大请求。
  */
 const JUDGE_IMAGE_BUDGET_BYTES = 900_000;
+const QUALIFICATION_IMAGE_TOTAL_BYTES = 8_000_000;
+const QUALIFICATION_JUDGE_WIRE_BYTES = 12_000_000;
 const REVIEW_SOURCE_MAX_BYTES = 1_000_000_000;
 const LOCAL_VIDEO_INPUT = ["-protocol_whitelist", "file", "-format_whitelist", "mov,matroska,webm,mpegts,avi,flv,mpeg,mpegvideo,ivf,ogg,asf,gif"];
 const sha256Of = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
@@ -420,16 +425,22 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
   if (!llm) return reject("无可用评审模型；降级只能预览，不能作为合格交付", "fallback");
   const minScore = options.minScore ?? 70;
   if (!Number.isFinite(minScore) || minScore < 0 || minScore > 100) return reject("评审分数阈值非法");
+  const exactQualification = options.allowExactQualificationImages === true && stage === "prompt"
+    && llm.model === DEEPSEEK_FLASH_MODEL && /^https:\/\/api\.deepseek\.com(?:\/v1)?$/u.test(llm.baseUrl);
   const tempPaths: string[] = [];
   const textContent: ModelContentPart[] = [];
   const encoded: ModelContentPart[][] = [];
   const visualEvidence: NonNullable<ProducerVerdict["visualEvidence"]> = [];
+  let qualificationImageBytes = 0;
   const encodeImage = (image: { path: string; sourceSha256: string; bytes: Buffer; label: string; timestampSec?: number;
-    requireOriginal?: boolean }): void => {
+    requireOriginal?: boolean; qualificationOriginal?: boolean }): void => {
     let { bytes } = image;
     let mime = imageMime(bytes);
     if (!mime) throw new Error(`图像内容无效：${image.path}`);
-    if (bytes.length > JUDGE_IMAGE_BUDGET_BYTES) {
+    if (image.qualificationOriginal) {
+      qualificationImageBytes += bytes.length;
+      if (qualificationImageBytes > QUALIFICATION_IMAGE_TOTAL_BYTES) throw new Error("正式资格参考图原件总字节超出评审容量");
+    } else if (bytes.length > JUDGE_IMAGE_BUDGET_BYTES) {
       if (image.requireOriginal) throw new Error(`送审图必须保留原件，且超出评审容量：${image.path}`);
       const dir = mkdtempSync(join(tmpdir(), "producer-judge-")); tempPaths.push(dir);
       const input = join(dir, `source.${mime.slice("image/".length)}`);
@@ -443,7 +454,10 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
     visualEvidence.push({ path: image.path, sourceSha256: image.sourceSha256, sha256: sha256Of(bytes),
       ...(image.timestampSec === undefined ? { kind: bytes === image.bytes ? "original" : "resized" }
         : { kind: "temporal-frame", timestampSec: image.timestampSec }) });
-    encoded.push([{ type: "text", text: image.label }, { type: "image_url", image_url: { url: `data:${mime};base64,${bytes.toString("base64")}` } }]);
+    encoded.push([{ type: "text", text: image.label }, { type: "image_url", image_url: {
+      url: `data:${mime};base64,${bytes.toString("base64")}`,
+      ...(image.qualificationOriginal ? { detail: "original" as const } : {}),
+    } }]);
   };
   let budgetFailure: unknown;
   try {
@@ -452,7 +466,9 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       if (artifact.expectedSha256 !== undefined && (typeof artifact.expectedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(artifact.expectedSha256))) {
         throw new Error(`产物的预期摘要非法：${artifact.path}`);
       }
-      const bytes = reviewFileBytes(artifact.path);
+      const qualificationOriginal = exactQualification && artifact.kind === "image"
+        && artifact.requireOriginalImage === true && artifact.expectedSha256 !== undefined;
+      const bytes = reviewFileBytes(artifact.path, qualificationOriginal ? QUALIFICATION_IMAGE_TOTAL_BYTES : undefined);
       const sha256 = sha256Of(bytes);
       if (artifact.expectedSha256 !== undefined && sha256 !== artifact.expectedSha256) {
         throw new Error(`产物摘要与本次绑定的已接受证据不一致：${artifact.path}`);
@@ -464,7 +480,8 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
         textContent.push({ type: "text", text: `以下是产物正文（完整）：${artifact.path}\n${raw}` });
         evidence.push({ path: artifact.path, sha256, scope: "complete-text" });
       } else if (artifact.kind === "image") {
-        encodeImage({ path: artifact.path, bytes, sourceSha256: sha256, label: "待评审产物", requireOriginal: artifact.requireOriginalImage });
+        encodeImage({ path: artifact.path, bytes, sourceSha256: sha256, label: qualificationOriginal ? artifact.note ?? "待评审产物" : "待评审产物",
+          requireOriginal: artifact.requireOriginalImage, qualificationOriginal });
         evidence.push({ path: artifact.path, sha256, scope: "image" });
       } else if (artifact.kind === "video") {
         const dir = mkdtempSync(join(tmpdir(), "producer-frames-")); tempPaths.push(dir);
@@ -506,14 +523,21 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
     const answers: Array<{ approved: boolean; score: number; issues: string[]; suggestions: string[]; reason: string }> = [];
     const receipts: NonNullable<ProducerVerdict["receipts"]> = [];
     const budgeted = creativeBudgetActive();
-    const budgetedFetch = budgeted ? creativeBudgetedFetch(options.fetchImpl ?? fetch) : undefined;
+    const fetchImpl = options.fetchImpl ?? fetch;
+    const reviewFetch: typeof fetch = exactQualification ? (url, init) => {
+      if (typeof init?.body !== "string" || Buffer.byteLength(init.body) > QUALIFICATION_JUDGE_WIRE_BYTES) {
+        throw new Error("正式资格监制请求超出字节上限");
+      }
+      return fetchImpl(url, init);
+    } : fetchImpl;
+    const budgetedFetch = budgeted ? creativeBudgetedFetch(reviewFetch) : undefined;
     const provider = new OpenAiCompatibleProvider(llm.model, {
       baseUrl: llm.baseUrl,
       apiKey: llm.apiKey,
       fetchImpl: budgetedFetch ? async (input, init) => {
         try { return await budgetedFetch(input, init); }
         catch (error) { budgetFailure = error; throw error; }
-      } : options.fetchImpl,
+      } : reviewFetch,
     });
     for (let batch = 0; batch < batches; batch += 1) {
       const content: ModelContentPart[] = [{ type: "text", text: [

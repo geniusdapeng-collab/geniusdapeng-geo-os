@@ -27,17 +27,17 @@
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
       "sourceSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetSha256": "d2956a213a624fda08ff3ca32d1b115bca36fbf8209bdb76abef4c658016e519",
+      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
       "sourceBytes": 34358,
-      "targetBytes": 41802
+      "targetBytes": 42753
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "733da79f0b21181c276f88fe23093a201e5d62d80af0c878adf6bf8e5caf652c",
+      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
       "sourceBytes": 38033,
-      "targetBytes": 46661
+      "targetBytes": 48383
     },
     {
       "path": "apps/server/src/video/marketing-source-fetcher.test.ts",
@@ -215,5 +215,5 @@
       "targetBytes": 79572
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
 }

@@ -99,17 +99,17 @@
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
       "sourceSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetSha256": "d2956a213a624fda08ff3ca32d1b115bca36fbf8209bdb76abef4c658016e519",
+      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
       "sourceBytes": 34358,
-      "targetBytes": 41802
+      "targetBytes": 42753
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "733da79f0b21181c276f88fe23093a201e5d62d80af0c878adf6bf8e5caf652c",
+      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
       "sourceBytes": 38033,
-      "targetBytes": 46661
+      "targetBytes": 48383
     },
     {
       "path": "apps/server/src/video/marketing-facts.test.ts",
@@ -155,9 +155,9 @@
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
-      "targetSha256": "5a8f136e1da546c12bae80f6901619f14b2fe63dd0e6e31bd9600b282f11ce41",
+      "targetSha256": "e50e99acae35351c3a86268097af719c273d0e531e5d0655840df033c8e7f9c0",
       "sourceBytes": 90435,
-      "targetBytes": 98761
+      "targetBytes": 100109
     },
     {
       "path": "apps/server/src/voice/station.test.ts",
@@ -507,17 +507,17 @@
       "path": "packages/video-studio/src/producer-gate.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "sourceSha256": "c40418fdd4a132866034945ac7425bac4f22ca3fceb02dec3e1aca360538b6ee",
-      "targetSha256": "c1170eafe9e12106b5bbf365be98431a2e96fed45ffeaef56740fa0ec7112d0d",
+      "targetSha256": "1111ed7f2a1fa1d7a817c1bffab9cd6f4c30c28351c916cc9e72ba4183b78606",
       "sourceBytes": 33373,
-      "targetBytes": 18574
+      "targetBytes": 20784
     },
     {
       "path": "packages/video-studio/src/producer-gate.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
       "sourceSha256": "b04b1cc09b7fb44f13568c589aa5a0e9e3d562b30544adb0c00f923a30784a41",
-      "targetSha256": "5dcc325d3b92fa487e4c0f1ce6218171feee8b8eef7e2ff0b2afd00eb18ce254",
+      "targetSha256": "d9907ecfbbfcd9dc6396f6940bd4727c94c9099c2ac5a5701c3534f746edd40f",
       "sourceBytes": 36535,
-      "targetBytes": 35339
+      "targetBytes": 36905
     },
     {
       "path": "packages/video-studio/src/requirement-authority.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T13:43:29.647692+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
 }

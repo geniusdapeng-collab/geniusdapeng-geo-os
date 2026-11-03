@@ -388,6 +388,39 @@ fs.writeFileSync(process.argv.at(-1), Buffer.from(${JSON.stringify(png.toString(
     expect(bodies).toHaveLength(0);
   });
 
+  it("allows digest-bound original qualification images on the direct official vision route", async () => {
+    const bytes = Buffer.concat([png, Buffer.alloc(5_000_000)]);
+    const path = file("exact-reference.png", bytes), sha256 = createHash("sha256").update(bytes).digest("hex");
+    const bodies: string[] = [], shrinkImage = vi.fn();
+    const verdict = await reviewStage(textOptions({ allowExactQualificationImages: true, fetchImpl: judge(good, bodies), shrinkImage,
+      artifacts: [{ path, kind: "image", expectedSha256: sha256, requireOriginalImage: true }],
+    }));
+    expect(verdict).toMatchObject({ approved: true, status: "passed", visualEvidence: [{ path, sourceSha256: sha256, sha256, kind: "original" }] });
+    expect(shrinkImage).not.toHaveBeenCalled();
+    expect(bodies).toHaveLength(1);
+    const attached = JSON.parse(bodies[0]!).messages[0].content.find((part: { type: string }) => part.type === "image_url").image_url;
+    expect(attached.detail).toBe("original");
+    expect(createHash("sha256").update(Buffer.from(attached.url.split(",")[1], "base64")).digest("hex")).toBe(sha256);
+  });
+
+  it("keeps default, gateway, other-stage, missing-digest and aggregate exact-image fences", async () => {
+    const bytes = Buffer.concat([png, Buffer.alloc(4_000_000)]);
+    const path = file("bounded-reference.png", bytes), sha256 = createHash("sha256").update(bytes).digest("hex");
+    const original = { path, kind: "image" as const, expectedSha256: sha256, requireOriginalImage: true };
+    const bodies: string[] = [];
+    for (const options of [
+      { allowExactQualificationImages: false },
+      { env: { ...env, LLM_BASE_URL: "https://api.deepseek.com.gateway.example.test" } },
+      { stage: "keyframe" as const },
+      { artifacts: [{ ...original, expectedSha256: undefined }] },
+      { artifacts: [original, { ...original, path: file("second-reference.png", bytes) }] },
+    ]) {
+      const verdict = await reviewStage(textOptions({ allowExactQualificationImages: true, fetchImpl: judge(good, bodies), artifacts: [original], ...options }));
+      expect(verdict).toMatchObject({ approved: false, status: "unverified" });
+    }
+    expect(bodies).toHaveLength(0);
+  });
+
   it("missing files, missing references and unsupported audio fail closed", async () => {
     expect((await reviewStage(textOptions({
       artifacts: [{ path: "/does-not-exist/evidence.txt", kind: "text" }],

@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import pg from "pg";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, mkdir, writeFile, realpath, rm, readFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, writeFile, realpath, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gatewayAppend } from "@workloom/base/workdata";
@@ -92,7 +92,7 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
         reason: "原始需求未命中已安装片型", evidence: [] } }, rule_impact: [],
     });
   }
-  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
   // 不删除 append-only 资格/五元事件；专属测试作用域留作真实回归证据。
   afterAll(async () => { await Promise.all([owner.end(), app.end(), gateway.end()]); await rm(dir, { recursive: true, force: true }); });
 
@@ -116,22 +116,26 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     }; } } as unknown as pg.Pool;
   }
 
-  async function marketingSource(abstract = false, imageProtocol: "http" | "https" = "https") {
+  async function marketingSource(abstract = false, imageProtocol: "http" | "https" = "https", productFixture?: {
+    name: string; sourceUrl: string; imageUrl: string; body: string; specs: Record<string, string>; prompt: string;
+  }) {
     const root = path.join(dir, "archive", scope.workspaceId, projectId);
-    const body = "星野 F3 风扇支持 9 档风量；9 档不是能耗等级。", sourceUrl = "https://source.example.com/f3";
+    const body = productFixture?.body ?? "星野 F3 风扇支持 9 档风量；9 档不是能耗等级。", sourceUrl = productFixture?.sourceUrl ?? "https://source.example.com/f3";
+    const product = productFixture?.name ?? "星野 F3", specs = productFixture?.specs ?? { 风量: "9 档" };
     const marketingSourceId = `SRC-${renderSha256(`${sourceUrl}\n${renderSha256(body)}`).slice(0, 24)}`;
-    const imageUrl = `${sourceUrl}/hero.png`.replace(/^https:/, `${imageProtocol}:`);
+    const imageUrl = productFixture?.imageUrl ?? `${sourceUrl}/hero.png`.replace(/^https:/, `${imageProtocol}:`);
+    const rawIntent = abstract ? "介绍星野 F3 的风量档位；只使用抽象示意图，不展示产品外观。" : productFixture ? `介绍${product}` : "介绍星野 F3 的风量档位";
     const snapshot = { sourceId: marketingSourceId, requestedUrl: sourceUrl, finalUrl: sourceUrl, redirectChain: [], fetchedAt: new Date().toISOString(), contentType: "text/plain", rawSha256: renderSha256(body), textSha256: renderSha256(body), bytes: Buffer.byteLength(body), text: body, assetUrls: abstract ? [] : [imageUrl] };
     const prepared = await prepareMarketingFacts({ scope: { ...scope, projectId, runId: `RUN-${seq}`, attempt: 1 }, root, env,
-      intent: abstract ? "介绍星野 F3 的风量档位；只使用抽象示意图，不展示产品外观。" : "介绍星野 F3 的风量档位", metadata: { brief: { product: "星野 F3" } },
+      intent: rawIntent, metadata: { brief: { product } },
       llm: { reason: async prompt => {
         const stage = /当前阶段：(A[123])/.exec(prompt)?.[1];
-        return { success: true, data: stage === "A1" ? { payload: { identity: { name: "星野 F3", specs: { 风量: "9 档" } }, images: abstract ? [] : [{ url: imageUrl, page_url: sourceUrl }] }, citations: ["/identity/name", "/identity/specs/风量"].map(pointer => ({ pointer, sourceId: snapshot.sourceId, quote: body })) }
+        return { success: true, data: stage === "A1" ? { payload: { identity: { name: product, specs }, images: abstract ? [] : [{ url: imageUrl, page_url: sourceUrl }] }, citations: ["/identity/name", ...Object.keys(specs).map(key => `/identity/specs/${key}`)].map(pointer => ({ pointer, sourceId: snapshot.sourceId, quote: body })) }
           : { payload: stage === "A2" ? { reviews: [] } : { competitors: [] }, citations: [], noEvidenceReason: "本次未取得可核实的评价/竞品" } };
       } }, dependencies: { search: async () => [{ title: "规格", url: sourceUrl, snippet: "不是正文" }], fetchSource: async () => ({ snapshot, rawBytes: Buffer.from(body) }) } });
     const promptsFile = path.join(root, "stages/preproduction/attempt-1.prompts.json"), outputFile = path.join(root, "stages/preproduction/attempt-1.output.json");
     const prompts = JSON.parse(await readFile(promptsFile, "utf8")); prompts.pipelineKind = "marketing";
-    prompts.shots[0].prompt = abstract ? `暖橙光点聚合为抽象格网；旁白：星野 F3 有 9 档风量。${ABSTRACT_PRODUCT_RENDER_RULE}` : "窗边展示星野 F3 风扇，字幕：风量 9 档。";
+    prompts.shots[0].prompt = abstract ? `暖橙光点聚合为抽象格网；旁白：星野 F3 有 9 档风量。${ABSTRACT_PRODUCT_RENDER_RULE}` : productFixture?.prompt ?? "窗边展示星野 F3 风扇，字幕：风量 9 档。";
     const saved = await finalizeMarketingFacts(prepared, prompts.shots, env);
     const g1File = path.join(dir, "workspaces", scope.workspaceId, "gates", projectId, "attempt-1", "G1_DOSSIER.md");
     await writeFile(g1File, prepared.g1Content);
@@ -142,7 +146,7 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     const bytes = JSON.stringify(output); await writeFile(outputFile, bytes);
     await owner.query("UPDATE video_projects SET kind='marketing' WHERE id=$1", [projectId]);
     await owner.query("UPDATE production_stage_runs SET output_sha256=$2 WHERE id=$1", [sourceId, renderSha256(bytes)]);
-    return { root, prepared, output, outputFile, prompts, promptsFile, g1File, imageUrl };
+    return { root, prepared, output, outputFile, prompts, promptsFile, g1File, imageUrl, rawIntent };
   }
 
   async function portraitProof(state: Awaited<ReturnType<typeof marketingSource>>) {
@@ -403,6 +407,88 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     expect(JSON.parse(calls.at(-1)!.body).content[1]).toEqual({ type: "image_url", role, image_url: { url } });
     expect(calls.at(-1)?.body).toBe(frozen.compiled.bodyJson);
     expect(calls.slice(callsBefore).filter(call => call.url.endsWith("/chat/completions"))).toHaveLength(1);
+    expect(providerCalls).toBe(1);
+  });
+
+  it("binds and rechecks exact G5 actor and G1 product bytes from ordered Seedance references", async () => {
+    const productFixture = {
+      name: "张雪机车 820RR-RC", sourceUrl: "https://chejiahao.m.autohome.com.cn/pingan/chejiahao/detailinfo/26640213",
+      imageUrl: "https://www2.autoimg.cn/chejiahaodfs/g33/M0B/A5/90/750x0_autohomecar__ChxpVmrNlSSAEhFhAAVW-cpKwlE948.jpg",
+      body: "张雪机车 820RR-RC 是赛道版车型。", specs: { 车型: "赛道版" }, prompt: "成年骑手在封闭赛道骑行张雪机车 820RR-RC。",
+    };
+    const state = await marketingSource(false, "https", productFixture);
+    const fixture = portraitReuseFixture(path.join(dir, "workspaces", scope.workspaceId), projectId);
+    const actor = await readFile(new URL("../../../../bundles/ai-video/library/characters/model-01-young-rider/portraits/v2/young-rider-01-front.png", import.meta.url));
+    const product = await readFile(new URL("../../../../bundles/ai-video/library/products/zxmoto-820rr-rc/photos/02-chejiahao-1.jpg", import.meta.url));
+    const actorSha = renderSha256(actor), productSha = renderSha256(product);
+    for (const receipt of [fixture.files.front!, fixture.outputs.front!]) {
+      await writeFile(receipt.path, actor);
+      Object.assign(receipt, { bytes: actor.length, sha256: actorSha });
+    }
+    const assetId = `asset-${projectId}`, mediaDir = path.join(dir, "private-media");
+    const relativePath = `upload/${scope.workspaceId}/${productSha}.jpg`, productPath = path.join(mediaDir, relativePath);
+    await mkdir(path.dirname(productPath), { recursive: true });
+    await writeFile(productPath, product);
+    vi.stubEnv("WORKLOOM_MEDIA_DIR", mediaDir);
+    vi.stubEnv("HR_PORTRAIT_REUSE_MANIFEST", fixture.manifestPath);
+    env.LLM_BASE_URL = "https://api.deepseek.com";
+    const selection = { productId: "zxmoto-820rr-rc", productName: productFixture.name, assetId, sourceUrl: state.imageUrl, pageUrl: productFixture.sourceUrl,
+      sha256: productSha, authorizationBasis: "owner-confirmed-reference-use" };
+    const manifest = JSON.stringify({ ...fixture.manifest, productReferenceSelection: {
+      schemaVersion: "workloom.product-reference-selection/v1", workspaceId: scope.workspaceId, projectId,
+      selectedAt: new Date().toISOString(), products: [selection],
+    } });
+    await writeFile(fixture.manifestPath, manifest);
+    await chmod(fixture.manifestPath, 0o600);
+    fixture.manifestRef.sha256 = renderSha256(manifest);
+    fixture.persistIndex();
+    await owner.query(`INSERT INTO video_assets
+      (id,workspace_id,project_id,chain_id,kind,source_url,license_risk,sha256,meta,created_by,source_type)
+      VALUES ($1,$2,$3,$1,'product_image',$4,'none',$5,$6::jsonb,'MEM-ORIGINAL','uploaded')`,
+    [assetId, scope.workspaceId, projectId, state.imageUrl, productSha, JSON.stringify({ localPath: relativePath })]);
+    const proof = acceptPortraitArchiveReuse(fixture.input);
+    const gate = state.output.productionEvidence.gates.find((item: { gate: string }) => item.gate === "G5_PORTRAIT");
+    Object.assign(gate, { status: "passed", approved: true, via: "archive-reuse-acceptance", degraded: false, model: null,
+      archiveReuse: proof, evidence: portraitReuseEvidence(proof) });
+    delete gate.basis;
+    state.output.productionEvidence.productReferences = [{ ...selection, projectId, rawIntentSha256: renderSha256(state.rawIntent), relativePath, bytes: product.length, mimeType: "image/jpeg",
+      ownerManifestSha256: fixture.manifestRef.sha256 }];
+    const output = JSON.stringify(state.output);
+    await writeFile(state.outputFile, output);
+    await owner.query("UPDATE production_stage_runs SET output_sha256=$2 WHERE id=$1", [sourceId, renderSha256(output)]);
+
+    const actorRef = `portrait:sha256:${actorSha}`, productRef = `product:sha256:${productSha}`;
+    const listing = await listProductionShots({ app, scope, projectId, env });
+    expect(listing.characterReferences).toContainEqual({ ref: actorRef, characterId: "c1", angle: "front" });
+    expect(listing.productReferences).toEqual([{ ref: productRef, productId: "zxmoto-820rr-rc", productName: productFixture.name }]);
+    const qualify = (referenceImageUrls: string[]) => qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+      modelId: "doubao-seedance-2-5", params: { referenceImageUrls }, env });
+    const before = calls.length;
+    for (const refs of [[productRef, actorRef], [actorRef, state.imageUrl], [actorRef, `product:sha256:${"e".repeat(64)}`], [productRef]]) {
+      await expect(qualify(refs)).rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    }
+    expect(calls).toHaveLength(before);
+    const qualified = await qualify([actorRef, productRef]);
+    const frozen = await input(qualified.qualificationToken);
+    const digestUrl = (url: string) => renderSha256(Buffer.from(url.split(",")[1]!, "base64"));
+    const reviewContent = JSON.parse(calls.at(-1)!.body).messages[0].content;
+    expect(reviewContent.filter((item: { type: string }) => item.type === "image_url").map((item: { image_url: { url: string } }) => digestUrl(item.image_url.url)))
+      .toEqual([actorSha, productSha]);
+    expect(qualified.promptSha256).toBe(listing.shots[0]!.promptSha256);
+    const { producer_verdict: verdict } = (await owner.query("SELECT producer_verdict FROM production_qualifications WHERE id=$1", [qualified.qualificationId])).rows[0];
+    expect(verdict.visualEvidence.map((item: { kind: string; sourceSha256: string; sha256: string }) => [item.kind, item.sourceSha256, item.sha256]))
+      .toEqual([["original", actorSha, actorSha], ["original", productSha, productSha]]);
+
+    await writeFile(productPath, Buffer.concat([product, Buffer.from("tampered")]));
+    await expect(submitGenJob(frozen)).rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    expect(providerCalls).toBe(0);
+    await writeFile(productPath, product);
+    await submitGenJob(frozen);
+    expect(calls.at(-1)?.body).toBe(frozen.compiled.bodyJson);
+    const wire = JSON.parse(calls.at(-1)!.body).content;
+    expect(wire[0].text).toContain("图片1仅用于本镜人物身份和体态；图片2仅用于本镜商品");
+    expect(wire.slice(1).map((item: { role: string; image_url: { url: string } }) => [item.role, digestUrl(item.image_url.url)]))
+      .toEqual([["reference_image", actorSha], ["reference_image", productSha]]);
     expect(providerCalls).toBe(1);
   });
 

@@ -67,7 +67,7 @@ import { applyBuiltinCharacters, appendBuiltinCharacterGuidance, resolveBuiltinC
 import { acquireProjectLease, archiveWorkDir, makeLedgerWriter, readProjectMeta } from "./archive-host.js";
 import { ingestPortraitsFromIndex } from "./media/library.js";
 import { upsertProductProfileFromDossier } from "./media/products.js";
-import { resolveStudioProductReferences } from "./studio-product-references.js";
+import { resolveProductionProductReferences, resolveStudioProductReferences, type ProductionProductReference } from "./studio-product-references.js";
 import { appendScenePolicyGuidance, resolveScenePolicyForIntent } from "./scene-policy-routing.js";
 import { appendPlatformGuidance, resolvePlatformForIntent } from "./platform-routing.js";
 import { loadVideoPipelinePlan, type CompiledVideoPipelinePlan } from "@hyperreality/video-pipeline";
@@ -499,7 +499,9 @@ async function pollApproval(
 interface Scope { tenantId: string; workspaceId: string }
 
 /** 定妆照出图配置（缺密钥则显式关闭：保持 vendor 规格包口径，不假装出图） */
-function portraitConfig(selectedCharacters?: BuiltinCharacterResolution): StudioPortraitConfig {
+function portraitConfig(selectedCharacters?: BuiltinCharacterResolution): StudioPortraitConfig & {
+  archivedCharacters?: ReturnType<typeof loadPortraitReuseManifest>;
+} {
   const apiKey = (process.env.VOLCENGINE_ARK_API_KEY ?? process.env.ARK_API_KEY ?? "").trim();
   const model = (process.env.ARK_IMAGE_MODEL ?? process.env.SEEDREAM_MODEL ?? "").trim();
   const enabled = (process.env.HR_PORTRAIT_ENABLED ?? "1") !== "0";
@@ -1187,11 +1189,18 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
                 return { files: 0, bytes: 0, skipped: [] as string[] };
               });
             let marketing: PreparedMarketingFacts | undefined;
+            let productReferences: ProductionProductReference[] = [];
             let g1Approved = true;
             if (input.isMarketing) {
+              const selectedManifest = portraitOptions.enabled ? portraitOptions.archivedCharacters : undefined;
+              const productInput = selectedManifest?.productReferenceSelection === undefined ? undefined : {
+                app: getAppPool(), scope, projectId: input.projectId, manifest: selectedManifest,
+                rawIntentSha256: renderSha256(input.rawIntent ?? input.intent),
+              };
+              const selectedImageSources = productInput ? await resolveProductionProductReferences(productInput) : undefined;
               marketing = await prepareMarketingFacts({ scope: { ...scope, projectId: input.projectId, runId: entry.runId, attempt: ctx.attempt },
                 root: archive.root, metadata: sourceMetadata, intent: input.rawIntent ?? input.intent, llm,
-                searchCacheFile: path.join(WORK_DIR, "search-cache", `${scope.workspaceId}.json`) });
+                searchCacheFile: path.join(WORK_DIR, "search-cache", `${scope.workspaceId}.json`), selectedImageSources });
               const verdict = await onApproval({ runId: entry.runId, gate: "G1_DOSSIER", vendorType: "host-source-dossier",
                 title: "本次营销来源正文与逐主张事实审核", contentMd: marketing.g1Content });
               const proof = gateProofs.get("G1_DOSSIER");
@@ -1204,6 +1213,9 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
               if (g1Approved) {
                 marketingGateEvidence?.acceptG1({ scope: marketing.bundle.scope, content: marketing.g1Content, proof });
                 currentProductVisual = extractProductVisualAuthority(marketing.g1Content);
+                if (productInput && selectedImageSources?.length) {
+                  productReferences = await resolveProductionProductReferences({ ...productInput, productVisualAuthority: currentProductVisual });
+                }
               }
               marketingDossierRoot = marketing.storeRoot;
               marketingDossierRef = path.posix.join("archive", scope.workspaceId, input.projectId, `${marketing.prefix}-dossier`);
@@ -1213,6 +1225,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             if (controlMode === "shadow") shadowG1 = currentG1;
             const activeCreative = creativeSession;
             const studio = g1Approved ? new VideoStudio({ ...studioConfig,
+              ...(portraitOptions.enabled && productReferences.length ? { portraits: { ...portraitOptions,
+                archivedProductReferences: productReferences.map(({ productId, productName }) => ({ productId, productName })) } } : {}),
               ...(activeCreative ? { creativeExecution: { mode: "enforce" as const, rawIntent: input.rawIntent ?? input.intent,
                 sourceMetadata, session: activeCreative, selectCandidate: async ({ contract, visualAuthority, creativeInput, assertCurrent }) => {
                   const endpoint = videoTextEndpointFromEnv();
@@ -1455,6 +1469,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
                 productionEvidence: { schemaVersion: "workloom.preproduction-authority/v1", issuer: "workloom.studio-worker",
                   tenantId: scope.tenantId, workspaceId: scope.workspaceId, projectId: input.projectId,
                   runId: entry.runId, attempt: ctx.attempt, pipelineKind, gates: [...gateProofs.values()],
+                  ...(r.success && productReferences.length ? { productReferences } : {}),
                   ...(creativeSession ? { creativeExecution: { contractHash: creativeSession.contract.hash, planHash: creativeSession.planHash } } : {}) },
                 stages: Object.keys(r.stages ?? {}),
                 checkpointDir: `checkpoints/${input.projectId}`,

@@ -12,6 +12,7 @@ export interface PortraitReuseSelection {
 }
 export interface ArchivedPortraitCharacters {
   manifestPath: string; manifestSha256: string; approvedSelection: PortraitReuseSelection;
+  productReferenceSelection?: unknown;
   characters: Array<{ id: string; name: string; aliases?: string[]; version: number;
     authorization: { status: "synthetic-no-real-person" }; profile: ReuseFileReceipt;
     files: Record<string, ReuseFileReceipt>; wardrobe?: Record<string, unknown> }>;
@@ -80,6 +81,7 @@ export function loadPortraitReuseManifest(file: string, expectedSha256?: string)
     for (const angle of ANGLES) verifyFile(files[angle], `源图 ${angle}`);
   }
   return { manifestPath: receipt.path, manifestSha256: receipt.sha256, approvedSelection,
+    ...(manifest.productReferenceSelection === undefined ? {} : { productReferenceSelection: manifest.productReferenceSelection }),
     characters: manifest.characters as ArchivedPortraitCharacters["characters"] };
 }
 
