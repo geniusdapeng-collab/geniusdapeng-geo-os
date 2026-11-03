@@ -164,8 +164,8 @@
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
       "previousTargetSha256": "f30e09fc7d1d112a18e08b45046bb558cd2f1d154e764eb4e87fa244a5821b64",
-      "targetSha256": "d87f60938652885455b88ba661477aff5d82fcd43b167d9b8f779f787a22ffa4",
-      "targetBytes": 3877,
+      "targetSha256": "de4c82f085a228fe3b4feeba1f54487db7b44494b86e4886dae088c6de807911",
+      "targetBytes": 3901,
       "targetMode": "100644"
     },
     {
@@ -273,5 +273,5 @@
       "targetMode": "100644"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:15:51.734255+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
 }

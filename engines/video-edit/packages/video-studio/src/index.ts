@@ -84,5 +84,5 @@ export * from "./constraint-compiler.js";
 
 export * from "./creative-evaluation.js";
 export * from "./creative-runtime.js";
-export { completeVideoTextTask, videoTextEndpointFromEnv } from "./video-text-client.js";
+export { completeVideoTextTask, videoTextEndpointFromEnv, VideoTextDispatchError } from "./video-text-client.js";
 export { requirementCast } from "./requirement-contract.js";

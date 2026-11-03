@@ -16,7 +16,9 @@ const shot = {
 };
 const wrongShot = { ...shot, duration: "10秒", untrustedSecretKey: "UNTRUSTED-RAW-OUTPUT" };
 type Request = { model: string; response_format: { type: string }; messages: Array<{ role: string; content: string }> };
-type Fixtures = (user: Record<string, any>, index: number) => { value: unknown; usage?: "missing" };
+type Fixtures = (user: Record<string, any>, index: number) => {
+  value?: unknown; content?: string; usage?: "missing"; finishReason?: "stop" | "length";
+};
 const expectedKeys = (value: Record<string, unknown>) => Object.keys(value).sort();
 const goodReview = (user: Record<string, any>) => ({
   contractHash: user.contractHash, candidateHash: user.candidateHash, rubricVersion: user.rubricVersion, findings: [],
@@ -30,9 +32,9 @@ async function withFixture<T>(fixture: Fixtures, run: (endpoint: { model: string
     for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Request;
     requests.push(body);
-    const { value, usage } = fixture(JSON.parse(body.messages.at(-1)!.content), requests.length);
+    const { value, content, usage, finishReason = "stop" } = fixture(JSON.parse(body.messages.at(-1)!.content), requests.length);
     const raw = JSON.stringify({ id: `fixture-response-${requests.length}`, model,
-      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }],
+      choices: [{ finish_reason: finishReason, message: { content: content ?? JSON.stringify(value) } }],
       ...(usage === "missing" ? {} : { usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 } }) });
     hashes.push(createHash("sha256").update(raw).digest("hex"));
     res.setHeader("content-type", "application/json");
@@ -93,6 +95,79 @@ describe("native creative candidate structure at the actual model transport", ()
     await withFixture(() => ({ value: { shots: [wrongShot] }, usage: "missing" }), async (endpoint, requests) => {
       await expect(withCreativeBudget(budget(), () => generateCreativeAssessments({ contract, endpoint, count: 3, assertCurrent: async () => {} })))
         .rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      expect(requests).toHaveLength(1);
+    });
+  });
+
+  it.each([["{UNTRUSTED-RAW-OUTPUT", "invalid_json"], ["   ", "empty_json"]])(
+    "recovers a known stopped generation with one slot and safe diagnostics (%s)", async (content, code) => {
+      await withFixture((user, index) => index === 1 ? { content } : ({
+        value: user.candidateHash ? goodReview(user) : { shots: [shot] },
+      }), async (endpoint, requests, hashes) => {
+        const settled: CreativeModelOutcome[] = [];
+        const result = await withCreativeBudget(budget(settled), () => generateCreativeAssessments({
+          contract, endpoint, count: 2, assertCurrent: async () => {},
+        }));
+        const expected = { requestId: "fixture-response-1", responseHash: hashes[0], issues: [{ path: [], code }] };
+        expect(requests).toHaveLength(3);
+        expect(JSON.parse(requests[1]!.messages.at(-1)!.content).structureSuccessorOf).toEqual(expected);
+        expect(result.rejected[0]).toMatchObject({ response: { phase: "generation", ...expected } });
+        expect(result.selected?.generation.requestId).toBe("fixture-response-2");
+        expect(settled.map(row => [row.usageKnown, row.success, row.finishReason]))
+          .toEqual([[true, false, "stop"], [true, true, "stop"], [true, true, "stop"]]);
+        expect(JSON.stringify({ requests, rejected: result.rejected })).not.toContain("UNTRUSTED-RAW-OUTPUT");
+      });
+    },
+  );
+
+  it("keeps the independently valid first candidate after the second review returns malformed JSON", async () => {
+    await withFixture((user, index) => index === 4 ? { content: "{not-json" } : ({
+      value: user.candidateHash ? goodReview(user) : { shots: [{ ...shot, action: shot.action + index }] },
+    }), async (endpoint, requests, hashes) => {
+      const settled: CreativeModelOutcome[] = [];
+      const result = await withCreativeBudget(budget(settled), () => generateCreativeAssessments({
+        contract, endpoint, count: 2, assertCurrent: async () => {},
+      }));
+      expect(requests).toHaveLength(4);
+      expect(result.selected?.review.requestId).toBe("fixture-response-2");
+      expect(result.rejected[0]).toMatchObject({ code: "CREATIVE_ART_REVIEW_UNVERIFIED", response: {
+        phase: "review", requestId: "fixture-response-4", responseHash: hashes[3], issues: [{ path: [], code: "invalid_json" }],
+      } });
+      expect(settled[3]).toMatchObject({ usageKnown: true, success: false, finishReason: "stop" });
+    });
+  });
+
+  it("spends at most one further planned slot after a known malformed review", async () => {
+    await withFixture((user, index) => user.candidateHash ? { content: "{not-json" } : ({
+      value: { shots: [{ ...shot, action: shot.action + index }] },
+    }), async (endpoint, requests) => {
+      const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract, endpoint, count: 3, assertCurrent: async () => {},
+      }));
+      expect(requests).toHaveLength(4);
+      expect(result.rejected).toHaveLength(2);
+      expect(result.selected).toBeNull();
+    });
+  });
+
+  it.each([
+    [{ content: "{", usage: "missing" }, "CREATIVE_USAGE_UNKNOWN"],
+    [{ content: "{", finishReason: "length" }, "MODEL_OUTPUT_TRUNCATED"],
+  ] as const)("keeps unknown usage and truncated content outside the successor path (%j)", async (fixture, code) => {
+    await withFixture(() => fixture, async (endpoint, requests) => {
+      await expect(withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract, endpoint, count: 3, assertCurrent: async () => {},
+      }))).rejects.toMatchObject({ code });
+      expect(requests).toHaveLength(1);
+    });
+  });
+
+  it("does not start a successor if recording the known failure's usage fails", async () => {
+    await withFixture(() => ({ content: "   " }), async (endpoint, requests) => {
+      const failedJournal = { ...budget(), afterModelCall: async () => { throw new Error("fixture settlement failure"); } };
+      await expect(withCreativeBudget(failedJournal, () => generateCreativeAssessments({
+        contract, endpoint, count: 3, assertCurrent: async () => {},
+      }))).rejects.toMatchObject({ code: "CREATIVE_RECEIPT_UNKNOWN" });
       expect(requests).toHaveLength(1);
     });
   });

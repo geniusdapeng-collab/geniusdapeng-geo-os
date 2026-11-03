@@ -251,46 +251,62 @@ def verify_source(archive, expected):
     require(re.fullmatch(r"[a-f0-9]{64}", expected or "") is not None, "An explicit SHA-256 is required.")
     require(archive.is_file() and not archive.is_symlink(), "Deployment archive must be a regular file.")
     require(sha256(archive) == expected, "Archive checksum mismatch; no installation performed.")
-    with tarfile.open(archive, "r:gz") as bundle:
-        members = bundle.getmembers()
-        seen = set()
-        files = {}
-        size = 0
-        for member in members:
+    seen = set()
+    files = {}
+    size = 0
+    manifest = None
+    package_bytes = None
+    # Tar member order can differ from the sorted manifest. Seeking to every
+    # manifest entry in a gzip stream repeatedly decompresses the prefix.
+    with tarfile.open(archive, "r|gz") as bundle:
+        for member in bundle:
             name = safe_member(member, "app", seen)
             size += member.size
             require(size <= MAX_SOURCE, "Source archive exceeds 1 GiB uncompressed.")
-            if member.isfile():
-                files[name.removeprefix("app/")] = member
-        require("deployment-manifest.json" in files, "Deployment manifest is missing.")
-        require(files["deployment-manifest.json"].size <= 2 * 1024 * 1024, "Deployment manifest is too large.")
-        manifest = json.load(bundle.extractfile(files["deployment-manifest.json"]))
-        require(manifest.get("schema") == "pengmanager-deployment/v1" and
-                re.fullmatch(r"[a-f0-9]{40}", manifest.get("gitSha", "")), "Deployment manifest identity is invalid.")
-        records = manifest.get("files", [])
-        require(isinstance(records, list) and records, "Deployment manifest has no source files.")
-        content = hashlib.sha256(json.dumps(records, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        require(content == manifest.get("contentSha256"), "Deployment manifest content digest is invalid.")
-        expected_paths = set()
-        for record in records:
-            path = record.get("path", "")
-            require(re.fullmatch(r"[\w.\-/]+", path) and ".." not in PurePosixPath(path).parts,
-                    "Deployment manifest path is invalid.")
-            require(path not in expected_paths, "Deployment manifest contains duplicate paths.")
-            expected_paths.add(path)
-            require(path in files and files[path].size == record.get("size") and
-                    record.get("mode") in (0o644, 0o755), "Deployment file metadata does not match its manifest.")
-            actual = hashlib.sha256(bundle.extractfile(files[path]).read()).hexdigest()
-            require(actual == record.get("sha256"), f"Deployment file checksum mismatch: {path}")
-        require(set(files) == expected_paths | {"deployment-manifest.json"}, "Archive has unlisted files.")
-        require(re.fullmatch(r"pnpm@\d+\.\d+\.\d+", manifest.get("packageManager", "")), "pnpm is not pinned.")
-        for required in ("package.json", "pnpm-lock.yaml", "src/server.mjs", "src/security/admin-auth.mjs",
-                         "deploy/aliyun/runtime.json", "deploy/aliyun/deploy.py", "deploy/aliyun/nginx_proxy.py",
-                         "deploy/aliyun/configure.mjs"):
-            require(required in expected_paths, f"Deployment file is missing: {required}")
-        package = json.load(bundle.extractfile(files["package.json"]))
-        require(package.get("packageManager") == manifest["packageManager"], "Package manager pin does not match manifest.")
-        return manifest
+            if not member.isfile():
+                continue
+            path = name.removeprefix("app/")
+            with bundle.extractfile(member) as source:
+                if path == "deployment-manifest.json":
+                    require(member.size <= 2 * 1024 * 1024, "Deployment manifest is too large.")
+                    manifest = json.load(source)
+                    continue
+                digest = hashlib.sha256()
+                if path == "package.json":
+                    require(member.size <= 2 * 1024 * 1024, "Package metadata is too large.")
+                    package_bytes = source.read()
+                    digest.update(package_bytes)
+                else:
+                    for block in iter(lambda: source.read(1024 * 1024), b""):
+                        digest.update(block)
+                files[path] = (member.size, digest.hexdigest())
+    require(manifest is not None, "Deployment manifest is missing.")
+    require(isinstance(manifest, dict) and manifest.get("schema") == "pengmanager-deployment/v1" and
+            re.fullmatch(r"[a-f0-9]{40}", manifest.get("gitSha", "")), "Deployment manifest identity is invalid.")
+    records = manifest.get("files", [])
+    require(isinstance(records, list) and records, "Deployment manifest has no source files.")
+    content = hashlib.sha256(json.dumps(records, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    require(content == manifest.get("contentSha256"), "Deployment manifest content digest is invalid.")
+    expected_paths = set()
+    for record in records:
+        path = record.get("path", "")
+        require(re.fullmatch(r"[\w.\-/]+", path) and ".." not in PurePosixPath(path).parts,
+                "Deployment manifest path is invalid.")
+        require(path not in expected_paths, "Deployment manifest contains duplicate paths.")
+        expected_paths.add(path)
+        require(path in files and files[path][0] == record.get("size") and
+                record.get("mode") in (0o644, 0o755), "Deployment file metadata does not match its manifest.")
+        require(files[path][1] == record.get("sha256"), f"Deployment file checksum mismatch: {path}")
+    require(set(files) == expected_paths, "Archive has unlisted files.")
+    require(re.fullmatch(r"pnpm@\d+\.\d+\.\d+", manifest.get("packageManager", "")), "pnpm is not pinned.")
+    for required in ("package.json", "pnpm-lock.yaml", "src/server.mjs", "src/security/admin-auth.mjs",
+                     "deploy/aliyun/runtime.json", "deploy/aliyun/deploy.py", "deploy/aliyun/nginx_proxy.py",
+                     "deploy/aliyun/configure.mjs"):
+        require(required in expected_paths, f"Deployment file is missing: {required}")
+    package = json.loads(package_bytes)
+    require(isinstance(package, dict) and package.get("packageManager") == manifest["packageManager"],
+            "Package manager pin does not match manifest.")
+    return manifest
 
 
 def extract_regular(archive, destination, prefix):

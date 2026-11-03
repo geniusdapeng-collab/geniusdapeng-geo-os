@@ -458,8 +458,8 @@
     {
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
-      "targetSha256": "d87f60938652885455b88ba661477aff5d82fcd43b167d9b8f779f787a22ffa4",
-      "targetBytes": 3877,
+      "targetSha256": "de4c82f085a228fe3b4feeba1f54487db7b44494b86e4886dae088c6de807911",
+      "targetBytes": 3901,
       "evidence": "B",
       "sourceSha256": "ef19d9737a7d80ee1a983a53074f934ac28b15b3e6f8571667c15ecc094ab8de",
       "sourceBytes": 3451
@@ -537,11 +537,11 @@
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
-      "targetSha256": "4da4d4a6369dafb9b506d3ac8daf0369fa35c121aaef6006fe1587f387ea31e0",
-      "targetBytes": 17185,
+      "targetSha256": "0663b5accef7202d185ff06a6b72e8b877217166622fafff355bddb9cdd27843",
+      "targetBytes": 17858,
       "evidence": "B",
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T15:52:15.078659+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
 }

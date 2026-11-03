@@ -10,8 +10,8 @@
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
-      "targetSha256": "4da4d4a6369dafb9b506d3ac8daf0369fa35c121aaef6006fe1587f387ea31e0",
-      "targetBytes": 17185,
+      "targetSha256": "0663b5accef7202d185ff06a6b72e8b877217166622fafff355bddb9cdd27843",
+      "targetBytes": 17858,
       "reason": "Native HTTP buffering preserves the full 600-second business timeout while retaining the 8 MiB response bound and fetch-compatible fixture seam."
     },
     {
@@ -22,5 +22,5 @@
       "reason": "Loopback regression proves the default dispatcher uses Node HTTP and never invokes global fetch."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
 }
