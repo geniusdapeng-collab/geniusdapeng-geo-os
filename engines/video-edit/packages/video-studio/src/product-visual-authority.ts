@@ -46,7 +46,8 @@ const modeSource = "requestedMetadata.brief.productionRequirements.visualMode";
 export const REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE = "已登记原图授权仅覆盖本次确切字节及可见内容。未逐项证实的部件和机位不得用于执行字段。";
 export const UNVERIFIED_MIRROR_DETAIL_RULE = "禁止生成或描写车辆后视镜、镜中反射或依赖镜体的视角，原图未证实这些细节。";
 export const INSPECTED_RC_REFERENCE_DETAIL_RULE = UNVERIFIED_MIRROR_DETAIL_RULE
-  + "车手服装与车身分别执行各自参考。禁止把车手护具的黑红配色赋给车身或写成整片主色。车身涂装只按本次登记原图，不另写未核实颜色。";
+  + "车手服装与车身分别执行各自参考。禁止把车手护具的黑红配色赋给车身或写成整片主色。车身涂装只按本次登记原图，不另写未核实颜色。"
+  + "车灯区仅随整体车身保留本次登记原图可见的斜前方静态外形。禁止以车灯区为特写主体、描写尾灯、点亮、闪烁或车灯照明，收束可使用奖杯高光与原图可见的整体车身。";
 /** Only this exact inspected source has these known exclusions. Different or additional sources may show different details. */
 export function registeredProductReferenceOmitsMirrors(
   references: readonly { productId: string; sha256: string }[] | undefined,
@@ -64,6 +65,20 @@ const UNSUPPORTED_RC_PALETTE = new RegExp(
 );
 const RC_GEAR_BODY_MATCH = new RegExp(
   `${RC_GEAR_PALETTE}[^，。；;]{0,14}(?:赛车服|护具|赛车装)[^，。；;]{0,10}${VEHICLE_PALETTE_TARGET}[^，。；;]{0,8}(?:呼应|同色|同款|统一|一致)`, "iu",
+);
+const RC_LAMP_TARGET = "(?:灯区|车灯|前灯|尾灯|头灯|大灯|刹车灯|车(?:前|头|后|尾)灯组|\\b(?:head|tail|brake)[- ]?(?:lamp|light)s?\\b)";
+const RC_LAMP = new RegExp(RC_LAMP_TARGET, "iu");
+const RC_LAMP_ORIGINAL = /登记(?:实物)?原图|登记参考图|已授权实物参考图|已核(?:验)?原图|已核(?:验)?参考图|获准原图|\bregistered (?:reference|image)\b/iu;
+const RC_LAMP_VISIBILITY = /(?:仅|只|按|可见|看得见|核对|对照|依据|沿用|保持)|\b(?:visible|same as|according to)\b/iu;
+const VENUE_LAMP_AREA = /(?:场地|赛道|维修区|领奖台|摄影|照明|舞台)(?:的)?灯区/gu;
+const RC_REAR_LAMP = /尾灯|后车灯|车尾灯|车后灯|刹车灯|\b(?:tail|brake)[- ]?(?:lamp|light)s?\b/iu;
+const RC_LAMP_OPERATION = new RegExp(
+  `${RC_LAMP_TARGET}[^，。；;]{0,8}(?:亮起|点亮|发光|闪烁|点灯|亮灭|照亮|光束|lights? up|flash(?:es|ing)?)|`
+  + `(?:点亮|点燃|开关|打开|开启|熄灭|switch(?:es)? on|illuminate)[^，。；;]{0,8}${RC_LAMP_TARGET}`, "iu",
+);
+const RC_LAMP_CLOSEUP = new RegExp(
+  `${RC_LAMP_TARGET}[^，。；;]{0,10}(?:特写|近拍|微距|close[- ]?up|macro)|`
+  + `(?:特写|近拍|微距|close[- ]?up|macro)(?:拍摄|镜头|对准|聚焦|车身|赛车|机车|的|of|[：:\\s]){0,6}${RC_LAMP_TARGET}`, "iu",
 );
 
 function object(value: unknown): Record<string, unknown> | null {
@@ -154,6 +169,11 @@ export function assertProductVisualContent(
             if (UNVERIFIED_MIRROR.test(actionable)) fail(field);
             if (UNSUPPORTED_RC_PALETTE.test(actionable) || RC_GEAR_BODY_MATCH.test(actionable)) {
               throw new ProductVisualAuthorityError(`${phase}/${field} 将护具配色写成未经原图核实的车身或全片配色`, "PRODUCT_VISUAL_DETAIL_UNVERIFIED");
+            }
+            if (RC_LAMP.test(actionable.replace(VENUE_LAMP_AREA, "")) && (RC_REAR_LAMP.test(actionable)
+              || RC_LAMP_OPERATION.test(actionable) || RC_LAMP_CLOSEUP.test(actionable)
+              || !RC_LAMP_ORIGINAL.test(actionable) || !RC_LAMP_VISIBILITY.test(actionable))) {
+              throw new ProductVisualAuthorityError(`${phase}/${field} 的车灯区缺少本次原图可见静态外形的明确锚点，或包含未经核实的灯光状态`, "PRODUCT_VISUAL_DETAIL_UNVERIFIED");
             }
           }
           continue;

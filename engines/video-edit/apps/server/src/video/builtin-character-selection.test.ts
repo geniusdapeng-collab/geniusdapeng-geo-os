@@ -61,6 +61,45 @@ describe("video服务实际消费受控默认角色", () => {
     expect(appendBuiltinCharacterGuidance("原始需求", result)).not.toContain('\\"id\\":\\"w1\\"');
     expect(fixture.profiles[0]!.activeWardrobeId).toBe("w1");
   });
+  it("maps the owner's explicit race outfit and the same hair release to a scoped, replayable version", () => {
+    const intent = "1号模特李英子为唯一主角。封闭赛道竞速，闭合全盔、全套黑红皮质护具。安全停到维修区后完整摘盔，甩头让长发自然垂落。车手着合体赛车服。";
+    const source = readFileSync(fixture.profilePaths[0]!);
+    const baseline = resolve("1号模特李英子为唯一主角。");
+    const selected = resolve(intent, { characterOrdinal: 1 });
+    const actor = selected.characters[0]!;
+    expect(selected.decision.characters).toEqual(baseline.decision.characters);
+    expect(actor.wardrobeId).toMatch(/^project-racing-[a-f0-9]{12}$/u);
+    expect(actor).toMatchObject({ id: "young-rider-01", appearance: { hair: "黑色高马尾" },
+      wardrobe: [{ id: actor.wardrobeId, name: "合体赛车服", ownerApproved: true, projectOverride: true }],
+      productionContinuity: { characterId: "young-rider-01", baselineHair: "黑色高马尾", baselineWardrobeId: "w1",
+        wardrobeId: actor.wardrobeId, race: expect.stringContaining("原档案束发收在盔内"),
+        afterStop: expect.stringContaining("完整摘盔，松开同一束发") },
+    });
+    const metadata = applyBuiltinCharacters({}, selected);
+    expect(resolve(intent, metadata).characters).toEqual(selected.characters);
+    expect(() => resolve(intent.replace("黑红皮质", "蓝色皮质"), metadata)).toThrow("服装");
+    expect(readFileSync(fixture.profilePaths[0]!)).toEqual(source);
+    expect(resolve(intent.replace("完整摘盔", "不摘盔")).characters[0]?.wardrobeId).toBe("w1");
+    expect(resolve(intent, { character: { id: "young-rider-01", wardrobeId: "w1" } }).characters[0]?.productionContinuity).toBeUndefined();
+  });
+  const racingIntent = "1号模特李英子为唯一主角。封闭赛道竞速，闭合全盔、全套黑红皮质护具。车手着合体赛车服。";
+  it.each([
+    "停稳、摘下头盔；然后放下同一长发",
+    "停稳后取下全盔，松开原有发绳，让原有长发自然垂落",
+    "安全停车后：脱下头盔。接着将原本的长发放下",
+  ])("accepts an explicitly equivalent safe transition %s", transition => {
+    expect(resolve(racingIntent + transition).characters[0]?.productionContinuity).toMatchObject({
+      baselineHair: "黑色高马尾", afterStop: expect.stringContaining("松开同一束发"),
+    });
+  });
+  it.each([
+    "停稳后不摘盔，甩头让长发自然垂落",
+    "停车后摘下头盔，不让长发自然垂落",
+    "骑行中摘盔，甩头让长发自然垂落",
+    "行驶中先摘盔；停稳后取下头盔，放下同一长发",
+  ])("declines to infer an appearance override from a negated or unsafe transition %s", transition => {
+    expect(resolve(racingIntent + transition).characters[0]?.productionContinuity).toBeUndefined();
+  });
   it.each([{ wardrobeId: "missing-wardrobe" }, { wardrobeId: "w1", activeWardrobeId: "missing-wardrobe" },
     { wardrobeId: 1 }, { wardrobe: { id: "w1", name: "红裙" } },
     { wardrobe: { id: "race-suit", name: "项目赛车服", projectOverride: true } }])("显式服装%j不符时失败，不用w1静默补位", wardrobe => {

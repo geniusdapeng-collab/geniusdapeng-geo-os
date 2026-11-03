@@ -26,8 +26,8 @@
       "sourceGitBlob": "b921b368591e9538aa9f08607209e3724d63c8c1",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "targetMode": "100644",
-      "targetSha256": "f9ed76ed81b8e6138f623fa1fbb634a6a63993bffcd6e45c6e2be389755d640f",
-      "targetBytes": 64198,
+      "targetSha256": "4583cf4f1bbfa1f5b78d7da12262b8a33931611554cd83ef51947c47775b1896",
+      "targetBytes": 65591,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "26d495a05e58d403cc0bf73f09e8e6d8c251c1c3",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "targetMode": "100644",
-      "targetSha256": "51b3d2f701418ae11e53b8bdd166523b74e5a03bb421467e74887ee6d904491f",
-      "targetBytes": 50285,
+      "targetSha256": "5542272fc15ff3ac41dfe771e316c8c3c8fb69756f6552fed87872dc559c4b8a",
+      "targetBytes": 52757,
       "transform": "none"
     },
     {
@@ -62,8 +62,8 @@
       "sourceGitBlob": "0d2c0bd387cb5079c2a8ad662066af51155962f8",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetMode": "100644",
-      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
-      "targetBytes": 74960,
+      "targetSha256": "04bad529941ff0c0184db3ba99d941be700355a4766af0ed93cca37dc4ef28c4",
+      "targetBytes": 78774,
       "transform": "none"
     },
     {
@@ -117,5 +117,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T19:33:47.608435+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }

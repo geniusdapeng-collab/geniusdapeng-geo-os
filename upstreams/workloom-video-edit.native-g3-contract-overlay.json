@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0012",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T19:43:30.477150+00:00",
+  "scope": "Bind G3 to the frozen delivery profile and exact production schedule; preserve project wardrobe, hair continuity and exact inspected lamp appearance. Source upstream pin unchanged.",
+  "sourceOverlayCount": 6,
+  "files": [
+    {
+      "path": "apps/server/src/video/builtin-character-selection.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.test.ts",
+      "targetSha256": "cfaff3707f561d19c95afc141efe525fd67b33471fd6e6288db03bf4a50236a0",
+      "targetBytes": 13566,
+      "evidence": "B",
+      "sourceSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
+      "sourceBytes": 9554
+    },
+    {
+      "path": "apps/server/src/video/builtin-character-selection.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.ts",
+      "targetSha256": "5d36206b0718f892a14aa482a31804e6391f3701098d7c0938c158ec67388687",
+      "targetBytes": 30643,
+      "evidence": "B",
+      "sourceSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
+      "sourceBytes": 23750
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetSha256": "30e8319334704d6ef2d152099cce9c862577ef7c61c4e3edb42283efe199604f",
+      "targetBytes": 115300,
+      "evidence": "B",
+      "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
+      "sourceBytes": 82133
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.test.ts",
+      "targetSha256": "4ba90702f8bbc3c2de91a98146384b7f4bf90585e1585d5948f798622df30562",
+      "targetBytes": 8446,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "targetSha256": "471c9fa3688d06178ab170081adbb53edb067051e1f960c2dd5bf1536c08fea0",
+      "targetBytes": 20362,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetSha256": "5542272fc15ff3ac41dfe771e316c8c3c8fb69756f6552fed87872dc559c4b8a",
+      "targetBytes": 52757,
+      "evidence": "B",
+      "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
+      "sourceBytes": 29194
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetSha256": "04bad529941ff0c0184db3ba99d941be700355a4766af0ed93cca37dc4ef28c4",
+      "targetBytes": 78774,
+      "evidence": "B",
+      "sourceSha256": "56ec4894fb3b0ccb923213f81ac42a8b40f8b0cb676333334223ded13f2dca7c",
+      "sourceBytes": 60734
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
+      "targetSha256": "4583cf4f1bbfa1f5b78d7da12262b8a33931611554cd83ef51947c47775b1896",
+      "targetBytes": 65591,
+      "evidence": "B",
+      "sourceSha256": "2caa32da981cf1b26a33345874579c1ca4dbcf18bd75ed9a7f150fdcd18f0740",
+      "sourceBytes": 46738
+    }
+  ]
+}

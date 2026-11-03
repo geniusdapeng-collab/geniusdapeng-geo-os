@@ -52,16 +52,16 @@
     {
       "path": "packages/video-studio/src/product-visual-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
-      "targetSha256": "d92aed7bc46d21ac658d5a4a5b8680e3f65efe0f2c5cefd07ea5e5f7826fdd19",
-      "targetBytes": 18301,
+      "targetSha256": "471c9fa3688d06178ab170081adbb53edb067051e1f960c2dd5bf1536c08fea0",
+      "targetBytes": 20362,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "51b3d2f701418ae11e53b8bdd166523b74e5a03bb421467e74887ee6d904491f",
-      "targetBytes": 50285,
+      "targetSha256": "5542272fc15ff3ac41dfe771e316c8c3c8fb69756f6552fed87872dc559c4b8a",
+      "targetBytes": 52757,
       "evidence": "B",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
       "sourceBytes": 29194
@@ -84,5 +84,6 @@
       "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
       "sourceBytes": 41259
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }

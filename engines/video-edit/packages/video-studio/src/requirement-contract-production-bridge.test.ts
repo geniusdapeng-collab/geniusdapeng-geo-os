@@ -11,12 +11,12 @@ import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { withPrdAuthorityScope } from "./prd-authority-bridge.js";
 import {
   assertRequirementContractBridge, installRequirementContractBridge, installVendorRequirementContractBridge,
-  renderScenePolicyCoverage, sanitizeUnverifiedProductRisk, withRequirementContractScope
+  renderAuthoritativeRequirementContract, renderScenePolicyCoverage, sanitizeUnverifiedProductRisk, withRequirementContractScope
 } from "./requirement-contract-bridge.js";
 import { captureRequirementTheme, requirementAuthorityPrompt, type RequirementAuthorityOptions } from "./requirement-authority.js";
 import {
-  RequirementContractError, requirementHash, requirementRecord, structuredScenePrompt, structuredSceneSchema, validateRequirementSchema,
-  type RequirementRecord
+  RequirementContractError, renderRequirementContract, requirementHash, requirementRecord, structuredScenePrompt, structuredSceneSchema, validateRequirementSchema,
+  type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import type { PrdAuthority } from "./prd-authority.js";
 
@@ -971,6 +971,49 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
 });
 
 describe("host-owned G3 visual and scene-policy normalization", () => {
+  it("uses frozen delivery in the G3 list and report and maps the approved narrative beats to exact production cuts", async () => {
+    const scene = physicalScene([4, 6, 10, 6, 4]), run = privateRun("g3-production-projection", 30, scene);
+    run.authority.profile = { targetDuration: 30, targetPlatform: "抖音", aspectRatio: "9:16", resolution: "1080p", frameRate: 30 };
+    class Vendor {
+      async _convertDiscoveryToRequirementList(..._args: unknown[]) {
+        return { targetDuration: 24, aspectRatio: "16:9", platform: "视频号/抖音",
+          productionProfile: { duration_target: 24, aspect_ratio: "16:9", platform: "视频号/抖音" } };
+      }
+      _renderRequirementContract(..._args: unknown[]) { return "native contract"; }
+    }
+    disposers.push(installRequirementContractBridge(Vendor.prototype as unknown as RequirementRecord, RequirementDiscoveryEngine.prototype));
+    const vendor = new Vendor(), source = { sceneStructure: scene, audienceProfile: run.modules.audience,
+      referenceCases: { filmReferences: [], adReferences: [], styleReferences: ["自然光", "稳定镜头"] } };
+    const { tenantId, workspaceId, projectId } = run.authority.marketing.scope;
+    const creative = compileCreativeContract({ scope: { tenantId, workspaceId, projectId }, rawIntent: "30秒，必须恰好3个10秒镜头段。" });
+    const runtime = new CreativeRuntime({ contract: creative, model: "deepseek-flash", nativeSchemaHash: "a".repeat(64),
+      fields: { keys: ["frame"], labels: { frame: "画面" } }, cache: { read: async () => null, write: async () => {} },
+      generate: async () => { throw new Error("unexpected creative generation"); } });
+    const operation = () => withRequirementContractScope(run.metadata, async () => {
+      const list = await vendor._convertDiscoveryToRequirementList(source, run.input, run.metadata) as RequirementRecord;
+      expect(list).toMatchObject({ targetDuration: 30, aspectRatio: "9:16", platform: "抖音",
+        productionRequirements: { resolution: "1080p", frameRate: 30 },
+        productionProfile: { duration_target: 30, aspect_ratio: "9:16", platform: "抖音" } });
+      const contract = list._workloomRequirementContract as RequirementContract, before = requirementHash(contract);
+      const baseline = renderRequirementContract(contract, run.metadata);
+      expect(baseline).toContain("画幅 未指定 / 平台 未指定");
+      const rendered = vendor._renderRequirementContract(run.story, run.metadata, list, source);
+      expect(rendered).toContain("- 时长 30s / 画幅 9:16 / 平台 抖音");
+      expect(rendered).toContain('{"platform":"抖音","aspectRatio":"9:16","resolution":"1080p","frameRate":30}');
+      expect(rendered).toContain("5 个叙事节点按内容时间线映射到 3 个制作镜头段，每段 10 秒");
+      expect(rendered).toContain("| 1 | 0–10s | opening 0–4s、scene-1 4–10s |");
+      expect(rendered).toContain("| 2 | 10–20s | scene-2 10–20s |");
+      expect(rendered).toContain("| 3 | 20–30s | scene-3 20–26s、ending 26–30s |");
+      expect(rendered).not.toContain("画幅 未指定");
+      expect(renderAuthoritativeRequirementContract(contract, run.metadata)).toBe(baseline);
+      expect(renderAuthoritativeRequirementContract(contract, run.metadata, run.authority.profile)).not.toContain("制作镜头段与叙事节点对应");
+      expect(requirementHash(contract)).toBe(before);
+    }, run.options);
+    await withCreativeBudget({ beforeModelCall: async () => { throw new Error("unexpected model dispatch"); },
+      afterModelCall: async () => { throw new Error("unexpected model settlement"); } },
+    () => withCreativeRuntime(runtime, operation));
+  });
+
   it("removes only positive unverified product-part suggestions from risk advice", () => {
     const source = {
       riskAssessment: {

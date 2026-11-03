@@ -79,6 +79,55 @@ function loadCatalog(root: string): Catalog {
 function positiveIntent(raw: string): string {
   return splitShotAssertions(raw.replace(/不用|不采用|不选用|不选择|弃用|排除/g, "不要")).positive;
 }
+
+function explicitStoppedHairRelease(positive: string): string | undefined {
+  // positiveIntent normalizes ordinary clause punctuation to ；. Require the
+  // user's explicit order and decline unclear, negated or moving-vehicle cases.
+  const helmetOff = /(?:摘盔|(?:摘下|摘掉|脱下|取下|卸下)(?:闭合)?(?:全盔|头盔))/u.source;
+  const unsafe = new RegExp(`(?:骑行中|行驶中|行驶时|车辆未停稳时)\\s*(?:先|直接|立刻|马上)?(?:完整)?${helmetOff}`, "u");
+  const contradicted = /(?:停稳后|停车后|全片)[^；]{0,10}(?:不摘|不脱|不要摘|不让[^；]{0,10}长发[^；]{0,6}(?:垂落|披散))|(?:不让|不使)(?:同一|原有|原本的)?长发(?:自然)?(?:垂落|披散)|不(?:放下|甩开|甩散)长发/u;
+  if (unsafe.test(positive) || contradicted.test(positive)) return undefined;
+  const stopped = /(?:安全)?(?:(?:停稳|停车(?:停稳)?)后?|停到(?:(?!后|不|勿)[^；：:\r\n]){1,12}后)/u.source;
+  const boundary = /[；：:\s]*/u.source;
+  const hair = /(?:同一|原有|原本的)?长发/u.source;
+  const down = /(?:自然)?(?:垂落|披散)/u.source;
+  const release = [
+    `(?:甩头(?:让|使)?|让|使)${hair}${down}`,
+    `(?:放下|甩开|甩散)${hair}`,
+    `(?:将|把)${hair}(?:自然)?(?:放下|甩开|披散)`,
+    `(?:松开|解开)(?:同一|原有|原本的)?(?:束发|马尾|发绳)${boundary}(?:让|使)${hair}${down}`,
+  ].join("|");
+  return new RegExp(`${stopped}${boundary}(?:先|再|随后)?(?:完整|安全)?${helmetOff}${boundary}(?:然后|随后|接着|再|并)?${boundary}(?:${release})`, "u")
+    .exec(positive)?.[0];
+}
+
+/** A declared single synthetic rider's project outfit has its own version. */
+function racingContinuity(model: BuiltinModel, rawIntent: string, positive: string) {
+  const appearance = model.profile.appearance as Json;
+  const authorization = model.profile.authorization;
+  const hair = appearance.hair, baselineWardrobeId = model.profile.activeWardrobeId;
+  if (model.profile.kind !== "generated" || !plain(authorization) || authorization.status !== "synthetic-no-real-person"
+    || typeof hair !== "string" || !/马尾|束发|扎发/u.test(hair) || typeof baselineWardrobeId !== "string"
+    || !/封闭赛道/u.test(positive)) return undefined;
+  const suit = /(?:车手|主角|人物)(?:身着|穿着|着|穿)\s*([^，。；！？\r\n]{0,16}赛车服)/u.exec(positive)?.[1];
+  const gear = /全套[^，。；！？\r\n]{0,16}护具/u.exec(positive)?.[0];
+  const helmet = /闭合全盔/u.exec(positive)?.[0];
+  const release = explicitStoppedHairRelease(positive);
+  if (!suit || !gear || !helmet || !release) return undefined;
+  const sourceIntentSha256 = digest(Buffer.from(rawIntent));
+  const id = `project-racing-${shotIntentHash({ characterId: model.id, sourceIntentSha256 }).slice(0, 12)}`;
+  const version = `${id}-v1`;
+  const wardrobe = { id, version, name: suit, detail: `${suit}；${gear}；赛道竞速佩戴${helmet}。`,
+    projectOverride: true, ownerApproved: true, authorizationBasis: "explicit-customer-intent", sourceIntentSha256 };
+  const continuity = { schemaVersion: "workloom.project-appearance-continuity/v1", sourceIntentSha256,
+    characterId: model.id, baselineWardrobeId, wardrobeId: id, wardrobeVersion: version, baselineHair: hair,
+    identityReferenceUse: "既有定妆照仅作为同一人物的面貌、发际线、原始发型与体态基准；其基线服装不作为本片服装版本或赛道装备。",
+    race: `全程穿同一项目服装和${gear}；佩戴${helmet}，原档案束发收在盔内，头发和面部不外露。`,
+    afterStop: `按客户要求完成「${release.replaceAll("；", "，")}」；停稳后先完整摘盔，松开同一束发再完成客户明确的垂发动作。延续原发色、发际线与人物面貌，其余项目服装与护具延续至领奖。`,
+  };
+  return { wardrobe, continuity };
+}
+
 function chineseOrdinal(value: string): number | null {
   if (/^\d+$/.test(value)) return Number(value);
   const numbers: Record<string, number> = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
@@ -177,10 +226,11 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     }
     return result;
   };
-  const rows: Array<{ model: BuiltinModel | null; custom: Json | null; wardrobe?: Json }> = [];
+  const rows: Array<{ model: BuiltinModel | null; custom: Json | null; wardrobe?: Json; wardrobeSpecified?: boolean }> = [];
   const push = (value: unknown): string => {
     const model = builtin(value);
     let selectedWardrobe: Json | undefined;
+    let wardrobeSpecified = false;
     if (model && plain(value)) {
       const wardrobes = model.profile.wardrobe as Json[];
       const activeId = model.profile.activeWardrobeId;
@@ -189,15 +239,19 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
         invalid(`内置角色 ${model.name} 的服装ID与当前服装字段冲突`);
       }
       const requestedId = value.wardrobeId ?? value.activeWardrobeId;
+      wardrobeSpecified = requestedId !== undefined || value.wardrobe !== undefined;
+      const derived = Array.isArray(value.wardrobe) && value.wardrobe.length === 1
+        ? racingContinuity(model, rawIntent, positive)?.wardrobe : undefined;
+      const replay = derived && shotIntentHash(value.wardrobe) === shotIntentHash([derived]) ? derived : undefined;
       if (requestedId !== undefined) {
         if (typeof requestedId !== "string" || !requestedId.trim()) invalid(`内置角色 ${model.name} 的服装ID无效`);
-        selectedWardrobe = wardrobes.find(wardrobe => wardrobe.id === requestedId);
+        selectedWardrobe = wardrobes.find(wardrobe => wardrobe.id === requestedId) ?? (replay?.id === requestedId ? replay : undefined);
         if (!selectedWardrobe) invalid(`内置角色 ${model.name} 的服装ID未登记：${String(requestedId)}`);
       }
       if (value.wardrobe !== undefined) {
         if (Array.isArray(value.wardrobe)) {
-          if (shotIntentHash(value.wardrobe) !== shotIntentHash(wardrobes)) invalid(`内置角色 ${model.name} 的服装列表与受控档案冲突`);
-          selectedWardrobe = active;
+          if (!replay && shotIntentHash(value.wardrobe) !== shotIntentHash(wardrobes)) invalid(`内置角色 ${model.name} 的服装列表与受控档案冲突`);
+          selectedWardrobe = replay ?? active;
         } else if (!plain(value.wardrobe) || typeof value.wardrobe.id !== "string" || !value.wardrobe.id.trim()) {
           invalid(`内置角色 ${model.name} 的显式服装对象无效`);
         } else {
@@ -220,7 +274,7 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     const user = model ? null : completeCustom(value) ? value : [...custom.values()].find(item => plain(value) ? [value.id, value.character_id, value.name].some(token => token === item.id || token === item.character_id || token === item.name) : value === item.id || value === item.name) ?? null;
     if (!model && !user) invalid("自定义人物需要完整的ID、姓名和外观/人物描述，不能用默认人选补位");
     const id = model?.id ?? String(user!.id ?? user!.character_id);
-    if (!rows.some(row => (row.model?.id ?? String(row.custom!.id ?? row.custom!.character_id)) === id)) rows.push({ model, custom: user, ...(selectedWardrobe ? { wardrobe: selectedWardrobe } : {}) });
+    if (!rows.some(row => (row.model?.id ?? String(row.custom!.id ?? row.custom!.character_id)) === id)) rows.push({ model, custom: user, wardrobeSpecified, ...(selectedWardrobe ? { wardrobe: selectedWardrobe } : {}) });
     return id;
   };
   if (rosters.length) {
@@ -261,15 +315,19 @@ export function resolveBuiltinCharacters(rawIntent: string, metadata?: Json, opt
     const persona = plain(fields.persona) ? fields.persona : {};
     fields.speakingStyle ??= persona.speakingStyle;
     fields.behavioralRules ??= persona.behavioralRules ?? persona.continuityRules;
-    const selectedWardrobe = row.wardrobe ?? (Array.isArray(fields.wardrobe) ? fields.wardrobe.find(item => plain(item) && item.id === fields.activeWardrobeId) as Json | undefined : undefined);
+    const derived = rows.length === 1 && (singles.length > 0 || rosters.length > 0 || textModels.has(model.id))
+      ? racingContinuity(model, rawIntent, positive) : undefined;
+    const project = derived && (!row.wardrobeSpecified || row.wardrobe?.id === derived.wardrobe.id) ? derived : undefined;
+    const selectedWardrobe = project?.wardrobe ?? row.wardrobe ?? (Array.isArray(fields.wardrobe) ? fields.wardrobe.find(item => plain(item) && item.id === fields.activeWardrobeId) as Json | undefined : undefined);
+    const continuity = project ? { productionContinuity: project.continuity } : {};
     // The projection must agree with the selected project wardrobe. Keeping the
     // canonical list here reintroduced a superseded baseline (w1) into G3/G4.
     const description = JSON.stringify({ identity: fields.identity, appearance: fields.appearance,
       wardrobe: selectedWardrobe ? [selectedWardrobe] : fields.wardrobe, persona: fields.persona,
       biography: fields.biography, speakingStyle: fields.speakingStyle, behavioralRules: fields.behavioralRules,
-      ...(selectedWardrobe ? { activeWardrobeId: selectedWardrobe.id } : {}) });
+      ...(selectedWardrobe ? { activeWardrobeId: selectedWardrobe.id } : {}), ...continuity });
     return { ...fields, ...(selectedWardrobe ? { wardrobe: [selectedWardrobe], activeWardrobeId: selectedWardrobe.id, wardrobeId: selectedWardrobe.id } : {}),
-      id: model.id, character_id: model.id, name: model.name, ordinal: model.ordinal, role: index === 0 ? "protagonist" : "supporting", description,
+      ...continuity, id: model.id, character_id: model.id, name: model.name, ordinal: model.ordinal, role: index === 0 ? "protagonist" : "supporting", description,
       builtinCharacterSource: { profilePath: model.profilePath, profileSha256: model.profileSha256, registrySha256: catalog.registrySha256 } };
   });
   const builtinIds = rows.flatMap(row => row.model ? [row.model.id] : []);

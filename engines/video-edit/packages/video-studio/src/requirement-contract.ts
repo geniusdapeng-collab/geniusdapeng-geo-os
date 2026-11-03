@@ -358,6 +358,17 @@ export interface RequirementCast {
   hash: string;
 }
 
+/** The host cast may carry a project appearance plan distinct from its registry portrait. */
+export function requirementAppearanceContinuities(cast: RequirementCast): RequirementRecord[] {
+  return cast.characters.flatMap(character => {
+    const value = character.productionContinuity;
+    if (!character.builtinCharacterSource || !value || typeof value !== "object" || Array.isArray(value)) return [];
+    const plan = value as RequirementRecord;
+    return plan.schemaVersion === "workloom.project-appearance-continuity/v1" && plan.characterId === character.id
+      && plan.wardrobeId === character.wardrobeId ? [plan] : [];
+  });
+}
+
 /** Consume the host's resolved selection. This function never picks a model or reads a profile. */
 export function requirementCast(metadata: RequirementRecord): RequirementCast {
   const selection = requirementRecord(metadata.builtinCharacterSelection, "宿主出镜选择凭据");
@@ -792,10 +803,12 @@ export function renderRequirementContract(contract: RequirementContract, metadat
   const props = contract.props.map(prop => `- ${prop.name}：${prop.description}（来源 ${prop.source}）`);
   const actions = contract.actions.map(action => `- ${action.actorId}：${action.description}（来源 ${action.source}）`);
   const absentProps = contract.scenes.filter(scene => scene.noPropsReason).map(scene => `- ${scene.id} 明确无可见道具：${scene.noPropsReason}`);
+  const appearancePlans = requirementAppearanceContinuities(contract.cast);
   return `\n\n---\n\n## 四、需求契约（同一结构继续进入 PRD、剧本与镜头卡）\n\n`
     + `状态：结构已形成，等待本次 G3 真实审核；不代表事实或影片已经通过。\n\n`
     + `### 角色（${contract.cast.characters.length}）\n\n${characters.length ? characters.join("\n") : "明确无人：宿主选角凭据 mode=none。"}\n\n`
     + `人物档案、语气与行为约束完整保留如下，仅用于角色表达，不作为道具或商品事实；其中冗余的旧聚合 description 不进入展示，结构化字段与当前服装版本完整保留：\n\n\`\`\`json\n${JSON.stringify({ selection: contract.cast.selection, characters: requirementDisplayContract(contract).cast.characters }, null, 2)}\n\`\`\`\n\n`
+    + (appearancePlans.length ? "人物档案的基线服装与既有定妆照用于识别原档案版本；本片按 productionContinuity 的项目服装版本和同一头发的遮挡、释放顺序执行。以下叙事节点仍需接受 G3 审核。\n\n" : "")
     + `${scenes.join("\n\n")}\n\n### 道具（${contract.props.length}）\n\n${props.join("\n")}${absentProps.length ? `\n${absentProps.join("\n")}` : ""}\n\n`
     + `### 动作（${contract.actions.length}）\n\n${actions.join("\n")}\n\n`
     + `## 五、权威口径与推测边界\n\n- 客户受众原文：${contract.ownerAudience ?? "客户未显式指定；模型细分仍为待审核推测"}\n`
@@ -839,6 +852,7 @@ export function structuredSceneInstructions(
     ? `本次常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText)}；覆盖内容时间线0秒至内容末帧，`
       + `插入静音封面后对应最终成片${authority.coverIntroSeconds ?? 0}秒至末帧，封面段不承载该文字；必须保留到 G3 和正式后期。`
     : "";
+  const appearancePlans = requirementAppearanceContinuities(cast);
   return `\n\n## 宿主结构化需求合同（本次 SceneArchitect 同一响应，不新增提取调用）\n`
     + `唯一出镜人物：${JSON.stringify(cast.characters.map(character => ({ id: character.id, name: character.name, role: character.role })))}。`
     + (authority.productVisualAuthority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE
@@ -852,7 +866,8 @@ export function structuredSceneInstructions(
     + `props 必须是当前场景中实际可见的物理对象，不得把性格、语气、摄影、履历、否定规则或人物日常爱好当道具；人物档案里的用品只有本场真正出现才可声明。`
     + `actions 不能只填“起身”“看向”等孤立动词；每个所选出镜人物至少在一个节点有明确动作。每个节点至少一个动作；真正没有可见道具时才允许显式空props并说明原因。`
     + `完整保留场景目的和约束，不截断，不虚构额外人物；商品参数和部件事实必须能由本次商品事实证据支持，未知项不得靠人物设定补齐。\n`
-    + `${productRule}${disclosure}${persistent}`;
+    + `${productRule}${disclosure}${persistent}`
+    + (appearancePlans.length ? `\n本片既有定妆照和项目服装用途分开。逐节点保持同一角色、同一项目服装版本、赛道遮挡和停稳后摘盔的先后关系；在动作中明确同一束发的释放与垂落，不添加换脸、接发、新发色或未要求的换装。\n${JSON.stringify(appearancePlans)}\n` : "");
 }
 
 /** Derive constraints from the exact effective schema; this never allocates a scene. */

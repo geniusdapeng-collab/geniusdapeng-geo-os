@@ -91,9 +91,9 @@
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "583400dd5a3b296159a2768be0a9673803899aef5466165cdcdd5cd3e3a8a0cc",
+      "targetSha256": "30e8319334704d6ef2d152099cce9c862577ef7c61c4e3edb42283efe199604f",
       "sourceBytes": 81284,
-      "targetBytes": 114791
+      "targetBytes": 115300
     },
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
@@ -130,17 +130,17 @@
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
-      "targetSha256": "51b3d2f701418ae11e53b8bdd166523b74e5a03bb421467e74887ee6d904491f",
+      "targetSha256": "5542272fc15ff3ac41dfe771e316c8c3c8fb69756f6552fed87872dc559c4b8a",
       "sourceBytes": 27675,
-      "targetBytes": 50285
+      "targetBytes": 52757
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
-      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
+      "targetSha256": "04bad529941ff0c0184db3ba99d941be700355a4766af0ed93cca37dc4ef28c4",
       "sourceBytes": 59825,
-      "targetBytes": 74960
+      "targetBytes": 78774
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -154,9 +154,9 @@
       "path": "packages/video-studio/src/requirement-contract.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "f9ed76ed81b8e6138f623fa1fbb634a6a63993bffcd6e45c6e2be389755d640f",
+      "targetSha256": "4583cf4f1bbfa1f5b78d7da12262b8a33931611554cd83ef51947c47775b1896",
       "sourceBytes": 38883,
-      "targetBytes": 64198
+      "targetBytes": 65591
     },
     {
       "path": "vendor/supermickey/hyperreality-system/engines/data-mining-engine/agents/competitor-scout.js",
@@ -215,5 +215,5 @@
       "targetBytes": 79572
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:33:47.608435+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }
