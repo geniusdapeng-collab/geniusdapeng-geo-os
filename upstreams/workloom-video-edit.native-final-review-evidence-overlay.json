@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0007",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T18:33:38.460941+00:00",
+  "scope": "Bind original current G5 and G6 evidence to the native final gate; source upstream pin unchanged.",
+  "sourceOverlayCount": 6,
+  "files": [
+    {
+      "path": "apps/server/src/video/studio-worker.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
+      "targetSha256": "13b9fb490a83ca470f1b2d58b671be6fe7b0e812f517b11f55ea1f655ff463be",
+      "targetBytes": 82698,
+      "evidence": "B",
+      "sourceSha256": "6ffe5195ed769abebb9c94c361075854fd6e35442b82538bcf3f3a3ec6e8af1b",
+      "sourceBytes": 71267
+    },
+    {
+      "path": "apps/server/src/video/studio-worker.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+      "targetSha256": "97418e913d46e3165ea79d2d8235a7ae169c11de5fc5ecdf1e2e5e8eaa0a9603",
+      "targetBytes": 104088,
+      "evidence": "B",
+      "sourceSha256": "7d2daeecf78627f1e22f6b385b332e649da655922606626aac843a3bcadcf418",
+      "sourceBytes": 92419
+    },
+    {
+      "path": "packages/video-studio/src/portrait-archive-plan.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/portrait-archive-plan.test.ts",
+      "targetSha256": "6279dbb32a0bb1b7c8b55fe0f21811ddb3cabd908a6e363df5081e8190a1553f",
+      "targetBytes": 9096,
+      "evidence": "B",
+      "sourceSha256": "15dded4630f26b6e5f3d34a05e1bafe58a9d7faebee3c15c789ae935d2ba3b4d",
+      "sourceBytes": 7222
+    },
+    {
+      "path": "packages/video-studio/src/portrait-archive-plan.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/portrait-archive-plan.ts",
+      "targetSha256": "e24b31f9b19a7f1c98ce6c0bdc5d0c24e026985b72f74e4f32179aff1f987a3b",
+      "targetBytes": 4780,
+      "evidence": "B",
+      "sourceSha256": "d6b20fa042ae1ebb1853c787e0b9967895421b81af76d83d4b0511aa3fcc660d",
+      "sourceBytes": 3108
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetSha256": "759b690a21b2c0ce2eb99f0c1ef53431bca242b20fe3e917dc81b131f2a70c06",
+      "targetBytes": 105544,
+      "evidence": "B",
+      "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
+      "sourceBytes": 82133
+    },
+    {
+      "path": "packages/video-studio/src/studio.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "targetSha256": "4e860572db3980d54b496bd28da26dd225442f90564c615136488f4c2bc682c1",
+      "targetBytes": 55511,
+      "evidence": "B",
+      "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
+      "sourceBytes": 41259
+    }
+  ]
+}

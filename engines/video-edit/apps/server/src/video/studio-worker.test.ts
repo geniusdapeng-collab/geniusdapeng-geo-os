@@ -32,6 +32,8 @@ const doubles = vi.hoisted(() => ({
   studioConfigs: [] as Array<Record<string, any>>,
   gateReplies: [] as Array<{ gate: string; verdict: any }>,
   gateContracts: {} as Record<string, unknown>,
+  gateExtras: {} as Record<string, Record<string, unknown>>,
+  afterGate: vi.fn(),
   emitGates: true,
   connect: vi.fn(),
   query: vi.fn(),
@@ -102,8 +104,9 @@ vi.mock("@hyperreality/video-studio", async (importOriginal) => ({
       if (result.success && doubles.emitGates) for (const gate of ["G2_THEME", "G3_INSIGHT", "G4_PRD", "G6_PROMPT", "G7_FINAL"]) {
         const verdict = await this.config.onApproval({ gate, vendorType: "test-gate", runId: "vendor-run", title: "完整确认单",
           contentMd: "具体场景、角色、动作与镜头交付标准。".repeat(20),
-          ...(doubles.gateContracts[gate] ? { contracts: doubles.gateContracts[gate] } : {}) });
+          ...(doubles.gateContracts[gate] ? { contracts: doubles.gateContracts[gate] } : {}), ...doubles.gateExtras[gate] });
         doubles.gateReplies.push({ gate, verdict });
+        await doubles.afterGate(gate, result);
       }
       return result;
     }
@@ -136,6 +139,8 @@ beforeEach(() => {
   doubles.studioConfigs.length = 0;
   doubles.gateReplies.length = 0;
   doubles.gateContracts = {};
+  doubles.gateExtras = {};
+  doubles.afterGate.mockReset();
   doubles.prepare.mockReset().mockImplementation(async ({ scope, root }) => {
     const raw = { A1: { identity: { name: "本次商品", specs: { 功率: "1 W" } }, images: [] }, A2: { reviews: [] }, A3: { competitors: [] } };
     const sourceId = `SRC-${renderSha256(`https://source.example.com/final\n${"a".repeat(64)}`).slice(0, 24)}`;
@@ -381,6 +386,8 @@ describe("预生产原始结果与诚实终态", () => {
     expect(doubles.studioConfigs[0]?.portraits).toMatchObject({ archivedCharactersOnly: true, archivedCharacters: { manifestPath: f.manifestPath, approvedSelection: f.approvedSelection } });
     expect(doubles.query.mock.calls.some(([sql]) => sql.includes("INSERT INTO approvals"))).toBe(false);
     expect(doubles.review.mock.calls.some(([options]) => options.context.gate === "G5_PORTRAIT")).toBe(false);
+    expect(doubles.review.mock.calls.find(([options]) => options.context.gate === "G7_FINAL")?.[0].artifacts)
+      .toEqual([expect.objectContaining({ path: expect.stringMatching(/G7_FINAL\.md$/) })]);
     if (!generated) {
       const output = await archiveOutput(projectId, 1);
       const gate = (output.productionEvidence as { gates: Array<Record<string, any>> }).gates.find(item => item.gate === "G5_PORTRAIT");
@@ -388,6 +395,48 @@ describe("预生产原始结果与诚实终态", () => {
       expect(gate?.evidence.filter((item: Record<string, unknown>) => item.scope === "archive-reuse-image")).toHaveLength(4);
     }
   });
+  it.each(["current", "changed-g6", "changed-final-portrait"] as const)(
+    "G7 uses this attempt's G5 archive and G6 original, with final portrait verification (%s)", async mode => {
+      const projectId = `VID-g7-reuse-${++projectSequence}`, runDir = path.join(doubles.workDir, "workspaces", scope.workspaceId);
+      await mkdir(runDir, { recursive: true });
+      const f = portraitReuseFixture(runDir, projectId);
+      vi.stubEnv("HR_PORTRAIT_REUSE_MANIFEST", f.manifestPath); vi.stubEnv("HR_PORTRAIT_ENABLED", "1");
+      vi.stubEnv("VOLCENGINE_ARK_API_KEY", "test-only-config"); vi.stubEnv("ARK_IMAGE_MODEL", "test-only-model");
+      const gateDir = path.join(runDir, "gates", projectId, "attempt-1");
+      const g6Path = path.join(gateDir, "G6_PROMPT.md"), g7Path = path.join(gateDir, "G7_FINAL.md");
+      doubles.gateExtras.G7_FINAL = { archivePortraitStage: structuredClone(f.stage) };
+      doubles.afterGate.mockImplementation(async (gate, result) => {
+        if (mode === "changed-g6" && gate === "G6_PROMPT") await writeFile(g6Path, "tampered G6");
+        if (mode === "changed-final-portrait" && gate === "G7_FINAL") result.stages.portraitStudio.generatedPortraits = 1;
+      });
+      doubles.runPreproduction.mockResolvedValue({ ...success(), stages: { ...success().stages, portraitStudio: f.stage,
+        scriptEngine: { report: { characters_count: 1 } } } });
+      useNarrativeProject();
+      const runId = worker.startRun(scope, { projectId, intent: "使用既有AI模特v4", metadata: { products: [],
+        characters: [{ id: "c1", name: "一号AI模特", description: "明确选择的成年虚构人物。" }] } });
+      await vi.waitFor(() => expect(worker.getRun(runId, scope.workspaceId)?.finishedAt).not.toBeNull(), { timeout: 3_000, interval: 10 });
+      expect(worker.getRun(runId, scope.workspaceId)?.status).toBe(mode === "current" ? "finished" : "failed");
+      const request = doubles.review.mock.calls.find(([options]) => options.context.gate === "G7_FINAL")?.[0];
+      expect(request.deterministic).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "current-g5-archive-reuse", hard: true, pass: true }),
+        expect.objectContaining({ id: "current-g6-prompt-review", hard: true, pass: mode !== "changed-g6" }),
+      ]));
+      const sources = request.artifacts.filter((artifact: { path: string }) => artifact.path === g6Path);
+      if (mode === "changed-g6") {
+        expect(sources).toHaveLength(0);
+        expect(doubles.gateReplies.find(item => item.gate === "G7_FINAL")?.verdict.approved).toBe(false);
+      } else {
+        expect(sources).toEqual([expect.objectContaining({ expectedSha256: renderSha256(await readFile(g6Path)) })]);
+        expect(await readFile(g7Path, "utf8")).toContain('"reusedPortraits":4');
+      }
+      expect(vi.mocked(gatewayAppend).mock.calls.filter(([, , event]) => event.decision.action === "portrait.confirm")).toHaveLength(1);
+      if (mode === "current") {
+        const output = await archiveOutput(projectId, 1);
+        const proofs = (output.productionEvidence as { gates: Array<{ gate: string }> }).gates;
+        expect(proofs.findIndex(proof => proof.gate === "G5_PORTRAIT")).toBeLessThan(proofs.findIndex(proof => proof.gate === "G7_FINAL"));
+      }
+    },
+  );
   it.each([[undefined, "young-rider-01", 1], [{ character: "英子" }, "young-rider-01", 1], [{ characterOrdinal: 2 }, "chen-zhuo", 2], [{ character: "林予安" }, "lin-yu-an", 3]] as const)("worker把真实registry人选%j和完整persona送入vendor", async (metadata, id, ordinal) => {
     doubles.runPreproduction.mockResolvedValue(success()); useNarrativeProject();
     const projectId = `VID-actor-${++projectSequence}`;

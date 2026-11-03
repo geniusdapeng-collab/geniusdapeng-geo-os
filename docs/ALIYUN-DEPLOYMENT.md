@@ -216,7 +216,7 @@ sudo bash deploy/aliyun/update.sh --dry-run --package /protected/new-release.tar
 sudo bash deploy/aliyun/update.sh --package /protected/new-release.tar.gz --sha256 ARCHIVE_SHA256
 ```
 
-新依赖先在独立临时release准备；失败不切换。激活前停本服务并备份完整持久数据；成功后切换current、启动并检查。启动或认证检查失败时恢复旧release、私有Node链接、unit和更新前数据；失败后的数据另外保留在 `*.before-restore-*` 或 `*.failed-restore-*` 目录，不删除历史数据。安装／更新／备份／线上恢复使用同一排他锁，已有操作运行时立即拒绝另一变更，不并行修改。发布归档、前一release和备份均保留；磁盘清理由之后明确的保留策略处理。
+新依赖先在独立临时 release 准备。源码和工具链准备使用显式的目录创建权限，之后恢复操作者原有的 umask。代码归 root 并移除其他用户的写权限后，安装器以服务用户验证最终路径中的依赖及真实入口导入。验证只检查加载，应用和持久数据均不打开。复用已准备的 release 也经过同样检查，失败时保留旧目录供排查，当前服务继续运行。激活前停本服务并备份完整持久数据；成功后切换current、启动并检查。启动或认证检查失败时恢复旧release、私有Node链接、unit和更新前数据；失败后的数据另外保留在 `*.before-restore-*` 或 `*.failed-restore-*` 目录，不删除历史数据。安装／更新／备份／线上恢复使用同一排他锁，已有操作运行时立即拒绝另一变更，不并行修改。发布归档、前一release和备份均保留；磁盘清理由之后明确的保留策略处理。
 
 手动备份是有短暂停机的完整快照，不从运行中的SQLite单独复制主文件：
 

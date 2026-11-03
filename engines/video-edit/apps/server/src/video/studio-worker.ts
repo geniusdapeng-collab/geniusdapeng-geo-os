@@ -62,7 +62,7 @@ import { createDataMiningExecutor } from "./data-mining-executor.js";
 import { prepareMarketingFacts, finalizeMarketingFacts, toJennyMarketingRaw, type PreparedMarketingFacts } from "./marketing-authority.js";
 import { createMarketingGateEvidenceGuard } from "./marketing-gate-evidence.js";
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
-import { acceptPortraitArchiveReuse, loadPortraitReuseManifest, portraitReuseEvidence } from "./portrait-reuse-acceptance.js";
+import { acceptPortraitArchiveReuse, loadPortraitReuseManifest, portraitReuseEvidence, type PortraitArchiveReuseAcceptance } from "./portrait-reuse-acceptance.js";
 import { applyBuiltinCharacters, appendBuiltinCharacterGuidance, resolveBuiltinCharacters, type BuiltinCharacterResolution } from "./builtin-character-selection.js";
 import { acquireProjectLease, archiveWorkDir, makeLedgerWriter, readProjectMeta } from "./archive-host.js";
 import { ingestPortraitsFromIndex } from "./media/library.js";
@@ -786,11 +786,20 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
     }
     const gateObj = gateObjectOf(gate, req.vendorType);
     const objectId = gate === "G7_FINAL" ? input.projectId : `${input.projectId}:${gate.toLowerCase()}`;
-    if (gate === "G5_PORTRAIT" && portraitOptions.enabled && portraitOptions.archivedCharactersOnly && portraitOptions.archivedCharacters) {
+    const archivePortraitConfig = portraitOptions.enabled && portraitOptions.archivedCharactersOnly ? portraitOptions.archivedCharacters : undefined;
+    if (gate === "G5_PORTRAIT" && archivePortraitConfig) {
       try {
         const reuse = acceptPortraitArchiveReuse({ workDir: runWorkDir, projectId: input.projectId,
-          stage: completedVendorResult?.stages?.portraitStudio,
-          manifest: { path: portraitOptions.archivedCharacters.manifestPath, sha256: portraitOptions.archivedCharacters.manifestSha256 } });
+          stage: req.archivePortraitStage ?? completedVendorResult?.stages?.portraitStudio,
+          manifest: { path: archivePortraitConfig.manifestPath, sha256: archivePortraitConfig.manifestSha256 } });
+        const previous = gateProofs.get(gate);
+        if (previous?.approved === true) {
+          if (previous.via !== "archive-reuse-acceptance" || !previous.archiveReuse
+            || canonicalRenderJson(previous.archiveReuse) !== canonicalRenderJson(reuse)) {
+            throw new Error("PORTRAIT_REUSE_UNVERIFIED: G7 审核前后本次定妆照复用证据发生变化");
+          }
+          return { approved: true, reason: "archive-reuse-acceptance", suggestions: [] };
+        }
         const evidence = portraitReuseEvidence(reuse);
         const proof = { gate, approved: true, status: "passed", via: "archive-reuse-acceptance", degraded: false,
           model: null, evidence, archiveReuse: reuse };
@@ -810,6 +819,41 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
         const reason = `portrait-reuse-evidence-failed：${error instanceof Error ? error.message : String(error)}`;
         gateProofs.set(gate, { gate, approved: false, status: "failed", via: "archive-reuse-acceptance", degraded: false, model: null, evidence: [], reason });
         return { approved: false, reason, suggestions: [], fatal: "portrait_evidence_missing" };
+      }
+    }
+    let g7PromptArtifact: ProducerArtifact | undefined;
+    const g7Checks: DeterministicCheck[] = [];
+    if (gate === "G7_FINAL" && req.archivePortraitStage) {
+      const portrait = archivePortraitConfig ? await onApproval({ gate: "G5_PORTRAIT", runId: req.runId, vendorType: "portrait-generation",
+        title: "实际定妆照完整性与视觉审核", contentMd: "", archivePortraitStage: req.archivePortraitStage }) : undefined;
+      const reuse = gateProofs.get("G5_PORTRAIT")?.archiveReuse as PortraitArchiveReuseAcceptance | undefined;
+      g7Checks.push({ id: "current-g5-archive-reuse", pass: portrait?.approved === true && Boolean(reuse), hard: true,
+        detail: portrait?.reason ?? "缺少本次实际定妆照复用裁决" });
+      const g6 = gateProofs.get("G6_PROMPT");
+      const g6Path = path.join(runWorkDir, "gates", input.projectId, `attempt-${stageRef.attempt}`, "G6_PROMPT.md");
+      const g6Evidence = (Array.isArray(g6?.evidence) ? g6.evidence : []).filter(item => item?.path === g6Path
+        && item.scope === "complete-text" && typeof item.sha256 === "string" && /^[a-f0-9]{64}$/.test(item.sha256));
+      if (g6?.approved === true && g6.status === "passed" && g6.degraded === false && g6Evidence.length === 1) {
+        const expectedSha256 = g6Evidence[0].sha256 as string;
+        try {
+          if (renderSha256(readFileSync(g6Path)) === expectedSha256) {
+            g7PromptArtifact = { path: g6Path, kind: "text", expectedSha256, note: "本次已通过 G6 的完整镜头提示词报告原件" };
+          }
+        } catch (error) {
+          console.warn("[studio-worker] G7 无法重读本次 G6 报告", error instanceof Error ? error.name : "unknown");
+        }
+      }
+      g7Checks.push({ id: "current-g6-prompt-review", pass: Boolean(g7PromptArtifact), hard: true,
+        detail: g7PromptArtifact ? "本次 G6 已通过且完整报告原件摘要已绑定" : "缺少本次已通过 G6 的完整镜头提示词报告" });
+      if (reuse && portrait?.approved && archivePortraitConfig) {
+        const source = { projectId: input.projectId, runId: entry.runId, attempt: stageRef.attempt,
+          characterId: archivePortraitConfig.characters[0]!.id,
+          version: reuse.selectionReceipt.selectedVersion, manifestSha256: reuse.manifest.sha256, indexSha256: reuse.index.sha256,
+          stage: reuse.stage, outputs: reuse.outputs.map(({ sha256, bytes }, index) => ({
+            angle: ["front", "threeQuarter", "closeup", "side"][index], sha256, bytes,
+          })), g6ReportSha256: g7PromptArtifact?.expectedSha256 };
+        req = { ...req, contentMd: `${req.contentMd}\n\n## 本次服务端核验的 G5 定妆照与 G6 提示词来源\n`
+          + `\`\`\`json\n${JSON.stringify(source)}\n\`\`\`\n` };
       }
     }
     /**
@@ -835,7 +879,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             hard: true,
             detail: "本次剧本结构 characters_count=0 且 PortraitStudio 无角色/商品任务",
           }]
-        : [...(portrait?.deterministic ?? gateDeterministicChecks(gate, req.contentMd ?? ""))];
+        : [...(portrait?.deterministic ?? gateDeterministicChecks(gate, req.contentMd ?? "")), ...g7Checks];
       const marketingReview = marketingGateEvidence?.forReview(gate, currentArtifact);
       if (PRODUCER_MODE === "review") {
         if (portrait?.notApplicable) {
@@ -863,12 +907,13 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
           producerVerdict = await reviewStage({
             stage: producerStage,
             projectId: input.projectId,
-            artifacts: [currentArtifact, ...(marketingReview?.artifacts ?? []), ...(portrait?.artifacts ?? [])],
+            artifacts: [currentArtifact, ...(marketingReview?.artifacts ?? []), ...(portrait?.artifacts ?? []), ...(g7PromptArtifact ? [g7PromptArtifact] : [])],
             deterministic: [...baseChecks, ...(marketingReview?.deterministic ?? [])],
-            ...(marketingReview ? { requiredCheckIds: marketingReview.requiredCheckIds } : {}),
+            ...(marketingReview || g7Checks.length ? { requiredCheckIds: [...(marketingReview?.requiredCheckIds ?? []), ...g7Checks.map(check => check.id)] } : {}),
             rubric: [
               ...((GATE_RUBRIC[gate] ?? []) as string[]),
               ...(marketingReview?.rubric ?? []),
+              ...(g7PromptArtifact ? ["逐镜对照已审核的 G6 完整附件和当前 G7 镜头表，使用本次 G5 四角度逐字节复用回执核对角色身份、版本与适用范围。此门仅审核预生产。"] : []),
               `门内容全长 ${artifact.chars} 字，已随附件送审；摘录（供定位，不是全文）：${(req.contentMd ?? "").slice(0, 600)}`
             ],
             context: { gate, vendorType: req.vendorType, runId: entry.runId, contentChars: (req.contentMd ?? "").length,

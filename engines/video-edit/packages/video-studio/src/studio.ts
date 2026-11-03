@@ -19,8 +19,8 @@ import { fileURLToPath } from "node:url";
 import { runWithConfirmationHandler, type ConfirmationHandler } from "./confirmation.js";
 import { resolveGate, type GateVerdict } from "./gates.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
-import { createPortraitRuntime, type PortraitIndex, type PortraitInputReceipt, type PortraitRuntimeOptions } from "./portrait-runtime.js";
-import { installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./portrait-archive-plan.js";
+import { createPortraitRuntime, type PortraitIndex, type PortraitInputReceipt, type PortraitRuntime, type PortraitRuntimeOptions } from "./portrait-runtime.js";
+import { currentFinalizedArchivePortraits, installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./portrait-archive-plan.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import {
   assertRequirementContractBridge,
@@ -163,6 +163,9 @@ export type ApprovalCallback = (approval: {
   runId: string | null;
   /** Exact structured source cards for G6; never reconstructed from Markdown. */
   contracts?: ProducerReviewContracts;
+  /** Private callback data from this run's native archived portrait finalizer. */
+  archivePortraitStage?: { status: "completed"; characters: number; products: number; completedPortraits: number;
+    pendingPortraits: number; reusedPortraits: number; generatedPortraits: number };
 }) => Promise<GateVerdict>;
 
 /** 宿主事件汇：流水线生命周期事件（宿主落五元事件库） */
@@ -395,8 +398,20 @@ export class VideoStudio {
       allowedVisibleText: prdAuthority ? marketingVisibleTextFromG1(prdAuthority.marketing.g1Artifact.content) : [],
     };
 
+    let portraitRuntime: PortraitRuntime | null = null;
+    const captureArchivePortraits = creativeEnforce && cfg.portraits?.enabled !== false && cfg.portraits?.archivedCharactersOnly === true;
     const handler: ConfirmationHandler = async (req) => {
       const gate = resolveGate(req.type);
+      const gateRunId = req.runId ?? runId;
+      let archivePortraitStage: Parameters<ApprovalCallback>[0]["archivePortraitStage"];
+      if (gate === "G7_FINAL" && captureArchivePortraits) {
+        const stats = currentFinalizedArchivePortraits(gateRunId);
+        if (!stats || !portraitRuntime) throw new Error("PORTRAIT_REUSE_UNVERIFIED: 最终评审缺少本次实际定妆照交付结果");
+        const reused = verifiedReusedPortraitCount(portraitRuntime.snapshot(), input.projectId);
+        archivePortraitStage = { status: "completed", characters: stats.characterCount, products: stats.productCount,
+          completedPortraits: stats.completedPortraits, pendingPortraits: stats.pendingPortraits,
+          reusedPortraits: reused, generatedPortraits: stats.completedPortraits - reused };
+      }
       const normalizedPrompt = !creativeEnforce && input.isMarketing && gate === "G6_PROMPT"
         ? normalizeMarketingPromptText(req.content, promptOptions)
         : null;
@@ -421,8 +436,9 @@ export class VideoStudio {
         vendorType: req.type,
         title: `预生产确认门 · ${gate}`,
         contentMd: approvalContent,
-        runId: req.runId ?? runId,
-        ...(contracts ? { contracts } : {})
+        runId: gateRunId,
+        ...(contracts ? { contracts } : {}),
+        ...(archivePortraitStage ? { archivePortraitStage } : {}),
       });
       if (gate === "G2_THEME" && prdAuthority) {
         approvedRequirementTheme = captureRequirementTheme(prdAuthority, approvalContent, verdict);
@@ -585,7 +601,7 @@ export class VideoStudio {
          * completedPortraits=0 → 渲染门 BINDING_MANIFEST_INVALID。
          */
         const portraitCfg = cfg.portraits;
-        const portraitRuntime = portraitCfg && portraitCfg.enabled !== false && portraitCfg.apiKey
+        portraitRuntime = portraitCfg && portraitCfg.enabled !== false && portraitCfg.apiKey
           ? createPortraitRuntime({
               ...portraitCfg,
               workDir: cfg.workDir,
@@ -826,7 +842,7 @@ export class VideoStudio {
           creativeRuntime = new CreativeRuntime(options);
         }
         const executeNative = () => withPrdAuthorityScope(prdAuthority, () => withRequirementContractScope(metadata, () => withPortraitArchivePlan(portraitRuntime, () =>
-          system.create(input.intent, metadata, createOptions)
+          system.create(input.intent, metadata, createOptions), captureArchivePortraits
         ), prdAuthority ? { authority: prdAuthority, validateAuthority: validateRequirementAuthority!,
           approvedTheme: () => approvedRequirementTheme && structuredClone(approvedRequirementTheme) } : undefined), validateRequirementAuthority,
           prdAuthority ? () => approvedRequirementTheme && structuredClone(approvedRequirementTheme) : undefined);
