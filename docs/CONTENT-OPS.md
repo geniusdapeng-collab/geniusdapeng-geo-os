@@ -111,9 +111,11 @@ RGB／RGBA PNG，源文件入口可保存 JPEG／WebP 并不表示该适配器�
   模型密钥不在 JSON 中。
 - 文本模型必须登记为 `deepseek-flash`。当前官方窗口为 1,048,576 输入/输出总
   tokens，最大输出 393,216；`maxOutputTokens` 只在确有产品合同上限时填写，不能
-  用 4K/8K/16K 之类的自设成本上限替代完整任务预算。每次派遣先用官方 tokenizer
-  计算完整序列化输入，再取 `min(393216, 1048576 - inputTokens)` 作为本次
-  `max_tokens`。上下文不足时明确失败或执行已声明、无损的分段与最终合成，不许静默截断。
+  用 4K/8K/16K 之类的自设成本上限替代完整任务预算。每次派遣先用当前官方 tokenizer
+  和公开的提示词编码计算完整输入，包含消息历史、工具 schema、输出格式和图像占用；
+  图像的 HTTP 字节单独验证。保留本地估计与供预占使用的保守值，再用预占值计算本次
+  `max_tokens`（模型最大输出和上下文剩余取较小者）。实际用量以供应商 `usage` 为准；
+  整项任务授权不足时不发请求。上下文不足时明确失败或执行已声明、无损的分段与最终合成。
 - 思考模式由场景决定：`strategy.plan`、`text.adapt`、`text.revise`、`text.polish`、
   `quality.check` 与 `quality.final` 从 `high` 开始；`format.transform` 与严格
   schema/字段变换使用非思考；`translation.localize` 先以 `low` 评测。生成与评审

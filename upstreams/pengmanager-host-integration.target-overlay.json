@@ -99,17 +99,17 @@
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
       "sourceSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
+      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
       "sourceBytes": 34358,
-      "targetBytes": 42753
+      "targetBytes": 43721
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
+      "targetSha256": "94175ccb56d092256d1d3fd66c137769453c444a178679e8afa58d101f0180a3",
       "sourceBytes": 38033,
-      "targetBytes": 48383
+      "targetBytes": 48417
     },
     {
       "path": "apps/server/src/video/marketing-facts.test.ts",
@@ -315,9 +315,9 @@
       "path": "packages/base/model-router/providers.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers.ts",
       "sourceSha256": "8e36abcac47cd856b5ff7b72df36f970237ae4b8534867fddc17928f47025f34",
-      "targetSha256": "6b97b8ec42a4256cc6fad9fa4b4d07c2b6d7156ede60e28d1f3c1843e6bc2be1",
+      "targetSha256": "9f97991305adf80c84a09a6a2c25ec0170818dca3ca9acbddc04297872455afb",
       "sourceBytes": 7183,
-      "targetBytes": 12802
+      "targetBytes": 20277
     },
     {
       "path": "packages/base/model-router/router-v3.test.ts",
@@ -331,17 +331,17 @@
       "path": "packages/base/model-router/router.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/router.ts",
       "sourceSha256": "ea2ca5f52a035f18071bf918f3e188f4330567cf50e10bbd966fc5d2a7f16ddf",
-      "targetSha256": "d7bb6725a3b5ae2a9636d59eeddd0a539281ed1fa756b0a8d79bba7104e2c7e5",
+      "targetSha256": "7717d2b3a3eb7e9c49ca942de32a0a5b05a984ebc236f4dec6062c720d5f1923",
       "sourceBytes": 23504,
-      "targetBytes": 29072
+      "targetBytes": 18560
     },
     {
       "path": "packages/base/model-router/token-budget.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/token-budget.ts",
       "sourceSha256": "2ba45a8fec1bccee763541e30d7a28a131a8c34e8f87897da522222999dda372",
-      "targetSha256": "9966c037940b8dfaae96d5f785872abff9986b833e060f52c28d69c4690b6515",
+      "targetSha256": "da1298f16877b36def65b6e580a318213bf7314a33ec1f840115282b5402f64a",
       "sourceBytes": 1354,
-      "targetBytes": 4657
+      "targetBytes": 3970
     },
     {
       "path": "packages/base/package.json",
@@ -435,9 +435,9 @@
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "sourceSha256": "36fe2821fb973c76222061c965a026a12c710c488aa962e8f64c6c48f005bac5",
-      "targetSha256": "35ab444951e214758fe28f3b823a7ebdddc7fbef910ab11b9348c62142ef3aec",
+      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
       "sourceBytes": 20113,
-      "targetBytes": 18390
+      "targetBytes": 18699
     },
     {
       "path": "packages/video-studio/src/llm-config.test.ts",
@@ -571,9 +571,9 @@
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "sourceSha256": "2dcfc91a14f3214cae909896d76fdab8469ccd0281ea6be996f18d940751f7b5",
-      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
+      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
       "sourceBytes": 35942,
-      "targetBytes": 49973
+      "targetBytes": 50140
     },
     {
       "path": "packages/video-studio/src/studio.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

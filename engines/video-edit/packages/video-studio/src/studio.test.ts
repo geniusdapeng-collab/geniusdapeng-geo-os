@@ -373,6 +373,8 @@ describe("LLM 适配器", () => {
     const fenced = extract('```json\n{"scenes":[1,2]}\n```');
     expect(typeof fenced).toBe("string");
     expect(JSON.parse(String(fenced))).toEqual({ scenes: [1, 2] });
+    const largeStructured = JSON.stringify({ scenes: [{ detail: "完整镜头证据".repeat(35_000) }] });
+    expect(extract(largeStructured)).toBe(largeStructured);
     expect(typeof extract("前言 {\"a\":1} 后语")).toBe("string");
     expect(extract({ already: "object" })).toBeNull();
     expect(extract("没有 JSON 的文本")).toBeNull();
