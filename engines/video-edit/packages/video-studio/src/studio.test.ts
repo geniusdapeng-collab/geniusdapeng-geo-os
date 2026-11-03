@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveGate } from "./gates.js";
@@ -28,6 +29,7 @@ interface ObservedPrdScope {
 const studioMocks = vi.hoisted(() => ({
   construct: vi.fn(),
   create: vi.fn(),
+  themeGenerate: vi.fn(),
   installed: [] as string[],
   disposed: [] as string[],
   requirementScopes: [] as Array<{ metadata: unknown; options: ObservedRequirementAuthority | undefined }>,
@@ -51,13 +53,13 @@ vi.mock("./vendor-requirement-entry.js", () => ({
           },
           agentTimeoutMs: 0,
         };
-        creativeThemeGenerator = { generate: async () => ({}) };
+        creativeThemeGenerator = { generate: studioMocks.themeGenerate };
         prdGenerator = { generate: async () => ({}) };
         pipelineGuard = { check: () => ({ passed: true, source: "assembly-fixture" }) };
         _generatePreproductionReport() { return "assembly fixture report"; }
         durationConstraintManager = {};
         constructor(options: unknown) { studioMocks.construct(options); }
-        create(...input: unknown[]) { return studioMocks.create(...input); }
+        create(...input: unknown[]) { return Reflect.apply(studioMocks.create, this, input); }
       } },
       identity: { entryPath: fileURLToPath(new URL("../../../vendor/supermickey/hyperreality-system/index.js", import.meta.url)) },
       release: () => { studioMocks.disposed.push("entry"); if (studioMocks.failDispose === "entry") throw new Error("dispose failed: entry"); }
@@ -132,6 +134,7 @@ vi.mock("./duration-rules.js", () => ({
 beforeEach(() => {
   studioMocks.construct.mockReset();
   studioMocks.create.mockReset();
+  studioMocks.themeGenerate.mockReset().mockResolvedValue({});
   studioMocks.installed.length = 0;
   studioMocks.disposed.length = 0;
   studioMocks.requirementScopes.length = 0;
@@ -547,6 +550,81 @@ describe("vendor 核心可加载", () => {
       expect(req.contentMd).toContain(selectedHash); expect(req.contentMd).toContain("测试候选独有的可核对场面");
     }
     expect((value.metadata.brief as Record<string, unknown>).aspectRatio).toBe("9:16");
+  });
+  it("projects an unchanged legacy request into G2, archives the original numeric disagreement and leaves contradictory prose to review", async () => {
+    const value = prdFixture("legacy-duration-alias", [10, 10, 10], 0); owned.push(value);
+    const metadata: Record<string, unknown> = structuredClone(value.metadata);
+    delete (metadata.brief as Record<string, unknown>).duration;
+    metadata.durationSec = 30;
+    const intent = "制作运动短片，30秒，必须恰好3个10秒镜头段。禁止展示产品外观，只用抽象光线示意。";
+    const sourceHash = creativeHash(metadata), rawIntentHash = creativeTextHash(intent);
+    const { tenantId, workspaceId, projectId } = value.scope;
+    const current = compileCreativeContract({ scope: { tenantId, workspaceId, projectId }, rawIntent: intent, metadata, isMarketing: true });
+    const { hash: _currentHash, ...body } = current;
+    const legacyBody = { ...body, constraints: current.constraints.map(item => item.id === "duration.final" ? {
+      ...item, source: "system" as const, sourceRef: "system:creative/v1", basis: "Versioned host contract",
+      repairScope: ["duration", "fields", "prompt"],
+    } : item) };
+    const legacy = { ...legacyBody, hash: creativeHash(legacyBody) };
+    expect(legacy.hash).not.toBe(current.hash);
+    let contract = legacy;
+    const proof = privateProof(value);
+    const g1 = JSON.parse(value.content);
+    g1.requestedIntent = intent; g1.requestedMetadata = metadata;
+    g1.facts.collectedAt = new Date().toISOString(); g1.facts.sources = [];
+    const content = JSON.stringify(g1), g1Hash = creativeTextHash(content);
+    writeFileSync(value.file, content);
+    proof.prdAuthority.g1Artifact = { ...proof.prdAuthority.g1Artifact, content, sha256: g1Hash };
+    proof.prdAuthority.g1Proof.evidence = [{ path: value.file, sha256: g1Hash, scope: "complete-text" }];
+    const llm = new WorkloomLLMEngine({ baseUrl: "https://fixture.invalid", apiKey: "fixture", model: "deepseek-flash" });
+    const prose = "模型正文另称整片共45秒。";
+    const generated = { tasks: [{ theme: "示例主题", duration_sec: 45, duration: "30秒，3个10秒镜头", description: prose }] };
+    studioMocks.themeGenerate.mockResolvedValue(generated);
+    const onEvent = vi.fn(async (_event: { kind: string; payload: Record<string, unknown> }) => {});
+    const onApproval = vi.fn<ApprovalCallback>(async request => {
+      expect(request.contentMd).toContain("时长: 30秒");
+      expect(request.contentMd).toContain(prose);
+      return { approved: false, reason: "模型正文与客户成片时长冲突" };
+    });
+    studioMocks.create.mockImplementation(async function (this: { creativeThemeGenerator: { generate(input: string): Promise<typeof generated> } },
+      _intent, nativeMetadata) {
+      expect(nativeMetadata.brief.duration).toBe(30);
+      const result = await this.creativeThemeGenerator.generate("主题生成输入");
+      expect(result.tasks[0]).toMatchObject({ duration_sec: 30, duration: 30, description: prose });
+      const event = onEvent.mock.calls.find(([item]) => item.kind === "creative.theme-duration.projected")?.[0];
+      const bytes = JSON.stringify(generated), digest = creativeTextHash(bytes);
+      expect(event?.payload).toMatchObject({ sha256: digest, bytes: Buffer.byteLength(bytes), durationSeconds: 30,
+        contractHash: contract.hash, g1Sha256: g1Hash });
+      const archive = path.join(path.dirname(value.file), String(event?.payload.artifact));
+      expect(readFileSync(archive, "utf8")).toBe(bytes);
+      expect(statSync(archive).mode & 0o777).toBe(0o600);
+      const verdict = await globalThis.__HR_CONFIRMATION_HANDLER__!({ type: "creative-theme", runId: value.scope.runId,
+        content: "时长: " + result.tasks[0]!.duration_sec + "秒\n" + result.tasks[0]!.description });
+      expect(requirementOptions(projectId).approvedTheme()).toBeUndefined();
+      return { success: verdict.approved, stages: {} };
+    });
+    const actual = new VideoStudio({ llm, workDir: value.workDir, onApproval, log: () => undefined, dataMining: { verifiedRaw: proof },
+      creativeExecution: { mode: "enforce", rawIntent: intent, sourceMetadata: metadata,
+        selectCandidate: async ({ contract: next }) => {
+          const shots = buildCreativeShots(next, ["s1", "s2", "s3"].map(shotId => ({ shotId, duration: 10, prompt: "候选镜头",
+            fields: Object.fromEntries(next.requiredFields.map(field => [field, "示例字段"])) })));
+          return { candidateId: "current-candidate", shots,
+            generation: { model: llm.model, requestId: "generation-fixture", promptHash: creativeHash("generation") },
+            review: { model: llm.model, requestId: "review-fixture", promptHash: creativeHash("review"), contractHash: next.hash,
+              candidateHash: creativeCandidateHash(next.hash, shots), findings: [],
+              scores: Object.fromEntries(CREATIVE_ART_DIMENSIONS.map(key => [key, { score: 85, evidence: "示例字段" }])) as CreativeCandidateAssessment["review"]["scores"] } };
+        }, session: { get contract() { return contract; },
+          bindContract: async next => { expect(next.sourceMetadataHash).toBe(sourceHash); expect(next.rawIntentHash).toBe(rawIntentHash); contract = next; return next; },
+          assertCurrent: async () => {}, beginStage: async () => {}, completeStage: async () => {},
+          readCache: async () => null, writeCache: async () => {}, onEvent,
+        } } });
+    await expect(withCreativeBudget({ beforeModelCall: async () => { throw new Error("unexpected model call"); },
+      afterModelCall: async () => {} }, () => actual.runPreproduction({ projectId, intent, metadata, isMarketing: true })))
+      .resolves.toMatchObject({ success: false });
+    expect(onApproval).toHaveBeenCalledOnce();
+    expect(creativeHash(metadata)).toBe(sourceHash);
+    expect(legacy.constraints.find(item => item.id === "duration.final")?.source).toBe("system");
+    expect(contract.constraints.find(item => item.id === "duration.final")).toMatchObject({ source: "customer", value: 30 });
   });
   it.each(["references", "voice", "color"])("marketing assembly preserves explicit %s through G6 and final prompts", async kind => {
     const value = prdFixture(`custom-${kind}`, [8, 14, 8], 0); owned.push(value);

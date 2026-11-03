@@ -571,17 +571,17 @@
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "sourceSha256": "2dcfc91a14f3214cae909896d76fdab8469ccd0281ea6be996f18d940751f7b5",
-      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
+      "targetSha256": "cb597acf0463de37221a293f39ff6bf4624a8e8a0d00245ce268e2921de32023",
       "sourceBytes": 35942,
-      "targetBytes": 50140
+      "targetBytes": 56435
     },
     {
       "path": "packages/video-studio/src/studio.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
       "sourceSha256": "c08ff3a534ab41b79e0ffa392acde8cd4e0e48535154d9868b471e3435502d19",
-      "targetSha256": "535a5ebcbc42e15b8dd3150cb61e6a1bf3ebe6e6ddec9f566590d2aef7dfed67",
+      "targetSha256": "d3677bc382d2ef6ac7fe84f8b65b47070b34f979dd4680b54f0fdfaa2e485132",
       "sourceBytes": 33809,
-      "targetBytes": 52239
+      "targetBytes": 54088
     },
     {
       "path": "packages/video-studio/src/vendor-compat.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:00:26.958166+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
 }

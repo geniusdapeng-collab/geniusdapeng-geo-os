@@ -372,8 +372,8 @@
     {
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
-      "targetSha256": "3e0d780727b42dec36489a45d6964740b79d31db71c3d101953c2f00bdbaae8d",
-      "targetBytes": 92858,
+      "targetSha256": "2387a38f603955e472f6b0117ddc92225efc25a2aee3e892ad88c0d8ffd5094c",
+      "targetBytes": 93296,
       "evidence": "B",
       "sourceSha256": "d6d20e0704d355d51841e792982bc16081ed62b9f3c010a924dcb491de7155bf",
       "sourceBytes": 85845
@@ -397,8 +397,8 @@
     {
       "path": "apps/server/src/video/studio-start.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
-      "targetSha256": "793654ff13863d16d43c83c8850be71bd304a7de073520abadb0b8df98e2293c",
-      "targetBytes": 10919,
+      "targetSha256": "258e3caf95cec37a5d17280ca98c29056714618ac5fc188e43e1f86be7cc6f1c",
+      "targetBytes": 13701,
       "evidence": "B",
       "sourceSha256": "954bf6f7b51b30547b2ddbdb5c1ff041f7f8e608cc0ed6fe288d05fb7b78d93b",
       "sourceBytes": 10054
@@ -543,5 +543,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
 }

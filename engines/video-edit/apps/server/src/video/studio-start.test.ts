@@ -4,7 +4,7 @@ import type { TrpcContext } from "../trpc/context.js";
 
 const d = vi.hoisted(() => ({
   query: vi.fn(), connect: vi.fn(), release: vi.fn(), startRun: vi.fn(), startProject: vi.fn(),
-  createDraft: vi.fn(), routeLlmFactory: vi.fn(), routeLlm: vi.fn(), scenePolicy: vi.fn(), writable: true,
+  createDraft: vi.fn(), routeLlmFactory: vi.fn(), routeLlm: vi.fn(), scenePolicy: vi.fn(), resumeProject: vi.fn(), writable: true,
 }));
 vi.mock("@workloom/db", () => ({
   getAppPool: () => ({ connect: d.connect }), getGatewayPool: () => ({}),
@@ -20,6 +20,9 @@ vi.mock("../service/llm.js", async original => ({
 vi.mock("./studio-worker.js", async original => ({
   ...await original<Record<string, unknown>>(), startRun: d.startRun, startVideoProjectRun: d.startProject,
 }));
+vi.mock("./archive-resume.js", async original => ({
+  ...await original<Record<string, unknown>>(), resumeProject: d.resumeProject,
+}));
 vi.mock("./explainer/db.js", async original => ({
   ...await original<Record<string, unknown>>(), createExplainerDraft: d.createDraft,
 }));
@@ -28,6 +31,7 @@ vi.mock("./scene-policy-routing.js", async original => ({
 }));
 
 import { videoRouter } from "./router.js";
+import type { ResumeOptions } from "./archive-resume.js";
 
 const identity = { tenantId: "tenant-studio-start", workspaceId: "ws-studio-start", memberNo: "MEM-T", plan: "pro", role: "owner" } as NonNullable<TrpcContext["identity"]>;
 const context: TrpcContext = { identity, session: identity, partnerIdentity: null, headers: new Headers() };
@@ -101,6 +105,24 @@ describe.each(branches)("studio.start %s project duration", branch => {
     expect(workerInput(branch).intent).toContain(`[需求口径] 时长：${Number(duration)}秒`);
   });
 
+  it.each([{ durationSec: 35 }, { durationSeconds: "35" }, { durationSec: 35, durationSeconds: "35", brief: { duration: 35 } }])(
+    "projects agreeing duration aliases while retaining the full original metadata %j",
+    async metadata => {
+      await caller().start(input(branch, metadata));
+      const passed = workerInput(branch);
+      expect(passed.intent).toContain("[需求口径] 时长：35秒");
+      expect(passed.customerMetadata).toEqual(metadata);
+    },
+  );
+
+  it.each([{ durationSec: 35, durationSeconds: 30 }, { durationSec: 35, brief: { duration: 30 } }, { durationSeconds: false }, { durationSec: Infinity }])(
+    "rejects invalid or conflicting duration aliases before starting %j",
+    async metadata => {
+      await expect(caller().start(input(branch, metadata))).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expectNoBusinessSideEffects();
+    },
+  );
+
   it.each([undefined, {}, { brief: {} }, { brief: { duration: undefined } }, { brief: null }, { brief: "旧版完整客户描述" }, { brief: [] }])("defaults only an omitted duration in legacy metadata %j", async metadata => {
     await caller().start(input(branch, metadata));
     expect(workerInput(branch).intent).toContain("[需求口径] 时长：30秒");
@@ -148,6 +170,37 @@ describe.each(branches)("studio.start %s project duration", branch => {
     expect(passed.intent.split("\n").filter((line: string) => line.startsWith("[需求口径]")))
       .toEqual(["[需求口径] 时长：35秒；平台：youtube"]);
     expect(passed.isMarketing).toBe(false);
+  });
+});
+
+describe("studio.resume duration and source binding", () => {
+  it("projects the archived alias while retaining the exact original intent, project and reference selectors", async () => {
+    const archivedMetadata = {
+      durationSeconds: "35",
+      characters: [{ id: "archived-character" }],
+      products: [{ id: "archived-product", referenceManifest: { reference_images: [{ assetId: "IMG-fixture" }] } }],
+    };
+    const before = structuredClone(archivedMetadata);
+    d.resumeProject.mockImplementation(async (_scope, opts: ResumeOptions) => ({
+      kind: "resumed",
+      runId: await opts.startRun({ projectId: opts.projectId, intent, metadata: archivedMetadata, isMarketing: true }),
+    }));
+    await expect(caller().resume({ projectId: "VID-existing" })).resolves.toMatchObject({ kind: "resumed", runId: "RUN-existing" });
+    const passed = workerInput("existing");
+    expect(passed.rawIntent).toBe(intent);
+    expect(passed.intent).toContain("[需求口径] 时长：35秒");
+    expect(passed.customerMetadata).toEqual(before);
+    expect(passed.metadata.products).toEqual(before.products);
+    expect(passed.metadata.characters).toEqual(before.characters);
+    expect(d.startRun.mock.calls[0]![1].projectId).toBe("VID-existing");
+    expect(archivedMetadata).toEqual(before);
+  });
+
+  it("rejects conflicting caller aliases before invoking the archive or worker", async () => {
+    await expect(caller().resume({ projectId: "VID-existing", metadata: { durationSec: 35, durationSeconds: 30 } }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(d.resumeProject).not.toHaveBeenCalled();
+    expectNoBusinessSideEffects();
   });
 });
 

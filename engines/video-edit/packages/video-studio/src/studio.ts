@@ -13,6 +13,7 @@
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { readFileSync, realpathSync, statSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWithConfirmationHandler, type ConfirmationHandler } from "./confirmation.js";
@@ -314,9 +315,17 @@ export class VideoStudio {
       const seed = cfg.creativeExecution.session.contract;
       assertCreativeContract(seed, { allowNeedsInput: true });
       const explicit = (id: string) => seed.constraints.some(constraint => constraint.id === id && constraint.source === "customer");
+      // A resumed attempt can still start from a valid older contract which
+      // had not recognized a duration alias. Re-derive the native duration
+      // from its immutable source inputs; binding the current G1 below
+      // persists a separate revision if the newly compiled contract differs.
+      const currentSource = compileCreativeContract({ scope: seed.scope, rawIntent: seed.rawIntent,
+        metadata: seed.sourceMetadata, isMarketing: seed.route === "marketing" });
+      assertCreativeContract(currentSource, { allowNeedsInput: true });
+      const duration = currentSource.constraints.find(constraint => constraint.id === "duration.final" && constraint.source === "customer");
       const nativeBrief = metadata.brief && typeof metadata.brief === "object" && !Array.isArray(metadata.brief)
         ? metadata.brief as Record<string, unknown> : {};
-      if (explicit("duration.final")) nativeBrief.duration = metadata.target_duration = seed.profile.finalDuration;
+      if (duration) nativeBrief.duration = metadata.target_duration = currentSource.profile.finalDuration;
       if (explicit("delivery.aspectRatio")) {
         nativeBrief.aspectRatio = metadata.aspectRatio = seed.profile.aspectRatio;
         if (Object.hasOwn(nativeBrief, "aspect_ratio")) nativeBrief.aspect_ratio = seed.profile.aspectRatio;
@@ -330,6 +339,7 @@ export class VideoStudio {
     let approvedRequirementTheme: RequirementApprovedTheme | undefined;
     let creativeRuntime: CreativeRuntime | undefined;
     let selectedCandidateHash: string | undefined;
+    let themeProjectionOrdinal = 0;
     if (input.isMarketing) {
       if (!verified || verified.projectId !== input.projectId || createHash("sha256").update(verified.rawJson).digest("hex") !== verified.sha256) {
         throw new Error("MARKETING_G1_REQUIRED：营销创意只能消费本次宿主G1通过的事实回填");
@@ -675,6 +685,18 @@ export class VideoStudio {
         ): Promise<Record<string, unknown>> {
           const generated = await Reflect.apply(originalThemeGenerate, this, [themeInput]);
           const normalized = normalizeCreativeThemeContract(generated, metadata);
+          if (prdAuthority && creativeRuntime && cfg.creativeExecution && normalized.changes.includes("brief-duration-authority-normalized")) {
+            const directory = path.dirname(prdAuthority.marketing.g1Artifact.path);
+            if (realpathSync(directory) !== directory) throw new Error("CREATIVE_THEME_ARCHIVE_INVALID: 当前主题档案目录经过符号链接");
+            const raw = JSON.stringify(generated);
+            const sha256 = createHash("sha256").update(raw).digest("hex");
+            const artifact = "G2_THEME_GENERATED-" + (++themeProjectionOrdinal) + "-" + sha256 + ".json";
+            await writeFile(path.join(directory, artifact), raw, { flag: "wx", mode: 0o600, flush: true });
+            await cfg.creativeExecution.session.onEvent({ kind: "creative.theme-duration.projected", payload: {
+              artifact, sha256, bytes: Buffer.byteLength(raw), durationSeconds: metadata.target_duration,
+              contractHash: creativeRuntime.contract.hash, g1Sha256: prdAuthority.marketing.g1Artifact.sha256,
+            } });
+          }
           if (normalized.changes.length > 0) {
             log(`[studio] 创意主题合同归一：${normalized.changes.join("、")}`);
           }
