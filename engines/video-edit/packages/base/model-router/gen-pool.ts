@@ -36,8 +36,18 @@ export interface GenProvider {
   healthy(): Promise<boolean>;
   /** 提交生成任务 → task_id（异步任务制第一步） */
   submit(req: GenRequest): Promise<{ taskId: string }>;
-  /** 轮询任务状态 → 结果 uri/实际计量（异步任务制第二步；调用方负责节拍） */
+  /** 查询异常通过非终态 + error 表达；failed 仅用于供应商确认的任务终态。 */
   poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; actualUnits?: number; error?: string }>;
+}
+
+/** A status lookup can fail without the accepted task having failed. */
+export function pendingGenPoll(provider: string, httpStatus: number): { status: "submitted"; error: string } {
+  return { status: "submitted", error: `${provider} 查询未核实：HTTP ${httpStatus}；保留原任务` };
+}
+
+function genPollTimeout(): AbortSignal {
+  const value = Number(process.env.VIDEO_PROVIDER_FETCH_TIMEOUT_MS ?? 60_000);
+  return AbortSignal.timeout(Number.isSafeInteger(value) && value > 0 && value <= 2_147_483_647 ? value : 60_000);
 }
 
 /**
@@ -116,18 +126,28 @@ export class SeedanceProvider implements GenProvider {
     return { taskId: data.id };
   }
   async poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; error?: string }> {
-    const res = await fetch(`${this.base()}/contents/generations/tasks/${taskId}`, {
+    const res = await fetch(`${this.base()}/contents/generations/tasks/${encodeURIComponent(taskId)}`, {
       headers: { authorization: `Bearer ${this.cfg.apiKey}` },
+      signal: genPollTimeout(), redirect: "error",
     });
-    if (!res.ok) return { status: "failed", error: `Seedance 查询失败：HTTP ${res.status}` };
+    if (!res.ok) {
+      await res.body?.cancel();
+      return pendingGenPoll("Seedance", res.status);
+    }
     const data = (await res.json()) as {
+      id?: string;
       status?: string;
       content?: { video_url?: string };
       error?: { message?: string };
     };
-    if (data.status === "succeeded") return { status: "succeeded", uri: data.content?.video_url };
-    if (data.status === "failed") return { status: "failed", error: data.error?.message ?? "生成失败" };
-    return { status: "running" };
+    if (!data || data.id !== taskId) return { status: "submitted", error: "Seedance 返回任务身份无法核实" };
+    if (data.status === "succeeded") return data.content?.video_url
+      ? { status: "succeeded", uri: data.content.video_url }
+      : { status: "submitted", error: "Seedance 未返回成片地址" };
+    if (["failed", "cancelled", "expired"].includes(data.status ?? "")) {
+      return { status: "failed", error: data.error?.message ?? `生成失败（${data.status}）` };
+    }
+    return { status: data.status === "running" ? "running" : "submitted" };
   }
 }
 
@@ -170,14 +190,21 @@ export class KlingProvider implements GenProvider {
     return { taskId };
   }
   async poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; error?: string }> {
-    const res = await fetch(`${this.base()}/v1/videos/text2video/${taskId}`, {
+    const res = await fetch(`${this.base()}/v1/videos/text2video/${encodeURIComponent(taskId)}`, {
       headers: { authorization: `Bearer ${this.cfg.apiKey}` },
+      signal: genPollTimeout(), redirect: "error",
     });
-    if (!res.ok) return { status: "failed", error: `Kling 查询失败：HTTP ${res.status}` };
+    if (!res.ok) {
+      await res.body?.cancel();
+      return pendingGenPoll("Kling", res.status);
+    }
     const data = (await res.json()) as {
-      data?: { task_status?: string; task_result?: { videos?: Array<{ url?: string }> }; task_status_msg?: string };
+      data?: { task_id?: string; task_status?: string; task_result?: { videos?: Array<{ url?: string }> }; task_status_msg?: string };
     };
-    const st = data.data?.task_status;
+    if (!data?.data || (data.data.task_id !== undefined && data.data.task_id !== taskId)) {
+      return { status: "submitted", error: "Kling 返回任务身份无法核实" };
+    }
+    const st = data.data.task_status;
     if (st === "succeed") return { status: "succeeded", uri: data.data?.task_result?.videos?.[0]?.url };
     if (st === "failed") return { status: "failed", error: data.data?.task_status_msg ?? "生成失败" };
     return { status: "running" };
@@ -226,8 +253,12 @@ export class JimengProvider implements GenProvider {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${this.cfg.apiKey}` },
       body: JSON.stringify({ req_key: this.cfg.model ?? "jimeng-video-3.0", task_id: taskId }),
+      signal: genPollTimeout(), redirect: "error",
     });
-    if (!res.ok) return { status: "failed", error: `Jimeng 查询失败：HTTP ${res.status}` };
+    if (!res.ok) {
+      await res.body?.cancel();
+      return pendingGenPoll("Jimeng", res.status);
+    }
     const data = (await res.json()) as {
       data?: { status?: string; video_url?: string; resp_data?: string; message?: string };
     };

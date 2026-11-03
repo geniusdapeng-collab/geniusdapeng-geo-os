@@ -13,9 +13,10 @@
  */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { inspectDeliveryFile, safeDeliveryPath } from "../delivery-trust.js";
 import { audioFingerprint, resolvePython } from "./asr-aligner.js";
 import { engineDirOf } from "./engine.js";
 
@@ -29,6 +30,9 @@ export interface VoicePrepInput {
   profile?: string;
   /** upload：录音文件绝对路径 */
   uploadPath?: string;
+  uploadSha256?: string;
+  /** Only the authenticated service supplies this after checking the station binding. */
+  stationScope?: string;
   /** upload：是否已按 dry-run 报告确认（未确认则只出报告，不落盘） */
   confirmed?: boolean;
   env?: NodeJS.ProcessEnv;
@@ -68,7 +72,7 @@ async function callBridge(
   tool: string,
   params: Record<string, unknown>,
   opts: { env: NodeJS.ProcessEnv; timeoutMs: number; onLog?: (l: string) => void },
-): Promise<Record<string, unknown>> {
+): Promise<{ result: Record<string, unknown>; sha256?: string }> {
   const url = (opts.env.WORKLOOM_VOICE_BRIDGE_URL?.trim() || "http://127.0.0.1:9776").replace(/\/+$/, "");
   const token = voiceBridgeToken(opts.env);
   if (!token) throw new Error(`配音工位缺 token：请配置 WORKLOOM_VOICE_BRIDGE_TOKEN 或 ${join(stationDirOf(opts.env), "bridge-token")}`);
@@ -100,26 +104,64 @@ async function callBridgeOnce(
   tool: string,
   params: Record<string, unknown>,
   opts: { env: NodeJS.ProcessEnv; timeoutMs: number; onLog?: (l: string) => void },
-): Promise<Record<string, unknown>> {
+): Promise<{ result: Record<string, unknown>; sha256?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
   try {
     const response = await fetch(`${url}/action`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ tool, params: { ...params, tenant_id: opts.env.WORKLOOM_VOICE_TENANT ?? "ws-local-voice" } }),
+      body: JSON.stringify({ tool, params: { tenant_id: opts.env.WORKLOOM_VOICE_TENANT ?? "ws-local-voice", ...params } }),
+      redirect: "error",
       signal: controller.signal,
     });
     const payload = await response.json().catch(() => null) as
-      | { ok?: boolean; error?: string; message?: string; result?: Record<string, unknown> }
+      | { ok?: boolean; error?: string; message?: string; result?: Record<string, unknown>; receipt?: { sha256?: unknown } }
       | null;
     if (!response.ok || payload?.ok !== true) {
       throw new Error(`配音工位 ${tool} 失败：${payload?.error ?? `HTTP ${response.status}`} ${payload?.message ?? ""}`.trim());
     }
-    return payload.result ?? {};
+    return { result: payload.result ?? {}, ...(typeof payload.receipt?.sha256 === "string" ? { sha256: payload.receipt.sha256 } : {}) };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The service route never replays an ambiguous synthesis POST, even after a process restart. */
+async function scopedVoiceChunk(cache: string, request: Record<string, unknown>, stationScope: string,
+  env: NodeJS.ProcessEnv, timeoutMs: number): Promise<void> {
+  const root = dirname(cache), ref = basename(cache);
+  mkdirSync(root, { recursive: true, mode: 0o700 });
+  safeDeliveryPath(root, ref, true);
+  const receiptPath = safeDeliveryPath(root, `${ref}.receipt.json`, true);
+  const pendingPath = safeDeliveryPath(root, `${ref}.pending.json`, true);
+  const requestHash = createHash("sha256").update(JSON.stringify({ ...request, stationScope })).digest("hex");
+  if (existsSync(receiptPath)) {
+    const receipt = JSON.parse(readFileSync(receiptPath, "utf8")) as { requestHash?: string; sha256?: string };
+    if (receipt.requestHash !== requestHash || inspectDeliveryFile(root, ref).sha256 !== receipt.sha256) {
+      throw new Error("VOICE_CACHE_CHANGED: 已接收的配音字节与原请求回执不一致");
+    }
+    return;
+  }
+  if (existsSync(pendingPath) || existsSync(cache)) {
+    throw new Error("VOICE_POST_UNVERIFIED: 上一次配音结果待核对，禁止重发");
+  }
+  const token = voiceBridgeToken(env);
+  if (!token) throw new Error("VOICE_STATION_UNAVAILABLE: 配音工位没有可用凭据");
+  const url = (env.WORKLOOM_VOICE_BRIDGE_URL?.trim() || "http://127.0.0.1:9776").replace(/\/+$/, "");
+  try { writeFileSync(pendingPath, JSON.stringify({ requestHash }), { flag: "wx", mode: 0o600 }); }
+  catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code !== "EEXIST") throw cause;
+    throw new Error("VOICE_POST_UNVERIFIED: 配音已有待确认请求", { cause });
+  }
+  let reply: Awaited<ReturnType<typeof callBridgeOnce>>;
+  try { reply = await callBridgeOnce(url, token, "voicewrite.speak", { ...request, tenant_id: stationScope }, { env, timeoutMs }); }
+  catch (cause) { throw new Error("VOICE_POST_UNVERIFIED: 配音工位未提供可核实的完成回执，禁止重发", { cause }); }
+  if (reply.result.out !== cache || !reply.sha256 || inspectDeliveryFile(root, ref).sha256 !== reply.sha256) {
+    throw new Error("VOICE_POST_UNVERIFIED: 配音工位返回的路径或字节摘要未核实");
+  }
+  writeFileSync(receiptPath, JSON.stringify({ requestHash, sha256: reply.sha256 }), { flag: "wx", mode: 0o600 });
+  unlinkSync(pendingPath);
 }
 
 function run(
@@ -180,27 +222,30 @@ export async function prepareVoice(input: VoicePrepInput): Promise<VoicePrepResu
     const parts: string[] = [];
     let reused = 0;
     for (const [index, sentence] of sentences.entries()) {
+      const identity = input.stationScope ? JSON.stringify([input.stationScope, profile, sentence, voiceLufs, maxChunkChars])
+        : `${profile}\u0000${sentence}\u0000${voiceLufs}`;
+      const cacheHash = createHash("sha256").update(identity).digest("hex").slice(0, input.stationScope ? 32 : 12);
       const cache = join(
-        stationDirOf(env),
+        resolve(stationDirOf(env)),
         "deliveries",
-        `talkcraft-s${String(index).padStart(2, "0")}-${createHash("sha256").update(`${profile}\u0000${sentence}\u0000${voiceLufs}`).digest("hex").slice(0, 12)}.wav`,
+        `talkcraft-s${String(index).padStart(2, "0")}-${cacheHash}.wav`,
       );
+      const request = {
+        profile, text: sentence, out: cache, gap_ms: 0, lufs: voiceLufs,
+        max_chunk_chars: Math.max(maxChunkChars, sentence.length + 8),
+      };
+      if (input.stationScope) {
+        await scopedVoiceChunk(cache, request, input.stationScope, env, timeoutMs);
+        parts.push(cache);
+        continue;
+      }
       if (existsSync(cache) && statSync(cache).size > 20_000) {
         reused += 1;
         parts.push(cache);
         continue;
       }
-      const result = await callBridge("voicewrite.speak", {
-        profile,
-        text: sentence,
-        out: cache,
-        gap_ms: 0,
-        lufs: voiceLufs,
-        max_chunk_chars: Math.max(maxChunkChars, sentence.length + 8),
-      }, { env, timeoutMs, onLog: input.onLog });
-      const produced = String(result.out ?? cache);
-      if (!existsSync(produced)) throw new Error(`配音工位回执成功但产物不存在（第 ${index + 1} 句，不伪造完成）`);
-      if (produced !== cache) copyFileSync(produced, cache);
+      const { result } = await callBridge("voicewrite.speak", request, { env, timeoutMs, onLog: input.onLog });
+      if (result.out !== cache || !existsSync(cache)) throw new Error(`配音工位未返回指定产物（第 ${index + 1} 句）`);
       parts.push(cache);
       input.onLog?.(`[voice-prep] TTS ${index + 1}/${sentences.length} 句完成（${sentence.slice(0, 12)}…）`);
     }
@@ -231,10 +276,19 @@ export async function prepareVoice(input: VoicePrepInput): Promise<VoicePrepResu
   const trimScript = join(engineDir, "scripts/voice_trim.py");
   if (!existsSync(trimScript)) throw new Error(`缺少引擎脚本 voice_trim.py（${trimScript}）——先跑 pnpm talkcraft:install`);
   const scriptPath = join(audioDir, "script.txt");
-  const { writeFileSync } = await import("node:fs");
   writeFileSync(scriptPath, `${input.text}\n`, "utf8");
-  const raw = join(audioDir, "raw.wav");
+  const raw = safeDeliveryPath(audioDir, "raw.wav", true);
   copyFileSync(input.uploadPath, raw);
+  if (input.uploadSha256 !== undefined) {
+    if (inspectDeliveryFile(audioDir, "raw.wav").sha256 !== input.uploadSha256) {
+      throw new Error("EXPLAINER_ASSET_CHANGED: 复制的原始录音与已登记摘要不同");
+    }
+    const fd = openSync(raw, "r"), header = Buffer.alloc(12);
+    try {
+      if (readSync(fd, header) !== header.length || !["RIFF", "RF64"].includes(header.toString("ascii", 0, 4))
+        || header.toString("ascii", 8, 12) !== "WAVE") throw new Error("EXPLAINER_AUDIO_INVALID: 上传件不是可核实 WAV 录音");
+    } finally { closeSync(fd); }
+  }
   const reportPath = join(audioDir, "trim-report.json");
   const wordsPath = join(audioDir, "trim-words.json");
   const dry = await run(resolvePython(env), [

@@ -134,7 +134,7 @@ describe("完整请求指纹", () => {
     { aspectRatio: "9:16" }, { resolution: "1080p" }, { generateAudio: false }, { seed: 42 },
     { firstFrameUrl: "https://example.test/first.png" }, { referenceImageUrls: ["asset://a"] },
     { referenceVideoUrls: ["https://example.test/a.mp4"] }, { referenceAudioUrls: ["https://example.test/a.wav"] },
-    { cameraFixed: true }, { negativePrompt: "no text" }, { extra: { nested: { a: "changed" } } },
+    { cameraFixed: true }, { negativePrompt: "no text" }, { watermark: true },
   ] satisfies VideoGenParams[])("默认键覆盖完整生成参数 %j", async (patch) => {
     const first = await submitGenJob(request());
     const second = await submitGenJob(request({ params: { ...request().params, ...patch } }));
@@ -228,6 +228,22 @@ describe("提交状态机与接受后原子记账", () => {
     f.failDegradation = true; f.healthy.mockResolvedValue(false);
     await expect(submitGenJob(request())).rejects.toThrow("degradation unavailable");
     expect(f.submit).not.toHaveBeenCalled(); expect(f.fallback).not.toHaveBeenCalled();
+  });
+  it("本地模型缺引擎时不模拟也不借远端，恢复后原键接受一次", async () => {
+    const local = request({ modelId: "remotion-talkcraft" });
+    f.pool.clear();
+    await expect(submitGenJob(local)).rejects.toThrow("PROVIDERS_UNAVAILABLE");
+    f.pool.set("higgsfield", { healthy: async () => true, submit: f.fallback });
+    await expect(submitGenJob(local)).rejects.toThrow("PROVIDERS_UNAVAILABLE");
+    expect(f.dispatches).toBe(0);
+    expect(f.fallback).not.toHaveBeenCalled();
+    const localSubmit = vi.fn().mockResolvedValue({ taskId: "local-render-1" });
+    f.pool.set("remotion-local", { healthy: async () => true, submit: localSubmit });
+    const completed = await submitGenJob(local);
+    expect(completed).toMatchObject({ provider: "remotion-local", mock: false, taskId: "local-render-1" });
+    f.pool.clear();
+    await expect(submitGenJob(local)).resolves.toMatchObject({ jobId: completed.jobId, deduped: true });
+    expect(localSubmit).toHaveBeenCalledTimes(1);
   });
   it("正式远端资格缺供应商时明确失败，不转换为 mock 成功", async () => {
     f.pool.clear();

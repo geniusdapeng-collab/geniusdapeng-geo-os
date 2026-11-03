@@ -328,6 +328,38 @@ describe("worker creative rollout receipts", () => {
 });
 
 describe("预生产原始结果与诚实终态", () => {
+  it("MC-007 rejects a caller-selected host file before reaching portrait image generation", async () => {
+    vi.stubEnv("HR_PORTRAIT_ENABLED", "1");
+    vi.stubEnv("VOLCENGINE_ARK_API_KEY", "test-only-config");
+    vi.stubEnv("ARK_IMAGE_MODEL", "test-only-model");
+    const privateFile = path.join(doubles.workDir, "outside-catalog.png");
+    const privateBytes = Buffer.alloc(2_048, 97);
+    await writeFile(privateFile, privateBytes);
+    const requests: string[] = [];
+    doubles.runPreproduction.mockImplementation(async input => {
+      const { createPortraitRuntime } = await import("@hyperreality/video-studio");
+      const portrait = createPortraitRuntime({ ...doubles.studioConfigs.at(-1)?.portraits, workDir: doubles.workDir,
+        projectId: input.projectId, fetchImpl: async (url, init) => {
+          if (init?.method === "POST") {
+            requests.push(String(init.body));
+            return new Response(JSON.stringify({ data: [{ url: "https://image.example.invalid/output.png" }] }));
+          }
+          return new Response(new Uint8Array(2048));
+        } });
+      const stage = { productId: "scope-fixture" };
+      const refs = await portrait.searchReferences(stage);
+      const base = await portrait.processImage(stage, refs);
+      await portrait.apiRender({ productId: stage.productId, view: "front" }, base);
+      return success();
+    });
+    const { entry } = await runToTerminal(false, { products: [{ id: "scope-fixture", name: "本次商品",
+      referenceManifest: { reference_images: [{ localPath: privateFile }] } }] });
+    expect(requests.some(body => body.includes(privateBytes.toString("base64")))).toBe(false);
+    expect(requests).toHaveLength(0);
+    expect(entry).toMatchObject({ status: "failed", error: expect.stringContaining("PORTRAIT_PRODUCT_REFERENCE_INVALID") });
+    expect(doubles.runPreproduction).not.toHaveBeenCalled();
+    expect(doubles.review).not.toHaveBeenCalled();
+  });
   it("坏复用配置在启动注册、vendor和租约之前失败，不回退生成", () => {
     vi.stubEnv("HR_PORTRAIT_REUSE_MANIFEST", path.join(doubles.workDir, "missing-manifest.json"));
     expect(() => worker.startRun(scope, { projectId: "VID-reuse-invalid", intent: "使用已有AI模特" })).toThrow("拒绝回退生成");

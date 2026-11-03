@@ -34,6 +34,7 @@ class MemoryPool {
     else if (sql.includes("FROM video_pipeline_operations") && sql.includes("kind LIKE 'creative.%'")) rows = [];
     else if (sql.includes("FROM video_pipeline_runs") && sql.includes("plan_key,plan_hash,intent_hash")) rows = [];
     else if (sql.includes("SELECT q.*,s.state AS submission_state")) rows = this.submissionState ? this.qualifications.filter(row => row.payload_hash === values[5] && row.source_stage_run_id === values[4] && ["submitting", "unknown", "accepted", "finalized"].includes(this.submissionState)).slice(-1) : [];
+    else if (sql.includes("SELECT s.id FROM generation_submissions s JOIN render_scripts r")) rows = [];
     else if (sql.includes("INSERT INTO render_scripts")) this.scripts.push({ id: values[0], workspace_id: values[1], project_id: values[2], shot_id: values[3], script_key: values[4], version: 1, status: "draft", md: values[5], fields: JSON.parse(values[6]), created_by: values[7] });
     else if (sql.includes("INSERT INTO production_qualifications")) {
       const names = ["id","tenant_id","workspace_id","project_id","shot_id","source_stage_run_id","source_attempt","source_output_sha256","prompts_sha256","script_id","script_version","model_id","provider","provider_model","request_hash","payload_hash","compiled_request","params","mode","status","producer_verdict","issuer","key_id","signature","issued_at","expires_at","created_by"];

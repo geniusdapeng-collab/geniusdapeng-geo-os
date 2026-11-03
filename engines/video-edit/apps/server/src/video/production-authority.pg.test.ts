@@ -10,7 +10,10 @@ import { ABSTRACT_PRODUCT_RENDER_RULE } from "@hyperreality/video-studio";
 import { authorizeRenderSubmission, listProductionShots, loadQualifiedRenderInput, qualifyProductionShot } from "./production-authority.js";
 import { prepareMarketingFacts, finalizeMarketingFacts } from "./marketing-authority.js";
 import { renderSha256 } from "./gen/compiled-request.js";
+import { getModel } from "./gen/catalog.js";
+import { estimateCost, recordRenderCost } from "./gen/cost.js";
 import { submitGenJob } from "./gen/submit.js";
+import { SubmissionLedger } from "./gen/submission-ledger.js";
 import { projectRunLockKey } from "./archive-host.js";
 import { acceptPortraitArchiveReuse, portraitReuseEvidence } from "./portrait-reuse-acceptance.js";
 import { portraitReuseFixture } from "./portrait-reuse.test-support.js";
@@ -22,7 +25,7 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
   const app = new pg.Pool({ connectionString: process.env.DATABASE_APP_URL, max: 2, connectionTimeoutMillis: 3000 });
   const gateway = new pg.Pool({ connectionString: process.env.DATABASE_GATEWAY_URL });
   const suffix = randomBytes(6).toString("hex");
-  const scope = { tenantId: `t-authority-${suffix}`, workspaceId: `w-authority-${suffix}` };
+  let scope: { tenantId: string; workspaceId: string };
   const other = { tenantId: `t-authority-other-${suffix}`, workspaceId: `w-authority-other-${suffix}` };
   let dir: string, projectId: string, sourceId: string, seq = 0;
   let env: NodeJS.ProcessEnv, approved = true;
@@ -31,13 +34,16 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
 
   beforeAll(async () => {
     dir = await realpath(await mkdtemp(path.join(tmpdir(), "authority-pg-")));
-    for (const ctx of [scope, other]) {
-      await owner.query("INSERT INTO tenants (id,name,plan) VALUES ($1,'正式资格契约','community')", [ctx.tenantId]);
-      await owner.query("INSERT INTO workspaces (id,tenant_id,name,slug,industry) VALUES ($1,$2,'正式资格契约',$1,'general')", [ctx.workspaceId, ctx.tenantId]);
-    }
+    await createScope(other);
   });
+  async function createScope(ctx: typeof scope) {
+    await owner.query("INSERT INTO tenants (id,name,plan) VALUES ($1,'正式资格契约','community')", [ctx.tenantId]);
+    await owner.query("INSERT INTO workspaces (id,tenant_id,name,slug,industry) VALUES ($1,$2,'正式资格契约',$1,'general')", [ctx.workspaceId, ctx.tenantId]);
+  }
   beforeEach(async () => {
     projectId = `P-${suffix}-${++seq}`; sourceId = `SR-${suffix}-${seq}`;
+    scope = { tenantId: `t-authority-${suffix}-${seq}`, workspaceId: `w-authority-${suffix}-${seq}` };
+    await createScope(scope);
     env = { HR_WORK_DIR: dir, WORKLOOM_RENDER_SIGNING_SECRET: "pg-test-render-signing-secret-more-than-32-bytes",
       VOLCENGINE_ARK_API_KEY: "pg-test-provider", LLM_BASE_URL: "https://judge.example.test", LLM_API_KEY: "pg-test-judge", LLM_MODEL: "deepseek-flash" };
     approved = true; providerCalls = 0; calls = [];
@@ -55,6 +61,9 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
       providerCalls++;
       return new Response(JSON.stringify({ id: `provider-${suffix}-${seq}` }));
     }));
+    await createSource(projectId, sourceId, `RUN-${seq}`);
+  });
+  async function createSource(projectId: string, sourceId: string, runId: string) {
     await owner.query("INSERT INTO video_projects (id,workspace_id,title,kind,created_by) VALUES ($1,$2,'正式资格契约片','narrative','MEM-T')", [projectId, scope.workspaceId]);
     const root = path.join(dir, "archive", scope.workspaceId, projectId);
     await mkdir(path.join(root, "stages/preproduction"), { recursive: true });
@@ -71,18 +80,18 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     await writeFile(path.join(root, "stages/preproduction/attempt-1.prompts.json"), prompts);
     const output = JSON.stringify({ success: true, degraded: false, promptsRef: "stages/preproduction/attempt-1.prompts.json", promptsSha256: renderSha256(prompts),
       productionEvidence: { schemaVersion: "workloom.preproduction-authority/v1", issuer: "workloom.studio-worker", ...scope, projectId,
-        runId: `RUN-${seq}`, attempt: 1, pipelineKind: "narrative", gates: proofs } });
+        runId: runId, attempt: 1, pipelineKind: "narrative", gates: proofs } });
     await writeFile(path.join(root, "stages/preproduction/attempt-1.output.json"), output);
     await owner.query(`INSERT INTO production_stage_runs (id,workspace_id,project_id,stage_id,attempt,status,run_id,output_ref,output_sha256)
-      VALUES ($1,$2,$3,'preproduction',1,'done',$4,'stages/preproduction/attempt-1.output.json',$5)`, [sourceId, scope.workspaceId, projectId, `RUN-${seq}`, renderSha256(output)]);
+      VALUES ($1,$2,$3,'preproduction',1,'done',$4,'stages/preproduction/attempt-1.output.json',$5)`, [sourceId, scope.workspaceId, projectId, runId, renderSha256(output)]);
     await gatewayAppend(gateway, { ...scope, actor: { id: "video-studio", type: "system" } }, {
       who: { id: "video-studio", type: "system" },
       context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
       object: { type: "video_project", id: projectId },
-      decision: { action: "video.scene_policy.selected", after: { runId: `RUN-${seq}`, id: null, version: null, sourceSha256: null,
+      decision: { action: "video.scene_policy.selected", after: { runId: runId, id: null, version: null, sourceSha256: null,
         reason: "原始需求未命中已安装片型", evidence: [] } }, rule_impact: [],
     });
-  });
+  }
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
   // 不删除 append-only 资格/五元事件；专属测试作用域留作真实回归证据。
   afterAll(async () => { await Promise.all([owner.end(), app.end(), gateway.end()]); await rm(dir, { recursive: true, force: true }); });
@@ -164,6 +173,165 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     await owner.query("UPDATE production_stage_runs SET output_sha256=$2 WHERE id=$1", [sourceId, renderSha256(bytes)]);
     return { png, character: evidence[0]!, product: evidence.at(-2)!, indexFile, indexText };
   }
+
+  async function claimedUndispatched(qualification: Awaited<ReturnType<typeof issue>>) {
+    const request = await input(qualification.qualificationToken);
+    const ledger = new SubmissionLedger(app, scope);
+    const row = await ledger.reserve({ projectId, scriptId: request.script.id, scriptVersion: request.script.version,
+      key: `render:${qualification.requestHash}`, requestHash: qualification.requestHash,
+      script: { shot_id: request.script.shot_id, script_key: request.script.script_key, md: request.script.md, fields: request.script.fields } });
+    expect((await ledger.claim(row, "interrupted-owner"))?.dispatch_count).toBe(0);
+    return { ledger, row, request };
+  }
+
+  it.each([0, 1])("crash recovery reclaims a submitting row only with dispatch_count=%i proving zero dispatch", async count => {
+    const qualification = await issue();
+    const { ledger, row, request } = await claimedUndispatched(qualification);
+    if (count) await ledger.recordDispatch(row.id, "interrupted-owner", "seedance", request.compiled.providerModel);
+    expect(await issue()).toEqual(qualification);
+    const holder = await owner.connect();
+    const lock = projectRunLockKey(scope, projectId);
+    try {
+      await holder.query("SELECT pg_advisory_lock_shared(hashtext($1))", [lock]);
+      await expect(submitGenJob(request)).rejects.toThrow(/SUBMISSION_(IN_PROGRESS|UNVERIFIED)/);
+      expect((await ledger.read(row.id))?.owner_token).toBe("interrupted-owner");
+    } finally {
+      await holder.query("SELECT pg_advisory_unlock_shared(hashtext($1))", [lock]);
+      holder.release();
+    }
+    if (count) {
+      await expect(submitGenJob(request)).rejects.toThrow("SUBMISSION_UNVERIFIED");
+      expect(providerCalls).toBe(0);
+      expect(await ledger.read(row.id)).toMatchObject({ state: "submitting", owner_token: "interrupted-owner", dispatch_count: 1 });
+    } else {
+      const recovered = await submitGenJob(request);
+      expect(recovered).toMatchObject({ jobId: row.job_id, requestHash: row.request_hash, deduped: false });
+      expect((await ledger.read(row.id))?.owner_token).not.toBe("interrupted-owner");
+      expect(await ledger.read(row.id)).toMatchObject({ state: "finalized", dispatch_count: 1 });
+      await expect(ledger.recordDispatch(row.id, "interrupted-owner", "seedance", request.compiled.providerModel))
+        .rejects.toThrow("SUBMISSION_STATE_CONFLICT");
+      expect(await submitGenJob(request)).toMatchObject({ jobId: recovered.jobId, taskId: recovered.taskId, deduped: true });
+      expect(providerCalls).toBe(1);
+    }
+  });
+
+  it.each(["expired", "superseded"] as const)("re-qualifies %s zero-dispatch work without reviving its old owner", async state => {
+    const qualification = await issue();
+    const { ledger, row, request } = await claimedUndispatched(qualification);
+    if (state === "expired") vi.spyOn(Date, "now").mockReturnValue(Date.parse(qualification.expiresAt) + 1000);
+    else await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1", modelId: qualification.modelId,
+      params: { ...qualification.params, aspectRatio: "9:16" }, env });
+    const current = await issue();
+    expect(current.qualificationId).not.toBe(qualification.qualificationId);
+    await expect(submitGenJob(request)).rejects.toThrow(state === "expired" ? "QUALIFICATION_EXPIRED" : "QUALIFICATION_SUPERSEDED");
+    expect((await submitGenJob(await input(current.qualificationToken))).taskId).toBeTruthy();
+    expect(await ledger.read(row.id)).toMatchObject({ state: "submitting", owner_token: "interrupted-owner", dispatch_count: 0 });
+    expect(providerCalls).toBe(1);
+  });
+
+  it("keeps an unknown same-shot submission pinned even when the next qualification changes parameters", async () => {
+    const qualification = await issue();
+    const normalFetch = fetch;
+    vi.stubGlobal("fetch", vi.fn(async (url: Parameters<typeof fetch>[0], init: RequestInit) => {
+      if (String(url).endsWith("/contents/generations/tasks")) { providerCalls++; throw new Error("local simulated socket closed"); }
+      return normalFetch(url, init);
+    }));
+    await expect(submitGenJob(await input(qualification.qualificationToken))).rejects.toThrow("SUBMISSION_UNKNOWN");
+    const previous = await owner.query("SELECT id,state,dispatch_count FROM generation_submissions WHERE project_id=$1", [projectId]);
+    expect(previous.rows).toEqual([expect.objectContaining({ state: "unknown", dispatch_count: 1 })]);
+    const before = calls.length;
+    const refreshed = await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+      modelId: "doubao-seedance-2-5", params: { aspectRatio: "9:16" }, env }).then(() => "unexpected-qualification", error => error.code);
+    expect(refreshed).toBe("QUALIFICATION_RECONCILIATION_REQUIRED");
+    await expect(submitGenJob(await input(qualification.qualificationToken))).rejects.toThrow("SUBMISSION_UNVERIFIED");
+    expect(calls).toHaveLength(before);
+    expect(providerCalls).toBe(1);
+    expect((await owner.query("SELECT id,state,dispatch_count FROM generation_submissions WHERE project_id=$1", [projectId])).rows).toEqual(previous.rows);
+  });
+
+  it("rejects a signed render with an alternate frames duration, vendor override, or caller callback before review", async () => {
+    for (const params of [{ frames: 240 }, { extra: { service_tier: "flex" } }, { extra: { callback_url: "https://untrusted.example.test" } },
+      { extra: { watermark: true } }, { callbackUrl: "https://untrusted.example.test" }]) {
+      const result = await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+        modelId: "doubao-seedance-2-5", params, env }).then(() => "unexpected-qualification", error => error.code);
+      expect(result).toBe("REQUEST_INVALID");
+    }
+    expect(calls).toHaveLength(0);
+    expect((await owner.query("SELECT id FROM production_qualifications WHERE project_id=$1", [projectId])).rowCount).toBe(0);
+  });
+
+  it("rejects an image generation model for a timed production shot before producer review", async () => {
+    const result = await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+      modelId: "doubao-seedream-5-0-pro", params: {}, env }).then(() => "unexpected-qualification", error => error.code);
+    expect(result).toBe("MODEL_UNAVAILABLE");
+    expect(calls).toHaveLength(0);
+    expect((await owner.query("SELECT id FROM production_qualifications WHERE project_id=$1", [projectId])).rowCount).toBe(0);
+  });
+
+  it.each(["cash", "seconds"] as const)("reserves workspace %s across two projects before paid dispatch", async (dimension) => {
+    const secondProjectId = `${projectId}-second`;
+    await createSource(secondProjectId, `${sourceId}-second`, `RUN-${seq}-second`);
+    env.HF_API_KEY_ID = "pg-test-higgsfield-id";
+    env.HF_API_KEY_SECRET = "pg-test-higgsfield-secret";
+    const modelId = "hf-seedance-2-0-t2v";
+    const model = getModel(modelId)!;
+    const amount = estimateCost(model, { seconds: 5 }, env).cny;
+    expect(amount).toBeGreaterThan(0);
+    const qualify = (projectId: string) => qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL",
+      projectId, shotId: "S1", modelId, params: {}, env });
+    const [first, second] = await Promise.all([qualify(projectId), qualify(secondProjectId)]);
+    if (dimension === "cash") env.VIDEO_DAILY_CAP_CNY = String(amount);
+    else {
+      await gatewayAppend(gateway, { ...scope, actor: { id: "render-fixture", type: "system" } }, {
+        who: { id: "render-fixture", type: "system" },
+        context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString(), channel: "inapp" },
+        object: { type: "render_script", id: "previous-render" },
+        decision: { action: "render.submit", after: { estimated_seconds: 95 } }, rule_impact: [],
+      });
+    }
+    const requests = await Promise.all([input(first.qualificationToken), input(second.qualificationToken)]);
+    const results = await Promise.allSettled(requests.map(request => submitGenJob({
+      ...request, ...(dimension === "seconds" ? { planBudget: { plan: "standard", allowOverage: false } } : {}),
+    })));
+    expect(providerCalls).toBe(1);
+    expect(results.filter(value => value.status === "fulfilled")).toHaveLength(1);
+    expect(results.find(value => value.status === "rejected")).toMatchObject({
+      reason: { code: dimension === "cash" ? "RENDER_COST_CAP" : "RENDER_SECONDS_CAP" },
+    });
+    expect((await owner.query("SELECT sum(dispatch_count)::int AS dispatched FROM generation_submissions WHERE workspace_id=$1", [scope.workspaceId])).rows)
+      .toEqual([{ dispatched: 1 }]);
+    const completed = results.find(value => value.status === "fulfilled")?.value;
+    expect(completed?.estCny).toBe(amount);
+    if (dimension === "seconds") expect(completed?.budget).toEqual({ usedSeconds: 95, overageSeconds: 0 });
+  });
+
+  it("fails closed before an unpriced provider POST when a cash cap is active", async () => {
+    const qualified = await issue();
+    env.VIDEO_MONTHLY_CAP_CNY = "1000";
+    await expect(submitGenJob(await input(qualified.qualificationToken))).rejects.toThrow("RENDER_COST_UNVERIFIED");
+    expect(providerCalls).toBe(0);
+    expect((await owner.query("SELECT state,dispatch_count FROM generation_submissions WHERE project_id=$1", [projectId])).rows)
+      .toEqual([{ state: "rejected", dispatch_count: 0 }]);
+  });
+
+  it("cash hold and the same settled charge count once when a later project dispatches", async () => {
+    const secondProjectId = `${projectId}-settlement`;
+    await createSource(secondProjectId, `${sourceId}-settlement`, `RUN-${seq}-settlement`);
+    env.HF_API_KEY_ID = "pg-test-higgsfield-id";
+    env.HF_API_KEY_SECRET = "pg-test-higgsfield-secret";
+    const modelId = "hf-seedance-2-0-t2v";
+    const amount = estimateCost(getModel(modelId)!, { seconds: 5 }, env).cny!;
+    env.VIDEO_DAILY_CAP_CNY = String(amount * 2);
+    const qualified = (projectId: string) => qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL",
+      projectId, shotId: "S1", modelId, params: {}, env });
+    const first = await submitGenJob(await input((await qualified(projectId)).qualificationToken));
+    await recordRenderCost(app, gateway, scope, { jobId: first.jobId, projectId, amountCny: amount,
+      provider: first.provider, providerModel: first.providerModel, by: "render-fixture" });
+    const second = await submitGenJob(await input((await qualified(secondProjectId)).qualificationToken));
+    expect(second.estCny).toBe(amount);
+    expect(second.jobId).not.toBe(first.jobId);
+    expect(providerCalls).toBe(2);
+  });
 
   it("MC-011 an accepted G5 character reference is discoverable, reviewed as an image, and dispatched as exactly frozen bytes", async () => {
     const state = await marketingSource(true);

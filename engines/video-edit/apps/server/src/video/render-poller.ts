@@ -4,7 +4,7 @@
  * 扫描 render_jobs 中 submitted/rendering 的任务，经 gen-pool poll(task_id) 回填：
  *   succeeded → status='done' + result_url + render.complete 事件（actual_seconds 台账回填）
  *   failed    → status='failed' + render.failed 事件（原因留痕，不静默）
- *   running   → status 推进 'rendering'
+ *   running   → status 推进 'rendering'；查询未核实 → 保留原供应商任务
  * mock 任务（task_id 前缀 mock-）走 MockGenProvider（离线全流程可跑）。
  * 纪律：状态推进与事件同一事务同一 COMMIT（D16 同构）；provider 取自提交事件留痕。
  */
@@ -21,6 +21,7 @@ import { findModelByProviderModel } from "./gen/catalog.js";
 import { recordRenderCost, usdCnyRate } from "./gen/cost.js";
 import { classifyProviderError, logStageOutcome, type ArchiveStore, type StageLedgerWriter } from "@hyperreality/video-studio";
 import { makeStageArchive } from "./archive-host.js";
+import { sourceUrl } from "./marketing-source-fetcher.js";
 
 interface Scope { tenantId: string; workspaceId: string }
 
@@ -29,7 +30,17 @@ interface OpenJob {
   task_id: string;
   script_id: string;
   project_id: string;
+  provider: string | null;
   provider_model: string | null;
+  mock: boolean;
+  status: "submitted" | "rendering" | "done";
+  result_url: string | null;
+  asset_id: string | null;
+  actual_seconds: number | null;
+  actual_cny: string | null;
+  actual_usd: string | null;
+  cost_completed_at: Date | string | null;
+  cost_provider: string | null;
   est_cny: string | null;
   est_usd: string | null;
   created_at: string;
@@ -38,10 +49,8 @@ interface OpenJob {
 }
 
 /**
- * C-04 修复：渲染任务终态超时（小时）。此前 provider.poll 任何异常都被当作"仍在跑"，
- * 供应商网关持续故障时作业永远卡 submitted/rendering（无出口状态，实锤见排雷台账）。
- * 超龄任务无论 poll 返回什么都判 failed（原因留痕），给交付链一个终态出口。
- * 默认 24h（长片型渲染最慢以小时计）；可用 RENDER_JOB_TIMEOUT_H 调整，0 关闭。
+ * 超龄是对账信号；供应商仍可能已有可用产物。默认 24h 后在报告中提示，
+ * 未取得明确终态前始终保留 task_id，不用本地时间替供应商判失败。
  */
 const RENDER_JOB_TIMEOUT_H = Number(process.env.RENDER_JOB_TIMEOUT_H ?? 24);
 function renderJobTimedOut(job: OpenJob): boolean {
@@ -63,17 +72,42 @@ export interface PollReport {
   }>;
 }
 
-/** 生成供应商解析：提交事件留痕优先；mock 前缀回退；缺省 seedance（首选） */
+function recordedProvider(job: OpenJob): string | null {
+  return job.provider ?? job.submit_payload?.decision?.after?.provider ?? (job.task_id.startsWith("mock-") ? "seedance" : null);
+}
+
+/** 真实已接受任务绝不可由 genPoolFromEnv 的 Seedance 模拟兜底接管。 */
 function resolveProvider(
   pool: Map<string, GenProvider>,
   job: OpenJob,
   mockPool: Map<string, GenProvider>,
 ): GenProvider | null {
-  const provider = job.submit_payload?.decision?.after?.provider ?? null;
+  const provider = recordedProvider(job);
+  const eventProvider = job.submit_payload?.decision?.after?.provider;
+  if (!provider || (eventProvider && job.provider && eventProvider !== job.provider)) return null;
   if (job.task_id.startsWith("mock-")) {
-    return mockPool.get(provider ?? "seedance") ?? mockPool.get("seedance") ?? null;
+    return mockPool.get(provider) ?? mockPool.get("seedance") ?? null;
   }
-  return pool.get(provider ?? "seedance") ?? null;
+  const adapter = pool.get(provider);
+  return job.mock || !adapter || adapter.providerId !== provider || adapter instanceof MockGenProvider ? null : adapter;
+}
+
+function verifiedResultUri(value: unknown, provider: string, mock: boolean): value is string {
+  if (typeof value !== "string" || !value || value !== value.trim()) return false;
+  if (!mock && (provider === "whiteboard-local" || provider === "remotion-local") && value.startsWith("/")) {
+    return !value.startsWith("//");
+  }
+  try {
+    const uri = new URL(value);
+    if (uri.username || uri.password) return false;
+    if (mock) return uri.protocol === "mock:";
+    if (provider === "whiteboard-local" || provider === "remotion-local") {
+      return uri.protocol === "file:" && (!uri.host || uri.host === "localhost");
+    }
+    return Boolean(sourceUrl(value));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -87,6 +121,66 @@ export function pipelineKindOf(projectKind: string | null | undefined): "narrati
   if (projectKind === "marketing") return "marketing";
   if (projectKind === "explainer") return "explainer";
   return "narrative";
+}
+
+async function attachRenderedAsset(app: pg.Pool, gateway: pg.Pool, scope: Scope, job: OpenJob,
+  uri: string, actualUnits: number | null, fetchImpl?: typeof fetch) {
+  const provider = recordedProvider(job);
+  if (!provider || !verifiedResultUri(uri, provider, false) || job.mock || job.task_id.startsWith("mock-")
+    || (job.submit_payload?.decision?.after?.provider && job.provider && job.submit_payload.decision.after.provider !== job.provider)) {
+    throw new Error("不能核实原任务的素材地址");
+  }
+  const source = (await scopedQuery<{ md: string; kind: string }>(app, scope,
+    `SELECT s.md, p.kind FROM render_scripts s JOIN video_projects p
+       ON p.id=s.project_id AND p.workspace_id=s.workspace_id
+     WHERE s.workspace_id=$1 AND s.id=$2 AND p.id=$3`, [scope.workspaceId, job.script_id, job.project_id]))[0];
+  if (!source) throw new Error("渲染脚本与项目不在当前作用域");
+  const media = await downloadToMediaStore(uri, { workspaceId: scope.workspaceId, fetchImpl });
+  const registered = await registerRenderedClip(app, gateway, scope, {
+    assetId: newId("VA"), kind: "clip", projectId: job.project_id, sha256: media.sha256,
+    sourceUrl: uri, localRelPath: media.relPath, provider, providerModel: job.provider_model ?? "",
+    jobId: job.id, scriptId: job.script_id, seconds: actualUnits,
+    title: `${job.project_id} · ${job.script_id}`, prompt: source.md.slice(0, 4000) || null,
+    pipelineKind: pipelineKindOf(source.kind),
+    aspectRatio: job.submit_payload?.decision?.after?.request?.aspectRatio ?? null, by: "render-poller",
+  });
+  const client = await gateway.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
+    const updated = await client.query(
+      `UPDATE render_jobs SET asset_id=$5, updated_at=clock_timestamp()
+        WHERE id=$1 AND workspace_id=$2 AND task_id=$3 AND result_url=$4 AND status='done' AND asset_id IS NULL`,
+      [job.id, scope.workspaceId, job.task_id, uri, registered.assetId]);
+    if (updated.rowCount !== 1) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    await gatewayAppendOnClient(client, { ...scope, actor: { id: "render-poller", type: "system" } }, {
+      who: { type: "system", id: "render-poller" },
+      context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+      object: { type: "render_job", id: job.id },
+      decision: {
+        action: "render.ingest",
+        after: { task_id: job.task_id, provider, asset_id: registered.assetId, sha256: media.sha256, bytes: media.bytes, local_path: media.relPath },
+        basis: ["已验证同一供应商任务的真实视频并回读本地字节"],
+      },
+      rule_impact: [],
+    });
+    await client.query("COMMIT");
+    return { assetId: registered.assetId, localPath: media.relPath, sha256: media.sha256, bytes: media.bytes };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function mediaFailure(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/https?:\/\/[^\s]+/gi, "[供应商地址]").slice(0, 300);
 }
 
 export async function pollRenderJobs(
@@ -135,18 +229,37 @@ export async function pollRenderJobs(
     await client.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
     // 开放任务 + 提交事件留痕的供应商（event 回放取 provider，无留痕回退推断）
     const rows = await client.query<OpenJob>(
-      `SELECT j.id, j.task_id, j.script_id, j.project_id, j.provider_model, j.est_cny, j.est_usd, j.created_at,
+      `SELECT j.id, j.task_id, j.script_id, j.project_id, j.provider, j.provider_model, j.mock,
+              j.status, j.result_url, j.asset_id, j.actual_seconds, j.actual_cny, j.actual_usd, j.est_cny, j.est_usd, j.created_at,
+              complete.completed_at AS cost_completed_at, complete.provider AS cost_provider,
               (SELECT e.payload
                  FROM biz_events e
-                WHERE e.workspace_id=j.workspace_id
+                WHERE e.workspace_id=j.workspace_id AND e.tenant_id=w.tenant_id
                   AND e.payload->'decision'->>'action'='render.submit'
                   AND e.payload->'decision'->'after'->>'jobId'=j.id
                 ORDER BY e.seq DESC LIMIT 1) AS submit_payload
-         FROM render_jobs j
-        WHERE j.workspace_id=$1 AND j.status IN ('submitted','rendering') AND j.task_id IS NOT NULL
-        ORDER BY j.created_at ASC
-        LIMIT $2`,
-      [scope.workspaceId, opts.limit ?? 20],
+         FROM render_jobs j JOIN workspaces w ON w.id=j.workspace_id
+         LEFT JOIN budget_ledger b ON b.workspace_id=j.workspace_id AND b.idempotency_key='render:' || j.id
+         LEFT JOIN LATERAL (
+           SELECT e.created_at AS completed_at, e.payload->'decision'->'after'->>'provider' AS provider FROM biz_events e
+            WHERE j.status='done' AND j.actual_cny IS NOT NULL AND b.id IS NULL
+              AND e.workspace_id=j.workspace_id AND e.tenant_id=w.tenant_id
+              AND e.payload->'object'->>'id'=j.id
+              AND e.payload->'decision'->>'action'='render.complete'
+              AND e.payload->'decision'->'after'->>'task_id'=j.task_id
+              AND NULLIF(e.payload->'decision'->'after'->>'provider','') IS NOT NULL
+              AND (j.provider IS NULL OR e.payload->'decision'->'after'->>'provider'=j.provider)
+              AND e.payload->'decision'->'after'->'actual_cny'=to_jsonb(j.actual_cny)
+            ORDER BY e.seq DESC LIMIT 1
+         ) complete ON true
+        WHERE j.workspace_id=$1 AND w.tenant_id=$2 AND j.task_id IS NOT NULL
+          AND (j.status IN ('submitted','rendering') OR
+            (j.status='done' AND j.result_url IS NOT NULL AND NOT j.mock
+              AND j.task_id NOT LIKE 'mock-%' AND j.result_url NOT LIKE 'mock:%'
+              AND (($4 AND j.asset_id IS NULL) OR complete.completed_at IS NOT NULL)))
+        ORDER BY j.updated_at ASC, j.created_at ASC, j.id ASC
+        LIMIT $3`,
+      [scope.workspaceId, scope.tenantId, opts.limit ?? 20, opts.ingest !== false],
     );
     jobs = rows.rows;
     await client.query("COMMIT");
@@ -157,97 +270,72 @@ export async function pollRenderJobs(
     client.release();
   }
 
-  const gw = await gateway.connect();
   for (const job of jobs) {
     report.checked += 1;
-    const provider = resolveProvider(realPool, job, mockPool);
-    if (!provider) {
-      // C-04：供应商未配置也不能让作业永远悬停——超龄判 failed（有终态出口）
-      if (renderJobTimedOut(job)) {
-        await app.query(
-          `UPDATE render_jobs SET status='failed', updated_at=now() WHERE id=$1 AND workspace_id=$2`,
-          [job.id, scope.workspaceId],
-        );
-        report.failed += 1;
-        report.details.push({ jobId: job.id, status: "failed", error: `供应商未配置且已超 ${RENDER_JOB_TIMEOUT_H}h（C-04 超时判死）` });
-      } else {
-        report.details.push({
-          jobId: job.id,
-          status: "skip",
-          error: `供应商 ${job.submit_payload?.decision?.after?.provider ?? "seedance"} 未配置`,
-        });
+    if (job.status === "done" && job.result_url) {
+      // Provider success is already durable. Repair only missing local bookkeeping.
+      const needsAsset = opts.ingest !== false && job.asset_id === null;
+      const touched = await scopedQuery<{ id: string }>(app, scope, `UPDATE render_jobs SET updated_at=clock_timestamp()
+        WHERE id=$1 AND workspace_id=$2 AND task_id=$3 AND result_url=$4 AND status='done' RETURNING id`,
+        [job.id, scope.workspaceId, job.task_id, job.result_url]);
+      if (!touched.length) {
+        report.details.push({ jobId: job.id, status: "superseded" });
+        continue;
       }
-      continue;
-    }
-    let result: { status: string; uri?: string; actualUnits?: number; error?: string };
-    try {
-      result = await provider.poll(job.task_id);
-    } catch (err) {
-      result = { status: "running", error: err instanceof Error ? err.message : String(err) };
-    }
-    // C-04：超龄任务无论 poll 返回什么都判 failed——poll 持续异常/供应商挂起不再永远悬停
-    if (result.status === "running" && renderJobTimedOut(job)) {
-      result = {
-        status: "failed",
-        error: `渲染超时判死（已超 ${RENDER_JOB_TIMEOUT_H}h；${result.error ?? "供应商持续无终态"}）`,
-      };
-    }
-
-    if (result.status === "succeeded" || result.status === "failed") {
-      const done = result.status === "succeeded";
-
-      /* ---- ① 素材入库（T-2026-0921-0002 → T-2026-0926-0007 粒度修正）：
-                下载 → sha256 → video_assets(kind=clip)（sha256 幂等去重）+ prompt/pipeline/时长/画幅 ---- */
-      let ingested: { assetId: string; localPath: string; sha256: string; bytes: number } | null = null;
-      let ingestError: string | null = null;
-      if (done && result.uri && opts.ingest !== false) {
+      const detail: PollReport["details"][number] = { jobId: job.id, status: "superseded" };
+      if (job.cost_completed_at && job.cost_provider && job.actual_cny !== null) {
         try {
-          const media = await downloadToMediaStore(result.uri, {
-            workspaceId: scope.workspaceId,
-            fetchImpl: opts.fetchImpl,
+          await recordRenderCost(app, gateway, scope, {
+            jobId: job.id, projectId: job.project_id, amountCny: Number(job.actual_cny),
+            usd: job.actual_usd === null ? null : Number(job.actual_usd),
+            provider: job.cost_provider, providerModel: job.provider_model ?? "",
+            seconds: job.actual_seconds, by: "render-poller", occurredAt: new Date(job.cost_completed_at).toISOString(),
           });
-          /**
-           * 单镜 job 的产物是**镜头片段**（clip），不是成片（final_cut）。
-           * 提示词从 render_scripts.md 冗余进素材（检索与复用匹配的唯一可用语料），
-           * 管线类型取 video_projects.kind（双管线过滤口径）。
-           */
-          const scriptRow = await scopedQuery<{ md: string | null }>(app, scope,
-            `SELECT md FROM render_scripts WHERE workspace_id=$1 AND id=$2`,
-            [scope.workspaceId, job.script_id]);
-          const projectRow = await scopedQuery<{ kind: string | null }>(app, scope,
-            `SELECT kind FROM video_projects WHERE workspace_id=$1 AND id=$2`,
-            [scope.workspaceId, job.project_id]);
-          const reg = await registerRenderedClip(app, gateway, scope, {
-            assetId: newId("VA"),
-            kind: "clip",
-            projectId: job.project_id,
-            sha256: media.sha256,
-            sourceUrl: result.uri,
-            localRelPath: media.relPath,
-            provider: provider.providerId,
-            providerModel: job.provider_model ?? "",
-            jobId: job.id,
-            scriptId: job.script_id,
-            seconds: result.actualUnits ?? null,
-            title: `${job.project_id} · ${job.script_id}`,
-            prompt: (scriptRow[0]?.md ?? "").slice(0, 4000) || null,
-            /** 片型如实回填（T-2026-0926-0020；口径收在 pipelineKindOf，带单测） */
-            pipelineKind: pipelineKindOf(projectRow[0]?.kind),
-            aspectRatio: job.submit_payload?.decision?.after?.request?.aspectRatio ?? null,
-            by: "render-poller",
-          });
-          ingested = { assetId: reg.assetId, localPath: media.relPath, sha256: media.sha256, bytes: media.bytes };
-        } catch (err) {
-          // 入库失败不推翻"生成成功"事实（产物仍在供应商侧 7 天）；失败原因进事件与报告，可重试
-          ingestError = err instanceof Error ? err.message : String(err);
+          detail.status = "cost_settled";
+        } catch (error) {
+          detail.status = "cost_pending";
+          detail.costError = mediaFailure(error);
         }
       }
+      if (needsAsset) {
+        try {
+          const asset = await attachRenderedAsset(app, gateway, scope, job, job.result_url, job.actual_seconds, opts.fetchImpl);
+          if (asset) {
+            report.ingested += 1;
+            detail.status = "ingested";
+            detail.assetId = asset.assetId;
+          }
+        } catch (error) {
+          detail.status = "ingest_pending";
+          detail.ingestError = mediaFailure(error);
+        }
+      }
+      report.details.push(detail);
+      continue;
+    }
+    const provider = resolveProvider(realPool, job, mockPool);
+    const mock = job.task_id.startsWith("mock-");
+    let result: Awaited<ReturnType<GenProvider["poll"]>>;
+    if (provider) {
+      try {
+        result = await provider.poll(job.task_id);
+      } catch {
+        result = { status: "submitted", error: "供应商查询未取得可核实的响应" };
+      }
+      if (result.status === "succeeded" && !verifiedResultUri(result.uri, provider.providerId, mock)) {
+        result = { status: "submitted", error: "供应商报告成功，但尚无可核实的产物地址" };
+      }
+    } else {
+      result = { status: "submitted", error: `当前无法使用原供应商 ${recordedProvider(job) ?? "（未记录）"} 核对该任务` };
+    }
 
-      /* ---- ② 实际成本（目录价 × 实际秒数；未核价 → 0 元入账并标 pricing=unknown） ---- */
-      const catalogModel = job.submit_payload?.decision?.after?.provider
-        ? findModelByProviderModel(provider.providerId, job.provider_model ?? "")
-        : null;
-      const actualUnits = result.actualUnits ?? null;
+    if (provider && (result.status === "succeeded" || result.status === "failed")) {
+      const done = result.status === "succeeded";
+
+      // No verified price or units means unknown cost, not a zero-cost real render.
+      const catalogModel = mock ? null : findModelByProviderModel(provider.providerId, job.provider_model ?? "", {});
+      const actualUnits = typeof result.actualUnits === "number" && Number.isFinite(result.actualUnits)
+        && result.actualUnits > 0 && result.actualUnits < 2_147_483_647 ? result.actualUnits : null;
       let actualUsd: number | null = null;
       let actualCny: number | null = null;
       let pricingMode: "catalog" | "unknown" = "unknown";
@@ -257,40 +345,44 @@ export async function pollRenderJobs(
         pricingMode = "catalog";
       }
 
+      const completedAt = new Date().toISOString();
+      const gw = await gateway.connect();
       try {
         await gw.query("BEGIN");
         await gw.query("SELECT set_config('app.workspace_id', $1, true)", [scope.workspaceId]);
         await gw.query("SELECT set_config('app.tenant_id', $1, true)", [scope.tenantId]);
-        await gw.query(
+        const moved = await gw.query(
           `UPDATE render_jobs
-              SET status=$3, result_url=$4, asset_id=COALESCE($5, asset_id),
-                  actual_seconds=$6, actual_usd=$7, actual_cny=$8, updated_at=now()
-            WHERE id=$1 AND workspace_id=$2`,
+              SET status=$3, result_url=$4, actual_seconds=$5, actual_usd=$6, actual_cny=$7, updated_at=now()
+            WHERE id=$1 AND workspace_id=$2 AND task_id=$8 AND status IN ('submitted','rendering')`,
           [
-            job.id, scope.workspaceId, done ? "done" : "failed", result.uri ?? null,
-            ingested?.assetId ?? null, actualUnits, actualUsd, actualCny,
+            job.id, scope.workspaceId, done ? "done" : "failed", done ? result.uri : null,
+            actualUnits === null ? null : Math.round(actualUnits), actualUsd, actualCny, job.task_id,
           ],
         );
+        if (moved.rowCount !== 1) {
+          await gw.query("ROLLBACK");
+          report.details.push({ jobId: job.id, status: "superseded" });
+          continue;
+        }
         await gatewayAppendOnClient(gw, { ...scope, actor: { id: "render-poller", type: "system" } }, {
           who: { type: "system", id: "render-poller" },
-          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: new Date().toISOString() },
+          context: { tenant_id: scope.tenantId, workspace_id: scope.workspaceId, time: completedAt },
           object: { type: "render_job", id: job.id },
           decision: {
             action: done ? "render.complete" : "render.failed",
             after: {
               task_id: job.task_id, provider: provider.providerId,
               /** C-01 修复：mock 产物必须可辨识——此前只能靠 task_id 前缀推断，事件面与真实成片同形 */
-              mock: job.task_id.startsWith("mock-"),
-              result_url: result.uri ?? null, error: result.error ?? null,
+              mock,
+              result_url: done ? result.uri : null, error: result.error ?? null,
               actual_seconds: actualUnits,
               est_cny: job.est_cny === null ? null : Number(job.est_cny),
               actual_usd: actualUsd, actual_cny: actualCny, pricing: pricingMode,
-              asset_id: ingested?.assetId ?? null,
-              local_path: ingested?.localPath ?? null,
-              /** 入库结果三态：ok / 失败原因 / 未尝试（mock 或已入库） */
-              ingest: done
-                ? (ingestError ? { ok: false, error: ingestError } : ingested ? { ok: true, bytes: ingested.bytes } : { ok: false, error: "无产物 URL 或入库已关闭" })
-                : null,
+              asset_id: null,
+              local_path: null,
+              // Local acceptance is a separate append-only render.ingest event.
+              ingest: done ? { ok: false, status: mock ? "simulated" : "pending" } : null,
             },
             basis: [done ? "轮询回填：渲染成功（异步任务制第二步）" : `轮询回填：渲染失败（${result.error ?? "未知原因"}；不静默）`],
           },
@@ -301,21 +393,35 @@ export async function pollRenderJobs(
            * C-01 修复：mock 任务（task_id 前缀 mock-）的"成功"是本地模拟，不得携带 synced:true 假回执——
            * 此前 mock 完成事件写 synced:true+verified_at，账本层面与真实外部回执无法区分（假交付）。
            */
-          ...(done && result.uri && !job.task_id.startsWith("mock-")
-            ? { receipt: { synced: true, snapshot_uri: result.uri, verified_at: new Date().toISOString() } }
-            : done && result.uri
-              ? { receipt: { synced: false, mode: "simulated", snapshot_uri: result.uri } }
-              : { receipt: { synced: false } }),
+          ...(done && result.uri
+            ? mock ? { receipt: { synced: false, mode: "simulated", snapshot_uri: result.uri } }
+              : provider.providerId === "whiteboard-local" || provider.providerId === "remotion-local"
+                ? { receipt: { synced: false, mode: "real", snapshot_uri: result.uri } }
+                : { receipt: { synced: true, snapshot_uri: result.uri, verified_at: new Date().toISOString() } }
+            : { receipt: { synced: false } }),
         });
         await gw.query("COMMIT");
       } catch (err) {
         await gw.query("ROLLBACK").catch(() => undefined);
         throw err;
+      } finally {
+        gw.release();
       }
 
-      /* ---- ③ 成本入账（幂等键 render:<jobId>；失败不推翻已完成事实，但必须留痕） ---- */
+      // Only the terminal CAS winner attempts immediate ingestion; later polls can recover it.
+      let ingested: Awaited<ReturnType<typeof attachRenderedAsset>> = null;
+      let ingestError: string | null = null;
+      if (done && result.uri && !mock && opts.ingest !== false) {
+        try {
+          ingested = await attachRenderedAsset(app, gateway, scope, job, result.uri, actualUnits, opts.fetchImpl);
+        } catch (error) {
+          ingestError = mediaFailure(error);
+        }
+      }
+
+      /* 成本入账（幂等键 render:<jobId>；失败不推翻已完成事实，但必须留痕） */
       let costError: string | null = null;
-      if (done) {
+      if (done && (mock || actualCny !== null)) {
         try {
           await recordRenderCost(app, gateway, scope, {
             jobId: job.id,
@@ -325,8 +431,9 @@ export async function pollRenderJobs(
             provider: provider.providerId,
             providerModel: job.provider_model ?? "",
             seconds: actualUnits,
-            mock: job.task_id.startsWith("mock-"),
+            mock,
             by: "render-poller",
+            occurredAt: completedAt,
           });
         } catch (err) {
           costError = err instanceof Error ? err.message : String(err);
@@ -337,7 +444,7 @@ export async function pollRenderJobs(
       if (done) report.done += 1; else report.failed += 1;
       if (ingested) report.ingested += 1;
 
-      /* ---- ④ 环节台账（T-2026-0926-0002）：每个 job 的终态迁移记一次 attempt（append-only） ---- */
+      /* 环节台账：每个 job 的终态迁移记一次 attempt（append-only） */
       const archiveWriter = archiveFor(job.project_id);
       if (archiveWriter) {
         try {
@@ -376,11 +483,19 @@ export async function pollRenderJobs(
         ingestError: ingestError ?? undefined, costError: costError ?? undefined,
       });
     } else {
-      // 仍在生成：状态推进 rendering（幂等）
-      await app.query(
-        `UPDATE render_jobs SET status='rendering' WHERE id=$1 AND workspace_id=$2 AND status='submitted'`,
-        [job.id, scope.workspaceId],
-      );
+      // RLS 的 GUC 必须与更新同事务；更新时间也让老的未核实任务不饿死队尾。
+      const moved = await scopedQuery<{ id: string }>(app, scope,
+        `UPDATE render_jobs SET status=CASE WHEN $4 THEN 'rendering' ELSE status END, updated_at=clock_timestamp()
+         WHERE id=$1 AND workspace_id=$2 AND task_id=$3 AND status IN ('submitted','rendering') RETURNING id`,
+        [job.id, scope.workspaceId, job.task_id, result.status === "running"]);
+      if (moved.length === 0) {
+        report.details.push({ jobId: job.id, status: "superseded" });
+        continue;
+      }
+      const overdue = renderJobTimedOut(job);
+      const unverified = Boolean(result.error) || overdue;
+      const error = [result.error, overdue ? `已超 ${RENDER_JOB_TIMEOUT_H}h，仍保留原任务等待供应商对账` : null]
+        .filter(Boolean).join("；") || undefined;
       /**
        * 进度心跳（T-2026-0926-0002，规格书 §6.2 改动 B）：
        * "慢" 与 "死" 必须可区分——in-flight 只写档案事件（带 jobId/taskId），不开新 attempt，
@@ -394,17 +509,17 @@ export async function pollRenderJobs(
             stageId: "renderPoll",
             jobId: job.id,
             taskId: job.task_id,
-            provider: provider.providerId,
-            status: "rendering",
+            provider: recordedProvider(job),
+            status: unverified ? "poll_pending" : result.status,
+            ...(error ? { error } : {}),
           });
         } catch (err) {
           console.error(`[render-poller] 档案心跳写入失败（不影响回填）job=${job.id}：${(err as Error).message}`);
         }
       }
       report.running += 1;
-      report.details.push({ jobId: job.id, status: "running" });
+      report.details.push({ jobId: job.id, status: unverified ? "poll_pending" : "running", ...(error ? { error } : {}) });
     }
   }
-  gw.release();
   return report;
 }

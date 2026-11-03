@@ -86,8 +86,8 @@
     {
       "path": "apps/server/src/video/render-poller.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/render-poller.ts",
-      "targetSha256": "9695f47f3c9dde50bf61ee39be5c69dfeff87a25c0bfb9ccc854abaabc1166c4",
-      "targetBytes": 19923,
+      "targetSha256": "eb5180aa2c3e40ff34c5999705c7f1e6d61c55bf49549d85f59f11f6eca12552",
+      "targetBytes": 26340,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "2ad8ca7e875702f8921759ecf2dceb71c67127fc382f678fe3a44e682984f151",
@@ -96,8 +96,8 @@
     {
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
-      "targetSha256": "f782cbd5a7141a7f21c9abfbc40f20d09121626d4ca8fcbd4c5ce27c9979937c",
-      "targetBytes": 90462,
+      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
+      "targetBytes": 92097,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "d6d20e0704d355d51841e792982bc16081ed62b9f3c010a924dcb491de7155bf",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

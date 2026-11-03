@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { JimengProvider, KlingProvider, SeedanceProvider } from "@workloom/base/model-router";
 
 import { listModels, getModel, providerConfigured, findFallbackModels, defaultVideoModelId } from "./catalog.js";
 import { estimateCost, checkCostCaps, costCaps, usdCnyRate } from "./cost.js";
@@ -118,6 +119,23 @@ describe("报价与成本上限闸", () => {
 });
 
 describe("供应商适配器", () => {
+  it.each([
+    new ArkVideoProvider({ apiKey: "fixture" }), new HiggsfieldProvider({ keyId: "fixture", keySecret: "fixture" }),
+    new MuapiProvider({ apiKey: "fixture" }), new SeedanceProvider({ apiKey: "fixture" }),
+    new KlingProvider({ apiKey: "fixture" }), new JimengProvider({ apiKey: "fixture" }),
+  ])("keeps an accepted task pending after query rate limit or service outage ($providerId)", async provider => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("untrusted error body", { status: 429 }))
+      .mockResolvedValueOnce(new Response("untrusted error body", { status: 503 }));
+    vi.stubGlobal("fetch", fetchImpl);
+    for (const status of [429, 503]) {
+      const result = await provider.poll("previously-accepted-task");
+      expect(result).toMatchObject({ status: "submitted", error: expect.stringContaining(`HTTP ${status}`) });
+      expect(result.error).not.toContain("untrusted error body");
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it("Ark Seedance：中立参数翻译为 ratio/duration/generate_audio，首帧进 content", async () => {
     const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
@@ -304,11 +322,11 @@ describe("供应商适配器", () => {
 
   it("Ark Seedance：poll 映射 succeeded/failed/running", async () => {
     const provider = new ArkVideoProvider({ apiKey: "k" });
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "succeeded", content: { video_url: "https://cdn.example.com/v.mp4" } }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ id: "t1", status: "succeeded", content: { video_url: "https://cdn.example.com/v.mp4" } }), { status: 200 })));
     await expect(provider.poll("t1")).resolves.toEqual({ status: "succeeded", uri: "https://cdn.example.com/v.mp4" });
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "failed", error: { message: "内容审核未通过" } }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ id: "t1", status: "failed", error: { message: "内容审核未通过" } }), { status: 200 })));
     await expect(provider.poll("t1")).resolves.toMatchObject({ status: "failed", error: "内容审核未通过" });
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "running" }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ id: "t1", status: "running" }), { status: 200 })));
     await expect(provider.poll("t1")).resolves.toEqual({ status: "running" });
   });
 
@@ -317,7 +335,7 @@ describe("供应商适配器", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       seen.push({ url: String(url), headers: (init?.headers ?? {}) as Record<string, string> });
       if (String(url).includes("/requests/")) {
-        return new Response(JSON.stringify({ status: "completed", video: { url: "https://cdn.hf/v.mp4" } }), { status: 200 });
+        return new Response(JSON.stringify({ request_id: "req-1", status: "completed", video: { url: "https://cdn.hf/v.mp4" } }), { status: 200 });
       }
       return new Response(JSON.stringify({ status: "queued", request_id: "req-1" }), { status: 200 });
     }));
@@ -333,7 +351,7 @@ describe("供应商适配器", () => {
   });
 
   it("Higgsfield：nsfw 终态按合规拒绝语义返回", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: "nsfw" }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ request_id: "req-2", status: "nsfw" }), { status: 200 })));
     const provider = new HiggsfieldProvider({ keyId: "k", keySecret: "s" });
     const r = await provider.poll("req-2");
     expect(r.status).toBe("failed");
@@ -351,8 +369,8 @@ describe("成片入库与媒体通道", () => {
   it("下载后落盘并给出 sha256（内容一致）", async () => {
     const dir = mkdtempSync(join(tmpdir(), "wl-media-"));
     process.env.WORKLOOM_MEDIA_DIR = dir;
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array([1, 2, 3, 4, 5]), { status: 200, headers: { "content-type": "video/mp4" } })));
-    const media = await downloadToMediaStore("https://cdn.example.com/v.mp4", { workspaceId: "ws-test" });
+    const fetchImpl: typeof fetch = async () => new Response(new Uint8Array([1, 2, 3, 4, 5]), { status: 200, headers: { "content-type": "video/mp4" } });
+    const media = await downloadToMediaStore("https://cdn.example.com/v.mp4", { workspaceId: "ws-test", fetchImpl });
     expect(media.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(media.bytes).toBe(5);
     expect(media.relPath).toBe(`video/ws-test/${media.sha256}.mp4`);
@@ -362,8 +380,8 @@ describe("成片入库与媒体通道", () => {
   it("超过大小上限直接拒收（防磁盘写爆）", async () => {
     const dir = mkdtempSync(join(tmpdir(), "wl-media-"));
     process.env.WORKLOOM_MEDIA_DIR = dir;
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array(2048), { status: 200 })));
-    await expect(downloadToMediaStore("https://cdn.example.com/big.mp4", { workspaceId: "ws", maxBytes: 1024 })).rejects.toThrow(/超过大小上限/);
+    const fetchImpl: typeof fetch = async () => new Response(new Uint8Array(2048), { status: 200 });
+    await expect(downloadToMediaStore("https://cdn.example.com/big.mp4", { workspaceId: "ws", maxBytes: 1024, fetchImpl })).rejects.toThrow(/超过大小上限/);
     rmSync(dir, { recursive: true, force: true });
   });
 

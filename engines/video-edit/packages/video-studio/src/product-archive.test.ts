@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +10,7 @@ import {
   normalizeProductName,
   productArchivePromptLines,
   productHeroPhoto,
+  productPhotoPath,
   selectProductArchive,
   sha256FileSync,
   verifyProductArchive,
@@ -146,6 +147,24 @@ describe("product archive（真实商品档案）", () => {
     const tiny = writePhoto(smallDir, "tiny.jpg", 10_000);
     small.photos[0] = { id: "hero", file: tiny.file, role: "hero", sha256: tiny.sha256, bytes: tiny.bytes };
     expect(verifyProductArchive(small, { dir: smallDir }).map((issue) => issue.code)).toContain("photo-size");
+  });
+
+  it("rejects a matching photo digest reached through a symlink outside the product archive", () => {
+    const dir = directory(), archive = archiveFixture(dir), outside = directory();
+    const external = writePhoto(outside, "foreign.jpg");
+    const photo = { ...archive.photos[0]!, ...external };
+    symlinkSync(join(outside, external.file), join(dir, external.file));
+    archive.photos[0] = photo;
+    expect(verifyProductArchive(archive, { dir })).toContainEqual(expect.objectContaining({ code: "photo-path", hard: true }));
+    expect(() => productPhotoPath({ archive, dir, issues: [] }, photo)).toThrow("PRODUCT_PHOTO_INVALID");
+  });
+
+  it("rechecks the selected product photo against the registered bytes at use time", () => {
+    const dir = directory(), archive = archiveFixture(dir), photo = archive.photos[0]!;
+    const entry = { archive, dir, issues: verifyProductArchive(archive, { dir }) };
+    expect(productPhotoPath(entry, photo)).toBe(join(dir, photo.file));
+    writeFileSync(join(dir, photo.file), randomBytes(photo.bytes));
+    expect(() => productPhotoPath(entry, photo)).toThrow("PRODUCT_PHOTO_INVALID");
   });
 
   it("选择器支持 id/商品名/别名/公司/品牌，且客户上传优先于系统生成", () => {

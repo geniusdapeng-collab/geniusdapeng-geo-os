@@ -90,6 +90,7 @@ export interface FilmComponentSummary {
   state: FilmComponentState;
   reservedCny: number;
   actualCny: number | null;
+  providerTaskId?: string;
   updatedAt: string;
 }
 
@@ -382,6 +383,24 @@ export class FilmLedger {
         }
         return { row, deduped: true };
       }
+      if (input.component === "image" || input.component === "video") {
+        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+          JSON.stringify(["film-paid-project", this.scope.tenantId, this.scope.workspaceId, jobRow.project_id]),
+        ]);
+        const pending = await client.query(
+          `SELECT c.id FROM film_component_requests c JOIN film_jobs j ON j.id=c.job_id
+            WHERE c.tenant_id=$1 AND c.workspace_id=$2 AND c.project_id=$3
+              AND c.component IN ('image','video')
+              AND (
+                (c.job_id<>$4 AND ((c.state IN ('dispatched','unknown') AND c.dispatch_count>0)
+                  OR (j.status='running' AND c.state IN ('reserved','dispatched'))))
+                OR (c.job_id=$4 AND c.component=$5 AND c.shot_id IS NOT DISTINCT FROM $6
+                  AND (c.state IN ('reserved','dispatched') OR (c.state='unknown' AND c.dispatch_count>0)))
+              ) LIMIT 1`,
+          [this.scope.tenantId, this.scope.workspaceId, jobRow.project_id, input.jobId, input.component, input.shotId],
+        );
+        if (pending.rowCount) fail("FILM_GENERATION_RECONCILIATION_REQUIRED", "原影片生成请求尚未核实，请先按原任务对账");
+      }
       const totals = await client.query<{ reserved: string }>(
         `SELECT COALESCE(SUM(reserved_cny),0)::text AS reserved FROM film_component_requests WHERE job_id=$1`,
         [input.jobId],
@@ -429,8 +448,27 @@ export class FilmLedger {
       const result = await client.query(
         `UPDATE film_component_requests
             SET provider=$5, provider_model=$6, dispatch_count=dispatch_count+1, updated_at=now()
-          WHERE tenant_id=$1 AND workspace_id=$2 AND id=$3 AND owner_token=$4 AND state='dispatched' RETURNING id`,
+          WHERE tenant_id=$1 AND workspace_id=$2 AND id=$3 AND owner_token=$4 AND state='dispatched' AND dispatch_count=0 RETURNING id`,
         [this.scope.tenantId, this.scope.workspaceId, id, ownerToken, provider, providerModel],
+      );
+      this.requireChanged(result.rowCount);
+    });
+  }
+
+  /** Preserve the original accepted ID before polling. An observed late receipt does not reopen the request. */
+  async recordVideoTaskReceipt(id: string, ownerToken: string, taskId: string, providerRequestHash: string): Promise<void> {
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/.test(taskId) || !/^[a-f0-9]{64}$/.test(providerRequestHash)) {
+      fail("FILM_PROVIDER_RECEIPT_UNKNOWN", "供应商任务 ID 或实际请求摘要无效");
+    }
+    await this.transaction(async client => {
+      const result = await client.query(
+        `UPDATE film_component_requests
+            SET evidence=evidence || jsonb_build_object('providerTaskId',$5::text,'providerRequestHash',$6::text), updated_at=now()
+          WHERE tenant_id=$1 AND workspace_id=$2 AND id=$3 AND owner_token=$4
+            AND state IN ('dispatched','unknown') AND component='video' AND dispatch_count=1
+            AND (NOT (evidence ? 'providerTaskId')
+              OR (evidence->>'providerTaskId'=$5 AND evidence->>'providerRequestHash'=$6)) RETURNING id`,
+        [this.scope.tenantId, this.scope.workspaceId, id, ownerToken, taskId, providerRequestHash],
       );
       this.requireChanged(result.rowCount);
     });
@@ -448,7 +486,7 @@ export class FilmLedger {
     await this.transaction(async (client) => {
       const result = await client.query(
         `UPDATE film_component_requests
-            SET state='accepted', provider=$5, provider_model=$6, actual_cny=$7, evidence=$8::jsonb, updated_at=now()
+            SET state='accepted', provider=$5, provider_model=$6, actual_cny=$7, evidence=$8::jsonb || evidence, updated_at=now()
           WHERE tenant_id=$1 AND workspace_id=$2 AND id=$3 AND owner_token=$4 AND state='dispatched' RETURNING id`,
         [this.scope.tenantId, this.scope.workspaceId, id, ownerToken,
           receipt.provider, receipt.providerModel,
@@ -469,7 +507,7 @@ export class FilmLedger {
     await this.transaction(async (client) => {
       const result = await client.query(
         `UPDATE film_component_requests
-            SET state=$5, actual_cny=$6, evidence=$7::jsonb || jsonb_build_object('failureClass',$8::text), updated_at=now()
+            SET state=$5, actual_cny=$6, evidence=$7::jsonb || evidence || jsonb_build_object('failureClass',$8::text), updated_at=now()
           WHERE tenant_id=$1 AND workspace_id=$2 AND id=$3 AND owner_token=$4 AND state IN ('dispatched','reserved') RETURNING id`,
         [this.scope.tenantId, this.scope.workspaceId, id, ownerToken, receipt.state,
           receipt.actualCny === null || receipt.actualCny === undefined ? null : receipt.actualCny,
@@ -517,6 +555,8 @@ export class FilmLedger {
           state: component.state,
           reservedCny,
           actualCny,
+          ...(typeof component.evidence.providerTaskId === "string" && component.component === "video"
+            ? { providerTaskId: component.evidence.providerTaskId } : {}),
           updatedAt: iso(component.updated_at),
         };
       });

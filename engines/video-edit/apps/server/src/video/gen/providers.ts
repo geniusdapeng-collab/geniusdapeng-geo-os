@@ -10,7 +10,7 @@
  * aspect_ratio/duration/generate_audio/image_url）。
  */
 import {
-  JimengProvider, KlingProvider,
+  JimengProvider, KlingProvider, pendingGenPoll,
   type GenKind, type GenProvider, type GenRequest, type GenTaskStatus,
 } from "@workloom/base/model-router";
 import { ProviderError } from "./types.js";
@@ -68,12 +68,15 @@ async function postCompiled(compiled: CompiledProviderRequest, headers: Record<s
   catch { throw new ProviderError("PROVIDER_FAILED", "供应商响应不是有效 JSON"); }
 }
 
-async function getJson(url: string, headers: Record<string, string>): Promise<{ ok: boolean; status: number; body: unknown; text: string }> {
-  const res = await fetch(url, { method: "GET", headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }); // C-06
-  const text = await res.text();
+async function getJson(url: string, headers: Record<string, string>): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const res = await fetch(url, { method: "GET", headers, redirect: "error", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }); // C-06
+  if (!res.ok) {
+    await res.body?.cancel();
+    return { ok: false, status: res.status, body: null };
+  }
   let body: unknown = null;
-  try { body = JSON.parse(text) as unknown; } catch { body = null; }
-  return { ok: res.ok, status: res.status, body, text };
+  try { body = await res.json() as unknown; } catch { body = null; }
+  return { ok: true, status: res.status, body };
 }
 
 /* ================= 火山方舟 · Seedance（视频，任务制异步） ================= */
@@ -95,11 +98,16 @@ export class ArkVideoProvider implements GenProvider {
     return { taskId: data.id };
   }
   async poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; actualUnits?: number; error?: string }> {
-    const r = await getJson(`${this.base()}/contents/generations/tasks/${taskId}`, { authorization: `Bearer ${this.cfg.apiKey}` });
-    if (!r.ok) return { status: "failed", error: `Seedance 查询失败：HTTP ${r.status} ${r.text.slice(0, 120)}` };
-    const d = r.body as { status?: string; content?: { video_url?: string }; error?: { message?: string }; usage?: { completion_tokens?: number } };
-    if (d.status === "succeeded") return { status: "succeeded", uri: d.content?.video_url };
-    if (d.status === "failed" || d.status === "cancelled" || d.status === "canceled") {
+    const r = await getJson(`${this.base()}/contents/generations/tasks/${encodeURIComponent(taskId)}`, { authorization: `Bearer ${this.cfg.apiKey}` });
+    if (!r.ok) return pendingGenPoll("Seedance", r.status);
+    const d = r.body as { id?: string; status?: string; content?: { video_url?: string }; error?: { message?: string } } | null;
+    if (!d?.status || d.id !== taskId) {
+      return { status: "submitted", error: "Seedance 返回任务身份或状态无法核实" };
+    }
+    if (d.status === "succeeded") return d.content?.video_url
+      ? { status: "succeeded", uri: d.content.video_url }
+      : { status: "submitted", error: "Seedance 未返回成片地址" };
+    if (["failed", "cancelled", "canceled", "expired"].includes(d.status)) {
       return { status: "failed", error: d.error?.message ?? `生成失败（${d.status}）` };
     }
     return { status: d.status === "running" || d.status === "processing" ? "running" : "submitted" };
@@ -162,12 +170,15 @@ export class HiggsfieldProvider implements GenProvider {
   }
 
   async poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; error?: string }> {
-    const r = await getJson(`${this.base()}/requests/${taskId}/status`, this.auth());
-    if (!r.ok) return { status: "failed", error: `Higgsfield 查询失败：HTTP ${r.status} ${r.text.slice(0, 120)}` };
+    const r = await getJson(`${this.base()}/requests/${encodeURIComponent(taskId)}/status`, this.auth());
+    if (!r.ok) return pendingGenPoll("Higgsfield", r.status);
     const d = r.body as {
-      status?: string; error?: unknown;
+      request_id?: string; status?: string; error?: unknown;
       video?: { url?: string }; images?: Array<{ url?: string }>; payload?: { video?: { url?: string } };
-    };
+    } | null;
+    if (!d?.status || d.request_id !== taskId) {
+      return { status: "submitted", error: "Higgsfield 返回任务身份或状态无法核实" };
+    }
     const uri = d.video?.url ?? d.images?.[0]?.url ?? d.payload?.video?.url;
     if (d.status === "completed") return { status: "succeeded", uri };
     if (d.status === "failed" || d.status === "nsfw" || d.status === "canceled") {
@@ -207,9 +218,12 @@ export class MuapiProvider implements GenProvider {
     return { taskId };
   }
   async poll(taskId: string): Promise<{ status: GenTaskStatus; uri?: string; error?: string }> {
-    const r = await getJson(`${this.base()}/api/v1/predictions/${taskId}/result`, { "x-api-key": this.cfg.apiKey });
-    if (!r.ok) return { status: "failed", error: `MuAPI 查询失败：HTTP ${r.status}` };
-    const d = r.body as { status?: string; url?: string; outputs?: string[]; error?: string };
+    const r = await getJson(`${this.base()}/api/v1/predictions/${encodeURIComponent(taskId)}/result`, { "x-api-key": this.cfg.apiKey });
+    if (!r.ok) return pendingGenPoll("MuAPI", r.status);
+    const d = r.body as { request_id?: string; status?: string; url?: string; outputs?: string[]; error?: string } | null;
+    if (typeof d?.status !== "string" || (d.request_id !== undefined && d.request_id !== taskId)) {
+      return { status: "submitted", error: "MuAPI 返回任务身份或状态无法核实" };
+    }
     const uri = d.url ?? d.outputs?.[0];
     const st = (d.status ?? "").toLowerCase();
     if (["completed", "succeeded", "success"].includes(st)) return { status: "succeeded", uri };

@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withCreativeBudget, type CreativeBudgetHooks, type CreativeModelOutcome } from "./creative-runtime.js";
@@ -31,6 +31,7 @@ function file(name: string, bytes: string | Buffer): string {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const path of dirs.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
@@ -307,6 +308,84 @@ describe("AI producer evidence gate", () => {
     expect((await reviewStage(textOptions({
       artifacts: [{ path, kind: "text", expectedSha256: "a".repeat(64) }],
     }))).approved).toBe(false);
+  });
+
+  it("sends the original accepted image bytes even if the live path is replaced and restored", async () => {
+    const path = file("portrait.png", png);
+    const replacement = Buffer.concat([png, Buffer.from("unapproved replacement")]);
+    const sha256 = createHash("sha256").update(png).digest("hex");
+    const bodies: string[] = [];
+    const fetchImpl: typeof fetch = (url, init) => {
+      writeFileSync(path, png);
+      return judge(good, bodies)(url, init);
+    };
+    const verdict = await reviewStage(textOptions({ stage: "keyframe", fetchImpl, artifacts: [{
+      path, expectedSha256: sha256,
+      get kind() { writeFileSync(path, replacement); return "image" as const; },
+    }] }));
+    expect(verdict.approved).toBe(true);
+    expect(verdict.evidence).toContainEqual({ path, sha256, scope: "image" });
+    expect(bodies[0]).toContain(`data:image/png;base64,${png.toString("base64")}`);
+    expect(bodies[0]).not.toContain(replacement.toString("base64"));
+  });
+
+  it("compresses only the captured image and records the exact compressed wire hash", async () => {
+    const large = Buffer.concat([png, Buffer.alloc(900_000)]);
+    const path = file("large.png", large), sourceSha256 = createHash("sha256").update(large).digest("hex");
+    const compressedSha256 = createHash("sha256").update(png).digest("hex");
+    const bodies: string[] = [];
+    let shrinkInput: Buffer | undefined;
+    const verdict = await reviewStage(textOptions({ stage: "keyframe", fetchImpl: judge(good, bodies),
+      artifacts: [{ path, kind: "image", expectedSha256: sourceSha256 }],
+      shrinkImage: input => {
+        writeFileSync(path, "path was replaced while the compressor ran");
+        shrinkInput = readFileSync(input);
+        writeFileSync(path, large);
+        writeFileSync(`${input}.resized`, png);
+        return `${input}.resized`;
+      },
+    }));
+    expect(shrinkInput?.equals(large)).toBe(true);
+    expect(verdict.approved).toBe(true);
+    expect(verdict).toMatchObject({ visualEvidence: [{ path, sourceSha256, sha256: compressedSha256, kind: "resized" }] });
+    expect(bodies[0]).toContain(png.toString("base64"));
+  });
+
+  it("probes and samples a single video snapshot while the original is temporarily replaced", async () => {
+    const path = file("shot.mp4", "approved fixture video"), sourceSha256 = createHash("sha256").update(readFileSync(path)).digest("hex");
+    const probe = file("fixture-probe", `#!/usr/bin/env node
+const fs = require('node:fs');
+fs.writeFileSync(${JSON.stringify(path)}, 'different fixture video');
+if (fs.readFileSync(process.argv.at(-1), 'utf8') !== 'approved fixture video') process.exit(1);
+console.log(JSON.stringify({format: {duration: 5}}));`);
+    const frame = file("fixture-frame", `#!/usr/bin/env node
+const fs = require('node:fs');
+if (fs.readFileSync(process.argv[process.argv.indexOf('-i') + 1], 'utf8') !== 'approved fixture video') process.exit(1);
+fs.writeFileSync(process.argv.at(-1), Buffer.from(${JSON.stringify(png.toString("base64"))}, 'base64'));`);
+    chmodSync(probe, 0o700); chmodSync(frame, 0o700);
+    vi.stubEnv("WL_FFPROBE", probe); vi.stubEnv("WL_FFMPEG", frame);
+    const bodies: string[] = [];
+    const verdict = await reviewStage(textOptions({ stage: "shot", artifacts: [{ path, kind: "video", expectedSha256: sourceSha256 }],
+      fetchImpl: (url, init) => {
+        writeFileSync(path, "approved fixture video");
+        return judge(good, bodies)(url, init);
+      },
+    }));
+    expect(verdict.approved).toBe(true);
+    expect(verdict.visualEvidence).toEqual([0, 1, 2, 3, 4].map(timestampSec => ({ path, sourceSha256, timestampSec,
+      sha256: createHash("sha256").update(png).digest("hex"), kind: "temporal-frame" })));
+    expect(bodies[0]?.match(/"type":"image_url"/g)).toHaveLength(5);
+  });
+
+  it("refuses to shrink an evidence image whose original bytes are required", async () => {
+    const path = file("original-required.png", Buffer.concat([png, Buffer.alloc(900_000)]));
+    const bodies: string[] = [], shrinkImage = vi.fn(() => file("incomplete-alternative.png", png));
+    const verdict = await reviewStage(textOptions({ stage: "keyframe", fetchImpl: judge(good, bodies), shrinkImage,
+      artifacts: [{ path, kind: "image", requireOriginalImage: true }],
+    }));
+    expect(verdict).toMatchObject({ approved: false, status: "unverified" });
+    expect(shrinkImage).not.toHaveBeenCalled();
+    expect(bodies).toHaveLength(0);
   });
 
   it("missing files, missing references and unsupported audio fail closed", async () => {

@@ -13,6 +13,8 @@ export interface GateInput {
   engineDir?: string; env?: NodeJS.ProcessEnv; onLog?: (line: string) => void; timeoutMs?: number;
   /** 正式渲染/HTTP finalize 必须有原任务来源绑定；独立文件诊断不补认证。 */
   requireProviderState?: boolean;
+  /** HTTP finalize supplies the exact task accepted for this scoped job. */
+  expectedTaskId?: string;
 }
 export interface GateRunResult { report: QaReport; qaFramesDir: string; sheetsDir: string }
 async function run(cmd: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: number): Promise<string> {
@@ -37,6 +39,9 @@ export async function runMachineGates(input: GateInput): Promise<GateRunResult> 
     if (!before.isFile() || before.size <= 0) throw new Error("POST_MEDIA_FILE_REQUIRED");
     const fingerprint = renderedOutputFingerprint(video), sha256 = fingerprint.sha256;
     const state = readJobState(input.jobDir);
+    if (input.expectedTaskId !== undefined && state?.taskId !== input.expectedTaskId) {
+      throw new Error("POST_RESUME_TASK_MISMATCH: 本机渲染回执与当前已接受任务不同");
+    }
     if (state || input.requireProviderState) assertRemotionSourceBinding(state, input.jobDir, video, fingerprint);
     const ffprobe = env.WL_FFPROBE || env.FFPROBE_PATH || "ffprobe";
     const metadata = JSON.parse(await run(ffprobe, ["-v", "error", "-show_format", "-show_streams", "-of", "json", video], env, timeoutMs)) as {

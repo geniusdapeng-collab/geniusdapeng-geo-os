@@ -26,7 +26,7 @@ export interface EstimateInput {
 }
 
 /** 预估成本：按目录单价 × 计量单位；缺价时 usd/cny 为 null 并给出 note（UI 显式标注） */
-export function estimateCost(model: MediaModel, input: EstimateInput = {}): GenEstimate {
+export function estimateCost(model: MediaModel, input: EstimateInput = {}, env: NodeJS.ProcessEnv = process.env): GenEstimate {
   const pricing = model.pricing;
   const unit = pricing?.unit ?? (model.kind === "image" ? "image" : "second");
   const units = unit === "second"
@@ -42,7 +42,7 @@ export function estimateCost(model: MediaModel, input: EstimateInput = {}): GenE
     };
   }
   const usd = Math.round(pricing.usd * units * 10000) / 10000;
-  const cny = Math.round(usd * usdCnyRate() * 100) / 100;
+  const cny = Math.round(usd * usdCnyRate(env) * 100) / 100;
   return {
     modelId: model.id, provider: model.provider, unit, units, usd, cny,
     promo: pricing.promo, pricingAsOf: pricing.asOf, note: pricing.note,
@@ -121,6 +121,7 @@ export interface RenderCostInput {
   providerModel: string;
   seconds?: number | null;
   mock?: boolean;
+  occurredAt?: string;
   by: string;
 }
 
@@ -139,6 +140,7 @@ export async function recordRenderCost(
     amount,
     currency: "CNY",
     idempotencyKey: `render:${input.jobId}`,
+    occurredAt: input.occurredAt,
     meta: {
       jobId: input.jobId, provider: input.provider, providerModel: input.providerModel,
       usd: input.usd ?? null, seconds: input.seconds ?? null, mock: Boolean(input.mock),

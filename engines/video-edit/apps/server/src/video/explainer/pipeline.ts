@@ -17,7 +17,7 @@ import { alignTimestamps, verifyTimingParity } from "./asr-aligner.js";
 import { deliverFilm, type DeliverResult } from "./deliver.js";
 import { buildCardRegistry, type CardRegistry } from "./card-registry.js";
 import { engineDirOf, jobsDirOf } from "./engine.js";
-import { buildProject, templateDirOf, type BuildProjectResult } from "./project-builder.js";
+import { buildProject, templateDirOf, type BuildProjectInput, type BuildProjectResult } from "./project-builder.js";
 import { runMachineGates } from "./qa-gates.js";
 import { RemotionProvider, assertRemotionSourceBinding, probeRenderedSize, readJobState, renderedOutputFingerprint } from "./remotion-provider.js";
 import { annotateSemantics } from "./semantics.js";
@@ -60,6 +60,8 @@ export interface ExplainerRunInput {
     source: "tts" | "upload";
     profile?: string;
     uploadPath?: string;
+    uploadSha256?: string;
+    stationScope?: string;
     confirmed?: boolean;
   };
   /* ---------- 装配面 ---------- */
@@ -68,6 +70,7 @@ export interface ExplainerRunInput {
   brand?: { product: string; tone: string; accent?: string; base?: string; ink?: string };
   hostAssets?: Record<string, string>;
   assets?: Array<{ from: string; to: string }>;
+  uploadedVisuals?: BuildProjectInput["uploadedVisuals"];
   baselineHost?: string | null;
   llm?: LlmCall;
   allowRuleShotbook?: boolean;
@@ -274,6 +277,8 @@ export async function runExplainerPipeline(input: ExplainerRunInput): Promise<Ex
       source: voice.source,
       profile: voice.profile,
       uploadPath: voice.uploadPath,
+      uploadSha256: voice.uploadSha256,
+      stationScope: voice.stationScope,
       confirmed: voice.confirmed,
       env,
       onLog: log,
@@ -371,7 +376,7 @@ export async function runExplainerPipeline(input: ExplainerRunInput): Promise<Ex
   const build = buildProject({
     jobDir, engineDir, templateDir, script, timestamps: align.timestamps, semantics: semanticsResult.semantics,
     shotbook, audioPath, aspect, quality, hostAssets: input.hostAssets,
-    assets: input.assets, onLog: log,
+    assets: input.assets, uploadedVisuals: input.uploadedVisuals, onLog: log,
   });
   await stage({
     stageId: "assemble", status: "done",

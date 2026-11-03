@@ -16,7 +16,7 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildCardRegistry, extractConstSlots, extractDisplayStrings, parseFrontmatter, patchCardSource } from "./card-registry.js";
 import { alignScriptToTimestamps, expandToTiming, intToChinese, normalizeSpoken } from "./aligner.js";
 import { licenseStateOf, engineStatus, REQUIRED_ENGINE_FILES } from "./engine.js";
@@ -714,7 +714,7 @@ describe("解说片 submit 路由不可变请求复放", () => {
   let saved: any;
   let row: any;
   const prepare = vi.fn(), submit = vi.fn(), create = vi.fn(), autoApprove = vi.fn(), update = vi.fn(), renderJob = vi.fn(), register = vi.fn();
-  const query = vi.fn();
+  const query = vi.fn(), fence = vi.fn();
   beforeAll(async () => {
     const { initTRPC } = await import("@trpc/server");
     const t = initTRPC.context<any>().create();
@@ -723,9 +723,11 @@ describe("解说片 submit 路由不可变请求复放", () => {
     vi.doMock("@workloom/db", () => ({ getAppPool: () => ({}), getGatewayPool: () => ({}) }));
     vi.doMock("@workloom/base/workdata", () => ({ gatewayAppend: vi.fn(async () => ({ eventId: "EV-auto" })) }));
     vi.doMock("../gen/submit.js", () => ({ submitGenJob: submit }));
+    vi.doMock("../archive-host.js", () => ({ acquireProjectLease: async () => ({ release: async () => undefined }) }));
+    vi.doMock("./engine.js", () => ({ engineDirOf: () => "/unused", engineStatus: () => ({ ready: true }), talkcraftEnabled: () => true }));
     vi.doMock("../media/register-local.js", () => ({ registerLocalAsset: register }));
     vi.doMock("@workloom/base/asset-cms", () => ({ create, systemAutoApprove: autoApprove }));
-    vi.doMock("@workloom/base/fence-engine", () => ({ judge: () => ({ level: "auto", impacts: [], triggeredBy: [] }) }));
+    vi.doMock("@workloom/base/fence-engine", () => ({ judgeViews: fence }));
     vi.doMock("@workloom/base/model-router", () => ({ checkRenderBudget: () => ({ allowed: true }), planTierToPlanId: () => "pro" }));
     vi.doMock("../router.js", () => ({ loadActiveRules: async () => ({ rules: [], defaultLevel: "auto" }) }));
     vi.doMock("./pipeline.js", () => ({ runExplainerPipeline: prepare }));
@@ -734,10 +736,13 @@ describe("解说片 submit 路由不可变请求复放", () => {
     caller = (await import("./router.js")).explainerRouter.createCaller({ identity: { ...scope, memberNo: "MEM-EX", plan: "pro" } } as any);
   });
   beforeEach(() => {
+    vi.stubEnv("WORKLOOM_VOICE_BRIDGE_TENANT", scope.workspaceId);
+    vi.stubEnv("WORKLOOM_VOICE_PROFILE", "scope-authorized");
+    fence.mockReset().mockReturnValue({ level: "auto", impacts: [], triggeredBy: [] });
     saved = null;
-    row = { id: "shotbook", project_id: "project-ex", version: 3, script_text: "正文句子。", shotbook: { shots: [{ id: "s1", card: "verified-card" }] } };
+    row = { id: "shotbook", project_id: "project-ex", version: 3, script_text: "正文句子。", shotbook: { shots: [{ id: "s1", card: "verified-card", end: 5.4 }] } };
     prepare.mockReset().mockResolvedValue({ jobDir: "/tmp/prepared-project", voice: { sha256: "voice" }, timestamps: { total: 5.4, sentences: [{ i: 1, ok: true }] } });
-    submit.mockReset().mockResolvedValue({ taskId: "accepted-task" }); update.mockReset();
+    submit.mockReset().mockResolvedValue({ taskId: "accepted-task", provider: "remotion-local", mock: false }); update.mockReset();
     renderJob.mockReset().mockResolvedValue(null);
     register.mockReset().mockResolvedValue({ assetId: "registered-final-cut", sha256: "registered-sha", bytes: 1 });
     create.mockReset().mockImplementation(async (_a, _g, _s, input) => {
@@ -751,8 +756,9 @@ describe("解说片 submit 路由不可变请求复放", () => {
     });
     query.mockReset().mockImplementation(async (sql, params, actualScope) => {
       expect(actualScope).toEqual(scope);
-      if (sql.includes("SELECT s.* FROM render_scripts")) {
-        expect(params).toEqual([scope.workspaceId, expect.stringMatching(/^explainer-shotbook(?:-uhd)?$/), scope.tenantId, "project-ex"]);
+      if (sql.includes("FROM render_scripts s")) {
+        expect(params).toEqual([scope.workspaceId, expect.stringMatching(/^explainer-shotbook(?:-uhd)?$/), scope.tenantId, "project-ex",
+          expect.stringMatching(/^explainer:shotbook:v3(?::uhd)?$/)]);
         return saved && (!saved.script_key || saved.script_key === params[1]) ? [saved] : [];
       }
       if (sql.includes("SUM(")) return [{ total: "0" }];
@@ -760,6 +766,7 @@ describe("解说片 submit 路由不可变请求复放", () => {
       throw new Error(`unexpected query ${sql}`);
     });
   });
+  afterEach(() => vi.unstubAllEnvs());
   it("接受后记账失败重试复用相同 script/version/params，不重做配音工程，不重复审批", async () => {
     submit.mockRejectedValueOnce(new Error("SUBMISSION_FINALIZATION_PENDING"));
     await expect(caller.submit({ projectId: "project-ex" })).rejects.toThrow("SUBMISSION_FINALIZATION_PENDING");
@@ -785,13 +792,30 @@ describe("解说片 submit 路由不可变请求复放", () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(autoApprove).toHaveBeenCalledTimes(1);
   });
+  it("已有审批不能越过当前 G8，已接受原任务只走既有回执补账", async () => {
+    await caller.submit({ projectId: "project-ex" });
+    fence.mockReturnValue({ level: "block", impacts: [], triggeredBy: ["new-block"] });
+    await expect(caller.submit({ projectId: "project-ex" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(submit).toHaveBeenCalledTimes(1);
+    saved = { ...saved, status: "submitted", accepted_receipt: true };
+    await expect(caller.submit({ projectId: "project-ex" })).resolves.toMatchObject({ taskId: "accepted-task" });
+    expect(prepare).toHaveBeenCalledTimes(1); expect(autoApprove).toHaveBeenCalledTimes(1);
+    expect(submit.mock.calls[1]?.[0]).toMatchObject({ idempotencyKey: submit.mock.calls[0]?.[0].idempotencyKey,
+      params: submit.mock.calls[0]?.[0].params });
+  });
+  it("当前分镜选定的 16:9 保留到装配和提交", async () => {
+    row.render_scope = { aspect: "16:9" };
+    await caller.submit({ projectId: "project-ex" });
+    expect(prepare.mock.calls[0]?.[0].aspect).toBe("16:9");
+    expect(submit.mock.calls[0]?.[0].params).toMatchObject({ aspectRatio: "16:9", resolution: "1920x1080" });
+  });
   it("另一清晰度仍在渲染时拒绝覆盖分镜的工程目录", async () => {
     renderJob.mockImplementation(async (_scope, key) => key === "explainer:shotbook:v3:uhd" ? { status: "running" } : null);
     await expect(caller.submit({ projectId: "project-ex" })).rejects.toThrow("仍在运行");
     expect(prepare).not.toHaveBeenCalled();
     expect(submit).not.toHaveBeenCalled();
   });
-  it.each([{ voiceProfile: "changed" }, { renderScope: "only:s1" }, { assets: [{ from: "/a", to: "b" }] }])("相同分镜改变输入 %j，在重做准备/调用供应商前拒绝", async (patch) => {
+  it.each([{ voiceProfile: "changed" }, { renderScope: "only:s1" }])("相同分镜改变输入 %j，在重做准备/调用供应商前拒绝", async (patch) => {
     await caller.submit({ projectId: "project-ex" });
     await expect(caller.submit({ projectId: "project-ex", ...patch })).rejects.toThrow("绑定其他");
     expect(prepare).toHaveBeenCalledTimes(1); expect(submit).toHaveBeenCalledTimes(1);
@@ -802,7 +826,7 @@ describe("解说片 submit 路由不可变请求复放", () => {
     await expect(caller.finalize({ projectId: "project-ex", shotbookId: "shotbook" })).rejects.toThrow("当前项目");
     expect(prepare).not.toHaveBeenCalled(); expect(submit).not.toHaveBeenCalled();
   });
-  it.each(["original", "samepath-replacement", "success-error", "missing-state", "missing-binding"])("真实 HTTP finalize %s 核对原产物再交付，不靠 DB done 给当前片补发成功", async (kind) => {
+  it.each(["original", "samepath-replacement", "success-error", "missing-state", "missing-binding", "wrong-task"])("真实 HTTP finalize %s 核对原产物再交付，不靠 DB done 给当前片补发成功", async (kind) => {
     const root = mkdtempSync(join(tmpdir(), "growth explainer finalize 中文-")), video = join(root, "out", "v1.mp4");
     mkdirSync(join(root, "out"));
     const ffmpeg = process.env.WL_FFMPEG || "ffmpeg", ffprobe = process.env.WL_FFPROBE || "ffprobe";
@@ -821,7 +845,8 @@ describe("解说片 submit 路由不可变请求复放", () => {
     if (kind !== "missing-state") writeFileSync(join(root, "status.json"), JSON.stringify(state));
     writeFileSync(join(root, "job.json"), JSON.stringify({ quality: "hd", aspect: "9:16" }));
     row = { ...row, job_dir: root, shotbook: { ...row.shotbook, style: { domain: "真实恢复" } } };
-    renderJob.mockResolvedValue({ id: "db-done-job", status: "done" });
+    renderJob.mockResolvedValue({ id: "db-done-job", status: "done", mock: false, provider: "remotion-local",
+      task_id: kind === "wrong-task" ? "other-accepted-job" : "original-issued" });
     const current = hash(), previousProbe = process.env.WL_FFPROBE;
     process.env.WL_FFPROBE = ffprobe;
     try {

@@ -29,6 +29,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspectDeliveryFile, safeDeliveryPath } from "../delivery-trust.js";
 import { patchCardSource } from "./card-registry.js";
 import { engineDirOf, assertEngineReady } from "./engine.js";
 import { deriveAnchors, deriveBeats } from "./shotbook.js";
@@ -58,6 +59,8 @@ export interface BuildProjectInput {
   hostAssets?: Record<string, string>;
   /** 其它素材：绝对路径 → public 相对路径 */
   assets?: Array<{ from: string; to: string }>;
+  /** Service-authorized upload bytes keyed by their final public references. */
+  uploadedVisuals?: Record<string, { assetId: string; sha256: string }>;
   /** 是否导出音效采样库（shotbook 里有 sfx 时自动开） */
   withSfx?: boolean;
   onLog?: (line: string) => void;
@@ -147,10 +150,17 @@ export function buildProject(input: BuildProjectInput): BuildProjectResult {
   }
   // 同一 hostForm 只拷一次（多镜复用同一素材，避免工程膨胀）
   for (const { from, to } of input.assets ?? []) {
-    const target = join(publicDir, to);
+    const target = safeDeliveryPath(publicDir, to, true);
     if (!existsSync(from)) throw new Error(`素材不存在：${from}`);
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(from, target);
+  }
+  const usedUploads = new Set([...Object.values(hostSrcByShot).filter((ref): ref is string => ref !== null),
+    ...(input.assets ?? []).map(item => item.to)]);
+  for (const [ref, evidence] of Object.entries(input.uploadedVisuals ?? {})) {
+    if (usedUploads.has(ref) && inspectDeliveryFile(publicDir, ref).sha256 !== evidence.sha256) {
+      throw new Error("EXPLAINER_ASSET_CHANGED: 装配文件与已登记上传件摘要不同");
+    }
   }
 
   const cues: Array<{ t: number; src: string; vol: number }> = [];
@@ -184,8 +194,10 @@ export function buildProject(input: BuildProjectInput): BuildProjectResult {
     "",
     "| 素材 | 类型 | 来源 | 授权口径 |",
     "|---|---|---|---|",
-    ...Object.entries(input.hostAssets ?? {}).map(([form, absPath]) =>
-      `| host/${basename(absPath)}（${form}） | 人物底板（定妆照驱动） | 本仓角色档案 model-01-chen-zhuo（bundles/ai-video/library/characters） | 产品所有者授权角色档案；合成人脸，非真人素材 |`),
+    ...Object.entries(input.hostAssets ?? {}).filter(([, file]) => !input.uploadedVisuals?.[`host/${basename(file)}`]).map(([form, absPath]) =>
+      `| host/${basename(absPath)}（${form}） | 人物底板 | 本机运维提供 | 授权由本机运维登记 |`),
+    ...Object.entries(input.uploadedVisuals ?? {}).filter(([ref]) => usedUploads.has(ref)).map(([ref, evidence]) =>
+      `| ${ref.replaceAll("|", "&#124;")} | 工作区素材 | ${evidence.assetId} / sha256:${evidence.sha256} | 当前调用者已确认有权用于本片 |`),
     cues.length > 0
       ? "| public/sfx/*.mp3 | 音效采样 | video-talkcraft 内嵌采样（demos/_lib/sfx-samples.js） | Mixkit Sound Effects Free License（免署名可商用，见 demos/_lib/sfx/ATTRIBUTION.md） |"
       : "",
@@ -377,7 +389,7 @@ function hostForForm(
     return null;
   }
   if (!existsSync(source)) throw new Error(`人物素材不存在：${source}`);
-  const target = join(publicDir, "host", basename(source));
+  const target = safeDeliveryPath(publicDir, `host/${basename(source)}`, true);
   mkdirSync(dirname(target), { recursive: true });
   if (!existsSync(target)) copyFileSync(source, target);
   return `host/${basename(source)}`;

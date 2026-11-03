@@ -8,16 +8,18 @@
  *  - 摘要字段只做**忠实映射**：读不到的字段留 null，绝不用模型或默认值补编；
  *  - 档案主图（manifest 首图）登记进媒资库 kind=product_image，回填 hero_asset_id。
  */
-import { createHash, randomUUID } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, extname, join } from "node:path";
 import type pg from "pg";
 import { newId } from "@workloom/shared";
 import { scopedQuery, type AppPool, type Scope } from "../gen/db.js";
-import { mediaRelPathFor, registerLocalAsset, registerStoredMedia, sha256File } from "./register-local.js";
-import { mediaRoot } from "../gen/ingest.js";
-import { assertInside, safeSegment } from "./paths.js";
+import { registerLocalAsset } from "./register-local.js";
+import { inspectDeliveryFile } from "../delivery-trust.js";
+import { fetchPublicMarketingImage } from "../marketing-source-fetcher.js";
+import { safeSegment } from "./paths.js";
 
 export type ProductProfileRow = {
   id: string;
@@ -165,22 +167,6 @@ export function summarizeDossier(dossier: DossierLike): Record<string, unknown> 
   };
 }
 
-/** 下载商品主图（有上限/超时；失败返回 null，不编造 hero） */
-async function fetchHeroImage(url: string, targetAbs: string, maxBytes = 15 * 1024 * 1024): Promise<boolean> {
-  if (!/^https?:\/\//i.test(url)) return false;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) return false;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength === 0 || buf.byteLength > maxBytes) return false;
-    mkdirSync(dirname(targetAbs), { recursive: true });
-    await writeFile(targetAbs, buf);   // 异步落盘：主图最大 15MB，不该阻塞事件循环
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export interface UpsertProductProfileResult {
   profile: ProductProfileView;
   changed: boolean;
@@ -191,7 +177,7 @@ export interface UpsertProductProfileResult {
 
 /**
  * 读 `dossier.json` → 计算 sha256 → UPSERT 投影 → 主图入库并回填 hero_asset_id。
- * 幂等：同 sha256 重复调用只更新 updated_at 之外无实质变化（changed=false）。
+ * 幂等：正文和当前主图均相同才视为无实质变化（changed=false）。
  */
 export async function upsertProductProfileFromDossier(
   app: AppPool,
@@ -207,11 +193,11 @@ export async function upsertProductProfileFromDossier(
   if (!existsSync(dossierPath)) {
     throw new Error(`商品档案不存在：${dossierPath}（情报环节未产出该 product_id）`);
   }
-  const raw = readFileSync(dossierPath, "utf8");
-  const dossierSha = createHash("sha256").update(raw, "utf8").digest("hex");
+  const dossierFile = inspectDeliveryFile(input.dossierRoot, `${dossierProductId}/dossier.json`, { read: true, maxBytes: 8_000_000 });
+  const dossierSha = dossierFile.sha256;
   let dossier: DossierLike;
   try {
-    dossier = JSON.parse(raw) as DossierLike;
+    dossier = JSON.parse(dossierFile.content!.toString("utf8")) as DossierLike;
   } catch (err) {
     throw new Error(`dossier.json 解析失败：${err instanceof Error ? err.message : String(err)}`);
   }
@@ -230,75 +216,67 @@ export async function upsertProductProfileFromDossier(
       LIMIT 1`,
     [scope.workspaceId, dossierProductId, productName]);
   const prev = existing[0] ?? null;
-  const changed = !prev || prev.dossier_sha256 !== dossierSha;
   const id = prev?.id ?? newId("MP");
 
   // 主图：优先本地已落盘文件（portrait 运行时会下载参考图），否则按 manifest url 下载（可关）
-  let heroAssetId: string | null = prev?.hero_asset_id ?? null;
+  let heroAssetId: string | null = null;
   let heroIngested = false;
   let heroError: string | null = null;
-  const manifestPath = join(dir, "images", "manifest.json");
+  const manifestRef = `${dossierProductId}/images/manifest.json`;
+  const manifestPath = join(input.dossierRoot, manifestRef);
+  let manifestSha: string | undefined;
   try {
     if (existsSync(manifestPath)) {
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
-        hero_image_id?: string; reference_images?: Array<{ id?: string; url?: string; angle?: string }>;
+      const manifestFile = inspectDeliveryFile(input.dossierRoot, manifestRef, { read: true, maxBytes: 1_000_000 });
+      manifestSha = manifestFile.sha256;
+      const manifest = JSON.parse(manifestFile.content!.toString("utf8")) as {
+        hero_image_id?: string; reference_images?: DossierImageEntry[];
       };
       const images = manifest.reference_images ?? [];
-      const heroEntry = images.find((img) => img.id && img.id === manifest.hero_image_id) ?? images[0] ?? null;
-      if (heroEntry && changed) {
+      const selected = manifest.hero_image_id ? images.filter(img => img.id === manifest.hero_image_id) : images.slice(0, 1);
+      const [heroEntry] = selected;
+      if (selected.length > 1) throw new Error("主图标识重复，无法核实当前主图");
+      if (manifest.hero_image_id && !heroEntry) throw new Error("找不到清单指定的主图");
+      if (heroEntry) {
         const localDir = join(dir, "images");
-        const localCandidates = existsSync(localDir)
-          ? readdirSync(localDir).filter((f) => f !== "manifest.json").map((f) => join(localDir, f))
-          : [];
-        // 精确匹配优先（`img-1` 不能命中 `img-10`）：同名/`id.` 前缀/`id-` 边界三种写法
-        const matchId = (f: string, id: string) => {
-          const name = basename(f);
-          return name === id || name.startsWith(`${id}.`) || name.startsWith(`${id}-`) || name.startsWith(`${id}_`);
-        };
-        const localMatch = heroEntry.id
-          ? localCandidates.find((f) => matchId(f, heroEntry.id!)) ?? localCandidates.find((f) => basename(f).includes(heroEntry.id!))
-          : undefined;
-        const localFile = localMatch ?? localCandidates[0] ?? null;
-        if (localFile && existsSync(localFile)) {
-          assertInside(localDir, localFile, "dossier 主图");
+        const imageNames = readdirSync(localDir, { withFileTypes: true }).filter(file => file.isFile() && /\.(png|jpe?g|webp)$/i.test(file.name)).map(file => file.name);
+        const matches = imageNames.filter(name => heroEntry.id && (basename(name, extname(name)) === heroEntry.id
+          || name.startsWith(`${heroEntry.id}-`) || name.startsWith(`${heroEntry.id}_`)));
+        // Single-image historical dossiers used the canonical hero.<ext> name.
+        const candidates = !matches.length && images.length === 1 ? imageNames.filter(name => basename(name, extname(name)) === "hero") : matches;
+        if (candidates.length > 1) throw new Error("当前主图对应多个本地文件，无法核实唯一来源");
+        const [local] = candidates;
+        if (local) {
+          const file = inspectDeliveryFile(input.dossierRoot, `${dossierProductId}/images/${local}`, { maxBytes: 15 * 1024 * 1024 });
           const reg = await registerLocalAsset(app, gateway, scope, {
-            absPath: localFile,
+            absPath: file.path, expectedSha256: file.sha256, expectedRealPath: realpathSync(file.path),
             kind: "product_image",
             title: `${productName} · 主图`,
             tags: [productName, "商品图"],
             prompt: null,
             sourceType: "imported",
+            licenseRisk: "unknown",
             provenance: { source: "dossier", dossierPath, imageId: heroEntry.id ?? null, angle: heroEntry.angle ?? null },
             by: input.by,
           });
           heroAssetId = reg.assetId;
-          heroIngested = true;
+          heroIngested = !reg.deduped;
         } else if (heroEntry.url && (input.fetchHero ?? true)) {
-          const sha = createHash("sha256").update(heroEntry.url, "utf8").digest("hex");
-          const tmp = join(mediaRoot(), "upload", scope.workspaceId, `.staging-${randomUUID()}`);
-          const ok = await fetchHeroImage(heroEntry.url, tmp, input.heroMaxBytes);
-          if (ok) {
-            const bytes = statSync(tmp).size;
-            const sha256 = await sha256File(tmp);
-            const relPath = mediaRelPathFor("product_image", scope.workspaceId, sha256, heroEntry.url);
-            const absTarget = join(mediaRoot(), relPath);
-            mkdirSync(dirname(absTarget), { recursive: true });
-            const { renameSync } = await import("node:fs");
-            renameSync(tmp, absTarget);
-            const reg = await registerStoredMedia(app, gateway, scope, {
-              relPath, absPath: absTarget, sha256, bytes, kind: "product_image",
-              title: `${productName} · 主图`,
-              tags: [productName, "商品图"],
-              sourceType: "imported",
-              licenseRisk: (heroEntry as { license_risk?: string }).license_risk === "none" ? "none" : "unknown",
-              provenance: { source: "dossier", dossierPath, sourceUrl: heroEntry.url, imageId: heroEntry.id ?? null, contentHash: sha },
-              by: input.by,
+          const { bytes, extension, finalUrl } = await fetchPublicMarketingImage(heroEntry.url, input.heroMaxBytes);
+          const source = new URL(finalUrl); source.search = "";
+          const temporary = await mkdtemp(join(tmpdir(), "workloom-product-hero-"));
+          try {
+            const file = join(temporary, `hero.${extension}`);
+            await writeFile(file, bytes, { flag: "wx", mode: 0o600 });
+            const reg = await registerLocalAsset(app, gateway, scope, {
+              absPath: file, expectedSha256: createHash("sha256").update(bytes).digest("hex"), expectedRealPath: realpathSync(file),
+              kind: "product_image", title: `${productName} · 主图`, tags: [productName, "商品图"], sourceType: "imported", licenseRisk: "unknown",
+              provenance: { source: "dossier", dossierPath, sourceUrl: source.href,
+                sourceUrlSha256: createHash("sha256").update(finalUrl).digest("hex"), imageId: heroEntry.id ?? null }, by: input.by,
             });
             heroAssetId = reg.assetId;
-            heroIngested = true;
-          } else {
-            heroError = `主图下载失败或超限：${heroEntry.url}`;
-          }
+            heroIngested = !reg.deduped;
+          } finally { await rm(temporary, { recursive: true, force: true }); }
         }
       }
     }
@@ -307,7 +285,11 @@ export async function upsertProductProfileFromDossier(
   }
   if (heroError) errors.push(heroError);
 
-  await scopedQuery<ProductProfileRow>(app, scope,
+  if (inspectDeliveryFile(input.dossierRoot, `${dossierProductId}/dossier.json`, { maxBytes: 8_000_000 }).sha256 !== dossierSha
+    || (manifestSha !== undefined && inspectDeliveryFile(input.dossierRoot, manifestRef, { maxBytes: 1_000_000 }).sha256 !== manifestSha)) {
+    throw new Error("商品档案在投影期间变化，请重扫当前版本");
+  }
+  const [projected] = await scopedQuery<{ id: string }>(app, scope,
     `INSERT INTO media_product_profiles
        (id, workspace_id, product_name, dossier_product_id, dossier_path, dossier_sha256, summary, hero_asset_id, status, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'active', now())
@@ -316,15 +298,16 @@ export async function upsertProductProfileFromDossier(
            dossier_path = EXCLUDED.dossier_path,
            dossier_sha256 = EXCLUDED.dossier_sha256,
            summary = EXCLUDED.summary,
-           hero_asset_id = COALESCE(EXCLUDED.hero_asset_id, media_product_profiles.hero_asset_id),
+           hero_asset_id = EXCLUDED.hero_asset_id,
            status = 'active',
-           updated_at = now()`,
+           updated_at = now() RETURNING id`,
     [id, scope.workspaceId, productName, dossierProductId, dossierPath, dossierSha, JSON.stringify(summary), heroAssetId]);
 
-  const saved = await getProductProfile(app, scope, id);
+  const saved = projected && await getProductProfile(app, scope, projected.id);
+  if (!saved) throw new Error("商品档案投影保存后无法回读");
   return {
-    profile: saved!,
-    changed,
+    profile: saved,
+    changed: !prev || prev.dossier_sha256 !== dossierSha || prev.hero_asset_id !== heroAssetId,
     heroIngested,
     heroError,
     errors,
@@ -334,14 +317,7 @@ export async function upsertProductProfileFromDossier(
 /** 列出 dossier 根下的全部 product_id（"全部重扫"的数据源） */
 export function listDossierProductIds(dossierRoot: string): string[] {
   if (!existsSync(dossierRoot)) return [];
-  return readdirSync(dossierRoot)
-    .filter((name) => {
-      try {
-        return statSync(join(dossierRoot, name)).isDirectory();
-      } catch {
-        return false;
-      }
-    })
+  return readdirSync(dossierRoot, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name)
     .filter((name) => existsSync(join(dossierRoot, name, "dossier.json")))
     .sort();
 }

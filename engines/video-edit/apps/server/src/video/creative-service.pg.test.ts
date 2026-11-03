@@ -10,7 +10,8 @@ import { closeAllPools } from "@workloom/db";
 import { buildCreativeShots, compileCreativeContract, CREATIVE_ART_DIMENSIONS, creativeHash, creativeTextHash,
   type CreativeFinding, type CreativeScope } from "@hyperreality/video-studio";
 import type { TrpcContext } from "../trpc/context.js";
-import { acquireProjectLease, projectRunLockKey } from "./archive-host.js";
+import { acquireProjectLease, makeLedgerWriter, projectRunLockKey } from "./archive-host.js";
+import { readStageBreakpoints, resumeProject } from "./archive-resume.js";
 import { assertNoCreativePendingUsage, createCreativeExecutionSession, creativeTx, insertCreativeArtifact, insertCreativeStage, linkCreativeArtifacts,
   verifyCreativeMarketingSource, type CreativeArtifact } from "./creative-service.js";
 import { withCreativeExternalBudget } from "./creative-external-budget.js";
@@ -64,6 +65,63 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
   const modelRequest = (attempt: number) => ({ attempt, model, requestHash: creativeHash({ attempt }),
     inputChars: 100, maxOutputTokens: 100 });
   const known = { usageKnown: true, success: true, inputTokens: 10, outputTokens: 20 };
+
+  it("creates the third route with its real scoped 16:9 draft and refuses a Studio restart", async () => {
+    const video = videoRouter.createCaller({ identity: ownerIdentity, session: ownerIdentity, headers: new Headers(), partnerIdentity: null });
+    const beforePosts = posts;
+    const draft = await video.explainer.create({ intent: "制作口播解说", scriptText: "解释一个案例。", aspect: "16:9" });
+    const row = (await database.query<{ kind: string; render_scope: { aspect: string } }>(
+      `SELECT p.kind,s.render_scope FROM video_projects p JOIN explainer_shotbooks s ON s.project_id=p.id AND s.workspace_id=p.workspace_id
+       WHERE p.workspace_id=$1 AND p.id=$2 AND s.id=$3`,
+      [baseScope.workspaceId, draft.projectId, draft.shotbookId])).rows[0];
+    expect(row).toMatchObject({ kind: "explainer", render_scope: { aspect: "16:9" } });
+    await expect(video.studio.start({ projectId: draft.projectId, intent: "制作叙事短片" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(video.studio.resume({ projectId: draft.projectId, fromStage: "preproduction" }))
+      .resolves.toMatchObject({ kind: "noaction", message: expect.stringContaining("专属入口") });
+    expect(posts).toBe(beforePosts);
+  });
+
+  it.each(["known", "unknown"])("known-scope archive resume after %s billed result uses the immutable attempt or dispatches nothing", async result => {
+    const projectId = await project();
+    const runId = randomUUID(), scope = { ...baseScope, projectId };
+    const rawIntent = "使用完整客户原文与 café 标记，制作总时长六秒的窗边叙事。".repeat(12);
+    const metadata = { brief: { audience: "技术团队", style: "实拍" } };
+    const lock = await acquireProjectLease(baseScope, projectId);
+    if (!lock) throw new Error("fixture project lease unavailable");
+    let acceptedContract: ReturnType<typeof compileCreativeContract>;
+    try {
+      const session = await createCreativeExecutionSession({ scope: baseScope, projectId, runId, rawIntent, metadata,
+        isMarketing: false, mode: "enforce", model });
+      acceptedContract = session.contract;
+      const ledger = makeLedgerWriter(baseScope);
+      const stage = await ledger.claimRun({ id: randomUUID(), projectId, stageId: "preproduction",
+        inputRefTemplate: "stages/preproduction/attempt-{attempt}.input.json", runId });
+      await session.beginStage("phase3");
+      const reservation = await session.beforeModelCall(modelRequest(1));
+      await session.afterModelCall(reservation, result === "known" ? known : { usageKnown: false, success: false });
+      await session.finish({ success: false });
+      await ledger.finishRun({ projectId, stageId: "preproduction", attempt: stage.attempt, status: "failed",
+        outputRef: null, outputSha256: null, errorClass: "PHASE_3_INTERRUPTED", errorMsg: null, durationMs: 100 });
+    } finally { await lock.release(); }
+
+    expect((await readStageBreakpoints(baseScope, projectId)).map(row => row.stageId)).toEqual(["preproduction"]);
+    const startRun = vi.fn(() => "RUN-RESUME");
+    const beforePosts = posts;
+    const outcome = await resumeProject(baseScope, { projectId, startRun, actor: { id: "MEM-C", type: "human" } });
+    if (result === "known") {
+      expect(outcome).toMatchObject({ kind: "resumed", attempt: 1, runId: "RUN-RESUME" });
+      expect(startRun).toHaveBeenCalledExactlyOnceWith({ projectId, intent: rawIntent, metadata, isMarketing: false,
+        resumeContract: acceptedContract! });
+      const current = await creativeTx(scope, client => client.query<{ state: string }>(
+        "SELECT state FROM video_pipeline_operations WHERE pipeline_run_id=$1", [runId]));
+      expect(current.rows).toEqual([{ state: "accepted" }]);
+    } else {
+      expect(outcome).toMatchObject({ kind: "noaction", stage: "preproduction", message: expect.stringContaining("待对账") });
+      expect(startRun).not.toHaveBeenCalled();
+    }
+    expect(posts).toBe(beforePosts);
+  }, 20_000);
 
   beforeAll(async () => {
     admin = new pg.Client({ connectionString: adminUrl });

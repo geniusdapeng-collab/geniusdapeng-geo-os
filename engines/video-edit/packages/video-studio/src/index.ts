@@ -15,6 +15,7 @@ export * from "./cover-platforms.js";
 export * from "./platform-intent.js";
 export * from "./sfx-synth.js";
 export * from "./portrait-runtime.js";
+export { installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./portrait-archive-plan.js";
 export * from "./portrait-binding.js";
 export * from "./character-archive.js";
 export * from "./portrait-agent.js";

@@ -38,6 +38,25 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
+describe("Studio 既有项目入口使用存储的片型", () => {
+  it.each(["explainer", "account_ops", null])("项目类型 %s 不进入叙事或营销预生产", async kind => {
+    d.query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes("FROM video_projects") && kind ? [{ kind }] : [], rowCount: 0,
+    }));
+    await expect(caller().studio.start({ projectId: "P1", intent: "制作叙事短片" }))
+      .rejects.toMatchObject({ code: kind ? "PRECONDITION_FAILED" : "NOT_FOUND" });
+    expect(d.query.mock.calls.some(([sql]) => String(sql).includes("pg_try_advisory_lock"))).toBe(false);
+  });
+
+  it("在任何模型前拒绝把既有叙事项目按营销模式重启", async () => {
+    d.query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes("FROM video_projects") ? [{ kind: "narrative" }] : [], rowCount: 0,
+    }));
+    await expect(caller().studio.start({ projectId: "P1", intent: "制作产品广告", route: "marketing" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: expect.stringContaining("项目片型") });
+  });
+});
+
 describe("生产入口正常可达且不能覆盖已审核请求", () => {
   it("真实根路由挂载shots/qualify，scope只来自登录身份；随后只给token完成提交", async () => {
     expect((await caller().production.shots({ projectId: "P1" })).shots).toHaveLength(1);
@@ -47,6 +66,15 @@ describe("生产入口正常可达且不能覆盖已审核请求", () => {
     expect(result).toMatchObject({ mock: false, durationSec: 5, clamped: false });
     expect(d.submit).toHaveBeenCalledWith(expect.objectContaining({ script: canonical().script, params: canonical().params,
       qualificationToken: "test-token", modelId: "doubao-seedance-2-5", mode: "manual", durationProvenance: { source: "script-fields", planSeconds: 5, requestedSeconds: 5, mismatchSeconds: 0, strict: true } }));
+  });
+  it("套餐来自当前身份，超额确认入最终预占并返回接受回执的预算快照", async () => {
+    d.submit.mockResolvedValueOnce({ jobId: "RJ-1", taskId: "remote-1", provider: "seedance", mock: false,
+      budget: { usedSeconds: 99, overageSeconds: 4 } });
+    const result = await caller().render.submit({ qualificationToken: "test-token", allowOverage: true });
+    expect(d.submit).toHaveBeenCalledWith(expect.objectContaining({
+      planBudget: { plan: "standard", allowOverage: true },
+    }));
+    expect(result.budget).toEqual({ usedSeconds: 99, overageSeconds: 4 });
   });
   it("没有token的旧CMS approved直提在查脚本/供应商之前拒绝", async () => {
     await expect(caller().render.submit({ scriptId: "RS-handmade", mode: "auto" })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });

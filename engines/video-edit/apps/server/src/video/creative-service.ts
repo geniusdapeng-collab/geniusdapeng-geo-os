@@ -346,7 +346,9 @@ export async function createCreativeExecutionSession(input: SessionInput) {
     await assertNoCreativePendingUsage(scope);
     contract = await creativeTx(scope, async client => {
       const project = await lockCreativeProject(client, scope);
-      if ((project.kind === "marketing") !== input.isMarketing) creativeError("CREATIVE_ROUTE_CONFLICT", "执行路线与项目不一致");
+      if (project.kind !== (input.isMarketing ? "marketing" : "narrative")) {
+        creativeError("CREATIVE_ROUTE_CONFLICT", "执行路线与项目不一致");
+      }
       if ((await budgetTotals(client, scope)).pending) creativeError("CREATIVE_USAGE_UNKNOWN", "项目存在未对账付费请求");
       const { rows: [active] } = await client.query<{
         id: string; status: string; created_by: string; plan_key: string; plan_hash: string;

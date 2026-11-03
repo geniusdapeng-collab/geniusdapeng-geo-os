@@ -147,6 +147,19 @@ jobs:
             apps/server/src/video/gen/compiled-request.test.ts \
             apps/server/src/video/gen/submit.test.ts \
             apps/server/src/video/gen/gen.test.ts \
+            apps/server/src/video/gen/ingest.test.ts \
+            apps/server/src/video/film-worker.test.ts \
+            apps/server/src/video/explainer/router.test.ts \
+            apps/server/src/video/explainer/explainer.test.ts \
+            apps/server/src/video/explainer/voice-prep-scoped.test.ts \
+            apps/server/src/video/archive-host.test.ts \
+            apps/server/src/video/archive-resume.test.ts \
+            apps/server/src/video/production-router.test.ts \
+            apps/server/src/video/marketing-source-fetcher.test.ts \
+            packages/video-studio/src/product-archive.test.ts \
+            packages/video-studio/src/product-archive.multitype.test.ts \
+            packages/video-studio/src/portrait-runtime-reuse.test.ts \
+            packages/video-studio/src/portrait-archive-plan.test.ts \
             apps/server/src/video/pipeline/pipeline-repository.pg.test.ts \
             apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts \
             apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts
@@ -175,6 +188,11 @@ jobs:
           node --import tsx scripts/migrate.ts
           pnpm exec vitest run --maxWorkers=1 --no-file-parallelism \
             apps/server/src/video/production-authority.pg.test.ts \
+            apps/server/src/video/render-poller.pg.test.ts \
+            apps/server/src/video/film-ledger.pg.test.ts \
+            apps/server/src/video/gen/submission-ledger.pg.test.ts \
+            apps/server/src/video/archive.pg.test.ts \
+            apps/server/src/video/studio-product-references.pg.test.ts \
             apps/server/src/video/creative-render-binding.pg.test.ts \
             apps/server/src/video/creative-service.pg.test.ts \
             apps/server/src/video/creative-evaluation-matrix.pg.test.ts

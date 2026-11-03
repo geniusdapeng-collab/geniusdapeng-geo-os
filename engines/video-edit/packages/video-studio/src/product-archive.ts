@@ -16,9 +16,11 @@
  *   3 图片必须真实存在且可解析（sha256 一致、>50KB、有宽高），hero 必填；
  *   4 档案只做**忠实映射**：读不到的字段留空，绝不用模型补编外观或参数。
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdtempSync, openSync, readFileSync, readSync,
+  readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { extname, join, resolve, sep } from "node:path";
 
 export const PRODUCT_ARCHIVE_SCHEMA = "workloom.product-archive/v1" as const;
 export const PRODUCT_ARCHIVE_POLICY_VERSION = "workloom.product-archive-policy/v1" as const;
@@ -153,11 +155,48 @@ export function normalizeProductName(value: unknown): string {
 }
 
 function isPosixRelative(file: string): boolean {
-  return Boolean(file) && !file.startsWith("/") && !file.includes("\\") && !file.split("/").includes("..");
+  return Boolean(file) && !file.includes("\\") && file.split("/").every(part => part && part !== "." && part !== "..");
 }
 
 export function sha256FileSync(file: string): string {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
+}
+
+class ProductPhotoError extends Error {
+  constructor(readonly code: string, message: string) { super(`PRODUCT_PHOTO_INVALID: ${message}`); }
+}
+
+/** Resolve inside the current archive, read one regular-file snapshot, and validate its registered digest. */
+function readProductPhoto(dir: string, photo: ProductArchivePhoto): { path: string; bytes: Buffer } {
+  const root = resolve(dir), file = resolve(root, String(photo?.file ?? ""));
+  if (!isPosixRelative(String(photo?.file ?? "")) || !file.startsWith(root + sep) || !lstatSync(root).isDirectory()) {
+    throw new ProductPhotoError("photo-path", `图片路径必须位于普通档案目录内：${photo?.file ?? "(空)"}`);
+  }
+  const expectedPath = resolve(realpathSync(root), photo.file);
+  if (realpathSync(file) !== expectedPath || lstatSync(file).isSymbolicLink()) {
+    throw new ProductPhotoError("photo-path", `图片经过符号链接或逃离档案目录：${photo.file}`);
+  }
+  const fd = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) throw new ProductPhotoError("photo-path", `图片必须为普通文件：${photo.file}`);
+    if (stat.size < 50_000 || stat.size > 100_000_000) throw new ProductPhotoError("photo-size", `图片大小超出档案核验范围：${photo.file}`);
+    const bytes = Buffer.allocUnsafe(stat.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (!count) throw new ProductPhotoError("photo-changed", `图片读取期间大小变化：${photo.file}`);
+      offset += count;
+    }
+    const current = lstatSync(file);
+    if (current.ino !== stat.ino || current.dev !== stat.dev || current.size !== stat.size || realpathSync(file) !== expectedPath) {
+      throw new ProductPhotoError("photo-changed", `图片读取期间发生变化：${photo.file}`);
+    }
+    if (!photo.sha256 || createHash("sha256").update(bytes).digest("hex") !== photo.sha256) {
+      throw new ProductPhotoError("photo-hash", `图片 sha256 与登记不一致：${photo.file}`);
+    }
+    return { path: file, bytes };
+  } finally { closeSync(fd); }
 }
 
 /**
@@ -208,17 +247,23 @@ export function verifyProductArchive(
     if (!photo?.id?.trim()) push("photo-id", "图片缺 id");
     else if (seenIds.has(photo.id)) push("photo-id", `图片 id 重复：${photo.id}`);
     else seenIds.add(photo.id);
-    if (!isPosixRelative(String(photo?.file ?? ""))) { push("photo-path", `图片路径必须是档案目录内的相对路径：${String(photo?.file ?? "(空)")}`); continue; }
-    const abs = resolve(options.dir, photo.file);
-    if (!abs.startsWith(resolve(options.dir) + "/")) { push("photo-path", `图片路径逃逸档案目录：${photo.file}`); continue; }
-    if (!existsSync(abs)) { push("photo-missing", `图片文件不存在：${photo.file}`); continue; }
-    const size = statSync(abs).size;
-    if (size < 50_000) push("photo-size", `图片过小（疑似占位图）：${photo.file} ${(size / 1024).toFixed(0)}KB`);
-    const actual = sha256FileSync(abs);
-    if (!photo.sha256 || actual !== photo.sha256) push("photo-hash", `图片 sha256 与登记不一致：${photo.file}`);
-    if (typeof photo.bytes === "number" && photo.bytes !== size) push("photo-bytes", `图片字节数与登记不一致：${photo.file}`, false);
+    let bytes: Buffer;
+    try { ({ bytes } = readProductPhoto(options.dir, photo)); }
+    catch (error) {
+      if (error instanceof ProductPhotoError) push(error.code, error.message);
+      else if ((error as NodeJS.ErrnoException).code === "ENOENT") push("photo-missing", `图片文件不存在：${photo?.file}`);
+      else push("photo-unreadable", `无法读取图片证据：${photo?.file}`);
+      continue;
+    }
+    if (typeof photo.bytes === "number" && photo.bytes !== bytes.length) push("photo-bytes", `图片字节数与登记不一致：${photo.file}`, false);
     if (options.probeImage) {
-      const dims = options.probeImage(abs);
+      const temporary = mkdtempSync(join(tmpdir(), "workloom-product-photo-"));
+      let dims: ReturnType<NonNullable<typeof options.probeImage>>;
+      try {
+        const snapshot = join(temporary, `photo${extname(photo.file)}`);
+        writeFileSync(snapshot, bytes, { flag: "wx", mode: 0o600 });
+        dims = options.probeImage(snapshot);
+      } finally { rmSync(temporary, { recursive: true, force: true }); }
       if (!dims || !dims.width || !dims.height) push("photo-unreadable", `图片无法解析尺寸：${photo.file}`);
       else {
         if (photo.width !== undefined && photo.width !== dims.width) push("photo-width", `图片宽度与登记不一致：${photo.file}`, false);
@@ -252,7 +297,7 @@ export function verifyProductArchive(
 /** 从档案目录装载：读 profile.json → 校验 → 返回（校验失败的档案仍然返回，由调用方决定 fail-closed） */
 export function loadProductArchive(dir: string, options: { probeImage?: (file: string) => { width: number; height: number } | null } = {}): LoadedProductArchive | null {
   const file = join(dir, "profile.json");
-  if (!existsSync(file)) return null;
+  if (!existsSync(file) || !lstatSync(dir).isDirectory() || !lstatSync(file).isFile()) return null;
   const archive = JSON.parse(readFileSync(file, "utf8")) as ProductArchive;
   return { archive, dir: resolve(dir), issues: verifyProductArchive(archive, { dir: resolve(dir), probeImage: options.probeImage }) };
 }
@@ -286,9 +331,9 @@ export function loadProductArchives(root: string, options: { probeImage?: (file:
   const absRoot = resolve(root);
   const archives: LoadedProductArchive[] = [];
   if (existsSync(absRoot)) {
-    for (const name of readdirSync(absRoot)) {
-      const dir = join(absRoot, name);
-      if (!statSync(dir).isDirectory()) continue;
+    for (const entry of readdirSync(absRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const dir = join(absRoot, entry.name);
       const loaded = loadProductArchive(dir, options);
       if (loaded) archives.push(loaded);
     }
@@ -368,7 +413,7 @@ export function productHeroPhoto(archive: ProductArchive): ProductArchivePhoto |
 }
 
 export function productPhotoPath(entry: LoadedProductArchive, photo: ProductArchivePhoto): string {
-  return resolve(entry.dir, photo.file);
+  return readProductPhoto(entry.dir, photo).path;
 }
 
 /**

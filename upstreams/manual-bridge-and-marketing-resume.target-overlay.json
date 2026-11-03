@@ -11,17 +11,17 @@
       "path": "apps/server/src/video/archive-resume.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.ts",
       "sourceSha256": "741f323cc54f2f37516b9ea54c1d9ff9467f03c06023a379146d622ba20138d6",
-      "targetSha256": "9a6f52b4fe2acc3e82f7c1122f2dbad863ddcb240dbdc5b1053b281fd9ff5f95",
+      "targetSha256": "a477c3aefbc54ce651e57cb3ab995586e9895a1b5951e4ad9f4c7dbe7e1e1601",
       "sourceBytes": 20036,
-      "targetBytes": 20646
+      "targetBytes": 24274
     },
     {
       "path": "apps/server/src/video/archive-resume.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/archive-resume.test.ts",
       "sourceSha256": "b8fd05c91570c5ac3aaf7b60ba08f3110c7373cd85ac701b65ff8fae92702a48",
-      "targetSha256": "713a4bf23ef9c55bb0f418c093b0f08c7eda4f580a46a87566a197fdc26f2e41",
+      "targetSha256": "64537a5b396852b446abc7d377236d8d79d76c744c377cc9579dec35c8e26f7c",
       "sourceBytes": 8915,
-      "targetBytes": 10098
+      "targetBytes": 12491
     },
     {
       "path": "apps/server/src/video/archive.pg.test.ts",
@@ -35,9 +35,9 @@
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "sourceSha256": "cdda29e4178ccb2e6230f634bf797cda8b8c6ebfece8edd83a7bee22d67d6086",
-      "targetSha256": "f782cbd5a7141a7f21c9abfbc40f20d09121626d4ca8fcbd4c5ce27c9979937c",
+      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
       "sourceBytes": 68733,
-      "targetBytes": 90462
+      "targetBytes": 92097
     },
     {
       "path": "docs/ai-video-workbench-guide.md",
@@ -48,5 +48,5 @@
       "targetBytes": 54189
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:13:38.844341+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

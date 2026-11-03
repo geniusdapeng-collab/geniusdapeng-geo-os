@@ -26,8 +26,8 @@
       "sourceGitBlob": "00b08b3b000f26d28c3dca985967293b0ac38fbe",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "targetMode": "100644",
-      "targetSha256": "f782cbd5a7141a7f21c9abfbc40f20d09121626d4ca8fcbd4c5ce27c9979937c",
-      "targetBytes": 90462,
+      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
+      "targetBytes": 92097,
       "transform": "none"
     },
     {
@@ -159,5 +159,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T03:13:38.844341+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

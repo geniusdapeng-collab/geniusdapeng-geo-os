@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, existsSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +18,7 @@ function fakeArk(options: { failStatus?: number } = {}) {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       calls.push({ url, body });
       if (options.failStatus) {
-        return new Response("参数被拒", { status: options.failStatus });
+        return new Response(JSON.stringify({ error: { code: "InvalidParameter", message: "参数被拒" } }), { status: options.failStatus });
       }
       return new Response(
         JSON.stringify({ data: [{ url: "https://cdn.example.invalid/out.png", size: "2K" }] }),
@@ -372,14 +372,14 @@ describe("完整请求与产物绑定的定妆照缓存", () => {
     unlinkSync(link); symlinkSync(b, link); await next.runtime.apiRender(task); expect(next.calls).toHaveLength(2);
     unlinkSync(link); await expect(next.runtime.apiRender(task)).rejects.toThrow(); expect(next.calls).toHaveLength(2);
   });
-  it("输出被改字节/删除/替成symlink均不复用；旧无收据索引不能伪过", async () => {
+  it("输出被改字节/删除/替成symlink时重取已接受素材，不重复出图", async () => {
     const next = configured(); let file = await next.runtime.apiRender(task);
-    writeFileSync(file, Buffer.alloc(4096, 8)); await next.runtime.apiRender(task); expect(next.calls).toHaveLength(2);
-    unlinkSync(file); await next.runtime.apiRender(task); expect(next.calls).toHaveLength(3);
+    writeFileSync(file, Buffer.alloc(4096, 8)); await next.runtime.apiRender(task); expect(next.calls).toHaveLength(1);
+    unlinkSync(file); await next.runtime.apiRender(task); expect(next.calls).toHaveLength(1);
     const external = writeRef(next.root, "outside.png"); unlinkSync(file); symlinkSync(external, file);
-    await next.runtime.apiRender(task); expect(next.calls).toHaveLength(4); expect(readFileSync(external)).toEqual(Buffer.alloc(2048, 3));
+    await next.runtime.apiRender(task); expect(next.calls).toHaveLength(1); expect(readFileSync(external)).toEqual(Buffer.alloc(2048, 3));
     const index = JSON.parse(readFileSync(next.runtime.indexPath(), "utf8")); delete index.characters["演员甲"].receipts; writeFileSync(next.runtime.indexPath(), JSON.stringify(index));
-    const restarted = configured(next.root); file = await restarted.runtime.apiRender(task); expect(restarted.calls).toHaveLength(1); expect(existsSync(file)).toBe(true);
+    const restarted = configured(next.root); file = await restarted.runtime.apiRender(task); expect(restarted.calls).toHaveLength(0); expect(existsSync(file)).toBe(true);
   });
   it("20个相同请求和多个runtime只发送一次，异常后不遗留inflight或锁", async () => {
     const first = configured(); const second = configured(first.root, { fetchImpl: first.fetchImpl });
@@ -449,12 +449,46 @@ describe("完整请求与产物绑定的定妆照缓存", () => {
     const fake = fakeArk(); const next = configured(workDir(), { fetchImpl: (async (url, init) => String(url).includes("/images/generations") ? fake.fetchImpl(url, init) : new Response(new Uint8Array(12))) as typeof fetch });
     await expect(next.runtime.apiRender(task)).rejects.toThrow(/下载内容过小/); expect(Object.keys(next.runtime.snapshot().characters)).toHaveLength(0); expect(existsSync(join(next.root, "characters/PROJECT/.portrait-cache.lock"))).toBe(false);
   });
+  it("keeps an ambiguous non-enforce portrait dispatch across runtime restarts and blocks other paid angles", async () => {
+    const root = workDir();
+    let posts = 0;
+    const lost = configured(root, { fetchImpl: (async () => { posts++; throw new Error("fixture response lost"); }) as typeof fetch });
+    const initialError = await lost.runtime.apiRender(task).catch(error => error);
+    const restart = configured(root);
+    const outcomes = [];
+    for (const sameProjectTask of [task, { ...task, angle: "side_full" }]) outcomes.push(await restart.runtime.apiRender(sameProjectTask).catch(error => error));
+    expect(posts).toBe(1);
+    expect(restart.calls).toHaveLength(0);
+    for (const error of [initialError, ...outcomes]) expect(String(error)).toContain("PORTRAIT_SUBMISSION_UNKNOWN");
+  });
+  it("persists accepted portrait before download and recovers using only its original GET", async () => {
+    const root = workDir(), url = "https://cdn.example.invalid/portrait.png?Signature=fixture-signed-image";
+    const calls: Array<[string, string]> = [];
+    const initial = configured(root, { fetchImpl: (async (input, init) => {
+      calls.push([String(input), init?.method ?? "GET"]);
+      return init?.method === "POST" ? new Response(JSON.stringify({ data: [{ url }] })) : new Response("fixture download error", { status: 503 });
+    }) as typeof fetch });
+    await expect(initial.runtime.apiRender(task)).rejects.toThrow("HTTP 503");
+    expect(initial.runtime.snapshot().characters).toEqual({});
+    const restart = configured(root, { fetchImpl: (async (input, init) => {
+      calls.push([String(input), init?.method ?? "GET"]);
+      expect(init?.method ?? "GET").toBe("GET");
+      expect(String(input)).toBe(url);
+      return new Response(new Uint8Array(4096).fill(7));
+    }) as typeof fetch });
+    expect(readFileSync(await restart.runtime.apiRender(task))).toHaveLength(4096);
+    expect(calls.map((entry) => entry[1])).toEqual(["POST", "GET", "GET"]);
+    const receipts = join(root, "characters", "PROJECT");
+    const accepted = readdirSync(receipts).find(name => name.endsWith(".accepted.json"));
+    expect(accepted).toBeDefined();
+    expect(readFileSync(join(receipts, accepted!), "utf8")).not.toContain("fixture-signed-image");
+  });
   it("收据请求或输出hash被改后不命中；特殊JS键仍按独立角色持久化", async () => {
     const next = configured(); await next.runtime.apiRender(task);
     const index = JSON.parse(readFileSync(next.runtime.indexPath(), "utf8")); index.characters["演员甲"].receipts.front.requestHash = "0".repeat(64); writeFileSync(next.runtime.indexPath(), JSON.stringify(index));
-    await next.runtime.apiRender(task); expect(next.calls).toHaveLength(2);
+    await next.runtime.apiRender(task); expect(next.calls).toHaveLength(1);
     const file = await next.runtime.apiRender({ ...task, characterId: "__proto__" }); const entries = Object.values(next.runtime.snapshot().characters);
-    expect(entries.find(entry => entry.id === "__proto__")?.files.front).toBe(file); expect(await next.runtime.apiRender({ ...task, characterId: "__proto__" })).toBe(file); expect(next.calls).toHaveLength(3);
+    expect(entries.find(entry => entry.id === "__proto__")?.files.front).toBe(file); expect(await next.runtime.apiRender({ ...task, characterId: "__proto__" })).toBe(file); expect(next.calls).toHaveLength(2);
   });
   it("原始任务在外调中被修改时拒绝记成功", async () => {
     const changing = { ...task }; const fake = fakeArk();

@@ -30,6 +30,7 @@ import {
   bindExplicitAudienceMetadata,
   classifyError,
   type DeterministicCheck,
+  type CreativeContract,
   installVendorEngineBridge,
   installVendorPortraitBindingBridge,
   installVendorRenderCompatBridge,
@@ -66,6 +67,7 @@ import { applyBuiltinCharacters, appendBuiltinCharacterGuidance, resolveBuiltinC
 import { acquireProjectLease, archiveWorkDir, makeLedgerWriter, readProjectMeta } from "./archive-host.js";
 import { ingestPortraitsFromIndex } from "./media/library.js";
 import { upsertProductProfileFromDossier } from "./media/products.js";
+import { resolveStudioProductReferences } from "./studio-product-references.js";
 import { appendScenePolicyGuidance, resolveScenePolicyForIntent } from "./scene-policy-routing.js";
 import { appendPlatformGuidance, resolvePlatformForIntent } from "./platform-routing.js";
 import { loadVideoPipelinePlan, type CompiledVideoPipelinePlan } from "@hyperreality/video-pipeline";
@@ -496,37 +498,8 @@ async function pollApproval(
 
 interface Scope { tenantId: string; workspaceId: string }
 
-/**
- * 从 brief 的 metadata 收集真实参考图（产品所有者给到的实拍图）。
- * 支持两种登记口径：字符串路径，或情报档案对象 `{ localPath | path | url }`；
- * 只接受本地可读路径（远端 URL 需先落地，避免出图阶段访问不到）。
- */
-function collectReferenceImages(metadata?: Record<string, unknown>): string[] {
-  const products = Array.isArray(metadata?.products) ? (metadata!.products as Array<Record<string, unknown>>) : [];
-  const out: string[] = [];
-  for (const product of products) {
-    const manifest = (product?.referenceManifest ?? product?.reference_manifest) as
-      | Record<string, unknown>
-      | undefined;
-    const images = (manifest?.reference_images ?? manifest?.referenceImages) as unknown;
-    if (!Array.isArray(images)) continue;
-    for (const image of images) {
-      if (typeof image === "string" && image.trim()) {
-        out.push(image.trim());
-        continue;
-      }
-      if (image && typeof image === "object") {
-        const record = image as Record<string, unknown>;
-        const local = record.localPath ?? record.path ?? (typeof record.url === "string" && !/^https?:/i.test(record.url) ? record.url : null);
-        if (typeof local === "string" && local.trim()) out.push(local.trim());
-      }
-    }
-  }
-  return Array.from(new Set(out));
-}
-
 /** 定妆照出图配置（缺密钥则显式关闭：保持 vendor 规格包口径，不假装出图） */
-function portraitConfig(metadata?: Record<string, unknown>, selectedCharacters?: BuiltinCharacterResolution): StudioPortraitConfig {
+function portraitConfig(selectedCharacters?: BuiltinCharacterResolution): StudioPortraitConfig {
   const apiKey = (process.env.VOLCENGINE_ARK_API_KEY ?? process.env.ARK_API_KEY ?? "").trim();
   const model = (process.env.ARK_IMAGE_MODEL ?? process.env.SEEDREAM_MODEL ?? "").trim();
   const enabled = (process.env.HR_PORTRAIT_ENABLED ?? "1") !== "0";
@@ -558,9 +531,6 @@ function portraitConfig(metadata?: Record<string, unknown>, selectedCharacters?:
     size: process.env.ARK_IMAGE_SIZE?.trim(),
     timeoutMs: Number(process.env.HR_PORTRAIT_TIMEOUT_MS ?? 240_000),
     maxReferenceImages: 4,
-    /** 参考图相对仓库根解析（brief 里登记的是 var/media/... 相对路径） */
-    referenceImages: collectReferenceImages(metadata).map((image) =>
-      path.isAbsolute(image) ? image : path.join(REPO_ROOT, image)),
     characterAnchorImages: anchors.map((image) => (path.isAbsolute(image) ? image : path.join(REPO_ROOT, image))),
     /**
      * 生产链路 fail-closed：角色定妆照必须带"角色档案"描述。
@@ -581,6 +551,8 @@ type StudioRunInput = RunInput & {
   rawIntent?: string;
   /** Original caller metadata, before server route/character/platform injection. */
   customerMetadata?: Record<string, unknown> | null;
+  /** A recovered request must still be the latest immutable contract when the worker claims it. */
+  resumeContract?: CreativeContract;
   /** 同一入口已经做过选型时复用其受控结果，避免二次选型改写取证依据。 */
   selectedScenePolicy?: ReturnType<typeof resolveScenePolicyForIntent>;
   /** 同一入口已经做过平台识别时复用其受控结果。 */
@@ -622,7 +594,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
     throw new StudioWorkerError("ARCHIVE_REQUIRED", "生产预生产必须启用档案与运行租约，拒绝 ARCHIVE_ENABLED=0");
   }
   // 在模型、vendor 桥、运行注册表和异步任务之前读取完整复用配置；坏 manifest 不可回退新出图。
-  const portraitOptions = portraitConfig(runInput.metadata, selectedBuiltinCharacters);
+  const portraitOptions = portraitConfig(selectedBuiltinCharacters);
   const llm = WorkloomLLMEngine.fromEnv();
   if (!llm) {
     throw new StudioWorkerError(
@@ -1120,11 +1092,17 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
       projectMeta = await readProjectMeta(scope, input.projectId);
       if (!projectMeta) throw new Error(`PROJECT_NOT_FOUND: 项目 ${input.projectId} 不存在或不属于当前工作区`);
       if (projectMeta.kind !== pipelineKind) throw new Error("PIPELINE_KIND_MISMATCH：预生产管线与服务项目类型不一致");
+      if (portraitOptions.enabled) portraitOptions.trustedProductReferences = await resolveStudioProductReferences({
+        app: getAppPool(), scope, projectId: input.projectId, metadata: sourceMetadata, repositoryRoot: REPO_ROOT,
+      });
+      if (input.resumeContract && controlMode !== "enforce") {
+        throw new Error("CREATIVE_MODE_CHANGED: 原创作合同仅能在 enforce 模式恢复");
+      }
       if (controlMode === "enforce") {
         creativeSession = await createCreativeExecutionSession({ scope, projectId: input.projectId,
           runId: entry.runId, rawIntent: input.rawIntent ?? input.intent, metadata: sourceMetadata,
           isMarketing: Boolean(input.isMarketing), mode: "enforce", model: llm.model,
-          shouldAbort: () => entry.aborted });
+          expectedContract: input.resumeContract, shouldAbort: () => entry.aborted });
         await creativeSession.beginStage("preparation");
       }
       await archive.ensure({ kind: projectMeta.kind, title: projectMeta.title, createdAt: projectMeta.createdAt });

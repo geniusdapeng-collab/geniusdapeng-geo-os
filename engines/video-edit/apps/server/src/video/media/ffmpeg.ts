@@ -51,7 +51,7 @@ export interface MediaProbe {
  *  - ffprobe 不可用或文件不是媒体 → 返回全 null（调用方按"未知"处理，不编数字）；
  *  - 视频流缺失时退化为音频（时长有、宽高无）。
  */
-export async function probeMedia(absPath: string, env: NodeJS.ProcessEnv = process.env): Promise<MediaProbe> {
+export async function probeMedia(absPath: string, env: NodeJS.ProcessEnv = process.env, localVideoFormat?: "mov" | "matroska"): Promise<MediaProbe> {
   if (!existsSync(absPath)) return { durationSeconds: null, width: null, height: null };
   const ffprobe = bin(env, "ffprobe", "ffprobe");
   try {
@@ -59,6 +59,7 @@ export async function probeMedia(absPath: string, env: NodeJS.ProcessEnv = proce
       "-v", "error",
       "-show_entries", "format=duration:stream=width,height,codec_type",
       "-of", "json",
+      ...(localVideoFormat ? ["-protocol_whitelist", "file", "-f", localVideoFormat] : []),
       absPath,
     ], { timeoutMs: 30_000, env });
     if (r.code !== 0) return { durationSeconds: null, width: null, height: null };

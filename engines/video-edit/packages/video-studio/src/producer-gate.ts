@@ -33,10 +33,10 @@ export type ProducerStage =
   | "cover"
   | "master";
 
-import { existsSync, readFileSync, rmSync, statSync, mkdtempSync } from "node:fs";
+import { closeSync, constants, fstatSync, mkdtempSync, openSync, readSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { randomUUID, createHash } from "node:crypto";
+import { dirname, join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 import {
@@ -70,6 +70,8 @@ export interface ProducerArtifact {
   kind: "image" | "video" | "audio" | "text" | "json";
   /** 宿主已接受证据的原始字节摘要；不匹配时必须在模型调用前拒绝。 */
   expectedSha256?: string;
+  /** 图像原件必须逐字节送审。超过单图预算时，必须停止。 */
+  requireOriginalImage?: boolean;
   bytes?: number;
   /** ffprobe 摘要（video/audio）：width/height/duration/loudness 等 */
   probe?: Record<string, unknown>;
@@ -81,6 +83,9 @@ export interface ProducerVerdict {
   /** Binds the exact supplied source contracts; absent means no structured contract was supplied. */
   contractHash?: string;
   evidence?: Array<{ path: string; sha256: string; scope: string }>;
+  /** Image bytes actually presented to the model, paired with their original source digest. */
+  visualEvidence?: Array<{ path: string; sourceSha256: string; sha256: string;
+    kind: "original" | "resized" | "temporal-frame"; timestampSec?: number }>;
   stage: ProducerStage;
   approved: boolean;
   /** 0–100 for an actual quality review; null when no quality review applies. */
@@ -249,7 +254,7 @@ export interface ProducerGateOptions {
   log?: (line: string) => void;
   /**
    * 评审图压缩器（2026-09-24 三轮审计）：送审图大于预算时调用，返回压缩后的图片路径（失败返回 null）。
-   * 默认实现用 ffmpeg 缩到 720 宽 JPEG；测试注入替身，避免单测依赖 ffmpeg。
+   * 输入是本次私有图像副本，输出应写在同一私有目录。默认用 ffmpeg 缩到 720 宽 JPEG。
    */
   shrinkImage?: (path: string) => string | null;
 }
@@ -284,20 +289,43 @@ function summarizeArtifacts(artifacts: ProducerArtifact[]): string {
  * 超预算先缩到720宽JPEG；压缩不可用或仍超预算时返回未验证，不静默丢图或赌超大请求。
  */
 const JUDGE_IMAGE_BUDGET_BYTES = 900_000;
+const REVIEW_SOURCE_MAX_BYTES = 1_000_000_000;
+const LOCAL_VIDEO_INPUT = ["-protocol_whitelist", "file", "-format_whitelist", "mov,matroska,webm,mpegts,avi,flv,mpeg,mpegvideo,ivf,ogg,asf,gif"];
+const sha256Of = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
+
+function reviewFileBytes(path: string, maxBytes = REVIEW_SOURCE_MAX_BYTES): Buffer {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size === 0 || stat.size > maxBytes) throw new Error(`产物为空、不是普通文件或超出评审资源上限：${path}`);
+    const bytes = Buffer.allocUnsafe(stat.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (!count) throw new Error(`产物读取期间大小变化：${path}`);
+      offset += count;
+    }
+    if (fstatSync(fd).size !== stat.size) throw new Error(`产物读取期间大小变化：${path}`);
+    return bytes;
+  } finally { closeSync(fd); }
+}
+
+function imageMime(bytes: Buffer): "image/png" | "image/jpeg" | "image/webp" | undefined {
+  if (bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png";
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image/jpeg";
+  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return undefined;
+}
 
 /** 默认压缩器：ffmpeg 缩到 720 宽 JPEG（失败返回 null，由调用方如实降级） */
 function shrinkImageWithFfmpeg(path: string): string | null {
   const bin = process.env.WL_FFMPEG ?? "ffmpeg";
-  const out = join(tmpdir(), `producer-judge-${randomUUID()}.jpg`);
+  const out = join(dirname(path), "review.jpg");
   const res = spawnSync(bin, [
-    "-hide_banner", "-v", "error", "-y", "-i", path,
+    "-hide_banner", "-v", "error", "-y", "-protocol_whitelist", "file", "-i", path,
     "-frames:v", "1", "-vf", "scale=720:-2", "-q:v", "3", out
   ], { timeout: 30_000 });
-  if (res.status !== 0 || !existsSync(out) || statSync(out).size >= statSync(path).size) {
-    rmSync(out, { force: true });
-    return null;
-  }
-  return out;
+  return res.status === 0 && statSync(out).size < statSync(path).size ? out : null;
 }
 
 type JudgeResult = { approved: boolean; score: number; issues: string[]; suggestions: string[]; reason: string };
@@ -394,7 +422,29 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
   if (!Number.isFinite(minScore) || minScore < 0 || minScore > 100) return reject("评审分数阈值非法");
   const tempPaths: string[] = [];
   const textContent: ModelContentPart[] = [];
-  const images: Array<{ path: string; label: string }> = [];
+  const encoded: ModelContentPart[][] = [];
+  const visualEvidence: NonNullable<ProducerVerdict["visualEvidence"]> = [];
+  const encodeImage = (image: { path: string; sourceSha256: string; bytes: Buffer; label: string; timestampSec?: number;
+    requireOriginal?: boolean }): void => {
+    let { bytes } = image;
+    let mime = imageMime(bytes);
+    if (!mime) throw new Error(`图像内容无效：${image.path}`);
+    if (bytes.length > JUDGE_IMAGE_BUDGET_BYTES) {
+      if (image.requireOriginal) throw new Error(`送审图必须保留原件，且超出评审容量：${image.path}`);
+      const dir = mkdtempSync(join(tmpdir(), "producer-judge-")); tempPaths.push(dir);
+      const input = join(dir, `source.${mime.slice("image/".length)}`);
+      writeFileSync(input, bytes, { flag: "wx", mode: 0o600 });
+      const shrunk = (options.shrinkImage ?? shrinkImageWithFfmpeg)(input);
+      if (!shrunk || dirname(resolve(shrunk)) !== dir) throw new Error(`送审图压缩失败：${image.path}`);
+      bytes = reviewFileBytes(shrunk, JUDGE_IMAGE_BUDGET_BYTES);
+      mime = imageMime(bytes);
+      if (!mime) throw new Error(`压缩图像内容无效：${image.path}`);
+    }
+    visualEvidence.push({ path: image.path, sourceSha256: image.sourceSha256, sha256: sha256Of(bytes),
+      ...(image.timestampSec === undefined ? { kind: bytes === image.bytes ? "original" : "resized" }
+        : { kind: "temporal-frame", timestampSec: image.timestampSec }) });
+    encoded.push([{ type: "text", text: image.label }, { type: "image_url", image_url: { url: `data:${mime};base64,${bytes.toString("base64")}` } }]);
+  };
   let budgetFailure: unknown;
   try {
     if (options.artifacts.length === 0) throw new Error("缺少待评审产物");
@@ -402,11 +452,8 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       if (artifact.expectedSha256 !== undefined && (typeof artifact.expectedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(artifact.expectedSha256))) {
         throw new Error(`产物的预期摘要非法：${artifact.path}`);
       }
-      const stat = statSync(artifact.path);
-      if (!stat.isFile() || stat.size === 0) throw new Error(`产物为空或不是文件：${artifact.path}`);
-      if (stat.size > 1_000_000_000) throw new Error(`产物超过单次评审资源上限：${artifact.path}`);
-      const bytes = readFileSync(artifact.path);
-      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      const bytes = reviewFileBytes(artifact.path);
+      const sha256 = sha256Of(bytes);
       if (artifact.expectedSha256 !== undefined && sha256 !== artifact.expectedSha256) {
         throw new Error(`产物摘要与本次绑定的已接受证据不一致：${artifact.path}`);
       }
@@ -417,48 +464,35 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
         textContent.push({ type: "text", text: `以下是产物正文（完整）：${artifact.path}\n${raw}` });
         evidence.push({ path: artifact.path, sha256, scope: "complete-text" });
       } else if (artifact.kind === "image") {
-        images.push({ path: artifact.path, label: "待评审产物" });
+        encodeImage({ path: artifact.path, bytes, sourceSha256: sha256, label: "待评审产物", requireOriginal: artifact.requireOriginalImage });
         evidence.push({ path: artifact.path, sha256, scope: "image" });
       } else if (artifact.kind === "video") {
-        const probe = spawnSync(process.env.WL_FFPROBE ?? "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "json", artifact.path], { encoding: "utf8", timeout: 30_000 });
+        const dir = mkdtempSync(join(tmpdir(), "producer-frames-")); tempPaths.push(dir);
+        const input = join(dir, "source-video");
+        writeFileSync(input, bytes, { flag: "wx", mode: 0o600 });
+        const probe = spawnSync(process.env.WL_FFPROBE ?? "ffprobe", ["-v", "error", ...LOCAL_VIDEO_INPUT, "-show_entries", "format=duration", "-of", "json", input], { encoding: "utf8", timeout: 30_000 });
         if (probe.status !== 0) throw new Error(`视频探测失败：${artifact.path}`);
         const duration = Number(JSON.parse(probe.stdout).format?.duration);
         if (!Number.isFinite(duration) || duration <= 0) throw new Error(`视频时长无效：${artifact.path}`);
-        const dir = mkdtempSync(join(tmpdir(), "producer-frames-")); tempPaths.push(dir);
         const timestamps = [0, 0.2, 0.4, 0.6, 0.8].map((r) => duration * r);
         for (const [index, at] of timestamps.entries()) {
           const path = join(dir, `${index}.jpg`);
-          const result = spawnSync(process.env.WL_FFMPEG ?? "ffmpeg", ["-v", "error", "-y", "-ss", String(at), "-i", artifact.path, "-frames:v", "1", "-vf", "scale=720:-2", "-q:v", "3", path], { timeout: 30_000 });
-          if (result.status !== 0 || !existsSync(path)) throw new Error(`视频时序抽帧失败：${artifact.path}@${at}`);
-          images.push({ path, label: `视频 ${artifact.path} 时间 ${at.toFixed(3)}s，按序比较` });
+          const result = spawnSync(process.env.WL_FFMPEG ?? "ffmpeg", ["-v", "error", "-y", ...LOCAL_VIDEO_INPUT, "-ss", String(at), "-i", input, "-frames:v", "1", "-vf", "scale=720:-2", "-q:v", "3", path], { timeout: 30_000 });
+          if (result.status !== 0) throw new Error(`视频时序抽帧失败：${artifact.path}@${at}`);
+          encodeImage({ path: artifact.path, bytes: reviewFileBytes(path), sourceSha256: sha256, timestampSec: at,
+            label: `视频 ${artifact.path} 时间 ${at.toFixed(3)}s，按序比较` });
         }
         evidence.push({ path: artifact.path, sha256, scope: `temporal-sample:${timestamps.map((t) => t.toFixed(3)).join(",")}; audio-not-reviewed` });
       }
     }
-    const artifactImages = images.length;
+    const artifactImages = encoded.length;
     for (const path of options.referenceImages ?? []) {
-      const bytes = readFileSync(path);
-      evidence.push({ path, sha256: createHash("sha256").update(bytes).digest("hex"), scope: "reference-image" });
-      images.push({ path, label: "基准图" });
+      const bytes = reviewFileBytes(path), sourceSha256 = sha256Of(bytes);
+      evidence.push({ path, sha256: sourceSha256, scope: "reference-image" });
+      encodeImage({ path, bytes, sourceSha256, label: "基准图" });
     }
     const visualStages = ["keyframe", "shot", "compose", "color", "subtitle", "mux", "danmaku", "cover", "master"];
     if (visualStages.includes(stage) && !artifactImages) throw new Error("画面评审缺少实际图像或可抽帧视频");
-    const encoded: ModelContentPart[][] = [];
-    for (const image of images) {
-      let path = image.path;
-      let bytes = readFileSync(path);
-      if (bytes.length > JUDGE_IMAGE_BUDGET_BYTES) {
-        const shrunk = (options.shrinkImage ?? shrinkImageWithFfmpeg)(path);
-        if (!shrunk) throw new Error(`送审图压缩失败：${path}`);
-        if (shrunk !== path) tempPaths.push(shrunk);
-        path = shrunk; bytes = readFileSync(path);
-      }
-      const png = bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
-      const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
-      const webp = bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP";
-      if (!(png || jpeg || webp) || bytes.length > JUDGE_IMAGE_BUDGET_BYTES) throw new Error(`图像内容无效或仍超预算：${image.path}`);
-      encoded.push([{ type: "text", text: image.label }, { type: "image_url", image_url: { url: `data:${png ? "image/png" : jpeg ? "image/jpeg" : "image/webp"};base64,${bytes.toString("base64")}` } }]);
-    }
     const context = options.context ? JSON.stringify(options.context) : "";
     const contractText = contract ? JSON.stringify(contract) : "未提供结构化镜头合同；不得宣称已核实年代、人数、空间或设备型号。";
     /**
@@ -553,7 +587,7 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
       answers.push(normalizedResult);
     }
     for (const item of evidence) {
-      const currentHash = createHash("sha256").update(readFileSync(item.path)).digest("hex");
+      const currentHash = sha256Of(reviewFileBytes(item.path));
       if (currentHash !== item.sha256) throw new Error(`评审期间产物发生变化：${item.path}`);
     }
     if (contract && options.contracts && shotIntentHash(options.contracts) !== contract.sourceHash) throw new Error("评审期间原镜头合同发生变化");
@@ -561,7 +595,8 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
     return { stage, status: approved ? "passed" : "failed", approved, contractHash: contract?.contractHash, score: Math.min(...answers.map((a) => a.score)),
       hardFailures: [], issues: [...softFailures, ...answers.flatMap((a) => a.issues)], suggestions: answers.flatMap((a) => a.suggestions),
       rerun: !approved, via: "llm", model: llm.model, ms: Date.now() - started,
-      reason: answers.map((a) => a.reason).join("；") + (approved ? "" : `（所有证据批次需通过且评分≥${minScore}）`), degraded: false, evidence, receipts };
+      reason: answers.map((a) => a.reason).join("；") + (approved ? "" : `（所有证据批次需通过且评分≥${minScore}）`), degraded: false,
+      evidence, ...(visualEvidence.length ? { visualEvidence } : {}), receipts };
   } catch (err) {
     const reason = budgetFailure ?? err;
     return reject(reason instanceof Error ? reason.message : String(reason), "fallback", llm.model);

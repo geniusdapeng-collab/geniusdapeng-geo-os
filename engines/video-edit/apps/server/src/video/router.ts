@@ -567,7 +567,11 @@ const studioRouter = router({
           `SELECT kind FROM video_projects WHERE id=$1 AND workspace_id=$2`,
           [input.projectId, scope.workspaceId],
         );
-        const projectKind = rows[0]?.kind === "marketing" ? "marketing" : "narrative";
+        const projectKind = rows[0]?.kind;
+        if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在或不属于当前工作区" });
+        if ((projectKind !== "marketing" && projectKind !== "narrative") || (explicitRoute && explicitRoute !== projectKind)) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "项目片型与请求不一致，请使用对应的制作入口" });
+        }
         const decision = await routeVideoPipeline({
           text: input.intent,
           metadata: input.metadata,
@@ -794,7 +798,25 @@ const studioRouter = router({
           fromStage: input.fromStage,
           intent: input.intent,
           metadata: input.metadata,
-          startRun: (runInput) => startRun(scope, runInput),
+          startRun: async (runInput) => {
+            const route = runInput.isMarketing ? "marketing" : "narrative";
+            const decision = await routeVideoPipeline({ text: runInput.intent, metadata: runInput.metadata, explicit: route });
+            if (decision.route !== route) throw new TRPCError({
+              code: "PRECONDITION_FAILED", message: decision.clarify?.question ?? "原始输入无法按项目片型恢复",
+            });
+            const selectedScenePolicy = resolveScenePolicyForIntent(runInput.intent, runInput.metadata);
+            const selectedPlatform = resolvePlatformForIntent(runInput.intent, runInput.metadata);
+            return startRun(scope, {
+              ...runInput, rawIntent: runInput.intent, customerMetadata: runInput.metadata ?? null,
+              intent: buildPipelineIntent(runInput.intent, {
+                durationSec: studioDurationOf(runInput.metadata), defaultDurationSec: 30,
+                aspectRatio: route === "marketing" ? selectedPlatform.decision.aspectRatio : undefined,
+                platform: selectedPlatform.decision.id,
+              }),
+              metadata: applyRouteToMetadata(runInput.metadata, decision),
+              selectedScenePolicy, selectedPlatform,
+            });
+          },
           actor: { id: ctx.identity.memberNo, type: "human" },
         });
       } catch (err) {
@@ -1161,11 +1183,11 @@ const renderRouter = router({
         [scope.workspaceId, monthStart.toISOString()],
       );
       const usedSeconds = Number(usageRows[0]?.total ?? 0);
+      const planBudget = { plan: planTierToPlanId(ctx.identity.plan), allowOverage: input.allowOverage };
       const budget = checkRenderBudget({
-        plan: planTierToPlanId(ctx.identity.plan),
+        ...planBudget,
         usedSeconds,
         requestSeconds: durationSec,
-        allowOverage: input.allowOverage,
       });
       if (!qualified.reconciliationOnly && !budget.allowed) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: budget.reason ?? "渲染额度不足" });
@@ -1280,7 +1302,7 @@ const renderRouter = router({
         });
       }
 
-      // ── 提交（唯一写入口 submitGenJob）：幂等键去重 + 供应商降级链 + 参数 + 报价 + D16 同事务 ──
+      // ── 提交（唯一写入口 submitGenJob）：原请求去重、预算原子预占、接受后 D16 记账 ──
       let submitted: Awaited<ReturnType<typeof submitGenJob>>;
       try { submitted = await submitGenJob({
         app,
@@ -1300,6 +1322,7 @@ const renderRouter = router({
         idempotencyKey: input.idempotencyKey?.trim() || undefined,
       fenceLevel: auto.outcome === "passed" ? "auto" : verdict.level,
       fenceImpacts: verdict.impacts,
+      planBudget,
       budgetOverageSeconds: budget.overageSeconds,
       durationProvenance
     }); } catch (error) {
@@ -1354,7 +1377,7 @@ const renderRouter = router({
       clamped,
       durationProvenance,
         level: verdict.level,
-        budget: { usedSeconds, overageSeconds: budget.overageSeconds },
+        budget: submitted.budget ?? { usedSeconds, overageSeconds: budget.overageSeconds },
       };
     }),
 

@@ -10,23 +10,27 @@
  *   finalize  → 渲染 done 后：原产物绑定 + 实际导出回执 → 默认原片原声 → 媒资库 final_cut（registerLocalAsset）
  *   versions / engine → 版本链只读面 + 引擎体检
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { basename, extname, join } from "node:path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { getAppPool, getGatewayPool } from "@workloom/db";
-import { judge, type RuntimeRule } from "@workloom/base/fence-engine";
+import { judgeViews } from "@workloom/base/fence-engine";
 import { checkRenderBudget, planTierToPlanId } from "@workloom/base/model-router";
+import { loadPipelineFeatureFlags } from "@workloom/pipeline-control";
 import { create as createRenderScript } from "@workloom/base/asset-cms";
 import { protectedProcedure, router, scopeOf, writeProcedure } from "../../trpc/context.js";
 import { submitGenJob, type RenderScriptLike } from "../gen/submit.js";
+import { mediaRoot } from "../gen/ingest.js";
 import { submissionRequestHash } from "../gen/submission-ledger.js";
+import { acquireProjectLease } from "../archive-host.js";
+import { cleanDeliveryRef, inspectDeliveryFile } from "../delivery-trust.js";
 import { registerLocalAsset } from "../media/register-local.js";
 import { loadActiveRules } from "../router.js";
 import { autoApprovalRefusal, evaluateAndRecordVideoAutoApproval } from "../system-auto-approval.js";
 import { systemAutoApprove as persistSystemAutoApproval } from "@workloom/base/asset-cms";
 import { buildCardRegistry } from "./card-registry.js";
-import { engineDirOf, engineStatus } from "./engine.js";
+import { engineDirOf, engineStatus, talkcraftEnabled } from "./engine.js";
 import { runMachineGates } from "./qa-gates.js";
 import { deliverFilm } from "./deliver.js";
 import { runExplainerPipeline } from "./pipeline.js";
@@ -36,7 +40,7 @@ import { templateDirOf } from "./project-builder.js";
 import { textFingerprint } from "./voice-prep.js";
 import {
   createExplainerProject, insertShotbook, latestShotbook, projectOf, renderJobOf, scopedQuery, updateShotbook,
-  type ShotbookRow,
+  type Scope, type ShotbookRow,
 } from "./db.js";
 import { ExplainerQualitySchema, explainerOutputSize, ExplainerScriptSchema, type ExplainerQuality, type ExplainerShotbook } from "./types.js";
 
@@ -49,6 +53,7 @@ const explainerSavedParams = z.object({
   durationSec: z.number().int().positive(), aspectRatio: z.string().min(1), resolution: z.string().min(1),
   generateAudio: z.boolean(), extra: z.object({ jobDir: z.string().min(1), audioSeconds: z.number().positive(), scope: z.string().min(1) }),
 });
+const aspectSchema = z.enum(["9:16", "16:9"]);
 
 const brandSchema = z.object({
   product: z.string().min(1).max(80),
@@ -57,6 +62,64 @@ const brandSchema = z.object({
   base: z.string().max(20).optional(),
   ink: z.string().max(20).optional(),
 });
+
+const assetId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/);
+const publicAssetRef = z.string().max(512).refine(ref => {
+  try { return cleanDeliveryRef(ref).startsWith("assets/"); }
+  catch { return false; }
+}, "素材目标必须是 assets/ 下的相对路径");
+
+async function requireExplainerProject(scope: Scope, projectId: string) {
+  const project = await projectOf(scope, projectId);
+  if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在或不属于当前工作区" });
+  if (project.kind !== "explainer") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "项目不是口播解说片" });
+  return project;
+}
+
+async function withExplainerProjectLease<T>(scope: Scope, projectId: string, run: (scope: Scope) => Promise<T>) {
+  const lease = await acquireProjectLease(scope, projectId);
+  if (!lease) throw new TRPCError({ code: "CONFLICT", message: "该项目的口播渲染正在准备或提交" });
+  try { return await run(scope); }
+  finally { await lease.release(); }
+}
+
+async function explainerAsset(scope: Scope, id: string, kind: "audio" | "video" | "image") {
+  const types = {
+    audio: { kinds: ["upload_audio"], extensions: [".wav"] },
+    video: { kinds: ["upload_video"], extensions: [".mp4"] },
+    image: { kinds: ["upload_image", "reference_image", "product_image"], extensions: [".png", ".jpg", ".jpeg"] },
+  }[kind];
+  const [row] = await scopedQuery<{ sha256: string; path: string }>(
+    `SELECT a.sha256,a.meta->>'localPath' AS path FROM video_assets a JOIN workspaces w ON w.id=a.workspace_id
+     WHERE w.tenant_id=$1 AND a.workspace_id=$2 AND a.id=$3 AND a.source_type='uploaded'
+       AND a.status='registered' AND a.kind=ANY($4::text[])`,
+    [scope.tenantId, scope.workspaceId, id, types.kinds], scope,
+  );
+  const extension = extname(row?.path ?? "");
+  if (!row || !/^[a-f0-9]{64}$/.test(row.sha256) || !types.extensions.includes(extension)
+    || row.path !== `upload/${scope.workspaceId}/${row.sha256}${extension}`) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "素材须是当前工作区已登记的 WAV、MP4 或 PNG/JPEG 上传件" });
+  }
+  let file: ReturnType<typeof inspectDeliveryFile>;
+  try { file = inspectDeliveryFile(mediaRoot(), row.path); }
+  catch (cause) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: "素材文件缺失或路径未通过核验", cause }); }
+  if (file.sha256 !== row.sha256) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "素材文件已改变，请重新上传并登记" });
+  return { id, sha256: row.sha256, path: file.path, extension };
+}
+
+async function explainerFence(scope: Scope, projectId: string, durationSec: number, scriptId?: string) {
+  const active = await loadActiveRules(getAppPool(), scope);
+  const context = { render_auto: false, duration_sec: durationSec };
+  const verdict = judgeViews([
+    { action: "render.submit", object: { type: "video_project", id: projectId }, context },
+    { action: "render.submit", object: { type: "render_script", ...(scriptId ? { id: scriptId } : {}) }, context },
+  ], active.rules, active.defaultLevel);
+  if (verdict.level === "block") throw new TRPCError({ code: "FORBIDDEN", message: `G8 围栏阻断：${verdict.triggeredBy.join("；") || "当前规则禁止提交"}` });
+  if (loadPipelineFeatureFlags().systemAutoApproval !== "enforce") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "G8 系统自动裁决已关闭" });
+  }
+  return { ...verdict, level: verdict.level };
+}
 
 /** 口播稿文本 → 句子数组（空行分段，按句末标点切句；保留原标点） */
 export function splitScript(text: string): { i: number; text: string }[] {
@@ -97,7 +160,7 @@ export const explainerRouter = router({
     .input(z.object({
       intent: z.string().min(1).max(2000),
       scriptText: z.string().min(1).max(20000),
-      aspect: z.enum(["9:16", "16:9"]).default("9:16"),
+      aspect: aspectSchema.default("9:16"),
       brand: brandSchema.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -111,6 +174,7 @@ export const explainerRouter = router({
         scriptText: input.scriptText,
         scriptSha256: textFingerprint(input.scriptText),
         shotbook: emptyShotbook(input.brand?.product ?? input.intent.slice(0, 20), input.brand),
+        aspect: input.aspect,
         by: ctx.identity.memberNo,
       });
       return { projectId, shotbookId, version: 1, sentences: script.sentences.length, aspect: input.aspect };
@@ -125,11 +189,7 @@ export const explainerRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
-      const project = await projectOf(scope, input.projectId);
-      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: `项目不存在：${input.projectId}` });
-      if (project.kind !== "explainer") {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: `项目 ${input.projectId} 不是口播解说片（kind=${project.kind}）` });
-      }
+      const project = await requireExplainerProject(scope, input.projectId);
       const latest = await latestShotbook(scope, input.projectId);
       const version = (latest?.version ?? 0) + 1;
       const script = ExplainerScriptSchema.parse({ sentences: splitScript(input.scriptText) });
@@ -140,6 +200,7 @@ export const explainerRouter = router({
         scriptText: input.scriptText,
         scriptSha256: textFingerprint(input.scriptText),
         shotbook: emptyShotbook(input.brand?.product ?? project.title.slice(0, 20), input.brand),
+        aspect: aspectSchema.optional().parse(latest?.render_scope?.aspect),
         by: ctx.identity.memberNo,
       });
       return { shotbookId, version, sentences: script.sentences.length };
@@ -155,26 +216,28 @@ export const explainerRouter = router({
     .input(z.object({
       projectId: z.string().min(1).max(120),
       scriptText: z.string().min(1).max(20000),
-      aspect: z.enum(["9:16", "16:9"]).default("9:16"),
+      aspect: aspectSchema.optional(),
       brand: brandSchema.optional(),
       allowRuleFallback: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
+      await requireExplainerProject(scope, input.projectId);
       const engineDir = engineDirOf();
       const status = engineStatus(engineDir);
       if (!status.installed) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: `talkcraft 引擎未安装：${status.reason}` });
       }
+      const latest = await latestShotbook(scope, input.projectId);
+      const aspect = input.aspect ?? aspectSchema.parse(latest?.render_scope?.aspect ?? "9:16");
       const script = ExplainerScriptSchema.parse({ sentences: splitScript(input.scriptText) });
       const timestamps = estimateTimestamps(script);
       const semantics = await annotateSemantics({ script, timestamps });
       const registry = buildCardRegistry(engineDir, { whitelist: whitelistOf() });
-      const latest = await latestShotbook(scope, input.projectId);
       const version = (latest?.version ?? 0) + 1;
       const generated = await generateShotbook({
         script, timestamps, semantics: semantics.semantics, registry, engineDir,
-        aspect: input.aspect, brand: input.brand,
+        aspect, brand: input.brand,
         fallback: input.allowRuleFallback ? "rule" : "error",
       });
       const check = validateShotbook({ shotbook: generated.shotbook, script, timestamps, registry, engineDir });
@@ -191,6 +254,7 @@ export const explainerRouter = router({
         scriptText: input.scriptText,
         scriptSha256: textFingerprint(input.scriptText),
         shotbook: generated.shotbook,
+        aspect,
         enginePin: enginePinOf(),
         by: ctx.identity.memberNo,
       });
@@ -207,34 +271,59 @@ export const explainerRouter = router({
       projectId: z.string().min(1).max(120),
       shotbookId: z.string().min(1).max(120).optional(),
       voiceSource: z.enum(["tts", "upload"]).default("tts"),
-      voiceProfile: z.string().max(120).optional(),
-      uploadPath: z.string().max(1024).optional(),
+      voiceProfile: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/).optional(),
+      uploadAssetId: assetId.optional(),
       uploadConfirmed: z.boolean().default(false),
-      hostAssets: z.record(z.string(), z.string()).optional(),
-      assets: z.array(z.object({ from: z.string().max(1024), to: z.string().max(512) })).optional(),
-      renderScope: z.string().max(120).default("full"),
+      hostAssetIds: z.record(z.string().min(1).max(60), assetId).refine(value => Object.keys(value).length <= 10).optional(),
+      assets: z.array(z.object({ assetId, to: publicAssetRef }).strict()).max(30).optional(),
+      mediaUseConfirmed: z.boolean().optional(),
+      renderScope: z.string().max(120).regex(/^(?:full|changed:[\w-]+|only:[\w-]+(?:,[\w-]+)*)$/).default("full"),
       quality: ExplainerQualitySchema.default("hd"),
       allowOverage: z.boolean().default(false),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const scope = scopeOf(ctx.identity);
-      const project = await projectOf(scope, input.projectId);
-      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: `项目不存在：${input.projectId}` });
+    }).strict())
+    .mutation(({ ctx, input }) => withExplainerProjectLease(scopeOf(ctx.identity), input.projectId, async scope => {
+      await requireExplainerProject(scope, input.projectId);
       const row: ShotbookRow | null = input.shotbookId
         ? await shotbookById(scope, input.shotbookId)
         : await latestShotbook(scope, input.projectId);
       if (!row) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "没有可用的分镜版本（先跑 video.explainer.shotbook）" });
-      if (row.project_id !== input.projectId || project.kind !== "explainer") {
+      if (row.project_id !== input.projectId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "分镜不属于当前解说项目" });
       }
       if (row.shotbook.shots.some((s) => s.card === "placeholder")) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "该版本还是占位分镜（card=placeholder）——先生成 SHOTBOOK" });
       }
+      if (input.renderScope !== "full") {
+        const shotIds = input.renderScope.slice(input.renderScope.indexOf(":") + 1).split(",");
+        if (shotIds.some(id => !row.shotbook.shots.some(shot => shot.id === id))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "渲染范围含当前分镜不存在的镜头" });
+        }
+      }
+      if (input.voiceSource === "upload" ? !input.uploadAssetId : input.uploadAssetId !== undefined) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "真人录音必须提供当前工作区已登记素材" });
+      }
+      if ((Object.keys(input.hostAssetIds ?? {}).length > 0 || input.assets?.length) && input.mediaUseConfirmed !== true) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "请确认当前上传视觉素材可以用于本片" });
+      }
+      const upload = input.uploadAssetId ? await explainerAsset(scope, input.uploadAssetId, "audio") : undefined;
+      const hostAssets = await Promise.all(Object.entries(input.hostAssetIds ?? {}).map(async ([form, id]) =>
+        [form, await explainerAsset(scope, id, "video")] as const));
+      const assets = await Promise.all((input.assets ?? []).map(async ({ assetId, to }) => {
+        const source = await explainerAsset(scope, assetId, "image");
+        if (extname(to).toLowerCase() !== source.extension) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "素材目标后缀必须与原上传件一致" });
+        }
+        return { source, to };
+      }));
+      if (new Set(assets.map(asset => asset.to.toLowerCase())).size !== assets.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "素材目标重复" });
+      }
       const idempotencyKey = renderKey(row.id, row.version, input.quality);
       // HD retains its existing script identity; UHD has a separate immutable request.
       const scriptKey = `explainer-${row.id}${input.quality === "uhd" ? "-uhd" : ""}`;
       const md = `# 口播解说片 ${row.id} v${row.version}\n\n${row.script_text}`;
-      const size = explainerOutputSize("9:16", input.quality);
+      const aspect = aspectSchema.parse(row.render_scope?.aspect ?? "9:16");
+      const size = explainerOutputSize(aspect, input.quality);
       const resolution = `${size.width}x${size.height}`;
       // Keep the historical HD hash stable for an already accepted request.
       // Each quality still binds its own voice, assets, scope and prepared params.
@@ -242,22 +331,36 @@ export const explainerRouter = router({
         scope, projectId: input.projectId, shotbookId: row.id, version: row.version,
         scriptText: row.script_text, shotbook: row.shotbook,
         voiceSource: input.voiceSource, voiceProfile: input.voiceProfile ?? null,
-        uploadPath: input.uploadPath ?? null, uploadConfirmed: input.uploadConfirmed,
-        hostAssets: input.hostAssets ?? {}, assets: input.assets ?? [], renderScope: input.renderScope,
+        uploadPath: null, uploadConfirmed: input.uploadConfirmed, hostAssets: {}, assets: [], renderScope: input.renderScope,
+        ...(upload || hostAssets.length || assets.length ? { uploads: {
+          audio: upload ? { id: upload.id, sha256: upload.sha256 } : null,
+          host: Object.fromEntries(hostAssets.map(([form, source]) => [form, { id: source.id, sha256: source.sha256 }])),
+          assets: assets.map(({ source, to }) => ({ id: source.id, sha256: source.sha256, to })),
+          visualUseConfirmed: input.mediaUseConfirmed === true,
+        } } : {}),
         ...(input.quality === "uhd" ? { quality: input.quality } : {}),
+        ...(aspect === "16:9" ? { aspect } : {}),
       });
-      const otherQuality = input.quality === "hd" ? "uhd" : "hd";
-      const otherJob = await renderJobOf(scope, renderKey(row.id, row.version, otherQuality));
-      if (otherJob && !["done", "failed"].includes(otherJob.status)) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: `同一分镜版本的 ${otherQuality} 渲染仍在运行，请先完成该任务` });
-      }
-      const existingScripts = await scopedQuery<RenderScriptLike>(
-        `SELECT s.* FROM render_scripts s JOIN workspaces w ON w.id=s.workspace_id
+      const existingScripts = await scopedQuery<RenderScriptLike & { accepted_receipt?: boolean }>(
+        `SELECT s.*, EXISTS (
+            SELECT 1 FROM generation_submissions g
+             WHERE g.tenant_id=w.tenant_id AND g.workspace_id=s.workspace_id AND g.project_id=s.project_id
+               AND g.script_id=s.id AND g.script_version=s.version AND g.idempotency_key=$5
+               AND g.state IN ('accepted','finalized') AND g.provider='remotion-local'
+               AND g.receipt->>'mock'='false'
+          ) AS accepted_receipt
+           FROM render_scripts s JOIN workspaces w ON w.id=s.workspace_id
           WHERE s.workspace_id=$1 AND s.script_key=$2 AND w.tenant_id=$3 AND s.project_id=$4
           ORDER BY s.version DESC LIMIT 1`,
-        [scope.workspaceId, scriptKey, scope.tenantId, input.projectId], scope,
+        [scope.workspaceId, scriptKey, scope.tenantId, input.projectId, idempotencyKey], scope,
       );
       let scriptRow = existingScripts[0];
+      const reconciliationOnly = scriptRow?.accepted_receipt === true;
+      const otherQuality = input.quality === "hd" ? "uhd" : "hd";
+      const otherJob = await renderJobOf(scope, renderKey(row.id, row.version, otherQuality), input.projectId);
+      if (!reconciliationOnly && otherJob && !["done", "failed"].includes(otherJob.status)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: `同一分镜版本的 ${otherQuality} 渲染仍在运行，请先完成该任务` });
+      }
       let params: { durationSec: number; aspectRatio: string; resolution: string; generateAudio: boolean;
         extra: { jobDir: string; audioSeconds: number; scope: string } };
       let lowMatch: number[];
@@ -266,12 +369,23 @@ export const explainerRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "该分镜已绑定其他或未核实的生成请求；请核对原任务，不得重做准备段或重发" });
         }
         params = explainerSavedParams.parse(scriptRow.fields?.submissionParams);
-        if (params.resolution !== resolution) {
+        if (params.resolution !== resolution || params.aspectRatio !== aspect) {
           throw new TRPCError({ code: "CONFLICT", message: "已绑定渲染请求的画布尺寸与当前清晰度不符" });
         }
         lowMatch = z.array(z.number().int()).parse(scriptRow.fields?.lowMatch);
       } else {
+        const estimatedSeconds = Math.max(1, Math.round(Math.max(...row.shotbook.shots.map(shot => shot.end))));
+        await explainerFence(scope, input.projectId, estimatedSeconds);
         const script = ExplainerScriptSchema.parse({ sentences: splitScript(row.script_text) });
+        const engine = engineStatus();
+        if (!talkcraftEnabled() || !engine.ready) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: `口播渲染引擎未就绪：${engine.reason ?? "TALKCRAFT_ENABLED 未开启"}` });
+        }
+        const profile = process.env.WORKLOOM_VOICE_PROFILE?.trim();
+        if (input.voiceSource === "tts" && (process.env.WORKLOOM_VOICE_BRIDGE_TENANT?.trim() !== scope.workspaceId
+          || !profile || (input.voiceProfile !== undefined && input.voiceProfile !== profile))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "当前工作区没有绑定所请求的配音工位和音色" });
+        }
 
         /* ---- 准备段（配音 → 对齐 → 语义 → 装配 → 素材体检） ---- */
         let prepared: Awaited<ReturnType<typeof runExplainerPipeline>>;
@@ -280,15 +394,22 @@ export const explainerRouter = router({
             taskId: `${row.id}-v${row.version}${input.quality === "uhd" ? "-uhd" : ""}`,
             script,
             shotbook: row.shotbook,
+            aspect,
             quality: input.quality,
             voice: {
               source: input.voiceSource,
-              profile: input.voiceProfile,
-              uploadPath: input.uploadPath,
+              profile: input.voiceSource === "tts" ? profile : undefined,
+              uploadPath: upload?.path,
+              uploadSha256: upload?.sha256,
+              stationScope: input.voiceSource === "tts" ? scope.workspaceId : undefined,
               confirmed: input.uploadConfirmed,
             },
-            hostAssets: input.hostAssets,
-            assets: input.assets,
+            hostAssets: Object.fromEntries(hostAssets.map(([form, source]) => [form, source.path])),
+            assets: assets.map(({ source, to }) => ({ from: source.path, to })),
+            uploadedVisuals: Object.fromEntries([
+              ...hostAssets.map(([, source]) => [`host/${basename(source.path)}`, { assetId: source.id, sha256: source.sha256 }] as const),
+              ...assets.map(({ source, to }) => [to, { assetId: source.id, sha256: source.sha256 }] as const),
+            ]),
             stopAfterAssemble: true,
             onLog: (line) => console.log(`[explainer:prepare] ${line}`),
           });
@@ -307,7 +428,7 @@ export const explainerRouter = router({
 
         params = {
           durationSec: Math.max(1, Math.round(prepared.timestamps.total)),
-          aspectRatio: "9:16", resolution, generateAudio: false,
+          aspectRatio: aspect, resolution, generateAudio: false,
           extra: { jobDir: prepared.jobDir, audioSeconds: prepared.timestamps.total, scope: input.renderScope },
         };
         lowMatch = prepared.timestamps.sentences.filter((sentence) => !sentence.ok).map((sentence) => sentence.i);
@@ -315,17 +436,10 @@ export const explainerRouter = router({
       const durationSec = params.durationSec;
 
       /* ---- G8 围栏 + 渲染额度预算（与 video.render.submit 同口径） ---- */
-      const active = await loadActiveRules(getAppPool(), scope);
-      const verdict = judge(
-        {
-          action: "render.submit",
-          object: { type: "video_project", id: input.projectId },
-          context: { render_auto: false, duration_sec: durationSec },
-        },
-        active.rules as RuntimeRule[],
-        active.defaultLevel,
-      );
-      const budget = checkRenderBudget({
+      const verdict = reconciliationOnly
+        ? { level: "auto" as const, triggeredBy: [], impacts: [] }
+        : await explainerFence(scope, input.projectId, durationSec, scriptRow?.id);
+      const budget = reconciliationOnly ? { allowed: true, reason: undefined } : checkRenderBudget({
         plan: planTierToPlanId(ctx.identity.plan),
         usedSeconds: await usedSecondsThisMonth(scope),
         requestSeconds: durationSec,
@@ -338,12 +452,12 @@ export const explainerRouter = router({
         scriptRow = await createRenderScript(getAppPool(), getGatewayPool(), scope, {
           scriptKey, projectId: input.projectId, shotId: "full", md,
           fields: { kind: "explainer", shotbookId: row.id, version: row.version,
-            durationSec, aspect: "9:16", quality: input.quality, ...size,
+            durationSec, aspect, quality: input.quality, ...size,
             submissionInputHash, submissionParams: params, lowMatch },
           by: ctx.identity.memberNo,
         });
       }
-      const alreadyApproved = scriptRow.status === "approved";
+      const alreadyApproved = reconciliationOnly || scriptRow.status === "approved";
       const auto = alreadyApproved ? null : await evaluateAndRecordVideoAutoApproval(
         getGatewayPool(),
         scope,
@@ -387,7 +501,7 @@ export const explainerRouter = router({
             evidenceRef: `${scope.tenantId}/${scope.workspaceId}/${ctx.identity.memberNo}`,
           },
           fence: {
-            status: verdict.level === "block" ? "failed" : "passed",
+            status: "passed",
             level: verdict.level,
             detail: verdict.triggeredBy.join("；") || `fence level ${verdict.level}`,
             evidenceRef: `fence:explainer.render:${verdict.impacts.map((impact) => `${impact.rule_id}@${impact.version}`).join(",") || "default"}`,
@@ -434,9 +548,13 @@ export const explainerRouter = router({
         fenceImpacts: verdict.impacts,
         env: process.env,
       });
-      await updateShotbook(scope, row.id, {
+      if (submitted.mock || submitted.provider !== "remotion-local") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "口播渲染没有真实本机引擎的接受回执" });
+      }
+      // An accepted receipt replay must never repoint a newer-quality draft or completed delivery.
+      if (!reconciliationOnly || !otherJob && row.status !== "delivered") await updateShotbook(scope, row.id, {
         status: "rendered", jobDir: params.extra.jobDir,
-        renderScope: { mode: input.renderScope, quality: input.quality },
+        renderScope: { mode: input.renderScope, quality: input.quality, aspect },
       });
       return {
         ...submitted,
@@ -449,13 +567,13 @@ export const explainerRouter = router({
         quality: input.quality,
         resolution,
       };
-    }),
+    })),
 
   /** 收尾：真实渲染完成 → 文件与导出回执 → 原片原声（或明确请求响度处理）→ 媒资库 final_cut */
   finalize: writeProcedure
     .input(z.object({ projectId: z.string().min(1).max(120), shotbookId: z.string().min(1).max(120).optional(), audioNormalization: z.enum(["preserve", "loudnorm"]).default("preserve") }))
-    .mutation(async ({ ctx, input }) => {
-      const scope = scopeOf(ctx.identity);
+    .mutation(({ ctx, input }) => withExplainerProjectLease(scopeOf(ctx.identity), input.projectId, async scope => {
+      await requireExplainerProject(scope, input.projectId);
       const row = input.shotbookId ? await shotbookById(scope, input.shotbookId) : await latestShotbook(scope, input.projectId);
       if (!row || row.project_id !== input.projectId) throw new TRPCError({ code: "NOT_FOUND", message: "没有当前项目的分镜版本" });
       if (!row.job_dir || !existsSync(row.job_dir)) {
@@ -463,8 +581,11 @@ export const explainerRouter = router({
       }
       const manifest = JSON.parse(readFileSync(join(row.job_dir, "job.json"), "utf8")) as { quality?: unknown; aspect?: "9:16" | "16:9" };
       const quality = ExplainerQualitySchema.parse(manifest.quality ?? "hd");
-      const aspect = manifest.aspect ?? "9:16";
-      const job = await renderJobOf(scope, renderKey(row.id, row.version, quality));
+      const aspect = aspectSchema.parse(row.render_scope?.aspect ?? manifest.aspect ?? "9:16");
+      if (manifest.aspect !== undefined && manifest.aspect !== aspect) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "本机工程的画幅与已提交的分镜不同" });
+      }
+      const job = await renderJobOf(scope, renderKey(row.id, row.version, quality), input.projectId);
       if (!job) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "找不到渲染任务（先 submit）" });
       if (job.status !== "done") {
         return {
@@ -476,9 +597,13 @@ export const explainerRouter = router({
             : "仍在渲染（render-poller 负责回填），稍后再调 finalize",
         };
       }
+      if (job.mock || job.provider !== "remotion-local" || !job.task_id?.trim()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "当前分镜没有真实口播渲染任务回执" });
+      }
       const { report } = await runMachineGates({
         jobDir: row.job_dir, cards: [], cueCount: 0,
         requireProviderState: true,
+        expectedTaskId: job.task_id,
         aspect,
         quality,
         onLog: (line) => console.log(`[explainer:finalize] ${line}`),
@@ -493,6 +618,8 @@ export const explainerRouter = router({
       const delivery = await deliverFilm({ jobDir: row.job_dir, normalize: input.audioNormalization === "loudnorm", sourceSha256: report.sourceArtifact?.sha256 });
       const registered = await registerLocalAsset(getAppPool(), getGatewayPool(), scope, {
         absPath: delivery.deliveryPath,
+        expectedSha256: delivery.sha256,
+        expectedRealPath: realpathSync(delivery.deliveryPath),
         kind: "final_cut",
         projectId: input.projectId,
         title: `${row.shotbook.style.domain} · 口播解说片 v${row.version}`,
@@ -516,7 +643,7 @@ export const explainerRouter = router({
         gates: report.gates.map((g) => ({ gate: g.gate, status: g.status, summary: g.summary })),
         loudnorm: delivery.measurement,
       };
-    }),
+    })),
 
   /** 分镜版本链（只读面） */
   versions: protectedProcedure

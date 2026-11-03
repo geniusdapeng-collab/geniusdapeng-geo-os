@@ -67,17 +67,17 @@
       "path": "apps/server/src/video/film-worker.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/film-worker.test.ts",
       "sourceSha256": "f081163d01434dc9ebc9b89723ea23982ddada13e0be286cfb60e5330ae03987",
-      "targetSha256": "0ba34668b60fad5486c20969f52934c890dea8454846bb6850472c1debee33c8",
+      "targetSha256": "5950a152ad5139a2d9d898dd4b1fd0809c4d207ea62ea787db1eccb23c30faa1",
       "sourceBytes": 8054,
-      "targetBytes": 8084
+      "targetBytes": 13084
     },
     {
       "path": "apps/server/src/video/film-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/film-worker.ts",
       "sourceSha256": "ab4daab2e8a7ac0d046cf82cc4a5b596cd428316c0c2e45b1787bf1e1a2b0b1b",
-      "targetSha256": "e78dfd2bf13e7ccee48f808bcf09b7334f88a557447b4573c3133a19835e8dfd",
+      "targetSha256": "0b064cacb7df5c29eca899d5c471ccf715e2ab57c923546a6d2ca593328d8c1b",
       "sourceBytes": 57863,
-      "targetBytes": 57884
+      "targetBytes": 61140
     },
     {
       "path": "apps/server/src/video/gate-policy.test.ts",
@@ -147,17 +147,17 @@
       "path": "apps/server/src/video/studio-worker.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
       "sourceSha256": "e1c773ba82f946fb5d96b01a849add09690f9bec2c784e0fb22090f68b11c563",
-      "targetSha256": "cd5de28e7c0358a71aa1065488a6bd3afd285a786e8aefd8bf0db3356d72c26d",
+      "targetSha256": "50d5304a16ee56a2cc6889ebe25e30bf27609ff1a885eb9e8fcfcf5f48b19c26",
       "sourceBytes": 70710,
-      "targetBytes": 76951
+      "targetBytes": 78897
     },
     {
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
-      "targetSha256": "06c6b9fd188b78654e40a66db6c963b00235c9b1430c117aa70caec9dfbf6c02",
+      "targetSha256": "5a8f136e1da546c12bae80f6901619f14b2fe63dd0e6e31bd9600b282f11ce41",
       "sourceBytes": 90435,
-      "targetBytes": 99710
+      "targetBytes": 98761
     },
     {
       "path": "apps/server/src/voice/station.test.ts",
@@ -427,9 +427,9 @@
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
       "sourceSha256": "f0eda1fc928506ea98308bb23e5b83ca2cce7e0bc305742c8134da55b99f7924",
-      "targetSha256": "c359d4a7dc93590bdf01b8a6f138207ea8e19f6fe342a3efd176ee94ae863ea3",
+      "targetSha256": "d87f60938652885455b88ba661477aff5d82fcd43b167d9b8f779f787a22ffa4",
       "sourceBytes": 3291,
-      "targetBytes": 3773
+      "targetBytes": 3877
     },
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
@@ -507,17 +507,17 @@
       "path": "packages/video-studio/src/producer-gate.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "sourceSha256": "c40418fdd4a132866034945ac7425bac4f22ca3fceb02dec3e1aca360538b6ee",
-      "targetSha256": "d708d36e5fd1eccaa51dead9be05d34573148395ed64089cbdd4f69f5aa73e28",
+      "targetSha256": "c1170eafe9e12106b5bbf365be98431a2e96fed45ffeaef56740fa0ec7112d0d",
       "sourceBytes": 33373,
-      "targetBytes": 14089
+      "targetBytes": 18574
     },
     {
       "path": "packages/video-studio/src/producer-gate.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
       "sourceSha256": "b04b1cc09b7fb44f13568c589aa5a0e9e3d562b30544adb0c00f923a30784a41",
-      "targetSha256": "bdd5ebd6ee1f62cb9463ba542d9400d380ec21040cb5bb9e9add290d10e8db06",
+      "targetSha256": "5dcc325d3b92fa487e4c0f1ce6218171feee8b8eef7e2ff0b2afd00eb18ce254",
       "sourceBytes": 36535,
-      "targetBytes": 32920
+      "targetBytes": 35339
     },
     {
       "path": "packages/video-studio/src/requirement-authority.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
 }

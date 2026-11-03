@@ -14,9 +14,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { constants } from "node:fs";
-import { mkdir, open, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { getAppPool, getGatewayPool } from "@workloom/db";
 import {
   FILM_CHANNEL_METHOD_COMPONENT,
@@ -49,6 +50,8 @@ import { canonicalRenderJson, compileProviderRequest, providerEndpointOptions, r
 import type { Scope } from "./gen/db.js";
 import { ArkImageProvider, ArkVideoProvider } from "./gen/providers.js";
 import { SubmissionError } from "./gen/submission-ledger.js";
+import { ProviderError } from "./gen/types.js";
+import { fetchPublicProviderMedia } from "./gen/public-provider-media.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** 仓库根（apps/server/src/video → 上溯四级）。 */
@@ -106,6 +109,12 @@ export interface StartFilmJobInput {
 
 function fail(code: string, message: string): never {
   throw new SubmissionError(code, message);
+}
+
+function assertFilmCallActive(ctx: RunContext): void {
+  if (ctx.signal.aborted || Date.now() >= ctx.deadlineAt) {
+    fail("JOB_DEADLINE_EXCEEDED", "影片作业已关闭，不能开始新的供应商请求");
+  }
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -207,6 +216,7 @@ interface RunContext {
   send: (frame: FilmChannelFrame) => void;
   signal: AbortSignal;
   deadlineAt: number;
+  mediaFetchImpl?: typeof fetch;
 }
 
 /* ================= 路径与冻结输入 ================= */
@@ -691,17 +701,62 @@ function providerKey(env: NodeJS.ProcessEnv, kind: "image" | "video"): { apiKey:
 
 async function fetchToFile(ctx: RunContext, url: string, ref: string): Promise<{ ref: string; sha256: string; bytes: number }> {
   const target = new URL(url);
-  if (target.protocol !== "https:") fail("URL_INVALID", "只允许 https 供应商产物地址");
-  const response = await fetch(url, { signal: AbortSignal.any([ctx.signal, AbortSignal.timeout(300_000)]), redirect: "error" }).catch((error) => {
+  if (target.protocol !== "https:" || target.username || target.password) fail("URL_INVALID", "只允许无用户凭据的 https 供应商产物地址");
+  const maxBytes = Number(ctx.env.FILM_MEDIA_FETCH_LIMIT_BYTES ?? MEDIA_FETCH_LIMIT_BYTES);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 2_147_483_647) fail("MEDIA_LIMIT_INVALID", "影片工位下载字节上限无效");
+  const file = await resolveWithin(ctx.workDir, ref);
+  await mkdir(path.dirname(file), { recursive: true });
+  const parentReal = await realpath(path.dirname(file));
+  if (!within(ctx.workDir, parentReal)) fail("PATH_INVALID", "写入路径越出作业目录");
+  assertFilmCallActive(ctx);
+  const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(300_000)]);
+  const response = await (ctx.mediaFetchImpl
+    ? ctx.mediaFetchImpl(url, { signal, redirect: "error" })
+    : fetchPublicProviderMedia(url, signal)).catch((error) => {
     fail("MEDIA_FETCH_UNKNOWN", `拉取供应商产物结果未知：${error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200)}`);
   });
-  if (!response.ok) fail("MEDIA_FETCH_FAILED", `拉取供应商产物失败：HTTP ${response.status}`);
-  const declared = Number(response.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declared) && declared > MEDIA_FETCH_LIMIT_BYTES) fail("MEDIA_TOO_LARGE", "供应商产物超过下载上限");
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.byteLength === 0) fail("MEDIA_FETCH_FAILED", "供应商产物为空");
-  if (bytes.byteLength > MEDIA_FETCH_LIMIT_BYTES) fail("MEDIA_TOO_LARGE", "供应商产物超过下载上限");
-  return writeJobBytes(ctx, ref, bytes);
+  if (!response.ok) {
+    await response.body?.cancel();
+    fail("MEDIA_FETCH_FAILED", `拉取供应商产物失败：HTTP ${response.status}`);
+  }
+  const declared = response.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) {
+    await response.body?.cancel();
+    fail("MEDIA_TOO_LARGE", "供应商产物超过下载上限或声明长度无效");
+  }
+  if (!response.body) fail("MEDIA_FETCH_FAILED", "供应商产物为空");
+  const reader = response.body.getReader();
+  const temp = path.join(parentReal, `.film-download-${randomUUID()}.tmp`);
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(temp, "wx", 0o600);
+    const hash = createHash("sha256");
+    let bytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      assertFilmCallActive(ctx);
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) fail("MEDIA_TOO_LARGE", "供应商产物超过下载上限");
+      const chunk = Buffer.from(value);
+      await handle.writeFile(chunk);
+      hash.update(chunk);
+    }
+    if (!bytes) fail("MEDIA_FETCH_FAILED", "供应商产物为空");
+    await handle.sync();
+    assertFilmCallActive(ctx);
+    await rename(temp, path.join(parentReal, path.basename(file)));
+    return { ref: safeRef(ref), sha256: hash.digest("hex"), bytes };
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+    if (handle) {
+      try { await handle.close(); }
+      finally { await rm(temp, { force: true }); }
+    }
+  }
 }
 
 function requireIssuedUrl(ctx: RunContext, url: string, frame: FilmChannelRequestFrame): void {
@@ -753,10 +808,19 @@ async function runImage(ctx: RunContext, frame: FilmChannelRequestFrame, compone
   const provider = new ArkImageProvider({ apiKey, baseUrl: endpoint.baseUrl });
   const started = Date.now();
   await ctx.ledger.recordDispatch(componentId, ctx.ownerToken, "seedream", model);
-  const submitted = await provider.submit(genRequest);
+  assertFilmCallActive(ctx);
+  const submitted = await provider.submitCompiled(compiled).catch(error => {
+    if (error instanceof ProviderError && error.acceptance === "not-accepted") {
+      fail("PROVIDER_REJECTED", `图像请求未被供应商接受（${error.kind}）`);
+    }
+    throw error;
+  });
+  assertFilmCallActive(ctx);
   const polled = await provider.poll(submitted.taskId);
   if (polled.status !== "succeeded" || !polled.uri) fail("PROVIDER_FAILED", `出图未成功：${polled.error ?? polled.status}`);
-  const written = await fetchToFile(ctx, polled.uri, targetRef);
+  const written = await fetchToFile(ctx, polled.uri, targetRef).catch(() => {
+    fail("PROVIDER_ARTIFACT_UNKNOWN", "供应商已接受出图，素材尚未保存，必须先对账");
+  });
   ctx.issuedUrls.set(polled.uri, { stepKey: frame.stepKey, shotId: frame.shotId });
   const evidence = {
     artifactSha256: written.sha256,
@@ -839,19 +903,31 @@ async function runVideo(ctx: RunContext, frame: FilmChannelRequestFrame, compone
   const provider = new ArkVideoProvider({ apiKey, baseUrl: endpoint.baseUrl });
   const started = Date.now();
   await ctx.ledger.recordDispatch(componentId, ctx.ownerToken, "seedance", model);
-  const submitted = await provider.submit(genRequest);
-  const deadline = Date.now() + VIDEO_POLL_DEADLINE_MS;
+  assertFilmCallActive(ctx);
+  const submitted = await provider.submitCompiled(compiled).catch(error => {
+    if (error instanceof ProviderError && error.acceptance === "not-accepted") {
+      fail("PROVIDER_REJECTED", `视频请求未被供应商接受（${error.kind}）`);
+    }
+    throw error;
+  });
+  await ctx.ledger.recordVideoTaskReceipt(componentId, ctx.ownerToken, submitted.taskId, compiled.payloadHash);
+  const deadline = Math.min(ctx.deadlineAt, Date.now() + VIDEO_POLL_DEADLINE_MS);
   let last: Awaited<ReturnType<ArkVideoProvider["poll"]>> = { status: "submitted" };
   while (Date.now() < deadline) {
-    if (ctx.signal.aborted) fail("PROVIDER_TIMEOUT_UNKNOWN", "作业截止，供应商任务需要对账");
-    await new Promise((resolve) => setTimeout(resolve, VIDEO_POLL_INTERVAL_MS));
-    last = await provider.poll(submitted.taskId);
+    assertFilmCallActive(ctx);
+    await delay(Math.min(VIDEO_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())), undefined, { signal: ctx.signal });
+    assertFilmCallActive(ctx);
+    if (Date.now() >= deadline) break;
+    last = await provider.poll(submitted.taskId).catch(() => ({ status: "submitted", error: "供应商查询暂未核实" }));
     if (last.status === "succeeded" || last.status === "failed") break;
   }
   if (last.status !== "succeeded" || !last.uri) {
     fail(last.status === "failed" ? "PROVIDER_FAILED" : "PROVIDER_TIMEOUT_UNKNOWN", `出片未成功：${last.error ?? last.status}`);
   }
-  const written = await fetchToFile(ctx, last.uri, targetRef);
+  assertFilmCallActive(ctx);
+  const written = await fetchToFile(ctx, last.uri, targetRef).catch(() => {
+    fail("PROVIDER_ARTIFACT_UNKNOWN", "原供应商视频已完成，素材尚未保存，必须先按原任务对账");
+  });
   ctx.issuedUrls.set(last.uri, { stepKey: frame.stepKey, shotId: frame.shotId });
   const evidence: Record<string, unknown> = {
     artifactSha256: written.sha256,

@@ -121,8 +121,8 @@ export function makeLedgerWriter(scope: Scope): StageLedgerWriter {
                   replace($5, '{attempt}', (COALESCE(MAX(r.attempt),0)+1)::text), $6, now()
              FROM video_projects p
              LEFT JOIN production_stage_runs r
-               ON r.workspace_id=p.workspace_id AND r.project_id=p.id AND r.stage_id=$4
-            WHERE p.workspace_id=$2 AND p.id=$3
+               ON r.workspace_id=p.workspace_id AND r.project_id=p.id AND r.stage_id=$4 AND r.pipeline_run_id IS NULL
+             WHERE p.workspace_id=$2 AND p.id=$3
             GROUP BY p.id
            RETURNING attempt, input_ref`,
           [row.id, scope.workspaceId, row.projectId, row.stageId, row.inputRefTemplate, row.runId],
@@ -145,6 +145,7 @@ export function makeLedgerWriter(scope: Scope): StageLedgerWriter {
               SET status=$4, output_ref=$5, output_sha256=$6, error_class=$7, error_msg=$8,
                   duration_ms=$9, cost=$10::jsonb, finished_at=now()
             WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$11 AND status='running'
+              AND pipeline_run_id IS NULL
             RETURNING id`,
           params,
         );
@@ -152,7 +153,7 @@ export function makeLedgerWriter(scope: Scope): StageLedgerWriter {
         // 完成写的确认丢失后可重送同一回执；不同终态/摘要或不存在的 attempt 不能假装成功。
         const existing = await client.query(
           `SELECT id FROM production_stage_runs
-            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$11
+            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$11 AND pipeline_run_id IS NULL
               AND status=$4 AND output_ref IS NOT DISTINCT FROM $5
               AND output_sha256 IS NOT DISTINCT FROM $6 AND error_class IS NOT DISTINCT FROM $7
               AND error_msg IS NOT DISTINCT FROM $8 AND duration_ms IS NOT DISTINCT FROM $9
@@ -168,7 +169,8 @@ export function makeLedgerWriter(scope: Scope): StageLedgerWriter {
       withScopedTx(scope, async (client) => {
         await client.query(
           `UPDATE production_stage_runs SET last_heartbeat_at=now()
-            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$4 AND status='running'`,
+            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND attempt=$4 AND status='running'
+              AND pipeline_run_id IS NULL`,
           [scope.workspaceId, row.projectId, row.stageId, row.attempt],
         );
       }),
@@ -177,7 +179,7 @@ export function makeLedgerWriter(scope: Scope): StageLedgerWriter {
       withScopedTx(scope, async (client) => {
         const r = await client.query<{ n: number }>(
           `SELECT COALESCE(MAX(attempt),0)+1 AS n FROM production_stage_runs
-            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3`,
+            WHERE workspace_id=$1 AND project_id=$2 AND stage_id=$3 AND pipeline_run_id IS NULL`,
           [scope.workspaceId, projectId, stageId],
         );
         return Number(r.rows[0]?.n ?? 1);
@@ -245,7 +247,7 @@ export async function acquireProjectLease(scope: Scope, projectId: string): Prom
 export interface ProjectMeta {
   projectId: string;
   title: string | null;
-  kind: "marketing" | "narrative";
+  kind: string | null;
   threadId: string | null;
   /** 项目建档时间（身份指纹：换库/重置种子后同名 VID 会拿到不同的 createdAt） */
   createdAt: string | null;
@@ -257,15 +259,16 @@ export async function readProjectMeta(scope: Scope, projectId: string): Promise<
     title: string | null; kind: string | null; thread_id: string | null; created_at: string | null;
   }>(
     scope,
-    `SELECT title, kind, thread_id, created_at FROM video_projects WHERE id=$1 AND workspace_id=$2`,
-    [projectId, scope.workspaceId],
+    `SELECT p.title, p.kind, p.thread_id, p.created_at FROM video_projects p
+      JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=$1 AND p.workspace_id=$2 AND w.tenant_id=$3`,
+    [projectId, scope.workspaceId, scope.tenantId],
   );
   const row = rows[0];
   if (!row) return null;
   return {
     projectId,
     title: row.title,
-    kind: row.kind === "marketing" ? "marketing" : "narrative",
+    kind: row.kind,
     threadId: row.thread_id,
     /** 归一成 ISO（pg 返回的是 Date.toString() 口径；身份指纹要可比较） */
     createdAt: row.created_at
@@ -282,7 +285,7 @@ export async function markProjectInterrupted(scope: Scope, projectId: string): P
   const rows = await withScopedTx(scope, async (client) => {
     const r = await client.query(
       `UPDATE production_stage_runs SET status='interrupted', finished_at=now()
-        WHERE workspace_id=$1 AND project_id=$2 AND status='running' RETURNING id`,
+        WHERE workspace_id=$1 AND project_id=$2 AND status='running' AND pipeline_run_id IS NULL RETURNING id`,
       [scope.workspaceId, projectId],
     );
     return r.rowCount ?? 0;
