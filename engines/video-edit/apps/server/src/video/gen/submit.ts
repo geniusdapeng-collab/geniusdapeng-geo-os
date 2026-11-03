@@ -9,7 +9,7 @@ import type { RuleImpact } from "@workloom/base/fence-engine";
 import { newId } from "@workloom/shared";
 import { getModel, findFallbackModels, resolveProviderModel } from "./catalog.js";
 import { estimateCost } from "./cost.js";
-import { videoGenPool } from "./providers.js";
+import { compiledSubmitter, videoGenPool } from "./providers.js";
 import type { VideoGenParams } from "./types.js";
 import type { Scope } from "./db.js";
 import { SubmissionError, SubmissionLedger, submissionRequestHash, type SubmissionReceipt, type SubmissionRow } from "./submission-ledger.js";
@@ -194,10 +194,12 @@ async function submitWithLedger(input: SubmitGenJobInput, authorization: Awaited
           await sink.recordDegradation({ ...degradation, action: "gen.submit" });
           continue;
         }
+        const sendCompiled = authorization && compiledSubmitter(provider, authorization.compiled);
+        if (authorization && !sendCompiled) throw new SubmissionError("PROVIDER_COMPILER_UNAVAILABLE", "该供应商不能直接发送已审核的请求字节");
         await ledger.recordDispatch(row.id, owner, step.provider, step.providerModel);
         dispatchUnresolved = true;
         try {
-          const submitted = await provider.submit({ prompt,
+          const submitted = sendCompiled ? await sendCompiled() : await provider.submit({ prompt,
             estimatedUnits: params.durationSec ?? 5, refId: script.id,
             params: { ...params, providerModel: step.providerModel },
           });

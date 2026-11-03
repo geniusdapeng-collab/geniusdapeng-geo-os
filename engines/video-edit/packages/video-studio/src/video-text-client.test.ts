@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { describe, expect, it, vi } from "vitest";
 import { completeVideoTextTask } from "./video-text-client.js";
+import { withCreativeBudget, type CreativeModelOutcome } from "./creative-runtime.js";
 
 const endpoint = {
   baseUrl: "https://api.deepseek.com",
@@ -24,6 +25,44 @@ function envelope(content = '{"ok":true}', overrides: Record<string, unknown> = 
 }
 
 describe("embedded video text dispatcher", () => {
+  it.each(["malformed-content", "truncated"])("settles known usage for %s without masking the output error or freezing later calls", async kind => {
+    const outcomes: CreativeModelOutcome[] = [], requests: string[] = [];
+    const first = kind === "truncated"
+      ? envelope("", { choices: [{ finish_reason: "length", message: { content: "{\"still\":" } }] }) : envelope("not json");
+    const fetchImpl = (async (_url, init) => {
+      requests.push(String(init?.body));
+      return new Response(JSON.stringify(requests.length === 1 ? first : envelope()));
+    }) as typeof fetch;
+    const call = () => completeVideoTextTask({ endpoint, scene: "video.quality.producer-review",
+      messages: [{ role: "user", content: "保留完整返回证据" }], requireJson: true, fetchImpl });
+    await withCreativeBudget({ beforeModelCall: async () => requests.length,
+      afterModelCall: async (_reservation, outcome) => { outcomes.push(outcome); } }, async () => {
+      await expect(call()).rejects.toMatchObject({ code: kind === "truncated" ? "MODEL_OUTPUT_TRUNCATED" : "MODEL_JSON_INVALID",
+        options: { retryable: false, unknown: false } });
+      await expect(call()).resolves.toMatchObject({ value: { ok: true } });
+    });
+    expect(requests).toHaveLength(2);
+    expect(outcomes).toEqual([{ usageKnown: true, success: false, inputTokens: 100, outputTokens: 50 },
+      { usageKnown: true, success: true, inputTokens: 100, outputTokens: 50 }]);
+  });
+
+  it.each(["wrong-identity", "missing-usage", "over-window"])("holds the charge and freezes dispatch when usage is unverified: %s", async kind => {
+    const outcomes: CreativeModelOutcome[] = [], wires: string[] = [];
+    const payload = envelope("not json", kind === "wrong-identity" ? { model: "wrong-model" }
+      : kind === "over-window" ? { usage: { prompt_tokens: 1, completion_tokens: 393_217 } } : { usage: undefined });
+    const call = () => completeVideoTextTask({ endpoint, scene: "video.quality.producer-review", requireJson: true,
+      messages: [{ role: "user", content: "未验证回包不能重复收费" }], fetchImpl: (async (_url, init) => {
+        wires.push(String(init?.body)); return new Response(JSON.stringify(payload));
+      }) as typeof fetch });
+    await expect(withCreativeBudget({ beforeModelCall: async () => wires.length,
+      afterModelCall: async (_reservation, outcome) => { outcomes.push(outcome); } }, async () => {
+      await expect(call()).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      await expect(call()).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+    })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+    expect(wires).toHaveLength(1);
+    expect(outcomes).toEqual([{ usageKnown: false, success: false, actualCny: null }]);
+  });
+
   it("uses native HTTP by default so undici's body timeout cannot terminate a long complete review", async () => {
     const globalFetch = vi.fn(() => Promise.reject(new Error("global fetch must not run")));
     vi.stubGlobal("fetch", globalFetch);

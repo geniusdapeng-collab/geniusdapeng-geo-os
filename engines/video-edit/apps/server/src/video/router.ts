@@ -31,6 +31,7 @@ import { checkRenderBudget, planTierToPlanId } from "@workloom/base/model-router
 import { PlatformSchema } from "@workloom/base/publish-rpa";
 import { newId } from "@workloom/shared";
 import { protectedProcedure, router, scopeOf, writeProcedure } from "../trpc/context.js";
+import { creativeStudioProcedures } from "./creative-router.js";
 import { accountingRouter } from "./accounting.js";
 import { pollRenderJobs } from "./render-poller.js";
 import { getModel, listModels } from "./gen/catalog.js";
@@ -529,6 +530,7 @@ const deliveryRouter = router({
 /* ================= studio：预生产流水线 ================= */
 
 const studioRouter = router({
+  ...creativeStudioProcedures,
   /**
    * 启动预生产（异步；projectId 缺省按 VID-nnn 口径生成；LLM 未配置明确拒绝）。
    *
@@ -587,6 +589,7 @@ const studioRouter = router({
           runId = startRun(scope, {
             projectId: input.projectId,
             rawIntent: input.intent,
+            customerMetadata: input.metadata ?? null,
             intent: buildPipelineIntent(input.intent, {
               durationSec,
               defaultDurationSec: 30,

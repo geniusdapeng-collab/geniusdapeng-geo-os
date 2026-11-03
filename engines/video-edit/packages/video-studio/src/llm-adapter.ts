@@ -26,6 +26,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productionModelInput } from "./prd-authority-bridge.js";
+import { creativeBudgetActive, creativeBudgetedFetch, creativeExecutionSignal } from "./creative-runtime.js";
 import {
   resolveOpenAiCompatibleBaseUrl,
   resolveVideoApiKey,
@@ -141,7 +142,7 @@ export class WorkloomLLMEngine {
     const scene = opts.scene
       ?? this.cfg.router?.scene
       ?? this.cfg.scene;
-    const providers = this.cfg.router?.providers ?? new Map<string, ModelProvider>([[
+    const configuredProviders = this.cfg.router?.providers ?? new Map<string, ModelProvider>([[
       activeModel,
       new OpenAiCompatibleProvider(activeModel, {
         baseUrl: this.cfg.baseUrl,
@@ -149,6 +150,26 @@ export class WorkloomLLMEngine {
         fetchImpl: this.cfg.fetchImpl,
       }),
     ]]);
+    const providers = new Map<string, ModelProvider>();
+    for (const [key, provider] of configuredProviders) {
+      providers.set(key, {
+        modelId: provider.modelId, healthy: () => provider.healthy(),
+        chat: async (messages, callOptions = {}) => {
+          if (!creativeBudgetActive()) return provider.chat(messages, callOptions);
+          if (!(provider instanceof OpenAiCompatibleProvider)) throw new Error("CREATIVE_PROVIDER_UNSUPPORTED: exact request reservation requires the registered transport");
+          // The pinned provider uses ordinary TS private fields. A per-call view
+          // changes only its transport seam; shared provider identities stay intact.
+          const config = (provider as unknown as { cfg: { fetchImpl?: typeof fetch } }).cfg;
+          if (!config || typeof config !== "object") throw new Error("CREATIVE_PROVIDER_UNSUPPORTED: provider transport identity changed");
+          const view = Object.create(provider) as ModelProvider & { cfg: Record<string, unknown> };
+          view.cfg = { ...config, fetchImpl: creativeBudgetedFetch(config.fetchImpl ?? fetch) };
+          const executionSignal = creativeExecutionSignal();
+          const signal = executionSignal && callOptions.signal
+            ? AbortSignal.any([executionSignal, callOptions.signal]) : executionSignal ?? callOptions.signal;
+          return view.chat(messages, { ...callOptions, retries: 0, signal });
+        },
+      });
+    }
     const sink: EventSink = this.cfg.router?.sink ?? {
       recordModelTrace: async () => undefined,
       recordDegradation: async () => undefined,

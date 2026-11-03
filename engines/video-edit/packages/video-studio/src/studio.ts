@@ -66,6 +66,28 @@ import {
 } from "./vendor-compat.js";
 import { AUDIO_DISCIPLINE_CLAUSE, AUDIO_NEGATIVE_TERMS } from "./shot-spec.js";
 import { loadDurationRules } from "./duration-rules.js";
+import { assertCreativeContract, compileCreativeContract, type CreativeContract, type CreativeFactInput } from "./constraint-compiler.js";
+import { CreativeRuntime, withCreativeRuntime, type CreativeRuntimeOptions } from "./creative-runtime.js";
+import { creativeCandidateHash, type CreativeCandidateAssessment } from "./creative-evaluation.js";
+import { assertProductVisualContent, extractProductVisualAuthority, type ProductVisualAuthority } from "./product-visual-authority.js";
+
+/** Project only source-bound claims from the exact privately accepted G1 bytes. */
+export function creativeFactsFromG1(marketing: PrdMarketingAuthority): CreativeFactInput {
+  const { content, sha256: hash } = marketing.g1Artifact;
+  if (createHash("sha256").update(content).digest("hex") !== hash) throw new Error("CREATIVE_FACTS_REQUIRED: accepted G1 bytes changed");
+  const factBundle = (JSON.parse(content) as { facts: { collectedAt?: string; sources?: Array<{ fetchedAt?: string }>;
+    stages?: Array<{ facts?: { claims?: Array<Record<string, unknown>> } }> } }).facts;
+  const claims = (factBundle.stages ?? []).flatMap(stage => stage.facts?.claims ?? [])
+    .filter(claim => claim.status === "source-bound" && typeof claim.claimId === "string"
+      && typeof claim.value === "string" && typeof claim.sourceId === "string" && typeof claim.textSha256 === "string")
+    .map(claim => ({ id: String(claim.claimId), text: String(claim.value), sourceRef: `${String(claim.sourceId)}#${String(claim.textSha256)}` }));
+  const now = Date.now(), collected = Date.parse(factBundle.collectedAt ?? "");
+  const sourceTimes = (factBundle.sources ?? []).map(source => Date.parse(source.fetchedAt ?? ""));
+  if (!Number.isFinite(collected) || collected > now + 30_000 || sourceTimes.some(time => !Number.isFinite(time) || time > now + 30_000)) {
+    throw new Error("CREATIVE_FACTS_REQUIRED: accepted G1 has no verifiable collection/source time");
+  }
+  return { content, hash, claims, validUntil: new Date(Math.min(collected, ...sourceTimes) + 24 * 3600_000).toISOString() };
+}
 
 /** vendor 引擎暴露的最小结构（HyperrealitySystem 实例方法） */
 interface HyperrealitySystemLike {
@@ -169,6 +191,24 @@ export interface StudioConfig {
   llm: WorkloomLLMEngine;
   /** 项目工作目录（checkpoints / characters / confirmations 等运行产物根） */
   workDir: string;
+  /** Private worker session only; HTTP metadata never enables this adapter. */
+  creativeExecution?: {
+    mode: "enforce";
+    rawIntent: string;
+    sourceMetadata: Record<string, unknown>;
+    selectCandidate(input: { contract: CreativeContract; visualAuthority?: ProductVisualAuthority; creativeInput: unknown;
+      assertCurrent: () => Promise<void> }): Promise<CreativeCandidateAssessment>;
+    session: {
+      readonly contract: CreativeContract;
+      bindContract(contract: CreativeContract, marketing?: PrdMarketingAuthority): Promise<CreativeContract>;
+      assertCurrent(): Promise<void>;
+      readCache(key: string): Promise<unknown | null>;
+      writeCache(key: string, value: unknown): Promise<void>;
+      beginStage(stage: string): Promise<void>;
+      completeStage(stage: string, output: unknown): Promise<void>;
+      onEvent(event: { kind: string; payload: Record<string, unknown> }): Promise<void>;
+    };
+  };
   onApproval: ApprovalCallback;
   onEvent?: EventSink;
   /** 总截止（毫秒），默认 1 小时，与 vendor 默认一致 */
@@ -265,13 +305,31 @@ export class VideoStudio {
    */
   async runPreproduction(input: RunInput): Promise<PreproductionResult> {
     const { cfg } = this;
+    const creativeEnforce = cfg.creativeExecution?.mode === "enforce";
     const metadata = structuredClone(input.metadata ?? {});
     delete metadata._dataDossier;
+    if (creativeEnforce && cfg.creativeExecution) {
+      // Carry explicit customer values into the native view before it chooses
+      // defaults. The persisted customer bytes and G1 inputs remain untouched.
+      const seed = cfg.creativeExecution.session.contract;
+      assertCreativeContract(seed, { allowNeedsInput: true });
+      const explicit = (id: string) => seed.constraints.some(constraint => constraint.id === id && constraint.source === "customer");
+      const nativeBrief = metadata.brief && typeof metadata.brief === "object" && !Array.isArray(metadata.brief)
+        ? metadata.brief as Record<string, unknown> : {};
+      if (explicit("duration.final")) nativeBrief.duration = metadata.target_duration = seed.profile.finalDuration;
+      if (explicit("delivery.aspectRatio")) {
+        nativeBrief.aspectRatio = metadata.aspectRatio = seed.profile.aspectRatio;
+        if (Object.hasOwn(nativeBrief, "aspect_ratio")) nativeBrief.aspect_ratio = seed.profile.aspectRatio;
+      }
+      metadata.brief = nativeBrief;
+    }
     const verified = cfg.dataMining?.verifiedRaw;
     let verifiedRaw: Record<string, unknown> | undefined;
     let prdAuthority: PrdAuthority | undefined;
     let validateRequirementAuthority: (() => void) | undefined;
     let approvedRequirementTheme: RequirementApprovedTheme | undefined;
+    let creativeRuntime: CreativeRuntime | undefined;
+    let selectedCandidateHash: string | undefined;
     if (input.isMarketing) {
       if (!verified || verified.projectId !== input.projectId || createHash("sha256").update(verified.rawJson).digest("hex") !== verified.sha256) {
         throw new Error("MARKETING_G1_REQUIRED：营销创意只能消费本次宿主G1通过的事实回填");
@@ -329,19 +387,21 @@ export class VideoStudio {
 
     const handler: ConfirmationHandler = async (req) => {
       const gate = resolveGate(req.type);
-      const normalizedPrompt = input.isMarketing && gate === "G6_PROMPT"
+      const normalizedPrompt = !creativeEnforce && input.isMarketing && gate === "G6_PROMPT"
         ? normalizeMarketingPromptText(req.content, promptOptions)
         : null;
       if (normalizedPrompt && normalizedPrompt.changes.length > 0) {
         log(`[studio] ${gate} 宿主提示词归一：${normalizedPrompt.changes.join("、")}`);
       }
       if (gate === "G2_THEME" && prdAuthority) approvedRequirementTheme = undefined;
+      const selection = ["G2_THEME", "G3_INSIGHT", "G4_PRD"].includes(gate) ? creativeRuntime?.selectionContext() : undefined;
+      const approvalContent = (normalizedPrompt?.value ?? req.content) + (selection ?? "");
       await emit({
         kind: "pipeline.gate.requested",
         projectId: input.projectId,
         runId: req.runId ?? runId,
         gate,
-        payload: { vendorType: req.type }
+        payload: { vendorType: req.type, ...(selection ? { selectedCandidateHash } : {}) }
       });
       const contracts = gate === "G6_PROMPT"
         ? consumePromptReviewContracts(req.content)
@@ -350,12 +410,12 @@ export class VideoStudio {
         gate,
         vendorType: req.type,
         title: `预生产确认门 · ${gate}`,
-        contentMd: normalizedPrompt?.value ?? req.content,
+        contentMd: approvalContent,
         runId: req.runId ?? runId,
         ...(contracts ? { contracts } : {})
       });
       if (gate === "G2_THEME" && prdAuthority) {
-        approvedRequirementTheme = captureRequirementTheme(prdAuthority, req.content, verdict);
+        approvedRequirementTheme = captureRequirementTheme(prdAuthority, approvalContent, verdict);
       }
       await emit({
         kind: "pipeline.gate.resolved",
@@ -494,7 +554,7 @@ export class VideoStudio {
 
         // Install after the existing compatibility wrappers; private ALS selects
         // this run's policy, and reverse disposal restores those exact wrappers.
-        if (prdAuthority) keep(installSharedBridge("vendor-prd-production-authority-v1", () => installVendorPrdProductionBridge(
+        if (prdAuthority || creativeEnforce) keep(installSharedBridge("vendor-prd-production-authority-v1", () => installVendorPrdProductionBridge(
           HyperrealitySystem as unknown as { prototype: Record<string, unknown> }, vendorEntry.identity.entryPath
         )));
 
@@ -529,6 +589,11 @@ export class VideoStudio {
 
         const system = new HyperrealitySystem({
           llmEngine: cfg.llm,
+          // These legacy enhancers overwrite already accepted creative fields or
+          // prompt text. The compiled path carries the approved source directly.
+          ...(creativeEnforce ? { characterCostume: { enabled: false }, identityPersistence: { enabled: false },
+            behaviorAnchor: { enabled: false }, shotQuality: { enabled: false },
+            directorOptimization: { enabled: false }, microMotion: { enabled: false }, promptGuardian: { strictMode: true } } : {}),
           productionEngine: {
             charactersDir,
             agentConfig: {
@@ -540,7 +605,7 @@ export class VideoStudio {
               totalDeadlineMs: cfg.totalDeadlineMs ?? 3_600_000,
               promptFusionConcurrency: 1,
               checkpointDir: path.join(cfg.workDir, "checkpoints", input.projectId),
-              enableResume: !prdAuthority
+              enableResume: !prdAuthority && !creativeEnforce
             }
           },
           scriptEngine: { charactersDir },
@@ -548,7 +613,7 @@ export class VideoStudio {
           charactersDir,
           durationConstraint: { maxSingleShot, minSingleShot }
         });
-        if (input.isMarketing && noPeople && isAbstractMarketingIntent(input.intent, metadata, prdAuthority?.profile)) {
+        if (!creativeEnforce && input.isMarketing && noPeople && isAbstractMarketingIntent(input.intent, metadata, prdAuthority?.profile)) {
           const guard = (system as unknown as { pipelineGuard?: { check?: unknown } }).pipelineGuard;
           if (!guard || typeof guard.check !== "function") {
             throw new Error("MARKETING_PIPELINE_GUARD_BRIDGE_UNAVAILABLE: vendor 缺少渲染前守卫");
@@ -687,12 +752,71 @@ export class VideoStudio {
           const modelName = portraitCfg && portraitCfg.enabled !== false ? portraitCfg.model : "未指定模型";
           log(`[studio] 定妆照真实出图已启用（${modelName}，产物根 ${charactersDir}）`);
         }
-        const nativeResult = await withPrdAuthorityScope(prdAuthority, () => withRequirementContractScope(metadata, () => withPortraitArchivePlan(portraitRuntime, () =>
+        if (creativeEnforce && cfg.creativeExecution) {
+          const execution = cfg.creativeExecution, require = createRequire(vendorEntry.identity.entryPath);
+          const nativeRoot = path.dirname(vendorEntry.identity.entryPath);
+          const standardizer = require(path.join(nativeRoot, "engines/field-standardizer.js")) as {
+            CRITICAL_FIELDS: { p0: string[]; p1: string[]; p2: string[]; p3: string[] };
+            FIELD_NAME_CN: Record<string, string>;
+          };
+          const keys = [...standardizer.CRITICAL_FIELDS.p0, ...standardizer.CRITICAL_FIELDS.p1,
+            ...standardizer.CRITICAL_FIELDS.p2, ...standardizer.CRITICAL_FIELDS.p3];
+          const requiredKeys = [...standardizer.CRITICAL_FIELDS.p0, ...standardizer.CRITICAL_FIELDS.p1];
+          const labels = standardizer.FIELD_NAME_CN;
+          // Bind the real implementation dependency bytes, not a nominal cache version alone.
+          const implementationPaths = ["engines/field-standardizer.js", "engines/production-engine/production-engine.js",
+            "engines/production-engine/phases/phase-1-scene-design.js", "engines/production-engine/phases/phase-2-visual-audio.js",
+            "engines/production-engine/agents/prompt-fusion-agent.js", "engines/production-engine/agents/base-agent.js",
+            "engines/production-engine/agents/scene-design-agent.js", "engines/production-engine/agents/visual-language-agent.js",
+            "engines/production-engine/agents/audio-design-agent.js", "engines/production-engine/agents/continuity-review-agent.js"];
+          const nativeSchemaHash = requirementHash(implementationPaths.map(relative => ({ relative,
+            sha256: createHash("sha256").update(readFileSync(path.join(nativeRoot, relative))).digest("hex") })));
+          const facts = prdAuthority ? creativeFactsFromG1(prdAuthority.marketing) : undefined;
+          const next = compileCreativeContract({ scope: execution.session.contract.scope,
+            rawIntent: execution.rawIntent, metadata: execution.sourceMetadata, isMarketing: input.isMarketing,
+            ...(prdAuthority ? { profile: prdAuthority.profile as Record<string, unknown> } : {}),
+            ...(facts ? { facts } : {}), bounds: { minShotSeconds: minSingleShot, maxShotSeconds: maxSingleShot },
+            requiredFields: requiredKeys.filter(key => key !== "dialogue").map(key => labels[key]!) });
+          const contract = await execution.session.bindContract(next, prdAuthority?.marketing);
+          const visualAuthority = prdAuthority ? extractProductVisualAuthority(prdAuthority.marketing.g1Artifact.content) : undefined;
+          const assertCurrent = async () => { validateRequirementAuthority?.(); await execution.session.assertCurrent(); };
+          await assertCurrent();
+          await execution.session.completeStage("preparation", { contractHash: contract.hash,
+            sourceMetadataHash: contract.sourceMetadataHash, g1Hash: facts?.hash ?? null });
+          const selectedCandidate = await execution.selectCandidate({ contract, ...(visualAuthority ? { visualAuthority } : {}),
+            creativeInput: JSON.parse(JSON.stringify({ intent: input.intent, metadata, nativeSchemaHash })), assertCurrent });
+          await assertCurrent();
+          selectedCandidateHash = creativeCandidateHash(contract.hash, selectedCandidate.shots);
+          await execution.session.beginStage("native-preparation");
+          const options: CreativeRuntimeOptions = { contract, model: cfg.llm.model, nativeSchemaHash,
+            fields: { keys, labels, requiredKeys }, cache: { read: key => execution.session.readCache(key),
+              write: (key, value) => execution.session.writeCache(key, value) },
+            assertCurrent, selectedCandidate, preparationStage: "native-preparation",
+            beginStage: stage => execution.session.beginStage(stage),
+            completeStage: (stage, output) => execution.session.completeStage(stage, output),
+            onEvent: event => execution.session.onEvent(event),
+            ...(visualAuthority ? { visualAuthority } : {}),
+            generate: async (prompt, schema) => {
+              const response = await cfg.llm.reasonStructured(prompt, schema, { scene: "video.prompt.synthesis" });
+              if (!response.success || response.data === undefined) throw new Error(`CREATIVE_MODEL_UNVERIFIED: ${response.error ?? "missing complete JSON"}`);
+              return response.data;
+            } };
+          creativeRuntime = new CreativeRuntime(options);
+        }
+        const executeNative = () => withPrdAuthorityScope(prdAuthority, () => withRequirementContractScope(metadata, () => withPortraitArchivePlan(portraitRuntime, () =>
           system.create(input.intent, metadata, createOptions)
         ), prdAuthority ? { authority: prdAuthority, validateAuthority: validateRequirementAuthority!,
           approvedTheme: () => approvedRequirementTheme && structuredClone(approvedRequirementTheme) } : undefined), validateRequirementAuthority,
           prdAuthority ? () => approvedRequirementTheme && structuredClone(approvedRequirementTheme) : undefined);
-        const normalizedResult = input.isMarketing
+        const nativeResult = creativeRuntime ? await withCreativeRuntime(creativeRuntime, executeNative) : await executeNative();
+        if (creativeRuntime && nativeResult.success) await creativeRuntime.verifyHandoff(nativeResult.shots);
+        if (creativeRuntime && selectedCandidateHash) {
+          nativeResult.stages ??= {};
+          nativeResult.stages.creativeSelection = { contractHash: creativeRuntime.contract.hash, candidateHash: selectedCandidateHash };
+        }
+        if (prdAuthority && nativeResult.shots) assertProductVisualContent(
+          extractProductVisualAuthority(prdAuthority.marketing.g1Artifact.content), nativeResult.shots, "studio-raw-final-shots");
+        const normalizedResult = !creativeEnforce && input.isMarketing
           ? normalizeMarketingPromptResult(nativeResult, promptOptions)
           : { value: nativeResult, changes: [] as string[] };
         if (normalizedResult.changes.length > 0) {

@@ -25,8 +25,8 @@
       "sourceBytes": 12270,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
-      "targetSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
-      "targetBytes": 12270,
+      "targetSha256": "0c8b12d6e6cf146b2aa2a2a83ef962b708167ef67d41ea794fa04de7a18f8c66",
+      "targetBytes": 15006,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -49,8 +49,8 @@
       "sourceBytes": 22488,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
-      "targetBytes": 44261,
+      "targetSha256": "e230acb4aff2725757bc035f353f818107c4c01d0afdeef2e4025d46b437d491",
+      "targetBytes": 45067,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -61,8 +61,8 @@
       "sourceBytes": 32281,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
-      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
-      "targetBytes": 64431,
+      "targetSha256": "5087ffa9efc34e1ad6ce301ca1fe9566f403cdbad2c2f7e8bb9650c0aa35e427",
+      "targetBytes": 66653,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -85,8 +85,8 @@
       "sourceBytes": 32920,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
-      "targetBytes": 41957,
+      "targetSha256": "535a5ebcbc42e15b8dd3150cb61e6a1bf3ebe6e6ddec9f566590d2aef7dfed67",
+      "targetBytes": 52239,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -97,8 +97,8 @@
       "sourceBytes": 28504,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
-      "targetBytes": 42948,
+      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
+      "targetBytes": 49973,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -145,5 +145,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
 }

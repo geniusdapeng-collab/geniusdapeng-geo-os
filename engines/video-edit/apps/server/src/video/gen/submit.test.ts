@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { safeParseBusinessEvent } from "@workloom/shared";
 import { GenSubmissionError } from "@workloom/base/model-router";
+import { ArkVideoProvider } from "./providers.js";
 import { ProviderError, type MediaModel, type VideoGenParams } from "./types.js";
 import type { SubmissionReceipt, SubmissionRow } from "./submission-ledger.js";
 import { submissionRequestHash } from "./submission-ledger.js";
@@ -18,7 +19,10 @@ vi.mock("../production-authority.js", () => ({ authorizeRenderSubmission: async 
   const built = compileRenderRequest({ ...input, model: getModel(input.modelId)!, env: input.env ?? {} });
   return { compiled: built.compiled, requestHash: built.requestHash, reconciliationOnly: false, release: async () => undefined };
 } }));
-vi.mock("./providers.js", () => ({ videoGenPool: () => f.pool }));
+vi.mock("./providers.js", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./providers.js")>(),
+  videoGenPool: () => f.pool,
+}));
 vi.mock("@workloom/base/workdata", async (importOriginal) => ({
   ...await importOriginal<Record<string, unknown>>(),
   gatewayAppendOnClient: async (_client: unknown, _scope: unknown, event: any) => {
@@ -106,7 +110,10 @@ beforeEach(() => {
   f.healthy.mockReset().mockResolvedValue(true);
   f.submit.mockReset().mockImplementation(async () => { expect(f.dispatches).toBeGreaterThan(0); return { taskId: "provider-task" }; });
   f.fallback.mockReset().mockResolvedValue({ taskId: "fallback-task" });
-  f.pool.set("seedance", { healthy: f.healthy, submit: f.submit });
+  f.pool.set("seedance", Object.assign(new ArkVideoProvider({ apiKey: "test" }), {
+    healthy: f.healthy,
+    submitCompiled: f.submit,
+  }));
   f.pool.set("higgsfield", { healthy: async () => true, submit: f.fallback });
 });
 
@@ -148,7 +155,7 @@ describe("完整请求指纹", () => {
     const input = request();
     f.healthy.mockImplementationOnce(async () => { input.params.aspectRatio = "9:16"; return true; });
     await submitGenJob(input);
-    expect(f.submit.mock.calls[0]?.[0].params.aspectRatio).toBe("16:9");
+    expect(JSON.parse(f.submit.mock.calls[0]?.[0].bodyJson).ratio).toBe("16:9");
   });
 });
 

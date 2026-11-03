@@ -27,17 +27,17 @@
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
       "sourceSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetSha256": "4361e1cf3ed758b5a2733d044c663471909d1832ef871f91eb5ccea96008b372",
+      "targetSha256": "d2956a213a624fda08ff3ca32d1b115bca36fbf8209bdb76abef4c658016e519",
       "sourceBytes": 34358,
-      "targetBytes": 39441
+      "targetBytes": 41802
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "sourceSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "a59cfd50839c4ba8b9092779d25e2fd028e51ef4378a0f083f265b3f4aa4b13c",
+      "targetSha256": "733da79f0b21181c276f88fe23093a201e5d62d80af0c878adf6bf8e5caf652c",
       "sourceBytes": 38033,
-      "targetBytes": 46391
+      "targetBytes": 46661
     },
     {
       "path": "apps/server/src/video/marketing-source-fetcher.test.ts",
@@ -91,9 +91,9 @@
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "be1e6ae7d680b9d51a34945b762c9e40e906b8fb3b0dff8d87618ab06ebb724b",
+      "targetSha256": "a737f5a420508b9a0bc190e9642fa79f0ea7ba618388c33afe7a8b6a0f7bbf70",
       "sourceBytes": 81284,
-      "targetBytes": 105247
+      "targetBytes": 100550
     },
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
@@ -107,9 +107,9 @@
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "sourceSha256": "fa0c7713e61a6dff8106579b0d07e6c2049f3cca43466efb1f4703d0044c6fb4",
-      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
+      "targetSha256": "49945d682e98288e543d5cf2df0d781b33343a0ae5aea7316a2a0b26de8e99fc",
       "sourceBytes": 30063,
-      "targetBytes": 35551
+      "targetBytes": 37112
     },
     {
       "path": "packages/video-studio/src/product-research-archive.ts",
@@ -130,9 +130,9 @@
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
-      "targetSha256": "bac684f9d38d2ae591df015e6aa6610843c8309714718972ef89726c18bbfad2",
+      "targetSha256": "e230acb4aff2725757bc035f353f818107c4c01d0afdeef2e4025d46b437d491",
       "sourceBytes": 27675,
-      "targetBytes": 44261
+      "targetBytes": 45067
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
@@ -146,17 +146,17 @@
       "path": "packages/video-studio/src/requirement-contract.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.test.ts",
       "sourceSha256": "bce94809dcccd609c61dad9dcd68c10a909565abb0603da12d651f4d261420b0",
-      "targetSha256": "be7da57f462c7339a73235898c3b3f969632196fb49cadea406ce3b4c73c0826",
+      "targetSha256": "5087ffa9efc34e1ad6ce301ca1fe9566f403cdbad2c2f7e8bb9650c0aa35e427",
       "sourceBytes": 52098,
-      "targetBytes": 64431
+      "targetBytes": 66653
     },
     {
       "path": "packages/video-studio/src/requirement-contract.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract.ts",
       "sourceSha256": "10225700397bc24f0a98df8844e5b51e1df8650408d9a340a43967e88fcd4d16",
-      "targetSha256": "c7bbff219e2dc4cc594f8cc46e8968195112530be599c1b2e2804e743d1cac41",
+      "targetSha256": "f9ed76ed81b8e6138f623fa1fbb634a6a63993bffcd6e45c6e2be389755d640f",
       "sourceBytes": 38883,
-      "targetBytes": 61407
+      "targetBytes": 64198
     },
     {
       "path": "vendor/supermickey/hyperreality-system/engines/data-mining-engine/agents/competitor-scout.js",
@@ -215,5 +215,5 @@
       "targetBytes": 79572
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
 }

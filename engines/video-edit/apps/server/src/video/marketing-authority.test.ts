@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prepareMarketingFacts, finalizeMarketingFacts, verifyMarketingFacts, toJennyMarketingRaw, supportReviewFacts, type PreparedMarketingFacts } from "./marketing-authority.js";
-import { extractProductVisualAuthority } from "@hyperreality/video-studio";
+import { ABSTRACT_PRODUCT_RENDER_RULE, extractProductVisualAuthority } from "@hyperreality/video-studio";
 import { fetchMarketingSource, requestSource } from "./marketing-source-fetcher.js";
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
 const scope = { tenantId: "tenant-a", workspaceId: "ws-a", projectId: "P1", runId: "RUN1", attempt: 1 };
@@ -60,12 +60,14 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
   citationFault?: "metadata" | "duplicate" | "missing" | "persistent" | "changed-payload" | "repair-quote" | "repair-source" | "repair-model-failure";
   imageExtras?: boolean;
   intent?: string;
+  noImages?: boolean;
   imageMetadata?: "complete" | "no-source" | "no-angle" | "minimal";
   syntheticTokenCharge?: number;
   absoluteSellingPoint?: boolean;
   conflictingBrand?: string;
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
+  const imageMetadata = options.imageMetadata ?? (!options.noImages && !options.imageExtras ? "minimal" : undefined);
   return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: options.intent ?? "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
     llm: { reason: async (prompt, llmOptions) => {
       extractionOptions.push(llmOptions);
@@ -83,9 +85,9 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
         citations: ["/identity/name", ...(options.conflictingBrand ? ["/identity/brand"] : []), ...Object.keys(specs).map(key => `/identity/specs/${key.replace(/~/g, "~0").replace(/\//g, "~1")}`), ...(options.citationFault ? ["/identity/prices/0/amount", "/identity/prices/0/currency"] : []), ...officialPoints.map((_point, index) => `/identity/official_selling_points/${index}/point`)]
           .map(pointer => ({ pointer, sourceId: source.sourceId, ...(options.quoteIds ? { quoteId: source.textFragments[0].quoteId } : { quote: options.badQuote ? "不存在的事实" : sourceText }) })) };
       if (options.imageExtras) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl, angle: "unknown", width: 1080, height: 1920 });
-      if (options.imageMetadata) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl,
-        ...(["complete", "no-angle"].includes(options.imageMetadata) ? { source: "模型自称官方" } : {}),
-        ...(["complete", "no-source"].includes(options.imageMetadata) ? { angle: "unknown" } : {}),
+      if (imageMetadata) data.payload.images.push({ url: sourceUrl + "/hero.png", page_url: sourceUrl,
+        ...(["complete", "no-angle"].includes(imageMetadata) ? { source: "模型自称官方" } : {}),
+        ...(["complete", "no-source"].includes(imageMetadata) ? { angle: "unknown" } : {}),
       });
       if (options.citationFault && (a1Calls === 1 || options.citationFault === "persistent")) {
         if (options.citationFault === "duplicate") data.citations.push({ ...data.citations[0]! });
@@ -102,7 +104,7 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
       return { success: true, data };
     } }, dependencies: {
       search: async () => (++searches, options.noSearch || options.noAux && searches > 20 ? [] : [{ title: "星野规格", url: sourceUrl, snippet: "故意错误摘要999档，不能当事实" }]),
-      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(options.imageMetadata || options.imageExtras ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
+      fetchSource: async url => fetchMarketingSource(url, { resolver: async () => [{ address: "93.184.216.34", family: 4 }], transport: async (_url, _address, signal) => requestSource(new URL(imageMetadata || options.imageExtras ? "/with-image" : "/", origin), { address: "127.0.0.1", family: 4 }, signal) }),
     } });
 }
 const shots = [{ shotId: "S1", prompt: "窗边展示星野 F3 风扇，字幕说明风量 9 档。", fields: { 场景: "窗边", 产品: "星野 F3", 规格: "9 档" } }];
@@ -254,7 +256,7 @@ describe("营销事实宿主完整执行", () => {
     await expect(verifyMarketingFacts({ root, ref: saved.ref, sha256: renderSha256(bundle), scope, shots })).rejects.toThrow(/MARKETING_/);
   });
   it.each(["v1", "v2"])("已发布的旧%s档案保留原合同和完整来源时仍可严格复读", async version => {
-    const prepared = await prepare(), saved = await finalizeMarketingFacts(prepared, shots, env);
+    const prepared = await prepare();
     // 冻结的v1三行头与原始全文sources；公共规则保持原字节，模拟升级前已接受的档案。
     const legacyHead = [
       '输出严格JSON {"payload":本阶段结构,"citations":[{"pointer":"/identity/name","sourceId":"SRC-…","quote":"正文连续原文"}],"noEvidenceReason":"仅无可用证据时填写"}。',
@@ -273,8 +275,12 @@ describe("营销事实宿主完整执行", () => {
       else artifact.schemaVersion = "workloom.marketing-extraction/v2";
       const bytes = canonicalRenderJson(artifact); await writeFile(path.join(root, reference.ref), bytes); reference.sha256 = renderSha256(bytes);
     }
-    const bundle = canonicalRenderJson(prepared.bundle); await writeFile(path.join(root, saved.ref), bundle);
-    await expect(verifyMarketingFacts({ root, ref: saved.ref, sha256: renderSha256(bundle), scope, shots })).resolves.toMatchObject({ scope });
+    const g1 = JSON.parse(prepared.g1Content);
+    g1.facts.stages = prepared.bundle.stages;
+    prepared.g1Content = canonicalRenderJson(g1);
+    prepared.bundle.g1ContentSha256 = renderSha256(prepared.g1Content);
+    const saved = await finalizeMarketingFacts(prepared, shots, env);
+    await expect(verifyMarketingFacts({ root, ...saved, scope, shots })).resolves.toMatchObject({ scope });
   });
   it("模型仍添加图片宽高时严格拒绝且不修剪原始输出、不重试", async () => {
     await expect(prepare({ imageExtras: true })).rejects.toThrow("MARKETING_PAYLOAD_INVALID");
@@ -423,11 +429,35 @@ describe("营销事实宿主完整执行", () => {
 });
 
 
-it("MC-011 records the current unresolved image requirement for an explicitly abstract text-only dossier", async () => {
-  const prepared = await prepare({ intent: "全片无人，仅使用抽象界面和示意图，不展示产品外观，不使用商品图片" });
+const abstractIntent = "全片无人，仅使用抽象界面和示意图，不展示产品外观，不使用商品图片，保留暖橙配色与旁白";
+const abstractShots = [{ shotId: "S1", prompt: `暖橙色节点向前汇合；旁白读“星野 F3，风量 9 档”。${ABSTRACT_PRODUCT_RENDER_RULE}`,
+  fields: { 场景: "暖橙色抽象光点", 旁白: "星野 F3，风量 9 档" } }];
+
+it("MC-011 accepts text-only facts, binds the actual abstract shot to its approved G1, and detects original tampering on reread", async () => {
+  const prepared = await prepare({ noImages: true, intent: abstractIntent });
   expect(prepared.bundle.rawByAgent.A1.images).toEqual([]);
   expect(prepared.bundle.dossier.visual_assets).toMatchObject({ images: [], needs_more_reference: true });
-  // Known design limitation: the proposed abstract/no-appearance mode is not
-  // implemented here; a missing image must not silently grant appearance rights.
-  expect(() => extractProductVisualAuthority(prepared.g1Content)).toThrow("PRODUCT_VISUAL_AUTHORITY_REQUIRED");
+  expect(extractProductVisualAuthority(prepared.g1Content)).toMatchObject({ mode: "abstract_without_product_appearance", images: [] });
+  const saved = await finalizeMarketingFacts(prepared, abstractShots, env);
+  const restored = await verifyMarketingFacts({ root, ...saved, scope, shots: abstractShots, g1Content: prepared.g1Content });
+  expect(restored.productVisualAuthority.mode).toBe("abstract_without_product_appearance");
+  const evidence = JSON.parse(await readFile(path.join(root, restored.outputReviews[0]!.ref), "utf8"));
+  expect(evidence).toMatchObject({ shot: abstractShots[0], productVisualContract: { g1ContentSha256: renderSha256(prepared.g1Content),
+    authority: { mode: "abstract_without_product_appearance", modeEvidence: { value: "不展示产品外观" } } } });
+  expect(JSON.stringify(modelCalls.at(-1))).toContain(ABSTRACT_PRODUCT_RENDER_RULE);
+  const g1Path = path.join(root, restored.g1ContentRef!);
+  await writeFile(g1Path, prepared.g1Content.replace("不展示产品外观", "允许展示产品外观"));
+  await expect(verifyMarketingFacts({ root, ...saved, scope, shots: abstractShots })).rejects.toThrow("MARKETING_FACTS_CHANGED");
+});
+
+it.each(["missing-rule", "positive-prompt", "positive-structure", "named-no-images"])("MC-011 blocks %s before any final model review", async (kind) => {
+  const prepared = await prepare({ noImages: true, intent: kind === "named-no-images" ? "窗边实拍星野 F3" : abstractIntent });
+  const current = structuredClone(abstractShots);
+  if (kind === "missing-rule") current[0]!.prompt = "暖橙色抽象光点组网";
+  if (kind === "positive-prompt") current[0]!.prompt += "然后实拍产品包装。";
+  if (kind === "positive-structure") Object.assign(current[0]!.fields, { productReferences: [sourceUrl + "/hero.png"] });
+  const calls = modelCalls.length;
+  await expect(finalizeMarketingFacts(prepared, current, env)).rejects.toThrow(kind === "named-no-images"
+    ? "PRODUCT_VISUAL_AUTHORITY_REQUIRED" : "PRODUCT_VISUAL_CONTENT_CONFLICT");
+  expect(modelCalls).toHaveLength(calls);
 });

@@ -25,8 +25,8 @@
       "sourceBytes": 20967,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
-      "targetBytes": 35551,
+      "targetSha256": "49945d682e98288e543d5cf2df0d781b33343a0ae5aea7316a2a0b26de8e99fc",
+      "targetBytes": 37112,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -49,8 +49,8 @@
       "sourceBytes": 24660,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "3f8899d0897600fb292e8e359af243b47dfe72be452989a665f4878b8f8666ed",
-      "targetBytes": 24660,
+      "targetSha256": "a737f5a420508b9a0bc190e9642fa79f0ea7ba618388c33afe7a8b6a0f7bbf70",
+      "targetBytes": 100550,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -85,8 +85,8 @@
       "sourceBytes": 30971,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "33e0ebda21a8002feb1cc7d1de877238bcae5266221e1556bccbb47cb3cae4b9",
-      "targetBytes": 41957,
+      "targetSha256": "535a5ebcbc42e15b8dd3150cb61e6a1bf3ebe6e6ddec9f566590d2aef7dfed67",
+      "targetBytes": 52239,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -97,8 +97,8 @@
       "sourceBytes": 18969,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "5a5290778ba2c9a217701d746ef53f71947c36ab9243a48807b5c862bbbc7892",
-      "targetBytes": 42948,
+      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
+      "targetBytes": 49973,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -109,8 +109,8 @@
       "sourceBytes": 3218,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
-      "targetSha256": "f30e09fc7d1d112a18e08b45046bb558cd2f1d154e764eb4e87fa244a5821b64",
-      "targetBytes": 3218,
+      "targetSha256": "c359d4a7dc93590bdf01b8a6f138207ea8e19f6fe342a3efd176ee94ae863ea3",
+      "targetBytes": 3773,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -121,8 +121,8 @@
       "sourceBytes": 11184,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-gate-evidence.ts",
-      "targetSha256": "562aac782279c145445238000b7e82f30af713fd7ee3bed7dc64dcf06c6138c0",
-      "targetBytes": 11184,
+      "targetSha256": "9b590b5e6cea3485e9768fc09d8042eef297d8625eeebc03611b4cf25aeb9f4e",
+      "targetBytes": 12892,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -133,8 +133,8 @@
       "sourceBytes": 18370,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-gate-evidence.test.ts",
-      "targetSha256": "7969af87410331faaea0517ae5c7fda1b4cc7ae657b26341373e58c3c795140f",
-      "targetBytes": 18370,
+      "targetSha256": "9f6876000142a9b84c6a78008bd53fa1c913965a686db96afcb73a44dfd34861",
+      "targetBytes": 21716,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -145,8 +145,8 @@
       "sourceBytes": 86049,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
-      "targetSha256": "4ef6258e5d68806d98478c33d175a01f023f7385ca1c536949f918c0aa3c91b2",
-      "targetBytes": 86049,
+      "targetSha256": "06c6b9fd188b78654e40a66db6c963b00235c9b1430c117aa70caec9dfbf6c02",
+      "targetBytes": 99710,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -157,8 +157,8 @@
       "sourceBytes": 54207,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
-      "targetSha256": "73354f1fa601ba82c4f613331c3a6077bc73ff784a174f9af755a3eced9460f7",
-      "targetBytes": 54207,
+      "targetSha256": "cd5de28e7c0358a71aa1065488a6bd3afd285a786e8aefd8bf0db3356d72c26d",
+      "targetBytes": 76951,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -217,5 +217,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
 }

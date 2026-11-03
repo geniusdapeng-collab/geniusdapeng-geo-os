@@ -79,3 +79,9 @@ export * from "./prd-authority.js";
 export * from "./product-visual-authority.js";
 export * from "./marketing-prompt-contract.js";
 export * from "./audience-authority.js";
+export * from "./constraint-compiler.js";
+
+export * from "./creative-evaluation.js";
+export * from "./creative-runtime.js";
+export { completeVideoTextTask, videoTextEndpointFromEnv } from "./video-text-client.js";
+export { requirementCast } from "./requirement-contract.js";

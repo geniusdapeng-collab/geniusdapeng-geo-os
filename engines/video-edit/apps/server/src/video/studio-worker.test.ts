@@ -36,6 +36,8 @@ const doubles = vi.hoisted(() => ({
   connect: vi.fn(),
   query: vi.fn(),
   releaseDb: vi.fn(),
+  createCreativeSession: vi.fn(),
+  assertNoCreativePendingUsage: vi.fn(),
 }));
 
 vi.mock("@workloom/db", () => ({ getAppPool: () => ({ connect: doubles.connect }), getGatewayPool: () => ({}) }));
@@ -71,6 +73,10 @@ vi.mock("./marketing-authority.js", async importOriginal => ({
   prepareMarketingFacts: doubles.prepare, finalizeMarketingFacts: doubles.finalize,
 }));
 vi.mock("./data-mining-executor.js", () => ({ createDataMiningExecutor: vi.fn() }));
+vi.mock("./creative-service.js", async importOriginal => ({
+  ...await importOriginal<typeof import("./creative-service.js")>(), createCreativeExecutionSession: doubles.createCreativeSession,
+  assertNoCreativePendingUsage: doubles.assertNoCreativePendingUsage,
+}));
 vi.mock("./media/library.js", () => ({ ingestPortraitsFromIndex: doubles.ingest }));
 vi.mock("./media/products.js", () => ({ upsertProductProfileFromDossier: doubles.project }));
 vi.mock("./archive-host.js", () => ({
@@ -171,6 +177,10 @@ beforeEach(() => {
     rows: sql.includes("video_projects_max_vid_no") ? [{ n: 9000 }] : [], rowCount: 1,
   }));
   doubles.releaseDb.mockReset();
+  doubles.createCreativeSession.mockReset();
+  doubles.assertNoCreativePendingUsage.mockReset().mockResolvedValue(undefined);
+  vi.stubEnv("PIPELINE_COORDINATOR", "off");
+  vi.stubEnv("PIPELINE_CONTROL_PLANE", "");
   vi.stubEnv("ARCHIVE_ENABLED", "1");
   vi.stubEnv("MEDIA_INGEST_ENABLED", "1");
   vi.stubEnv("HR_PORTRAIT_ENABLED", "0");
@@ -260,6 +270,62 @@ async function archiveOutput(projectId: string, attempt: number) {
   const file = path.join(doubles.workDir, "archive", scope.workspaceId, projectId, "stages", "preproduction", `attempt-${attempt}.output.json`);
   return JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
 }
+
+describe("worker creative rollout receipts", () => {
+  it.each(["off", "shadow", "enforce"])("%s cannot dispatch around unresolved paid usage", async mode => {
+    vi.stubEnv("PIPELINE_COORDINATOR", mode); vi.stubEnv("PIPELINE_SCOPE", "all");
+    doubles.assertNoCreativePendingUsage.mockRejectedValueOnce(new Error("CREATIVE_USAGE_UNKNOWN"));
+    const { entry, projectId } = await runToTerminal(false);
+    expect(entry).toMatchObject({ status: "failed", error: "CREATIVE_USAGE_UNKNOWN" });
+    expect(doubles.assertNoCreativePendingUsage).toHaveBeenCalledWith({ ...scope, projectId }, { rejectActiveEnforce: mode !== "enforce" });
+    expect(doubles.runPreproduction).not.toHaveBeenCalled();
+    expect(doubles.release).toHaveBeenCalledTimes(1);
+  });
+  it.each(["off", "shadow"])("%s runs exactly one legacy pipeline and only shadow writes a comparator", async mode => {
+    vi.stubEnv("PIPELINE_COORDINATOR", mode); vi.stubEnv("PIPELINE_SCOPE", "all");
+    const native = success(), before = structuredClone(native);
+    doubles.runPreproduction.mockResolvedValue(native);
+    const { entry, projectId, runId } = await runToTerminal(false);
+    expect(entry.status).toBe("finished");
+    expect(doubles.runPreproduction).toHaveBeenCalledTimes(1);
+    expect(doubles.createCreativeSession).not.toHaveBeenCalled();
+    expect(doubles.studioConfigs[0]?.creativeExecution).toBeUndefined();
+    const events = (await readFile(path.join(doubles.workDir, "archive", scope.workspaceId, projectId, "events.jsonl"), "utf8"))
+      .trim().split("\n").map(line => JSON.parse(line)).filter(item => item.kind === "creative.shadow.compared");
+    expect(events).toHaveLength(mode === "shadow" ? 1 : 0);
+    if (mode === "shadow") expect(events[0]).toMatchObject({ runId, observation: { shadowOutboundRequests: 0,
+      baseline: { ready: true }, originalOutputBefore: expect.stringMatching(/^[a-f0-9]{64}$/), originalOutputAfter: events[0].observation.originalOutputBefore } });
+    const output = await archiveOutput(projectId, 1);
+    expect(output.productionEvidence).not.toHaveProperty("creativeExecution");
+    expect(native.shots).toEqual(before.shots);
+  });
+
+  it.each([false, true])("enforce binds archived prompt bytes and publishes finished only after the creative receipt (receipt failure=%s)", async failReceipt => {
+    vi.stubEnv("PIPELINE_COORDINATOR", "enforce"); vi.stubEnv("PIPELINE_SCOPE", "all");
+    const contractHash = "a".repeat(64), planHash = "b".repeat(64);
+    const completeStage = vi.fn(async () => undefined), finish = vi.fn(async () => undefined);
+    if (failReceipt) finish.mockRejectedValueOnce(new Error("creative final receipt unavailable"));
+    doubles.createCreativeSession.mockResolvedValue({ contract: { hash: contractHash }, planHash, beginStage: vi.fn(async () => undefined),
+      completeStage, finish, shouldAbort: () => false });
+    doubles.runPreproduction.mockResolvedValue(success());
+    const { entry, projectId, runId } = await runToTerminal(false);
+    expect(doubles.runPreproduction).toHaveBeenCalledTimes(1);
+    expect(doubles.createCreativeSession).toHaveBeenCalledWith(expect.objectContaining({ scope, projectId, runId, mode: "enforce" }));
+    expect(doubles.studioConfigs[0]?.creativeExecution.selectCandidate).toBeTypeOf("function");
+    const output = await archiveOutput(projectId, 1);
+    const { bytes } = await archiveJson(projectId, String(output.promptsRef));
+    expect(output.productionEvidence).toMatchObject({ runId, attempt: 1, creativeExecution: { contractHash, planHash } });
+    expect(completeStage).toHaveBeenCalledWith("final", expect.objectContaining({ renderBinding: { attempt: 1, promptsSha256: renderSha256(bytes) } }));
+    expect(finish).toHaveBeenNthCalledWith(1, { success: true });
+    if (failReceipt) {
+      expect(entry).toMatchObject({ status: "failed", error: "creative final receipt unavailable", resultSummary: null });
+      expect(finish).toHaveBeenNthCalledWith(2, { success: false, error: "creative final receipt unavailable" });
+    } else {
+      expect(entry).toMatchObject({ status: "finished", resultSummary: { success: true } });
+      expect(finish).toHaveBeenCalledTimes(1);
+    }
+  });
+});
 
 describe("预生产原始结果与诚实终态", () => {
   it("坏复用配置在启动注册、vendor和租约之前失败，不回退生成", () => {

@@ -8,6 +8,7 @@ import {
   validateRequirementSchema, verifiedRequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { SCENE_SUM_ARITHMETIC_TOLERANCE_SECONDS, TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
+import { extractProductVisualAuthority } from "./product-visual-authority.js";
 import { assertRequirementContractBridge, installRequirementContractBridge, withRequirementContractScope } from "./requirement-contract-bridge.js";
 import { installSharedBridge, installVendorDiscoveryFixBridge, listSharedBridges } from "./vendor-compat.js";
 
@@ -386,6 +387,26 @@ describe("host requirement contract data", () => {
     expect(() => bindRequirementContract(original(), d, upstream, meta, requirementCast(meta).hash, null)).toThrow("REQUIREMENT_SCENE_UNVERIFIED");
   });
 
+  it("MC-011 named abstract marketing freezes G3 with zero physical product props and rejects a changed mode or $product actor", () => {
+    const meta = { ...nobody(), brief: { product: "Atlas", audience: "产品设计师" } };
+    const visual = extractProductVisualAuthority(JSON.stringify({ requestedIntent: "全片无人；不展示产品外观。",
+      requestedMetadata: { brief: meta.brief }, facts: { stages: [] } }));
+    const node = { duration: 10, purpose: "用暖橙节点表现流程关系", keyElements: ["抽象图形", "暖橙光点"],
+      productionContract: { props: [], noPropsReason: "全片仅抽象图形没有物理道具。", actions: [{ actorId: "$scene", description: "抽象节点向中心汇合" }] } };
+    const d = { sceneStructure: { opening: structuredClone(node), scenes: [structuredClone(node)], ending: structuredClone(node), totalDuration: 30, sceneCount: 3 } };
+    const result = bindRequirementContract(original(), d, upstream, meta, requirementCast(meta).hash, "产品设计师", undefined, visual);
+    const contract = verifiedRequirementContract(result, meta, d, visual);
+    expect(contract).toMatchObject({ props: [], productVisualAuthority: { mode: "abstract_without_product_appearance", modeEvidence: { value: "不展示产品外观" } } });
+    expect(() => verifiedRequirementContract(result, meta, d)).toThrow("REQUIREMENT_CONTRACT_CHANGED");
+    const changed = structuredClone(d);
+    changed.sceneStructure.opening.productionContract.actions[0]!.actorId = "$product";
+    expect(() => bindRequirementContract(original(), changed, upstream, meta, requirementCast(meta).hash, "产品设计师", undefined, visual))
+      .toThrow("PRODUCT_VISUAL_CONTENT_CONFLICT");
+    const brief = structuredSceneInstructions(requirementCast(meta), "产品设计师", { productVisualAuthority: visual });
+    expect(brief).toContain("不得引用 \"$product\"");
+    expect(brief).not.toContain("只允许来自 G1 A1");
+  });
+
   it.each(["missing-selection", "wrong-schema", "wrong-id", "wrong-name", "duplicate", "profile", "registry", "none-conflict", "mode"])("rejects %s casting instead of inventing no-person", kind => {
     const meta = metadata(), selection = requirementRecord(meta.builtinCharacterSelection, "selection");
     const selected = (selection.characters as RequirementRecord[])[0]!, character = (meta.characters as RequirementRecord[])[0]!;
@@ -481,7 +502,7 @@ describe("host requirement contract data", () => {
     let failure: RequirementContractError & { details?: RequirementRecord };
     try {
       requirementScenes(scene, requirementCast(metadata()), 30, {
-        productVisualAuthority: { required: true, product: "820RR-RC", images: [
+        productVisualAuthority: { mode: "verified_product_appearance", modeEvidence: null, required: true, product: "820RR-RC", images: [
           { url: "https://example.com/product.jpg", pageUrl: "https://example.com/product", angle: "unknown" },
         ], rule: "only verified image content" },
       });
@@ -499,7 +520,7 @@ describe("host requirement contract data", () => {
       "围场护栏",
     ];
     expect(requirementScenes(scene, requirementCast(metadata()), 30, {
-      productVisualAuthority: { required: true, product: "820RR-RC", images: [
+      productVisualAuthority: { mode: "verified_product_appearance", modeEvidence: null, required: true, product: "820RR-RC", images: [
         { url: "https://example.com/product.jpg", pageUrl: "https://example.com/product", angle: "unknown" },
       ], rule: "only verified image content" },
     })).toHaveLength(3);
@@ -513,7 +534,7 @@ describe("host requirement contract data", () => {
       toleranceSeconds: 1 / 30,
       narrativeDisclosure: "冠军和连续超车是叙事演绎。",
       persistentSubtitleText: "张雪机车 820RR-RC｜赛道专用",
-      productVisualAuthority: { required: true, product: "820RR-RC", images: [], rule: "no invented parts" },
+      productVisualAuthority: { mode: "verified_product_appearance", modeEvidence: null, required: true, product: "820RR-RC", images: [], rule: "no invented parts" },
     });
     expect(instructions).toContain("内容时间线节点合计必须为 29.4 秒 ±0.03333333333333333 秒");
     expect(instructions).toContain("最终成片必须为 30 秒 ±0.03333333333333333 秒");

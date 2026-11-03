@@ -117,6 +117,15 @@ jobs:
           WORKLOOM_TEST_GATEWAY_PASSWORD: pipeline_test_gateway
         run: |
           pnpm exec vitest run --maxWorkers=1 --no-file-parallelism \
+            packages/video-studio/src/constraint-compiler.test.ts \
+            packages/video-studio/src/creative-evaluation.test.ts \
+            packages/video-studio/src/creative-runtime.test.ts \
+            packages/video-studio/src/video-text-client.test.ts \
+            packages/video-studio/src/producer-gate.test.ts \
+            packages/video-studio/src/portrait-runtime.test.ts \
+            apps/server/src/video/creative-shadow.test.ts \
+            packages/video-studio/src/product-visual-authority.test.ts \
+            packages/video-studio/src/requirement-authority.test.ts \
             packages/video-studio/src/requirement-contract.test.ts \
             packages/video-studio/src/requirement-contract-production-bridge.test.ts \
             packages/video-studio/src/marketing-prompt-contract.test.ts \
@@ -131,10 +140,44 @@ jobs:
             apps/server/src/video/data-mining-executor.test.ts \
             apps/server/src/video/marketing-search-isolation.test.ts \
             apps/server/src/video/marketing-authority.test.ts \
+            apps/server/src/video/marketing-gate-evidence.test.ts \
             apps/server/src/video/studio-start.test.ts \
+            apps/server/src/video/studio-worker.test.ts \
+            apps/server/src/video/production-authority.test.ts \
+            apps/server/src/video/gen/compiled-request.test.ts \
+            apps/server/src/video/gen/submit.test.ts \
+            apps/server/src/video/gen/gen.test.ts \
             apps/server/src/video/pipeline/pipeline-repository.pg.test.ts \
             apps/server/src/video/pipeline/pipeline-command-replay.pg.test.ts \
             apps/server/src/video/pipeline/pipeline-frontier.pg.test.ts
+      - name: Qualified creative generation with real PostgreSQL scope and recovery
+        working-directory: engines/video-edit
+        env:
+          WORKLOOM_TEST_ADMIN_URL: postgres://postgres:pipeline_ci_fixture@127.0.0.1:5432/postgres
+          WORKLOOM_TEST_APP_PASSWORD: pipeline_test_app
+          WORKLOOM_TEST_GATEWAY_PASSWORD: pipeline_test_gateway
+          DATABASE_URL: postgres://postgres:pipeline_ci_fixture@127.0.0.1:5432/video_architecture_fixture
+          DATABASE_APP_URL: postgres://workloom_app:pipeline_test_app@127.0.0.1:5432/video_architecture_fixture
+          DATABASE_GATEWAY_URL: postgres://workloom_gateway:pipeline_test_gateway@127.0.0.1:5432/video_architecture_fixture
+          APP_DB_PASSWORD: pipeline_test_app
+          GATEWAY_DB_PASSWORD: pipeline_test_gateway
+          RUN_DB_TESTS: "1"
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const url = new URL(process.env.DATABASE_URL);
+          url.pathname = '/postgres';
+          const client = new pg.Client({ connectionString: url.toString() });
+          await client.connect();
+          try { await client.query('CREATE DATABASE video_architecture_fixture'); }
+          finally { await client.end(); }
+          NODE
+          node --import tsx scripts/migrate.ts
+          pnpm exec vitest run --maxWorkers=1 --no-file-parallelism \
+            apps/server/src/video/production-authority.pg.test.ts \
+            apps/server/src/video/creative-render-binding.pg.test.ts \
+            apps/server/src/video/creative-service.pg.test.ts \
+            apps/server/src/video/creative-evaluation-matrix.pg.test.ts
       - name: Smoke test
         run: node scripts/smoke.mjs
       - name: Secret scan

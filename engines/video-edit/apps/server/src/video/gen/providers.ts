@@ -61,7 +61,7 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
 
 /** 直接发送编译后的 JSON，不在审核后再映射、追加或覆盖字段。 */
 async function postCompiled(compiled: CompiledProviderRequest, headers: Record<string, string>): Promise<unknown> {
-  const res = await fetch(compiled.endpoint, { method: compiled.method, headers: { "content-type": "application/json", ...headers }, body: compiled.bodyJson, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }); // C-06
+  const res = await fetch(compiled.endpoint, { method: compiled.method, headers: { "content-type": "application/json", ...headers }, body: compiled.bodyJson, redirect: "error", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }); // C-06
   const text = await res.text();
   if (!res.ok) throw classify(res.status, text);
   try { return JSON.parse(text) as unknown; }
@@ -87,7 +87,9 @@ export class ArkVideoProvider implements GenProvider {
   }
   async healthy(): Promise<boolean> { return Boolean(this.cfg.apiKey); }
   async submit(req: GenRequest): Promise<{ taskId: string }> {
-    const compiled = compileProviderRequest(this.providerId, req, this.cfg);
+    return this.submitCompiled(compileProviderRequest(this.providerId, req, this.cfg));
+  }
+  async submitCompiled(compiled: CompiledProviderRequest): Promise<{ taskId: string }> {
     const data = await postCompiled(compiled, { authorization: `Bearer ${this.cfg.apiKey}` }) as { id?: string };
     if (typeof data?.id !== "string" || !data.id.trim()) throw new ProviderError("PROVIDER_FAILED", "Seedance 未返回 task_id");
     return { taskId: data.id };
@@ -115,7 +117,9 @@ export class ArkImageProvider implements GenProvider {
   }
   async healthy(): Promise<boolean> { return Boolean(this.cfg.apiKey); }
   async submit(req: GenRequest): Promise<{ taskId: string }> {
-    const compiled = compileProviderRequest(this.providerId, req, this.cfg);
+    return this.submitCompiled(compileProviderRequest(this.providerId, req, this.cfg));
+  }
+  async submitCompiled(compiled: CompiledProviderRequest): Promise<{ taskId: string }> {
     const data = await postCompiled(compiled, { authorization: `Bearer ${this.cfg.apiKey}` }) as { data?: Array<{ url?: string }> };
     const url = data?.data?.[0]?.url;
     if (typeof url !== "string" || !url.trim()) throw new ProviderError("PROVIDER_FAILED", "Seedream 未返回图像 URL");
@@ -148,7 +152,9 @@ export class HiggsfieldProvider implements GenProvider {
   async healthy(): Promise<boolean> { return Boolean(this.cfg.keyId && this.cfg.keySecret); }
 
   async submit(req: GenRequest): Promise<{ taskId: string }> {
-    const compiled = compileProviderRequest(this.providerId, req, this.cfg);
+    return this.submitCompiled(compileProviderRequest(this.providerId, req, this.cfg));
+  }
+  async submitCompiled(compiled: CompiledProviderRequest): Promise<{ taskId: string }> {
     const data = await postCompiled(compiled, this.auth()) as { request_id?: string; id?: string };
     const taskId = data?.request_id ?? data?.id;
     if (typeof taskId !== "string" || !taskId.trim()) throw new ProviderError("PROVIDER_FAILED", "Higgsfield 未返回 request_id");
@@ -192,7 +198,9 @@ export class MuapiProvider implements GenProvider {
   }
   async healthy(): Promise<boolean> { return Boolean(this.cfg.apiKey); }
   async submit(req: GenRequest): Promise<{ taskId: string }> {
-    const compiled = compileProviderRequest(this.providerId, req, this.cfg);
+    return this.submitCompiled(compileProviderRequest(this.providerId, req, this.cfg));
+  }
+  async submitCompiled(compiled: CompiledProviderRequest): Promise<{ taskId: string }> {
     const data = await postCompiled(compiled, { "x-api-key": this.cfg.apiKey }) as { request_id?: string; id?: string };
     const taskId = data?.request_id ?? data?.id;
     if (typeof taskId !== "string" || !taskId.trim()) throw new ProviderError("PROVIDER_FAILED", "MuAPI 未返回 request_id");
@@ -208,6 +216,15 @@ export class MuapiProvider implements GenProvider {
     if (["failed", "error"].includes(st)) return { status: "failed", error: d.error ?? "生成失败" };
     return { status: "running" };
   }
+}
+
+/** Qualified jobs dispatch the reviewed bytes, with no second parameter translation. */
+export function compiledSubmitter(provider: GenProvider, request: CompiledProviderRequest): (() => Promise<{ taskId: string }>) | undefined {
+  if (provider.providerId !== request.provider) return undefined;
+  if (provider instanceof ArkVideoProvider || provider instanceof ArkImageProvider || provider instanceof HiggsfieldProvider || provider instanceof MuapiProvider) {
+    return () => provider.submitCompiled(request);
+  }
+  return undefined;
 }
 
 /* ================= 装配：env 驱动 + fail-closed（缺密钥=缺位，不 mock 冒充） ================= */

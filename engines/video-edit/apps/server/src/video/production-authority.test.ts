@@ -31,6 +31,8 @@ class MemoryPool {
     else if (sql.includes("FROM biz_events") && sql.includes("video.scene_policy.selected")) rows = this.selection
       && values[0] === scope.tenantId && values[1] === scope.workspaceId && values[2] === this.source.project_id
       ? [{ after: this.selection }] : [];
+    else if (sql.includes("FROM video_pipeline_operations") && sql.includes("kind LIKE 'creative.%'")) rows = [];
+    else if (sql.includes("FROM video_pipeline_runs") && sql.includes("plan_key,plan_hash,intent_hash")) rows = [];
     else if (sql.includes("SELECT q.*,s.state AS submission_state")) rows = this.submissionState ? this.qualifications.filter(row => row.payload_hash === values[5] && row.source_stage_run_id === values[4] && ["submitting", "unknown", "accepted", "finalized"].includes(this.submissionState)).slice(-1) : [];
     else if (sql.includes("INSERT INTO render_scripts")) this.scripts.push({ id: values[0], workspace_id: values[1], project_id: values[2], shot_id: values[3], script_key: values[4], version: 1, status: "draft", md: values[5], fields: JSON.parse(values[6]), created_by: values[7] });
     else if (sql.includes("INSERT INTO production_qualifications")) {

@@ -26,8 +26,8 @@
       "sourceGitBlob": "9769fdb89949131e6bb528bb27c79ef852385eb5",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "targetMode": "100644",
-      "targetSha256": "a4a0d8b528b5a46df26132c2fa588c8d403e25679bebd14bcd981dba9f6cb92a",
-      "targetBytes": 35551,
+      "targetSha256": "49945d682e98288e543d5cf2df0d781b33343a0ae5aea7316a2a0b26de8e99fc",
+      "targetBytes": 37112,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "6bd4cb5b7e99244a127a6b738bb818e12be3358a",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "targetMode": "100644",
-      "targetSha256": "e11b0d75881b1c72358dfa87802830f52827a00b8168aac3f6eb4e11090a1d5a",
-      "targetBytes": 27062,
+      "targetSha256": "a737f5a420508b9a0bc190e9642fa79f0ea7ba618388c33afe7a8b6a0f7bbf70",
+      "targetBytes": 100550,
       "transform": "none"
     },
     {
@@ -95,5 +95,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-02T15:27:59.186346+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
 }

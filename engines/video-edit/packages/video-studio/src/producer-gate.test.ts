@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withCreativeBudget, type CreativeBudgetHooks, type CreativeModelOutcome } from "./creative-runtime.js";
 import {
   PRODUCER_RUBRICS,
   resolveProducerLlm,
@@ -79,6 +80,60 @@ function textOptions(extra: Partial<ProducerGateOptions> = {}): ProducerGateOpti
 }
 
 describe("AI producer evidence gate", () => {
+  it("reserves and settles every actual producer HTTP batch including a known malformed response", async () => {
+    const bodies: string[] = [], receipts: CreativeModelOutcome[] = [];
+    const reservations: Array<Parameters<CreativeBudgetHooks["beforeModelCall"]>[0]> = [];
+    const images = ["a", "b"].map(name => ({ path: file(`${name}.png`, png), kind: "image" as const }));
+    const fetchImpl = (async (url, init) => {
+      expect(init?.redirect).toBe("error"); expect(init?.signal).toBeInstanceOf(AbortSignal);
+      expect(reservations).toHaveLength(bodies.length + 1);
+      if (!bodies.length) return judge(good, bodies, { choices: [{ finish_reason: "stop", message: { content: "not json" } }] })(url, init);
+      return judge(good, bodies)(url, init);
+    }) as typeof fetch;
+    const verdict = await withCreativeBudget({ beforeModelCall: async request => { reservations.push(request); return request.attempt; },
+      afterModelCall: async (_id, receipt) => { receipts.push(receipt); } }, () => reviewStage(textOptions({
+      stage: "keyframe", artifacts: images, batchSize: 1, fetchImpl,
+    })));
+    expect(verdict).toMatchObject({ approved: true, status: "passed" });
+    expect(verdict.receipts).toHaveLength(3); expect(bodies).toHaveLength(3);
+    for (const [index, body] of bodies.entries()) expect(reservations[index]).toMatchObject({ attempt: index + 1,
+      requestHash: createHash("sha256").update(body).digest("hex"), inputChars: Buffer.byteLength(body), maxOutputTokens: JSON.parse(body).max_tokens,
+      imageInputTokens: 1024 });
+    expect(receipts.map(receipt => [receipt.usageKnown, receipt.success, receipt.inputTokens, receipt.outputTokens]))
+      .toEqual([[true, false, 100, 30], [true, true, 100, 30], [true, true, 100, 30]]);
+  });
+
+  it("reserves independent vision tokens for multiple compact images on a single real provider request", async () => {
+    const bodies: string[] = [], reservations: Array<Parameters<CreativeBudgetHooks["beforeModelCall"]>[0]> = [];
+    const images = ["image-a", "image-b"].map(name => ({ path: file(`${name}.png`, png), kind: "image" as const }));
+    const verdict = await withCreativeBudget({ beforeModelCall: async request => { reservations.push(request); return request.attempt; },
+      afterModelCall: async () => undefined }, () => reviewStage(textOptions({ stage: "keyframe", artifacts: images, fetchImpl: judge(good, bodies) })));
+    expect(verdict.approved).toBe(true); expect(bodies).toHaveLength(1);
+    expect(reservations).toMatchObject([{ inputChars: Buffer.byteLength(bodies[0]!), imageInputTokens: 2048 }]);
+  });
+
+  it("never dispatches a review if its budget reservation is refused", async () => {
+    const bodies: string[] = [];
+    const verdict = await withCreativeBudget({ beforeModelCall: async () => { throw new Error("CREATIVE_BUDGET_EXHAUSTED"); },
+      afterModelCall: async () => { throw new Error("must not settle an unreserved request"); } },
+    () => reviewStage(textOptions({ fetchImpl: judge(good, bodies) })));
+    expect(verdict).toMatchObject({ status: "unverified", approved: false, reason: expect.stringContaining("CREATIVE_BUDGET_EXHAUSTED") });
+    expect(bodies).toHaveLength(0);
+  });
+
+  it("holds unknown producer usage and prevents every following batch", async () => {
+    const bodies: string[] = [], receipts: CreativeModelOutcome[] = [];
+    await expect(withCreativeBudget({ beforeModelCall: async request => request.attempt,
+      afterModelCall: async (_id, receipt) => { receipts.push(receipt); } }, async () => {
+      const verdict = await reviewStage(textOptions({ fetchImpl: judge(good, bodies, { usage: undefined }) }));
+      expect(verdict).toMatchObject({ status: "unverified", approved: false });
+      const second = await reviewStage(textOptions({ fetchImpl: judge(good, bodies) }));
+      expect(second).toMatchObject({ status: "unverified", approved: false });
+    })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+    expect(bodies).toHaveLength(1);
+    expect(receipts).toEqual([{ usageKnown: false, success: false, actualCny: null }]);
+  });
+
   it("has review criteria for every stage", () => {
     for (const rubric of Object.values(PRODUCER_RUBRICS)) {
       expect(rubric.every((line) => line.length > 4)).toBe(true);

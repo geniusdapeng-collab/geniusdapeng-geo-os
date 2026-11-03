@@ -14,7 +14,7 @@ import {
 } from "./requirement-authority.js";
 import { policyCoveragePlan } from "./prd-authority-bridge.js";
 import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
-import { extractProductVisualAuthority } from "./product-visual-authority.js";
+import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualContent, extractProductVisualAuthority } from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 interface Scope {
@@ -283,9 +283,9 @@ function presentationSection(scope: Scope, fallbackDuration: number): string {
     + `- 常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText ?? null)}。它覆盖内容时间线0秒至内容末帧；插入封面后对应最终成片${authority.coverIntroSeconds}秒至末帧，封面段不承载正片常驻字幕。\n`
     + `- 客户限制：${JSON.stringify(restrictions)}\n`
     + `- 商品视觉授权：${JSON.stringify(authority.productVisualAuthority)}。`
-    + `商品外观只能使用整车型号、车身整体、动作结果或授权图片明确可见锚点；`
-    + `不得把“连续超车”“夺冠”等虚构叙事写成产品卖点、性能证据、竞品对比或真实赛事成绩；`
-    + `不得新增卡钳、排气口、轮辋、整流罩、配色分区、特定 45 度机位或轮胎接地局部等未经逐项确认的外观。\n`
+    + (authority.productVisualAuthority.mode === ABSTRACT_PRODUCT_VISUAL_MODE ? authority.productVisualAuthority.rule + "\n" : "")
+    + (authority.productVisualAuthority.mode === VERIFIED_PRODUCT_VISUAL_MODE ? `${authority.productVisualAuthority.rule}`
+    + `不得把虚构叙事写成产品卖点、性能证据、竞品对比或真实活动结果；不得新增未经逐项确认的外观部件、特征或视角。\n` : "\n")
     + `- 客户 CTA 仅为账号互动元数据，未明确要求时不得写成画面文字、字幕、道具或台词。\n`;
 }
 
@@ -451,7 +451,8 @@ export function installRequirementContractBridge(
       const original = await Reflect.apply(convert, this, [discovery, upstream]);
       if (currentScope() !== scope) throw new RequirementContractError("REQUIREMENT_SCOPE_CLOSED", "转换结束时运行作用域已经关闭");
       const bound = bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
-        typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null, scope.sceneSchema);
+        typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null, scope.sceneSchema,
+        scope.authority && extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content));
       if (scope && !scope.authority && bound && typeof bound === "object") {
         scope.metadata._workloomRequirementContract = structuredClone(
           (bound as RequirementRecord)._workloomRequirementContract,
@@ -464,7 +465,8 @@ export function installRequirementContractBridge(
     const scope = receiverScope(this);
     if (!scope) return Reflect.apply(render, this, [intent, metadata, list, discovery]);
     return guard(scope, () => {
-      const contract = verifiedRequirementContract(list, metadata, discovery);
+      const contract = verifiedRequirementContract(list, metadata, discovery,
+        scope.authority && extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content));
       if (contract.cast.hash !== scopeCast(scope).hash) throw new RequirementContractError("REQUIREMENT_CAST_CHANGED", "G3 使用了另一运行的人物合同");
       const ownerAudience = audience(scope);
       if (contract.ownerAudience !== (typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null)) {
@@ -683,8 +685,15 @@ export function installRequirementContractBridge(
       const upstream = requirementRecord(input, "上游输入");
       const productVisualAuthority = scope.authority
         ? extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content) : null;
-      const safeRecord = productVisualAuthority?.required
+      const safeRecord = productVisualAuthority?.mode === VERIFIED_PRODUCT_VISUAL_MODE
         ? sanitizeUnverifiedProductRisk(record) : record;
+      if (productVisualAuthority?.mode === ABSTRACT_PRODUCT_VISUAL_MODE) {
+        if (safeRecord.riskAssessment) {
+          const risk = requirementRecord(safeRecord.riskAssessment, "G3 风险");
+          assertProductVisualContent(productVisualAuthority, risk.mitigationSuggestions, "G3 mitigationSuggestions");
+          assertProductVisualContent(productVisualAuthority, risk.businessConstraints, "G3 businessConstraints");
+        }
+      }
       const target = sceneValidationOptions(scope, upstream.duration_sec);
       requirementScenes(safeRecord.sceneStructure, cast, target.targetDuration, target.options);
       return {

@@ -6,6 +6,8 @@ import {
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
+import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, extractProductVisualAuthority,
+  isDeclaredProductVisualMode, type DeclaredProductVisualMode } from "./product-visual-authority.js";
 
 export interface PrdMarketingScope {
   tenantId: string;
@@ -50,6 +52,8 @@ export interface PrdProductionProfile {
   coverDelivery?: "standalone" | "none";
   sidecarPolicy?: "dialogue-only" | "dialogue-and-composite-ass";
   persistentSubtitleText?: string;
+  /** Production visual scope only; marketing runtime derives this from the accepted G1 original. */
+  visualMode?: DeclaredProductVisualMode;
 }
 
 export interface PrdAuthority {
@@ -102,8 +106,9 @@ export function normalizePrdProductionProfile(metadata: RequirementRecord): PrdP
   const explicit = Object.hasOwn(brief, "productionRequirements");
   const production = explicit ? requirementRecord(brief.productionRequirements, "Brief.productionRequirements") : undefined;
   const required = ["resolution", "frameRate", "subtitleMode", "nativeAudio", "openWithCover", "titleCard", "durationToleranceFrames"];
-  const keys = [...required, "coverDelivery", "sidecarPolicy", "persistentSubtitleText", "coverIntroSeconds"];
-  if (production && (Object.keys(production).some(key => !keys.includes(key)) || required.some(key => !Object.hasOwn(production, key)))) {
+  const keys = [...required, "coverDelivery", "sidecarPolicy", "persistentSubtitleText", "coverIntroSeconds", "visualMode"];
+  const visualOnly = production && Object.keys(production).length === 1 && Object.hasOwn(production, "visualMode");
+  if (production && (Object.keys(production).some(key => !keys.includes(key)) || (!visualOnly && required.some(key => !Object.hasOwn(production, key))))) {
     prdFail("PRD_PROFILE_INVALID", "productionRequirements 必须完整且不能包含未定义字段");
   }
   const platforms: Record<string, string> = {
@@ -128,6 +133,11 @@ export function normalizePrdProductionProfile(metadata: RequirementRecord): PrdP
     profile.targetPlatform = platforms[brief.platform]!;
   }
   if (!production) return profile;
+  if (Object.hasOwn(production, "visualMode")) {
+    if (!isDeclaredProductVisualMode(production.visualMode)) prdFail("PRD_PROFILE_INVALID", "明确视觉模式非法");
+    profile.visualMode = production.visualMode;
+  }
+  if (visualOnly) return profile;
   if (!["1080p", "4K"].includes(String(production.resolution))
     || ![24, 25, 30, 60].includes(production.frameRate as number)
     || !["both", "burned", "sidecar", "none"].includes(String(production.subtitleMode))
@@ -251,15 +261,25 @@ export function preparePrdAuthority(input: {
     prdFail("PRD_G1_CHANGED", `G1 原件无法完整复核：${error instanceof Error ? error.message : String(error)}`);
   }
   const metadata = structuredClone(input.metadata);
-  return { metadata, marketing: authority, profile: normalizePrdProductionProfile(metadata) };
+  const profile = normalizePrdProductionProfile(metadata);
+  const visual = extractProductVisualAuthority(authority.g1Artifact.content);
+  if (profile.visualMode && profile.visualMode !== visual.mode) {
+    prdFail("PRD_VISUAL_AUTHORITY_CHANGED", "制作资料中的视觉模式与本次通过 G1 的原始客户证据不一致");
+  }
+  if (visual.mode === ABSTRACT_PRODUCT_VISUAL_MODE || (visual.mode === VERIFIED_PRODUCT_VISUAL_MODE && visual.modeEvidence)) {
+    profile.visualMode = visual.mode;
+  }
+  return { metadata, marketing: authority, profile };
 }
 
 /** Both existing real LLM agents receive the same complete authority; this grants no new approval. */
 export function prdAuthorityPrompt(authority: PrdAuthority, contract: RequirementContract): string {
   const duration = prdDurationContract(authority.profile);
   const contentTarget = duration.contentDurationSeconds ?? contract.scenes.reduce((sum, scene) => sum + scene.duration, 0);
+  const visual = extractProductVisualAuthority(authority.marketing.g1Artifact.content);
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
+    + `本次商品视觉模式和执行限制：\n${JSON.stringify(visual)}\n${visual.rule}\n`
     + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
     + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
@@ -294,13 +314,14 @@ export function authoritativeDelivery(value: unknown, profile: PrdProductionProf
   const deliverables = list(standard.deliverables, "原始交付物").map(value => ({ ...requirementRecord(value, "交付项") }));
   const masters = deliverables.filter(item => item.item === "video_master");
   if (masters.length !== 1) prdFail("PRD_DELIVERY_INVALID", "原始交付标准必须恰好包含一个视频母版");
-  const declared = Object.entries(profile).map(([key, value]) => `${key}=${String(value)}`).join("; ");
+  const { visualMode: _visualMode, ...deliveryProfile } = profile;
+  const declared = Object.entries(deliveryProfile).map(([key, value]) => `${key}=${String(value)}`).join("; ");
   if (profile.resolution) {
     masters[0]!.spec = `${nonempty(output.container, "容器")}/${nonempty(output.videoCodec, "视频编码")}, ${profile.resolution}; ${declared}; delivery declaration, native capability verified separately`;
   } else if (declared) masters[0]!.spec = `${nonempty(masters[0]!.spec, "原始视频交付规格")}; ${declared}`;
   deliverables.push(...declaredDeliveryItems(profile));
   standard.deliverables = deliverables;
-  standard.outputFormat = { ...output, ...profile };
+  standard.outputFormat = { ...output, ...deliveryProfile };
   return result;
 }
 
@@ -345,8 +366,9 @@ export function effectivePrdDeliverySchema(schemaValue: RequirementRecord, profi
   deliverables.maxItems = Number(deliverables.maxItems) + additions.length;
   const outputFormat = structuredClone(requirementRecord(native.outputFormat, "outputFormat schema"));
   const outputProperties = requirementRecord(outputFormat.properties, "outputFormat properties");
-  for (const [key, value] of Object.entries(profile)) outputProperties[key] = { type: typeof value, enum: [value] };
-  outputFormat.required = [...new Set([...list(outputFormat.required, "原生输出格式必需字段"), ...Object.keys(profile)])];
+  const { visualMode: _visualMode, ...deliveryProfile } = profile;
+  for (const [key, value] of Object.entries(deliveryProfile)) outputProperties[key] = { type: typeof value, enum: [value] };
+  outputFormat.required = [...new Set([...list(outputFormat.required, "原生输出格式必需字段"), ...Object.keys(deliveryProfile)])];
   return { type: "object", required: ["deliverables", "outputFormat"],
     properties: { deliverables, outputFormat }, additionalProperties: false };
 }
