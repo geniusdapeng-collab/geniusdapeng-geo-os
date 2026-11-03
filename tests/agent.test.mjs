@@ -98,6 +98,11 @@ test('agent preflight keeps a missing install passive and starts only the explic
   assert.equal(report.providerCallsPerformed, false);
   assert.equal(report.productionVerified, false);
   assert.equal(agent.tools().find(tool => tool.name === 'pengmanager_video_preflight').annotations.readOnlyHint, false);
+  runtime.stop = async () => { calls.push('stop'); runtime.status = async () => ({ state: 'stopped', workbenchEnabled: false }); };
+  const stopped = await agent.invoke('pengmanager.video.stop');
+  assert.equal(stopped.stoppedByThisProcess, true);
+  assert.equal(stopped.status.state, 'stopped');
+  assert.equal((await agent.invoke('pengmanager.video.stop')).stoppedByThisProcess, false);
   await agent.stop();
   assert.deepEqual(calls, ['start', 'stop']);
 });
@@ -106,7 +111,9 @@ test('existing process-only native session attaches without starting or stopping
     assert.equal(options.headers.authorization, 'Bearer test-only-existing');
     return new Response(JSON.stringify({ result: { data: [] } }));
   } });
-  await agent.invoke('core.agents.list'); await agent.stop(); assert.deepEqual(calls, []);
+  await agent.invoke('core.agents.list');
+  assert.equal((await agent.invoke('pengmanager.video.stop')).stoppedByThisProcess, false);
+  await agent.stop(); assert.deepEqual(calls, []);
 });
 test('native unauthorized response remains a failure and hides the session credential', async t => {
   const { agent } = await fixture(t, { fetchImplementation: async () => new Response(JSON.stringify({ error: { message: 'denied test-only-session', data: { httpStatus: 401, code: 'UNAUTHORIZED' } } }), { status: 401 }) });

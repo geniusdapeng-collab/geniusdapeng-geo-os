@@ -8,6 +8,7 @@ import { publicVideoCapabilities, publicVideoStatus } from './http/video-runtime
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRODUCTION_PLAN = 'growth.video.production.plan';
 const VIDEO_PREFLIGHT = 'pengmanager.video.preflight';
+const VIDEO_STOP = 'pengmanager.video.stop';
 
 function embeddedProductionPlan(envelope, env) {
   const arkConfigured = Boolean(String(env.VOLCENGINE_ARK_API_KEY || '').trim() || String(env.ARK_API_KEY || '').trim());
@@ -59,7 +60,19 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
     operation: 'preview', risk: 'low', dataMode: 'unverified',
     inputSchema: { type: 'object', properties: { startNative: { type: 'boolean' } }, additionalProperties: false },
   });
+  specials.push({
+    id: VIDEO_STOP, title: '停止当前 Agent 启动的本机视频工位',
+    description: '关闭本进程启动的私有服务和数据库。在关掉 MCP 客户端前调用。不关闭其他进程的工位，不取消供应商任务。',
+    operation: 'execute', risk: 'low', dataMode: 'unverified',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  });
   const entries = new Map([...catalog.entries, ...specials.map(item => [item.id, item])]);
+  async function stopManaged() {
+    if (!owned) return false;
+    await runtime.stop();
+    owned = false;
+    return true;
+  }
   async function preflight(input, descriptor) {
     native.validateInput(descriptor, input);
     const doctor = await runtime.doctor();
@@ -110,7 +123,7 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
     tools() {
       return [...native.mcpTools(catalog).map(tool => ({ ...tool, name: tool.name.replace(/^workloom_/, 'pengmanager_') })), ...specials.map(item => ({
         name: item.id.replaceAll('.', '_'), title: item.title, description: item.description,
-        inputSchema: item.inputSchema, annotations: { readOnlyHint: item.id !== VIDEO_PREFLIGHT, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+        inputSchema: item.inputSchema, annotations: { readOnlyHint: item.operation === 'read', destructiveHint: false, idempotentHint: true, openWorldHint: false },
       }))];
     },
     toolId(name) { return [...entries.values()].find(item => (item.id.startsWith('pengmanager.') ? item.id.replaceAll('.', '_') : 'pengmanager_' + item.id.replace(/[^A-Za-z0-9]/g, '_')) === name)?.id; },
@@ -120,6 +133,11 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
       if (id === 'pengmanager.video.status') { emptyInput(input); return publicVideoStatus(await runtime.status()); }
       if (id === 'pengmanager.video.capabilities') { emptyInput(input); return publicVideoCapabilities(await runtime.capabilities()); }
       if (id === VIDEO_PREFLIGHT) return preflight(input, descriptor);
+      if (id === VIDEO_STOP) {
+        emptyInput(input);
+        const stoppedByThisProcess = await stopManaged();
+        return { stoppedByThisProcess, status: publicVideoStatus(await runtime.status()) };
+      }
       // Validate and reject disabled capabilities before starting any process.
       native.validateInput(descriptor, input);
       if (descriptor.enabled === false) throw new AgentError('DISABLED', descriptor.disabledReason);
@@ -138,6 +156,6 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
       });
     },
     error(error) { return { code: typeof error?.code === 'string' && /^[A-Z0-9_]+$/.test(error.code) ? error.code : 'AGENT_FAILED', message: safe(error) }; },
-    async stop() { await localQueue; if (owned) { owned = false; await runtime.stop(); } },
+    async stop() { await localQueue; await stopManaged(); },
   };
 }

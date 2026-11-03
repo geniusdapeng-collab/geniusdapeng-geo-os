@@ -77,7 +77,7 @@ codex mcp list
 }
 ```
 
-打开新会话或重启客户端连接后，用 `tools/list` 检查实际工具名称及 schema。Codex TUI 可用 `/mcp` 查看已连接服务器。CLI 和 MCP 使用同一私有运行时，一个数据目录同时只由一个监督进程管理。如果 MCP 已启动原生服务，先关闭它再开独立工作台或启动另一个会尝试管理该目录的进程。 [Codex MCP 的 stdio 配置和检查](https://learn.chatgpt.com/docs/extend/mcp)
+打开新会话或重启客户端连接后，用 `tools/list` 检查实际工具名称及 schema。Codex TUI 可用 `/mcp` 查看已连接服务器。CLI 和 MCP 使用同一私有运行时，一个数据目录同时只由一个监督进程管理。若 MCP 已启动原生服务，在工作完成、没有活跃本地作业后，先在**同一 MCP 会话**调用 `pengmanager_video_stop`，核对返回的 `status.state:stopped`，再关闭客户端或另起工作台。此操作只停止本进程拥有的服务，不能取消已派发供应商任务。客户端强制终止时，先检查本次私有实例的进程与任务状态；不要删除数据目录或终止其他服务。 [Codex MCP 的 stdio 配置和检查](https://learn.chatgpt.com/docs/extend/mcp)
 
 也可以直接检查这个本机进程的握手和目录。下列命令无需启动原生后端。输出应包含 `pengmanager-system` 和 `pengmanager_video_preflight`。
 
