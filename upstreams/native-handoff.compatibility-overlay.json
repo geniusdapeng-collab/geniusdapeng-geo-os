@@ -38,8 +38,8 @@
       "sourceGitBlob": "e698f0ae8623ca78ed1acebd985091fc6a090544",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
       "targetMode": "100644",
-      "targetSha256": "a9b39f600b7261f34d5942133ff74a7316a9bfd83876155f3f73551585ce9ef7",
-      "targetBytes": 55782,
+      "targetSha256": "0284bc329ca3a85b45ee2f251c7bf22ffc02b1375501fcbc1547a1ac28aa5234",
+      "targetBytes": 56469,
       "transform": "none"
     },
     {
@@ -141,5 +141,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:33:47.608435+00:00"
 }

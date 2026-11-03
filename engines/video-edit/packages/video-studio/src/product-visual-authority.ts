@@ -45,7 +45,9 @@ const abstractRule = "本次产品只可通过非写实的抽象图形、代码�
 const modeSource = "requestedMetadata.brief.productionRequirements.visualMode";
 export const REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE = "已登记原图授权仅覆盖本次确切字节及可见内容。未逐项证实的部件和机位不得用于执行字段。";
 export const UNVERIFIED_MIRROR_DETAIL_RULE = "禁止生成或描写车辆后视镜、镜中反射或依赖镜体的视角，原图未证实这些细节。";
-/** This inspected source alone does not establish a mirror. A different or additional source may. */
+export const INSPECTED_RC_REFERENCE_DETAIL_RULE = UNVERIFIED_MIRROR_DETAIL_RULE
+  + "车手服装与车身分别执行各自参考。禁止把车手护具的黑红配色赋给车身或写成整片主色。车身涂装只按本次登记原图，不另写未核实颜色。";
+/** Only this exact inspected source has these known exclusions. Different or additional sources may show different details. */
 export function registeredProductReferenceOmitsMirrors(
   references: readonly { productId: string; sha256: string }[] | undefined,
 ): boolean {
@@ -55,6 +57,14 @@ export function registeredProductReferenceOmitsMirrors(
 }
 const UNVERIFIED_MIRROR = /后视镜|倒车镜|车载反光镜|\b(?:rear[- ]?view|side[- ]?view|wing)\s+mirrors?\b/iu;
 const MIRROR_OMISSION = /^(?:(?:全片|全程|本片|画面|镜头)\s*)?(?:不得|禁止|不要|不可|不安排|不使用|不展示|不出现|不描写|不推断|不补写|不新增|省略|do not\b|never\b|omit\b|no\b)/iu;
+const RC_GEAR_PALETTE = "(?:黑[色\\s、/和-]{0,4}红|红[色\\s、/和-]{0,4}黑|black[- /]+(?:and[- /]+)?red|red[- /]+(?:and[- /]+)?black)";
+const VEHICLE_PALETTE_TARGET = "(?:车身|整流罩|涂装|车壳|livery|fairing|bodywork)";
+const UNSUPPORTED_RC_PALETTE = new RegExp(
+  `${RC_GEAR_PALETTE}[色\\s的]{0,4}${VEHICLE_PALETTE_TARGET}|${VEHICLE_PALETTE_TARGET}[采用为呈系以\\s:：的]{0,7}${RC_GEAR_PALETTE}|${RC_GEAR_PALETTE}[色\\s的]{0,4}主色`, "iu",
+);
+const RC_GEAR_BODY_MATCH = new RegExp(
+  `${RC_GEAR_PALETTE}[^，。；;]{0,14}(?:赛车服|护具|赛车装)[^，。；;]{0,10}${VEHICLE_PALETTE_TARGET}[^，。；;]{0,8}(?:呼应|同色|同款|统一|一致)`, "iu",
+);
 
 function object(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -139,7 +149,13 @@ export function assertProductVisualContent(
         // A negated rule cannot cover a later affirmative instruction after a clause boundary.
         const clause = part.replace(/^[\s*#>-]*(?:\d{1,3}\.\s*)?(?:【)?(?:负面约束|负面清单|负面提示(?:词)?|负向提示(?:词)?|negative(?: prompt)?)(?:】)?\*{0,2}[:：]?\s*/iu, "");
         if (omitMirrors) {
-          if (UNVERIFIED_MIRROR.test(clause) && (!MIRROR_OMISSION.test(clause) || IN_CLAUSE_REVERSAL.test(clause))) fail(field);
+          const actionable = clause.replace(/^\s*(?:\d{1,3}\.\s*)?【[^】\r\n]{1,32}】\s*/u, "");
+          if (!MIRROR_OMISSION.test(actionable) || IN_CLAUSE_REVERSAL.test(actionable)) {
+            if (UNVERIFIED_MIRROR.test(actionable)) fail(field);
+            if (UNSUPPORTED_RC_PALETTE.test(actionable) || RC_GEAR_BODY_MATCH.test(actionable)) {
+              throw new ProductVisualAuthorityError(`${phase}/${field} 将护具配色写成未经原图核实的车身或全片配色`, "PRODUCT_VISUAL_DETAIL_UNVERIFIED");
+            }
+          }
           continue;
         }
         const normalizedProduct = authority.product?.normalize("NFKC").toLowerCase();
