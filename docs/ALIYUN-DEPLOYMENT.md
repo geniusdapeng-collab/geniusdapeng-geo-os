@@ -72,13 +72,13 @@ P0 包括域名、HTTPS、受认证的后台、持久数据、发布结果回写
 | `…/media-assets/` | 私有实际上传媒体、暂存与元数据对应字节；完整备份须包含 |
 | `…/backups/editorial/` | 公开激活前和最终当前状态的完整编辑／媒体快照，私有 SHA 清单与不可变文件 |
 | `<release>/var` | 指向持久数据目录，保障仍使用仓库相对 `var/` 的内部路径 |
-| `/etc/pengmanager-system/runtime.env` | root 所有、0600；systemd 读取；仅存密码／Agent 令牌哈希，不存管理员明文密码 |
+| `/etc/pengmanager-system/runtime.env` | root 所有、0600；systemd 读取；管理员密码及 Agent 令牌仅保存哈希，可选保存 WorkLoom 启动签名密钥 |
 | `/etc/pengmanager-system/proxy.json` | root 所有、0600；保存代理类型、域名及证书路径，update 自动复用，不保存 ACME 邮箱或账户私钥 |
 | `/etc/nginx/sites-available/pengmanager-system.conf` | nginx 模式下只属于本产品的虚拟站点；sites-enabled 只增加同名软链 |
 | `/var/lib/pengmanager-system-acme/` | nginx 模式的独立公开 ACME 挑战目录；不包含业务数据 |
 | `/etc/letsencrypt/renewal-hooks/deploy/pengmanager-system-nginx.sh` | nginx 模式的续期后 reload 钩子，只响应本产品证书 lineage |
 | `/etc/caddy/pengmanager-sites/pengmanager-system.caddy` | Caddy 模式下只属于本产品的域名反向代理配置 |
-| `/var/backups/pengmanager-system/` | 0700；停服完整备份＋配置哈希＋release 元数据，归档和校验文件均 0600 |
+| `/var/backups/pengmanager-system/` | 0700；停服完整备份＋私有配置＋release 元数据，归档和校验文件均 0600 |
 
 不增加新业务表或索引；沿用当前 JSON 领域状态及 GEO SQLite 模型。部署 manifest 是发布元数据，不是业务数据库。备份包含完整私有数据，必须存放在受保护位置；建议定期另存到本人加密离线备份，单台机器上的备份无法防止整机丢失。
 
@@ -207,7 +207,9 @@ Caddy 通过[官方 stable 软件源](https://caddyserver.com/docs/install)安�
 
 ## 更新、备份与恢复
 
-更新不重新填写密码，不覆盖 runtime.env 或既有代理选择。上传新归档、核对独立SHA回执后：
+更新沿用现有密码、`runtime.env` 字节和代理选择。安装器可校验已有的 WorkLoom PM 管理员启动配置。启用时同时提供 `WORKLOOM_PM_ORIGIN`、`WORKLOOM_LAUNCH_TENANT_ID`、`WORKLOOM_LAUNCH_WORKSPACE_ID`、`WORKLOOM_LAUNCH_MEMBER_NO` 与 `WORKLOOM_LAUNCH_PRIVATE_KEY_B64`。启动目标是 WorkLoom 的独立 HTTPS origin，只能包含协议、主机和可选端口。签名密钥使用 Base64 编码的无密码 Ed25519 PKCS#8 PEM。`WORKLOOM_LAUNCH_TTL_SECONDS` 可省略，默认 60 秒，可设 15 到 120 的整数。只在受保护的 0600 文件内保存密钥，部署错误和回执不输出其值。包含此配置的完整备份按私有密钥材料保管。
+
+上传新归档并核对独立 SHA 回执后执行更新。
 
 ```bash
 sudo bash deploy/aliyun/update.sh --dry-run --package /protected/new-release.tar.gz --sha256 ARCHIVE_SHA256

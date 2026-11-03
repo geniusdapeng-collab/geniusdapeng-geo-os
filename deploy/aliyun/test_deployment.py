@@ -1,4 +1,6 @@
 """Portable tests: no root, cloud account, network access or systemd mutation."""
+import base64
+from contextlib import redirect_stdout
 import hashlib
 import importlib.util
 import io
@@ -32,6 +34,24 @@ def environment(domain="admin.example.cn"):
         "ADMIN_AGENT_TOKEN_HASH": "", "GITHUB_TOKEN": "", "DEEPSEEK_API_KEY": "",
     }
     return "\n".join(f"{key}={value}" for key, value in values.items()) + "\n"
+
+
+def launch_environment():
+    # Generate an ephemeral Ed25519 seed in a standard unencrypted PKCS#8 PEM.
+    key = bytes.fromhex("302e020100300506032b657004220420") + secrets.token_bytes(32)
+    pem = b"-----BEGIN " b"PRIVATE KEY-----\n" + base64.b64encode(key) + b"\n-----END PRIVATE KEY-----\n"
+    return {
+        "WORKLOOM_PM_ORIGIN": "https://workloom.example.net:8443",
+        "WORKLOOM_LAUNCH_TENANT_ID": "fixture-tenant",
+        "WORKLOOM_LAUNCH_WORKSPACE_ID": "fixture-workspace",
+        "WORKLOOM_LAUNCH_MEMBER_NO": "MEM-TEST",
+        "WORKLOOM_LAUNCH_PRIVATE_KEY_B64": base64.b64encode(pem).decode("ascii"),
+        "WORKLOOM_LAUNCH_TTL_SECONDS": "60",
+    }
+
+
+def environment_with_launch(launch):
+    return environment() + "".join(f"{key}={value}\n" for key, value in launch.items())
 
 
 def add_file(bundle, name, data, mode=0o644):
@@ -142,6 +162,78 @@ class DeploymentTests(unittest.TestCase):
         path.chmod(0o644)
         with self.assertRaisesRegex(DEPLOY.DeployError, "0600"):
             DEPLOY.read_env(path)
+
+    def test_existing_workloom_launch_configuration_survives_update_dry_run(self):
+        runtime_env = self.path / "runtime.env"
+        launch = launch_environment()
+        runtime_env.write_text(environment_with_launch(launch))
+        runtime_env.chmod(0o600)
+        previous = runtime_env.read_bytes(), runtime_env.stat().st_mtime_ns
+        archive = self.path / "source.tar.gz"
+        checksum = source_archive(archive)
+        args = DEPLOY.parser().parse_args(["update", "--dry-run", "--package", str(archive), "--sha256", checksum])
+        output = io.StringIO()
+        with mock.patch.object(DEPLOY, "ENV_FILE", runtime_env), \
+                mock.patch.object(DEPLOY, "proxy_settings", return_value={"proxy": "caddy"}), \
+                mock.patch.object(DEPLOY, "preflight", return_value={"ok": True}), redirect_stdout(output):
+            self.assertEqual(DEPLOY.dispatch(args), 0)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["domain"], "admin.example.cn")
+        self.assertTrue(report["preflight"]["ok"])
+        self.assertFalse(report["mutated"])
+        self.assertTrue(all(value not in output.getvalue() for key, value in launch.items()
+                            if key != "WORKLOOM_LAUNCH_TTL_SECONDS"), "Launch settings leaked into the report.")
+        self.assertTrue(runtime_env.read_bytes() == previous[0], "Installed configuration bytes changed.")
+        self.assertEqual(runtime_env.stat().st_mtime_ns, previous[1])
+        self.assertEqual(runtime_env.stat().st_mode & 0o777, 0o600)
+        launch.pop("WORKLOOM_LAUNCH_TTL_SECONDS")
+        runtime_env.write_text(environment_with_launch(launch))
+        self.assertEqual(DEPLOY.read_env(runtime_env)[1], "admin.example.cn")
+
+    def test_incomplete_and_invalid_workloom_launch_configuration_is_rejected(self):
+        runtime_env = self.path / "runtime.env"
+        runtime_env.touch(mode=0o600)
+        valid = launch_environment()
+        variants = [
+            ("required fields", {name: value for name, value in valid.items() if name != omitted})
+            for omitted in valid if omitted != "WORKLOOM_LAUNCH_TTL_SECONDS"
+        ]
+        variants += [("required fields", {"WORKLOOM_LAUNCH_TTL_SECONDS": "60"})]
+        for value in ("http://workloom.example.net", "https://user:pass@workloom.example.net",
+                      "https://workloom.example.net/assistant", "https://workloom.example.net?x=1",
+                      "https://workloom.example.net#fragment", "https:///missing-host",
+                      "https://workloom.example.net:99999", "https://workloom.example.net\\misleading"):
+            variants.append(("HTTPS origin", {**valid, "WORKLOOM_PM_ORIGIN": value}))
+        for value in ("", "14", "121", "1e2", "15.0"):
+            variants.append(("TTL", {**valid, "WORKLOOM_LAUNCH_TTL_SECONDS": value}))
+        variants += [
+            ("identity", {**valid, "WORKLOOM_LAUNCH_TENANT_ID": "a" * 161}),
+            ("identity", {**valid, "WORKLOOM_LAUNCH_WORKSPACE_ID": "🧪" * 81}),
+            ("identity", {**valid, "WORKLOOM_LAUNCH_MEMBER_NO": "b" * 81}),
+            ("Ed25519", {**valid, "WORKLOOM_LAUNCH_PRIVATE_KEY_B64": "invalid-base64!"}),
+            ("Ed25519", {**valid, "WORKLOOM_LAUNCH_PRIVATE_KEY_B64": base64.b64encode(b"invalid PEM").decode("ascii")}),
+            ("unknown keys", {**valid, "WORKLOOM_LAUNCH_UNRECOGNIZED": "fixture"}),
+        ]
+        for expected_error, launch in variants:
+            runtime_env.write_text(environment_with_launch(launch))
+            with self.subTest(expected_error=expected_error), self.assertRaisesRegex(DEPLOY.DeployError, expected_error):
+                DEPLOY.read_env(runtime_env)
+
+    def test_workloom_launch_does_not_relax_cloud_security_guards(self):
+        runtime_env = self.path / "runtime.env"
+        runtime_env.touch(mode=0o600)
+        content = environment_with_launch(launch_environment())
+        for key, current, override in [
+            ("GITHUB_TOKEN", "", "fixture"),
+            ("DEEPSEEK_API_KEY", "", "fixture"),
+            ("ENABLE_MEDIA_RENDER", "false", "true"),
+            ("HOST", "127.0.0.1", "0.0.0.0"),
+            ("PORT", "4318", "9000"),
+            ("PUBLIC_WEBSITE", "1", "0"),
+        ]:
+            runtime_env.write_text(content.replace(f"\n{key}={current}\n", f"\n{key}={override}\n"))
+            with self.subTest(key=key), self.assertRaisesRegex(DEPLOY.DeployError, "unsafe|credentials"):
+                DEPLOY.read_env(runtime_env)
 
     def test_domain_with_shell_or_caddy_injection_is_rejected(self):
         for value in ("example.cn;touch /tmp/x", "https://example.cn", "example.cn:443", "example.cn\nrespond ok", "-bad.cn"):

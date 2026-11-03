@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated, explicit PengManager deployment. Never execute runtime.env as shell code."""
 import argparse
+import base64
 from contextlib import contextmanager
 import datetime as dt
 import fcntl
@@ -21,6 +22,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from nginx_proxy import NginxProxy, path_argument
@@ -37,6 +39,10 @@ CADDY_SITE = Path("/etc/caddy/pengmanager-sites/pengmanager-system.caddy")
 MARKER = "# Managed by PengManager deployment v1"
 MAX_SOURCE = 1024 * 1024 * 1024
 MAX_BACKUP = 64 * MAX_SOURCE
+LAUNCH_ID_LENGTHS = {"WORKLOOM_LAUNCH_TENANT_ID": 160, "WORKLOOM_LAUNCH_WORKSPACE_ID": 160,
+                     "WORKLOOM_LAUNCH_MEMBER_NO": 80}
+LAUNCH_REQUIRED = {*LAUNCH_ID_LENGTHS, "WORKLOOM_PM_ORIGIN", "WORKLOOM_LAUNCH_PRIVATE_KEY_B64"}
+LAUNCH_SETTINGS = LAUNCH_REQUIRED | {"WORKLOOM_LAUNCH_TTL_SECONDS"}
 
 
 class DeployError(Exception):
@@ -144,6 +150,44 @@ def hostname(value):
     return value
 
 
+def validate_workloom_launch(values):
+    if not LAUNCH_SETTINGS.intersection(values):
+        return
+    require(all(values.get(name) for name in LAUNCH_REQUIRED),
+            "WorkLoom launch configuration is missing required fields; contents withheld.")
+    origin_error = "WorkLoom launch destination must be an HTTPS origin; contents withheld."
+    try:
+        raw = values["WORKLOOM_PM_ORIGIN"]
+        origin = urlsplit(raw)
+        port = origin.port
+    except ValueError:
+        raise DeployError(origin_error) from None
+    require(raw.isprintable() and origin.scheme == "https" and origin.path in ("", "/")
+            and not any(character in raw for character in "?#\\")
+            and re.fullmatch(r"(?:\[[0-9a-fA-F:.]+\]|[\w.-]+)(?::[0-9]+)?", origin.netloc)
+            and (port is None or 0 <= port <= 65535), origin_error)
+    for name, limit in LAUNCH_ID_LENGTHS.items():
+        value = values[name]
+        require(value.isprintable() and len(value.encode("utf-16-le")) <= 2 * limit,
+                "WorkLoom launch identity is invalid; contents withheld.")
+    ttl = values.get("WORKLOOM_LAUNCH_TTL_SECONDS", "60")
+    require(re.fullmatch(r"[0-9]{2,3}", ttl) and 15 <= int(ttl) <= 120,
+            "WorkLoom launch TTL must be an integer between 15 and 120; contents withheld.")
+
+    key_error = "WorkLoom launch requires a base64 Ed25519 PKCS#8 PEM key; contents withheld."
+    encoded = values["WORKLOOM_LAUNCH_PRIVATE_KEY_B64"]
+    require(len(encoded) <= 1024, key_error)
+    try:
+        pem = base64.b64decode(encoded, validate=True)
+        payload = re.fullmatch(rb"-----BEGIN " rb"PRIVATE KEY-----\r?\n([A-Za-z0-9+/=\r\n]+)\r?\n"
+                               rb"-----END PRIVATE KEY-----(?:\r?\n)?", pem)
+        der = base64.b64decode(b"".join(payload[1].splitlines()), validate=True) if payload else b""
+    except ValueError:
+        raise DeployError(key_error) from None
+    # RFC 8410's compact PKCS#8 envelope for an Ed25519 seed as emitted by Node/OpenSSL.
+    require(len(der) == 48 and der.startswith(bytes.fromhex("302e020100300506032b657004220420")), key_error)
+
+
 def read_env(path, domain=None, strict_permissions=True):
     require(path.is_file() and not path.is_symlink(), "Runtime configuration must be a regular file.")
     if strict_permissions:
@@ -169,7 +213,7 @@ def read_env(path, domain=None, strict_permissions=True):
                 "GEO_ENGINE_DB": str(DATA / "geo-engine/personal-geo.sqlite")}
     permitted = set(expected) | {"ADMIN_PASSWORD_HASH", "ADMIN_AGENT_TOKEN_HASH", "ADMIN_SESSION_TTL_SECONDS",
                                  "ADMIN_LOGIN_ATTEMPTS", "ADMIN_LOGIN_WINDOW_SECONDS", "GITHUB_TOKEN", "DEEPSEEK_API_KEY"}
-    require(set(values) <= permitted, "Runtime configuration has unknown keys; only the documented deployment settings are accepted.")
+    require(set(values) <= permitted | LAUNCH_SETTINGS, "Runtime configuration has unknown keys; only the documented deployment settings are accepted.")
     for key, value in expected.items():
         require(values.get(key) == value, f"Runtime configuration has an unsafe {key} value; contents withheld.")
     require(re.fullmatch(r"scrypt-sha256\$65536\$8\$2\$[a-f0-9]{32}\$[a-f0-9]{128}",
@@ -179,6 +223,7 @@ def read_env(path, domain=None, strict_permissions=True):
             "Default low-cost deployment does not accept live publishing/model credentials.")
     agent = values.get("ADMIN_AGENT_TOKEN_HASH", "")
     require(not agent or re.fullmatch(r"sha256\$[a-f0-9]{64}", agent), "Agent token hash format is invalid.")
+    validate_workloom_launch(values)
     return values, public_host
 
 
