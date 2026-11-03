@@ -109,8 +109,8 @@
       "sourceBytes": 3218,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
-      "targetSha256": "d87f60938652885455b88ba661477aff5d82fcd43b167d9b8f779f787a22ffa4",
-      "targetBytes": 3877,
+      "targetSha256": "de4c82f085a228fe3b4feeba1f54487db7b44494b86e4886dae088c6de807911",
+      "targetBytes": 3901,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -217,5 +217,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
 }

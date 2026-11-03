@@ -51,6 +51,10 @@ export interface VideoTextResult {
   policyVersion: string;
 }
 
+type VideoJsonFailure = Pick<VideoTextResult, "model" | "responseId" | "requestHash" | "responseHash"> & {
+  kind: "empty_json" | "invalid_json";
+};
+
 export class VideoTextDispatchError extends Error {
   constructor(
     public readonly code: string,
@@ -60,6 +64,7 @@ export class VideoTextDispatchError extends Error {
       unknown?: boolean;
       status?: number;
       cause?: unknown;
+      jsonFailure?: VideoJsonFailure;
     } = {},
   ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
@@ -381,10 +386,6 @@ export async function completeVideoTextTask(input: {
       outputFailure,
     );
   }
-  const text = normalizeModelContent(choice.message?.content).trim();
-  if (!text) {
-    throw new VideoTextDispatchError("MODEL_CONTENT_EMPTY", "模型最终 content 为空。", outputFailure);
-  }
   if (!billedFailure) {
     throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 usage 缺失或无效。", {
       retryable: false,
@@ -403,30 +404,40 @@ export async function completeVideoTextTask(input: {
       outputFailure,
     );
   }
+  const responseIdentity = { model: input.endpoint.model, responseId: envelope.id, requestHash, responseHash };
+  const jsonFailure = (kind: VideoJsonFailure["kind"]) => input.requireJson === true && responseFormat
+    ? { jsonFailure: { ...responseIdentity, kind } }
+    : {};
+  const text = normalizeModelContent(choice.message?.content).trim();
+  if (!text) {
+    throw new VideoTextDispatchError("MODEL_CONTENT_EMPTY", "模型最终 content 为空。", {
+      ...outputFailure,
+      ...(typeof choice.message?.content === "string" ? jsonFailure("empty_json") : {}),
+    });
+  }
   let value: unknown;
   if (input.requireJson === true) {
     try {
       value = JSON.parse(text);
-    } catch (error) {
+    } catch {
+      // SyntaxError can contain raw model output. Expose only the wire identity
+      // and fixed classification after model, terminal status and usage checks.
       throw new VideoTextDispatchError("MODEL_JSON_INVALID", "模型最终 content 不是完整 JSON。", {
         ...outputFailure,
-        cause: error,
+        ...jsonFailure("invalid_json"),
       });
     }
   }
   return {
     text,
     value,
-    model: input.endpoint.model,
-    responseId: envelope.id,
+    ...responseIdentity,
     finishReason: "stop",
     usage: {
       inputTokens: usage!.prompt_tokens!,
       outputTokens: usage!.completion_tokens!,
       reasoningTokens,
     },
-    requestHash,
-    responseHash,
     outputCeiling: budget.outputCeiling,
     inputTokenEstimate: budget.inputTokens,
     inputTokenUpperBound: budget.inputTokenUpperBound,

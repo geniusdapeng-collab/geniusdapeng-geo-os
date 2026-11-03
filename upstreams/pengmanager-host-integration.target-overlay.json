@@ -427,9 +427,9 @@
       "path": "packages/video-studio/src/index.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/index.ts",
       "sourceSha256": "f0eda1fc928506ea98308bb23e5b83ca2cce7e0bc305742c8134da55b99f7924",
-      "targetSha256": "d87f60938652885455b88ba661477aff5d82fcd43b167d9b8f779f787a22ffa4",
+      "targetSha256": "de4c82f085a228fe3b4feeba1f54487db7b44494b86e4886dae088c6de807911",
       "sourceBytes": 3291,
-      "targetBytes": 3877
+      "targetBytes": 3901
     },
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:15:51.734255+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
 }
