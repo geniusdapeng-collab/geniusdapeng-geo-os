@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { createVideoRuntime, VideoRuntimeError } from '../src/video-runtime/index.mjs';
 import { runtimeConfig, requireEngineModule, verifiedPortraitReuseManifest, SCOPE } from '../src/video-runtime/config.mjs';
 import { localJson, wait } from '../src/video-runtime/process.mjs';
-import { approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from '../src/video-runtime/video-make.mjs';
+import { advanceVideoMakeDelivery, approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from '../src/video-runtime/video-make.mjs';
 
 const rootDir = path.resolve(import.meta.dirname, '..');
 const fail = (code, message) => { throw new VideoRuntimeError(code, message); };
@@ -175,19 +175,12 @@ async function run() {
         else process.env.WORKLOOM_VIDEO_ARTIFACT_ROOT = previous;
       }
     };
-    const downstream = async (handoff, render, post) => {
-      const ownerReceipt = { schemaVersion: 'pengmanager.video-make/v1', ...identity, projectId: handoff.projectId, runId: handoff.runId };
-      const current = await callDelivery('inspectNativeProjectDelivery', handoff, render, post);
-      if (current.state === 'delivered') return { ...ownerReceipt, state: current.state, delivery: current };
-      if (current.state === 'not-started') {
-        const blocker = await assertApproved({ authority, pipeline: handoff.pipeline });
-        if (blocker) return { ...ownerReceipt, state: 'blocked', code: blocker };
-      }
-      // Accepted or ambiguous supplier operations may already consume the cap.
-      // Reconcile them through the existing delivery journal without quoting a fresh submission.
-      const result = await callDelivery('runNativeProjectDelivery', handoff, render, post);
-      return { ...ownerReceipt, state: result.state, delivery: result };
-    };
+    const downstream = (handoff, render, post) => advanceVideoMakeDelivery({
+      receipt: { schemaVersion: 'pengmanager.video-make/v1', ...identity, projectId: handoff.projectId, runId: handoff.runId },
+      inspect: () => callDelivery('inspectNativeProjectDelivery', handoff, render, post),
+      checkAdmission: () => assertApproved({ authority, pipeline: handoff.pipeline }),
+      run: () => callDelivery('runNativeProjectDelivery', handoff, render, post),
+    });
     const make = createNativeVideoMake({ store, native, selectRoute: routeVideoPipeline, qualifyStart: assertApproved, downstream });
     if (action === 'status') {
       const result = await make.status(id);

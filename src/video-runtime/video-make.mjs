@@ -146,6 +146,18 @@ function receiptResult(identity, state, fields = {}) {
   return { schemaVersion: SCHEMA, id, system: 'pengmanager', intentSha256, durationSeconds, state, ...fields };
 }
 
+export async function advanceVideoMakeDelivery({ receipt, inspect, checkAdmission, run }) {
+  const current = await inspect();
+  if (current.state === 'delivered') return { ...receipt, state: current.state, delivery: current };
+  if (current.state === 'not-started' || (current.state === 'blocked' && current.blockingCode)) {
+    const blocker = await checkAdmission();
+    if (blocker) return { ...receipt, state: 'blocked', code: blocker };
+  }
+  // Existing accepted or ambiguous operations may already consume the cap.
+  const result = await run();
+  return { ...receipt, state: result.state, delivery: result };
+}
+
 function nativeIdentity(receipt, status, archive, shots) {
   if (status && status.projectId !== receipt.projectId) return null;
   if (!archive || archive.projectId !== receipt.projectId || !Array.isArray(archive.stages)) return null;

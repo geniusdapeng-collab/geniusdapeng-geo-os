@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from '../src/video-runtime/video-make.mjs';
+import { advanceVideoMakeDelivery, approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from '../src/video-runtime/video-make.mjs';
 
 const request = { system: 'pengmanager', intent: '苏州平江路清晨人文故事片', durationSeconds: 30 };
 const identity = identifyVideoMake(request);
@@ -168,6 +168,33 @@ test('downstream receives exact completed attempt only, never mismatched duratio
   assert.equal(delivered.render.modelId, authority.render.modelId);
   const wrong = fixture(t, { native: { shots: async () => ({ ...shots, shots: [{ durationSec: 29 }] }) } });
   assert.equal((await wrong.make.start(request, authority)).code, 'NATIVE_ARCHIVE_MISMATCH');
+});
+
+test('delivery rechecks owner admission before a pre-dispatch retry', async () => {
+  const calls = [];
+  const receipt = { id: identity.id };
+  const inspect = async () => ({ state: 'blocked', blockingCode: 'NATIVE_RENDER_MODEL_CHANGED' });
+  const run = async () => { calls.push('render'); return { state: 'running' }; };
+  const denied = await advanceVideoMakeDelivery({ receipt, inspect, run,
+    checkAdmission: async () => { calls.push('admission'); return 'FROZEN_OWNER_AUTHORITY_CHANGED'; },
+  });
+  assert.deepEqual(denied, { ...receipt, state: 'blocked', code: 'FROZEN_OWNER_AUTHORITY_CHANGED' });
+  assert.deepEqual(calls, ['admission']);
+
+  const accepted = await advanceVideoMakeDelivery({ receipt, inspect, run,
+    checkAdmission: async () => { calls.push('admission'); return null; },
+  });
+  assert.equal(accepted.state, 'running');
+  assert.deepEqual(calls, ['admission', 'admission', 'render']);
+});
+
+test('delivery resumes recorded tasks without requiring a quote for a new submission', async () => {
+  const current = { state: 'running', render: { shots: [{ jobId: 'job-existing', taskId: 'task-existing' }] } };
+  const result = await advanceVideoMakeDelivery({
+    receipt: { id: identity.id }, inspect: async () => current, run: async () => current,
+    checkAdmission: async () => assert.fail('existing supplier task must go through original receipt reconciliation'),
+  });
+  assert.deepEqual(result.delivery, current);
 });
 
 test('private owner receipt reader rejects permissions and symlinks', t => {
