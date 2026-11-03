@@ -60,7 +60,8 @@ export function prdFixture(name = "P1", durations = [8, 14, 8], characterCount =
   const upstream = { type: "商业广告", theme: `合成主题-${name}`, duration_sec: durations.reduce((a, b) => a + b, 0), target_audience: "未映射受众", description: "合成创意" };
   const discovery: RequirementRecord = { upstreamFields: upstream,
     sceneStructure: { sceneCount: durations.length, totalDuration: upstream.duration_sec, narrativeArc: "setup→climax→resolution", opening: nodes[0], scenes: nodes.slice(1, -1), ending: nodes.at(-1) },
-    audienceProfile: { primaryAudience: { ageRange: "25-30", gender: "male", interestTags: [] } }, referenceCases: { filmReferences: [], styleReferences: [] } };
+    audienceProfile: { primaryAudience: { ageRange: "25-30", gender: "male", interestTags: [] } },
+    referenceCases: { filmReferences: [], adReferences: [], styleReferences: ["合成构图参考", "自然侧光"] } };
   const list = bindRequirementContract({ keyPoints: [] }, discovery, upstream, structuredClone(metadata), requirementCast(metadata).hash, "原始年轻消费者");
   const contract = list._workloomRequirementContract as RequirementContract;
   const creative = { coreTheme: "具体合成物象之间形成可验证的叙事张力", creativeHook: "第一帧人物观察商品，观众因此想知道下一步动作", emotionalArc: "setup→climax→resolution",

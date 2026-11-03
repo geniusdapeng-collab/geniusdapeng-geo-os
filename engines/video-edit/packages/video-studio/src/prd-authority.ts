@@ -62,7 +62,11 @@ export interface PrdAuthority {
   metadata: RequirementRecord;
   marketing: PrdMarketingAuthority;
   profile: PrdProductionProfile;
+  /** Generation-side rule; it does not declare any master music or subtitles. */
+  nativeShotAudioPolicy?: typeof NATIVE_SHOT_AUDIO_POLICY;
 }
+
+export const NATIVE_SHOT_AUDIO_POLICY = "镜头内仅用现场声、动作音效及合同准许的人声，禁止镜头外配乐。母版配乐仅在正式后期按交付授权处理。";
 
 export class PrdAuthorityError extends Error {
   readonly status = "unverified";
@@ -291,7 +295,7 @@ export function preparePrdAuthority(input: {
   if (visual.mode === ABSTRACT_PRODUCT_VISUAL_MODE || (visual.mode === VERIFIED_PRODUCT_VISUAL_MODE && visual.modeEvidence)) {
     profile.visualMode = visual.mode;
   }
-  return { metadata, marketing: authority, profile };
+  return { metadata, marketing: authority, profile, ...(input.creativeContract ? { nativeShotAudioPolicy: NATIVE_SHOT_AUDIO_POLICY } : {}) };
 }
 
 /** Both existing real LLM agents receive the same complete authority; this grants no new approval. */
@@ -303,6 +307,8 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `本次商品视觉模式和执行限制：\n${JSON.stringify(visual)}\n${visual.rule}\n`
     + `本次生效的生产/交付规格（含客户明确值及宿主适用的制作默认值；未写入原始 Brief 的值不得伪称客户明确指定。分辨率是母版交付规格，不替代原生模型能力核验）：\n${JSON.stringify(authority.profile)}\n`
+    + (authority.nativeShotAudioPolicy ? `原生镜头与正式后期的音频边界：${authority.nativeShotAudioPolicy} 所有场景音效计划须与该边界一致。原声中的发动机、轮胎、环境和动作音效不是配乐。\n`
+      + `受众分析中的传播措辞只用于内部策划；不要把口号、评论示例或传播钉子句当作画面、字幕、配音或侧车文件的输入。客户原文与正式后期另行授权的文字项才可按各自合同执行。\n` : "")
     + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
     + `人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。\n`
@@ -416,12 +422,18 @@ export function validatePrdDelivery(value: unknown, profile: PrdProductionProfil
 }
 
 /** The actual response shape, shared by the model prompt and strict host validation. */
-export function effectivePrdModelSchema(kind: "creative" | "production", schemaValue: RequirementRecord, contract: RequirementContract): RequirementRecord {
+export function effectivePrdModelSchema(kind: "creative" | "production", schemaValue: RequirementRecord, contract: RequirementContract,
+  nativeShotAudioPolicy?: PrdAuthority["nativeShotAudioPolicy"]): RequirementRecord {
   const properties = requirementRecord(schemaValue.properties, "PRD schema.properties");
   // The native creative agent returns the bare core, then wraps it in its parser.
   if (kind === "creative") return structuredClone(requirementRecord(properties.creativeCore, "creativeCore schema"));
   const modules = ["visualSpecification", "audioSpecification", "characterSystem", "scenePlan"];
   const schema: RequirementRecord = { type: "object", required: modules, properties: Object.fromEntries(modules.map(key => [key, structuredClone(properties[key])])), additionalProperties: false };
+  if (nativeShotAudioPolicy) {
+    const audio = requirementRecord(requirementRecord(requirementRecord(schema.properties, "制作模块").audioSpecification,
+      "音频规格结构").properties, "音频规格字段");
+    requirementRecord(audio.musicStyle, "原生镜头音乐字段").enum = [nativeShotAudioPolicy];
+  }
   const sceneProperties = requirementRecord(requirementRecord(requirementRecord(schema.properties, "production properties").scenePlan, "scenePlan schema").properties, "scenePlan properties");
   const sceneArray = requirementRecord(sceneProperties.scenes, "scenes schema");
   sceneArray.minItems = contract.scenes.length;
@@ -496,7 +508,8 @@ function compactProductionExecutionArrays(value: unknown): void {
 }
 
 /** Validate the actual model payload before vendor parsers can manufacture missing modules. */
-export function validatePrdModelPayload(value: unknown, kind: "creative" | "production", schemaValue: RequirementRecord, contract: RequirementContract, profile: PrdProductionProfile): RequirementRecord {
+export function validatePrdModelPayload(value: unknown, kind: "creative" | "production", schemaValue: RequirementRecord, contract: RequirementContract, profile: PrdProductionProfile,
+  nativeShotAudioPolicy?: PrdAuthority["nativeShotAudioPolicy"]): RequirementRecord {
   let parsed: unknown = value;
   if (typeof parsed === "string") {
     const clean = parsed.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
@@ -504,7 +517,7 @@ export function validatePrdModelPayload(value: unknown, kind: "creative" | "prod
     catch { prdFail("PRD_RESPONSE_UNVERIFIED", "本次模型响应不是完整 JSON"); }
   }
   const result = structuredClone(requirementRecord(parsed, "PRD 模型真实响应"));
-  const effective = effectivePrdModelSchema(kind, schemaValue, contract);
+  const effective = effectivePrdModelSchema(kind, schemaValue, contract, nativeShotAudioPolicy);
   if (kind === "creative") {
     const properties = requirementRecord(effective.properties, "creativeCore properties");
     const keyMessagesSchema = requirementRecord(requirementRecord(properties.keyMessages, "keyMessages schema").items, "keyMessages item schema");
@@ -520,14 +533,18 @@ export function validatePrdModelPayload(value: unknown, kind: "creative" | "prod
     ? { type: "object", required: ["creativeCore"], properties: { creativeCore: effective }, additionalProperties: false }
     : effective;
   validateRequirementSchema(kind === "creative" ? { creativeCore: result } : result, schema, `PRD ${kind} response`);
-  if (kind === "production") validatePrdProduction(result, contract, profile);
+  if (kind === "production") validatePrdProduction(result, contract, profile, nativeShotAudioPolicy);
   return result;
 }
 
 /** No scene-duration projection or creative repair is allowed here. */
-export function validatePrdProduction(value: unknown, contract: RequirementContract, profile: PrdProductionProfile): void {
+export function validatePrdProduction(value: unknown, contract: RequirementContract, profile: PrdProductionProfile,
+  nativeShotAudioPolicy?: PrdAuthority["nativeShotAudioPolicy"]): void {
   const contentTarget = prdDurationContract(profile).contentDurationSeconds;
   const result = requirementRecord(value, "PRD 制作规格");
+  if (nativeShotAudioPolicy && requirementRecord(result.audioSpecification, "PRD 音频规格").musicStyle !== nativeShotAudioPolicy) {
+    prdFail("PRD_AUDIO_SCOPE_CHANGED", "原生镜头音频和正式后期配乐的范围发生变化");
+  }
   const scenes = list(requirementRecord(result.scenePlan, "PRD scenePlan").scenes, "PRD scenes").map(value => requirementRecord(value, "PRD scene"));
   const sceneTolerance = profile.durationToleranceFrames !== undefined && profile.frameRate !== undefined
     ? profile.durationToleranceFrames / profile.frameRate
@@ -556,7 +573,7 @@ export function validatePrdProduction(value: unknown, contract: RequirementContr
 /** Carry source/version anchors as provenance; their existence never constitutes G5 approval. */
 export function bindPrdProvenance(value: unknown, authority: PrdAuthority, contract: RequirementContract): RequirementRecord {
   const result = structuredClone(requirementRecord(value, "PRD 最终结果"));
-  validatePrdProduction(result, contract, authority.profile);
+  validatePrdProduction(result, contract, authority.profile, authority.nativeShotAudioPolicy);
   const system = requirementRecord(result.characterSystem, "PRD characterSystem");
   system.characters = list(system.characters, "PRD characters").map(value => {
     const character = requirementRecord(value, "PRD character");

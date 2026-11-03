@@ -39,6 +39,7 @@ CADDY_SITE = Path("/etc/caddy/pengmanager-sites/pengmanager-system.caddy")
 MARKER = "# Managed by PengManager deployment v1"
 MAX_SOURCE = 1024 * 1024 * 1024
 MAX_BACKUP = 64 * MAX_SOURCE
+PNPM_RELEASE_STORE = "pnpm-store-copy-v1"
 LAUNCH_ID_LENGTHS = {"WORKLOOM_LAUNCH_TENANT_ID": 160, "WORKLOOM_LAUNCH_WORKSPACE_ID": 160,
                      "WORKLOOM_LAUNCH_MEMBER_NO": 80}
 LAUNCH_REQUIRED = {*LAUNCH_ID_LENGTHS, "WORKLOOM_PM_ORIGIN", "WORKLOOM_LAUNCH_PRIVATE_KEY_B64"}
@@ -410,7 +411,7 @@ def preflight(domain=None, require_root=False, proxy_mode="caddy"):
     if shutil.disk_usage(disk_target).free < 2 * 1024 * 1024 * 1024:
         issues.append("At least 2 GiB free disk space is required for a release and dependencies.")
     for path in (BASE, BASE / "releases", BASE / "runtimes", BASE / "tooling", BASE / "pnpm-store",
-                 BASE / "npm-cache", CONFIG, DATA):
+                 BASE / PNPM_RELEASE_STORE, BASE / "npm-cache", CONFIG, DATA):
         if path.is_symlink():
             issues.append(f"Managed path must not be a symlink: {path}")
         elif path.exists() and not path.is_dir():
@@ -596,17 +597,25 @@ def prepare_release(archive, manifest, account):
     try:
         extract_regular(archive, stage, "app")
         node, pnpm = ensure_runtime(stage, account)
-        cache = BASE / "pnpm-store"
+        # Older releases could hardlink cached files, then change ownership
+        # and modes through those links. Keep that store untouched.
+        cache = BASE / PNPM_RELEASE_STORE
         managed_directory(cache)
-        cache.mkdir(exist_ok=True, mode=0o700)
-        os.chown(cache, account.pw_uid, account.pw_gid)
+        if not cache.exists():
+            cache.mkdir(mode=0o700)
+            os.chown(cache, account.pw_uid, account.pw_gid)
+        cache_state = cache.stat()
+        require(stat.S_IMODE(cache_state.st_mode) == 0o700
+                and (cache_state.st_uid, cache_state.st_gid) == (account.pw_uid, account.pw_gid),
+                "Release dependency store must be a private service-owned directory.")
         for directory, directories, files in os.walk(stage):
             os.chown(directory, account.pw_uid, account.pw_gid)
             for name in files:
                 os.chown(Path(directory) / name, account.pw_uid, account.pw_gid)
         # Existing runtime imports tsx/yaml/zod from devDependencies; --prod would break them.
         run(["runuser", "--user", USER, "--", node, pnpm, "install", "--frozen-lockfile", "--ignore-scripts",
-             "--prod=false", "--store-dir", cache, "--config.userconfig=/dev/null"], cwd=stage, capture=False)
+             "--prod=false", "--store-dir", cache, "--config.package-import-method=copy",
+             "--config.userconfig=/dev/null"], cwd=stage, capture=False)
         for record in manifest["files"]:
             require(sha256(stage / record["path"]) == record["sha256"],
                     "Source changed during dependency preparation; candidate release was not activated.")
@@ -617,9 +626,15 @@ def prepare_release(archive, manifest, account):
             os.chmod(directory, stat.S_IMODE(os.stat(directory).st_mode) & ~0o022)
             for name in files:
                 path = Path(directory) / name
-                if not path.is_symlink():
-                    os.chown(path, 0, 0)
-                    path.chmod(stat.S_IMODE(path.stat().st_mode) & ~0o022)
+                attributes = path.lstat()
+                if stat.S_ISLNK(attributes.st_mode):
+                    continue
+                require(stat.S_ISREG(attributes.st_mode) and attributes.st_nlink == 1,
+                        "Prepared release contains a hardlink or unsupported file; activation was blocked.")
+                os.chown(path, 0, 0, follow_symlinks=False)
+                # Ownership changes can clear special bits. Do not restore
+                # them from the earlier stat, or make a package group-writable.
+                path.chmod(attributes.st_mode & 0o755)
         stage.rename(release)
         stage = release
         verify_prepared_release(release, node)

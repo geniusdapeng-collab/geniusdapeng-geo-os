@@ -193,6 +193,63 @@ describe("current owner product image in exact candidate and independent review 
 });
 
 describe("native creative candidate structure at the actual model transport", () => {
+  const exactContract = (count: number, seconds: number) => compileCreativeContract({ scope: contract.scope,
+    rawIntent: `成片时长30秒，恰好${count}个${seconds}秒镜头段。`, requiredFields: ["画面"] });
+  const plannedShots = (count: number, duration: number) => Array.from({ length: count }, (_, index) => ({
+    ...shot, shotId: `S${index + 1}`, sceneId: `SC${index + 1}`, duration,
+  }));
+
+  it.each([[3, 10], [4, 7.5]])("sends a complete %i × %s schedule and matches the strict local validator", async (count, duration) => {
+    const exact = exactContract(count, duration);
+    await withFixture(user => {
+      if (user.candidateHash) return { value: goodReview(user) };
+      const shotsSchema = user.outputContract.schema.properties.shots;
+      return { value: { shots: shotsSchema.minItems === count && shotsSchema.maxItems === count
+        && shotsSchema.items.properties.duration.const === duration
+        && user.outputContract.example.shots.length === count ? plannedShots(count, duration) : plannedShots(6, 5) } };
+    }, async (endpoint, requests) => {
+      const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract: exact, endpoint, count: 1, assertCurrent: async () => {},
+      }));
+      expect(requests).toHaveLength(2);
+      const request = requests[0]!;
+      expect(request.messages[0]!.content).toContain("根对象必须仅含 shots 一个键");
+      expect(request.messages[0]!.content).toContain(`shots 必须恰好包含 ${count} 个镜头`);
+      expect(request.messages[0]!.content).toContain(`duration 必须是 JSON 数字 ${duration}`);
+      const { schema, example } = JSON.parse(request.messages.at(-1)!.content).outputContract;
+      expect(schema).toMatchObject({ required: ["shots"], additionalProperties: false, properties: { shots: {
+        minItems: count, maxItems: count, items: { additionalProperties: false, properties: { duration: { const: duration } } },
+      } } });
+      expect(schema.properties.shots.items.required.sort()).toEqual(expectedKeys(shot));
+      expect(example.shots.map((item: typeof shot) => item.duration)).toEqual(Array(count).fill(duration));
+      expect(example.shots.every((item: typeof shot) => JSON.stringify(expectedKeys(item)) === JSON.stringify(expectedKeys(shot)))).toBe(true);
+      expect(new Set(example.shots.map((item: typeof shot) => item.shotId)).size).toBe(count);
+      expect(result.selected?.shots.map(item => item.duration)).toEqual(Array(count).fill(duration));
+    });
+  });
+
+  it.each([
+    ["count", { shots: plannedShots(6, 5) }, { path: ["shots"], code: "too_big" }],
+    ["duration", { shots: [{ ...shot, duration: 8 }, ...plannedShots(3, 10).slice(1)] }, { path: ["shots", 0, "duration"], code: "invalid_value" }],
+    ["extra root key", { shots: plannedShots(3, 10), untrustedSecretKey: "UNTRUSTED-ROOT-OUTPUT" }, { path: [], code: "unrecognized_keys" }],
+  ] as const)("rejects exact-plan %s drift before review and keeps the existing capped successor", async (_label, invalid, issue) => {
+    const exact = exactContract(3, 10);
+    await withFixture((user, index) => ({ value: index === 1 ? invalid : user.candidateHash ? goodReview(user) : { shots: plannedShots(3, 10) } }),
+      async (endpoint, requests, hashes) => {
+        const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+          contract: exact, endpoint, count: 2, assertCurrent: async () => {},
+        }));
+        expect(requests).toHaveLength(3);
+        const [first, successor, review] = requests.map(request => JSON.parse(request.messages.at(-1)!.content));
+        expect(successor.structureSuccessorOf).toMatchObject({ requestId: "fixture-response-1", responseHash: hashes[0], issues: expect.arrayContaining([issue]) });
+        expect(successor.outputContract).toEqual(first.outputContract);
+        expect(review.shots.map((item: typeof shot) => item.duration)).toEqual([10, 10, 10]);
+        expect(result.rejected).toMatchObject([{ response: { issues: expect.arrayContaining([issue]) } }]);
+        expect(result.selected?.generation.requestId).toBe("fixture-response-2");
+        expect(JSON.stringify({ successor, rejected: result.rejected })).not.toMatch(/untrustedSecretKey|UNTRUSTED-ROOT-OUTPUT/);
+      });
+  });
+
   it("sends complete JSON contracts, diagnoses malformed shape and uses one settled same-model successor within the candidate count", async () => {
     await withFixture((user, index) => ({
       value: user.candidateHash ? goodReview(user) : index === 1 ? { shots: [wrongShot] } : { shots: [shot] },
@@ -205,6 +262,10 @@ describe("native creative candidate structure at the actual model transport", ()
       expect(first.outputContract.schema.additionalProperties).toBe(false);
       expect(first.outputContract.schema.properties.shots.items.additionalProperties).toBe(false);
       expect(first.outputContract.schema.properties.shots.items.required.sort()).toEqual(expectedKeys(shot));
+      expect(first.outputContract.schema.properties.shots).toMatchObject({ minItems: 1, maxItems: 60 });
+      expect(first.outputContract.schema.properties.shots.items.properties.duration).not.toHaveProperty("const");
+      expect(first.outputContract.example.shots).toMatchObject([{ shotId: "S01", sceneId: "SC01", duration: contract.profile.minShotSeconds }]);
+      expect(requests[0]!.messages[0]!.content).toContain("示例仅说明形状，禁止复制示例内容或镜头数。");
       expect(expectedKeys(first.outputContract.example.shots[0])).toEqual(expectedKeys(shot));
       expect(review.outputContract.schema.properties.scores.required.sort()).toEqual([...CREATIVE_ART_DIMENSIONS].sort());
       expect(review.outputContract.example.contractHash).toBe(contract.hash);

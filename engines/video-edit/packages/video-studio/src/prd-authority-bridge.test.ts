@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage, ChatOptions, ModelProvider } from "@workloom/base/model-router";
 import { bindRequirementContract, requirementCast, requirementHash, requirementRecord, type RequirementContract, type RequirementRecord } from "./requirement-contract.js";
 import { effectivePrdModelSchema, prdAuthorityPrompt, preparePrdAuthority } from "./prd-authority.js";
+import { applyPrdVisualReferenceSchema } from "./named-reference-authority.js";
 import { assertPrdAuthorityBridge, installPrdAuthorityBridge, installPrdProductionBridge, productionModelInput, withPrdAuthorityScope } from "./prd-authority-bridge.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
@@ -70,8 +71,13 @@ console.log("RESULT " + JSON.stringify(gateDeterministicChecks("G4_PRD", ${JSON.
   const stdout = execFileSync(process.execPath, [`${repo}node_modules/tsx/dist/cli.mjs`, script], { cwd: repo, timeout: 20000, encoding: "utf8" });
   return JSON.parse(stdout.split("\n").find(line => line.startsWith("RESULT "))!.slice(7)) as Array<{ id: string; pass: boolean }>;
 }
-function expectCompletePrompt(prompt: string, kind: "creative" | "production", value: ReturnType<typeof prdFixture>) {
+function expectedPromptSchema(kind: "creative" | "production", value: ReturnType<typeof prdFixture>) {
   const expected = effectivePrdModelSchema(kind, PRDSchema, value.contract);
+  if (kind === "production") applyPrdVisualReferenceSchema(expected, ["合成构图参考", "自然侧光"]);
+  return expected;
+}
+function expectCompletePrompt(prompt: string, kind: "creative" | "production", value: ReturnType<typeof prdFixture>) {
+  const expected = expectedPromptSchema(kind, value);
   expect(schemaFromPrompt(prompt, kind)).toEqual(expected);
   expect(prompt.split(JSON.stringify(expected))).toHaveLength(2);
   expect(prompt.split(prdAuthorityPrompt(value.authority, value.contract))).toHaveLength(2);
@@ -685,13 +691,17 @@ describe("PRD native generator, two native agent processes and real schema", () 
   it.each(["agent2", "agent3"])("native %s preserves a customer quotation of the exact host heading and following text, including parse retry", async key => {
     const value = fixture(); lengthenAuthority(value);
     const kind = key === "agent2" ? "creative" : "production";
-    const heading = `\n\n## 本次宿主 PRD ${kind} 响应 JSON Schema（${requirementHash(effectivePrdModelSchema(kind, PRDSchema, value.contract))}）\n`;
+    const heading = `\n\n## 本次宿主 PRD ${kind} 响应 JSON Schema（${requirementHash(expectedPromptSchema(kind, value))}）\n`;
     const quotation = `客户引用开始${heading}客户引用之后的SENTINEL和完整原文必须保留`;
     value.discovery._originalStoryText = quotation;
     requirementRecord(value.metadata.brief, "brief").description += quotation;
     value.authority = preparePrdAuthority({ metadata: value.metadata, marketing: value.marketing, workDir: value.workDir, projectId: value.scope.projectId });
     const h = harness(), run = h.make(value), agent = requirementRecord(run.generator[key], key);
-    const originalPrompt = invoke(agent, "_buildPrompt", value.discovery, { creativeCore: value.creative }) as string;
+    const nativePrompt = invoke(agent, "_buildPrompt", value.discovery, { creativeCore: value.creative }) as string;
+    const originalPrompt = kind === "production" ? nativePrompt.replace(
+      '    "visualReferences": ["《影片名》", "导演名"],',
+      '    "visualReferences": ["合成构图参考"],',
+    ) : nativePrompt;
     const nativePrefix = `${String(invoke(agent, "_getSystemPrompt"))}\n\n${originalPrompt}`;
     const engine = run.engines[key === "agent2" ? 0 : 1]!, reason = engine.reasonStructured as (...args: unknown[]) => unknown;
     let attempts = 0;
@@ -1005,7 +1015,7 @@ describe("G4 executable plans and one native quality policy", () => {
       expect(call.prompt).toContain("由本次模型填写现有字段"); expect(call.prompt).toContain("原始 front/closeup PNG");
       expect(call.prompt).toContain("G5 前待解析和核验"); expect(call.prompt).toContain("安全区"); expect(call.prompt).toContain("覆盖起止");
       expect(call.prompt).toContain("sidecar"); expect(call.prompt).toContain("不加速口播");
-      expect(schemaFromPrompt(call.prompt, "production")).toEqual(effectivePrdModelSchema("production", PRDSchema, value.contract));
+      expect(schemaFromPrompt(call.prompt, "production")).toEqual(expectedPromptSchema("production", value));
       expect((requirementRecord(prd.characterSystem, "characters").characters as RequirementRecord[])[0]).toMatchObject({ consistencyRequirements: plan, portraitPath: "" });
       expect(prd.audioSpecification).toEqual(before.audioSpecification);
       expect((requirementRecord(prd.scenePlan, "scenePlan").scenes as RequirementRecord[])[0]!.visualRequirements).toEqual([subtitle]);
@@ -1173,7 +1183,8 @@ describe("native truth-check preserves verdicts and scopes internal fact use to 
 describe("PRD failures remain fatal through native catches", () => {
   it.each([
     { label: "empty", references: [] }, { label: "six", references: Array(6).fill("合成构图参考") },
-    { label: "missing", references: undefined }, { label: "not-array", references: "合成构图参考" }, { label: "wrong-item-type", references: [42] }
+    { label: "missing", references: undefined }, { label: "not-array", references: "合成构图参考" }, { label: "wrong-item-type", references: [42] },
+    { label: "invented named reference", references: ["《极速车王》"] }
   ])("native production rejects invalid visualReferences $label without extra calls or repair", async ({ references }) => {
     const value = fixture(), h = harness(), visual = value.production.visualSpecification as unknown as RequirementRecord;
     if (references === undefined) delete visual.visualReferences; else visual.visualReferences = references;
@@ -1183,6 +1194,35 @@ describe("PRD failures remain fatal through native catches", () => {
     expect(value.production).toEqual(before); expect(run.calls.map(call => call.agent)).toEqual(["agent2", "agent3"]);
     for (const call of run.calls) expectCompletePrompt(call.prompt, call.agent === "agent2" ? "creative" : "production", value);
     expect(run.system.minimalCalls).toBe(0);
+  });
+  it("rejects stale unauthorized discovery film and brand references before PRD model calls", async () => {
+    const value = fixture(), h = harness();
+    value.discovery.referenceCases = { filmReferences: [{ title: "《极速车王》", relevance: "high", keyTakeaway: "低机位跟拍" }],
+      adReferences: [{ brand: "Apple", relevance: "medium", keyTakeaway: "靠环境声收束" }], styleReferences: ["合成构图参考", "自然侧光"] };
+    const run = h.make(value);
+    await expect(withPrdAuthorityScope(value.authority, () => h.generate(run))).rejects.toThrow("REQUIREMENT_REFERENCE_UNVERIFIED");
+    expect(run.calls).toHaveLength(0);
+  });
+  it("passes explicitly supplied reference names and current G3 techniques unchanged to G4", async () => {
+    const value = fixture(), h = harness(), title = "《客户授权影片》", brand = "客户授权品牌";
+    const source = JSON.parse(value.content) as RequirementRecord;
+    source.requestedIntent = `制作短片《本片片名》。参考影片${title}。`;
+    source.requestedMetadata = { brief: { referenceCases: { adReferences: [{ brand }] } } };
+    value.content = JSON.stringify(source); writeFileSync(value.file, value.content);
+    value.marketing.g1Artifact = { path: value.file, content: value.content, sha256: digest(value.content) };
+    value.marketing.g1Proof.evidence = [{ path: value.file, sha256: digest(value.content), scope: "complete-text" }];
+    value.authority = preparePrdAuthority({ metadata: value.metadata, marketing: value.marketing, workDir: value.workDir, projectId: value.scope.projectId });
+    value.discovery.referenceCases = { filmReferences: [{ title, relevance: "high", keyTakeaway: "低机位跟拍" }],
+      adReferences: [{ brand, relevance: "medium", keyTakeaway: "靠现场声收束" }], styleReferences: ["合成构图参考", "自然侧光"] };
+    value.production.visualSpecification.visualReferences = [title, "自然侧光"];
+    const run = h.make(value);
+    await withPrdAuthorityScope(value.authority, async () => {
+      const prd = await h.generate(run), markdown = await h.review(run, prd);
+      expect(prd.referenceCases).toMatchObject({ filmReferences: [title], adReferences: [brand] });
+      expect(markdown).toContain(`- **参考**：${title}, 自然侧光`);
+      expect(markdown).toContain(`- **广告**：${brand}`);
+      expect(run.calls.find(call => call.agent === "agent3")?.prompt).not.toContain('["《影片名》", "导演名"]');
+    });
   });
   it.each(["no-g3", "g3-rejected", "source-scene-changed", "cast-changed"])("rejects %s before a model call", async kind => {
     const value = fixture(), h = harness(), run = h.make(value);

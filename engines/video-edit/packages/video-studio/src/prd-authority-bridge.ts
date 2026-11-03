@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import {
-  requirementHash, requirementRecord, verifiedRequirementContract,
+  requirementHash, requirementRecord, validateRequirementSchema, verifiedRequirementContract,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import {
@@ -11,6 +11,7 @@ import {
   validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
 } from "./prd-authority.js";
 import { normalizeMarketingPrdContract } from "./marketing-prd-contract.js";
+import { applyPrdVisualReferenceSchema, namedReferenceAuthority, validateReferenceCases } from "./named-reference-authority.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
 import { currentCreativeModelSlice, currentCreativeRuntime, currentCreativeSelectionContext } from "./creative-runtime.js";
@@ -502,6 +503,64 @@ export function exactPrdShotSchedule(
   };
 }
 
+type ExactPrdShotSchedule = NonNullable<ReturnType<typeof exactPrdShotSchedule>>;
+
+function scheduleLabel(plan: ExactPrdShotSchedule): string {
+  return `${plan.sceneCount} 个叙事节点 / ${plan.shotCount} 个制作镜头段，每段 ${plan.shotDurationSeconds} 秒`;
+}
+
+function nativeShotEstimate(prd: RequirementRecord): number {
+  const mapping = requirementRecord(prd.scenePlan, "PRD 场景计划").shotMapping as RequirementRecord[];
+  return mapping.reduce((sum, entry) => sum + (Number(entry.estimatedShots) || 0), 0);
+}
+
+/** Bind rule-owned summary and delivery wording to the customer's exact production schedule. */
+export function bindExactPrdShotSchedule(prd: RequirementRecord, plan: ExactPrdShotSchedule | undefined): void {
+  if (!plan) return;
+  const label = scheduleLabel(plan), estimate = nativeShotEstimate(prd);
+  const summary = requirementRecord(prd.prdSummary, "原生 PRD 摘要");
+  const oldHuman = ` - ${plan.sceneCount}场景/${estimate}镜头, `;
+  if (summary.scenes !== `${plan.sceneCount} 场景 / ${estimate} 预估镜头` || typeof summary.humanReadable !== "string"
+    || summary.humanReadable.split(oldHuman).length !== 2) {
+    prdFail("PRD_VENDOR_UNAVAILABLE", "原生 PRD 镜头摘要结构已经变化");
+  }
+  const constraints = requirementRecord(prd.productionConstraints, "PRD 制作约束");
+  const technical = constraints.technicalConstraints;
+  if (!Array.isArray(technical) || technical.length < 1 || technical.length > 5 || technical.some(value => typeof value !== "string")) {
+    prdFail("PRD_VENDOR_UNAVAILABLE", "原生 PRD 技术约束结构已经变化");
+  }
+  const standard = requirementRecord(prd.deliveryStandard, "PRD 交付计划");
+  const master = (standard.deliverables as RequirementRecord[]).find(item => item.item === "video_master");
+  if (!master || typeof master.spec !== "string") prdFail("PRD_DELIVERY_INVALID", "缺少原生视频母版规格");
+  summary.scenes = label;
+  summary.humanReadable = summary.humanReadable.replace(oldHuman, ` - ${label}, `);
+  const execution = `客户明确制作时序：${label}，内容合计 ${plan.totalSeconds} 秒。按区间对应表核对每段和跨段叙事节点。`;
+  constraints.technicalConstraints = technical.length < 5 ? [...technical, execution]
+    : [...technical.slice(0, -1), `${technical.at(-1)}；${execution}`];
+  master.spec += `；按客户明确制作时序验收：${label}，内容合计 ${plan.totalSeconds} 秒`;
+}
+
+/** The pinned vendor Markdown computes its own estimate, independent of prdSummary. */
+export function renderExactPrdShotSchedule(markdown: string, prd: RequirementRecord, plan: ExactPrdShotSchedule | undefined): string {
+  if (!plan) return markdown;
+  const summaryHeader = "\n## 摘要\n\n| 项目 | 内容 |\n|------|------|";
+  const summaryStart = markdown.indexOf(summaryHeader), summaryEnd = markdown.indexOf("\n**核心钩子**", summaryStart);
+  const row = `\n| 场景 | ${plan.sceneCount} 场景 / ${nativeShotEstimate(prd)} 预估镜头 |\n`;
+  const summary = markdown.slice(summaryStart, summaryEnd);
+  const sceneHeader = "\n## 7. 场景规划\n";
+  const scenes = requirementRecord(prd.scenePlan, "PRD 场景计划").scenes as RequirementRecord[];
+  const first = scenes[0]!;
+  const sceneStart = markdown.lastIndexOf(`${sceneHeader}\n\n### ${first.sceneId}（第 ${first.sequence} 场，${first.duration} 秒）\n`);
+  if (summaryStart < 0 || summaryEnd <= summaryStart || summary.split(row).length !== 2 || sceneStart <= summaryEnd) {
+    prdFail("PRD_VENDOR_UNAVAILABLE", "原生 PRD Markdown 的场景摘要结构已经变化");
+  }
+  const sceneTextStart = sceneStart + sceneHeader.length;
+  return markdown.slice(0, summaryStart)
+    + summary.replace(row, `\n| 叙事节点与制作镜头段 | ${scheduleLabel(plan)} |\n`) + markdown.slice(summaryEnd, sceneTextStart)
+    + "\n以下逐节点「预估镜头」保留原生构图提示及其估算。制作段数和时长以客户明确的区间对应表为准。\n"
+    + markdown.slice(sceneTextStart);
+}
+
 function productionScheduleContext(scope: Scope): string {
   const plan = exactPrdShotSchedule(currentCreativeRuntime()?.contract, scope.contract!.scenes);
   if (!plan) return "";
@@ -565,7 +624,7 @@ function verifyOutput(scope: Scope, value: unknown, schema: RequirementRecord): 
   return guard(scope, () => {
     const result = requirementRecord(value, "PRD 当前结果");
     if (!scope.contract || !scope.generated.has(result)) prdFail("PRD_RESULT_UNBOUND", "PRD 不属于本次真实生成调用");
-    validatePrdProduction(result, scope.contract, scope.authority.profile);
+    validatePrdProduction(result, scope.contract, scope.authority.profile, scope.authority.nativeShotAudioPolicy);
     validatePrdDelivery(result, scope.authority.profile, schema);
     const quality = scope.quality.get(result);
     const constraints = requirementRecord(result.productionConstraints, "PRD 制作约束");
@@ -703,6 +762,13 @@ export function installPrdAuthorityBridge(
       const metadata = { ...scope.authority.metadata, _workloomRequirementContract: scope.list._workloomRequirementContract };
       const contract = verifiedRequirementContract(scope.list, metadata, discovery,
         extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content));
+      const references = namedReferenceAuthority(scope.authority);
+      const sourceReferences = validateReferenceCases(discovery.referenceCases, references);
+      if (scope.list._workloomReferenceCasesSha256 !== undefined
+        && scope.list._workloomReferenceCasesSha256 !== requirementHash(discovery.referenceCases)) {
+        prdFail("PRD_REFERENCE_CHANGED", "PRD 的参考案例与本次 G3 已审清单不一致");
+      }
+      const visualReferences = [...new Set([...references.visual, ...sourceReferences.style])];
       scope.contract = structuredClone(contract);
       const promptContext = prdAuthorityPrompt(scope.authority, contract)
         + (scope.truth ? `\n\n本次规则事实边界（仅作内部限制，不是创意任务；完整原件不变）：\n${JSON.stringify(scope.truth.constraints)}\n` : "");
@@ -726,6 +792,12 @@ export function installPrdAuthorityBridge(
             return guard(scope, () => {
               check(scope);
               const result = requirementRecord(Reflect.apply(process, this, args), "原生 Agent4 结果");
+              const cases = requirementRecord(result.referenceCases, "原生 Agent4 参考案例");
+              if (requirementHash(cases.filmReferences) !== requirementHash(sourceReferences.films)
+                || requirementHash(cases.adReferences) !== requirementHash(sourceReferences.ads)
+                || requirementHash(cases.styleReferences) !== requirementHash(sourceReferences.style)) {
+                prdFail("PRD_REFERENCE_CHANGED", "原生 Agent4 参考案例与本次 G3 已审内容不一致");
+              }
               originalThresholds = qualityThresholds(requirementRecord(result.productionConstraints, "Agent4 制作约束").qualityThresholds, "Agent4 制作阈值");
               constraintResult = result;
               return result;
@@ -772,13 +844,15 @@ export function installPrdAuthorityBridge(
           const getEngine = method(agent, "_getLLMEngine");
           method(agent, "fallback");
           const kind = number === 2 ? "creative" : "production";
-          const effectiveSchema = effectivePrdModelSchema(kind, schema, contract);
+          const effectiveSchema = effectivePrdModelSchema(kind, schema, contract, scope.authority.nativeShotAudioPolicy);
+          if (kind === "production") applyPrdVisualReferenceSchema(effectiveSchema, visualReferences);
           const schemaHeading = `\n\n## 本次宿主 PRD ${kind} 响应 JSON Schema（${requirementHash(effectiveSchema)}）\n`;
           const responseContext = schemaHeading
             + `本次实际模型响应必须符合以下完整 JSON Schema；它与宿主严格校验使用同一份有效结构，补充前述通用示例。`
             + (kind === "creative" ? `只输出创意核心的裸 JSON 对象，不要包裹 creativeCore。\n` : `只输出以下四个制作模块组成的 JSON 对象。\n`)
             + `\`\`\`json\n${JSON.stringify(effectiveSchema)}\n\`\`\`\n` + promptContext
-            + (number === 3 ? productionPlanningPrompt(scope) : "");
+            + `\n参考名称仅限客户明确授权：${JSON.stringify(references.visual)}。禁止在创作字段补写作品、导演、广告或品牌案例；`
+            + (number === 3 ? `visualReferences 只从 JSON Schema 的本次允许值原样选择。\n` + productionPlanningPrompt(scope) : "");
           let builtPrompt: { original: string; complete: string } | undefined;
           agentView._getLLMEngine = function (this: RequirementRecord, ...args: unknown[]) {
             return guard(scope, () => {
@@ -841,8 +915,16 @@ export function installPrdAuthorityBridge(
           agentView._buildPrompt = function (this: RequirementRecord, ...args: unknown[]) {
             return guard(scope, () => {
               check(scope);
-              const original = Reflect.apply(build, this, args);
-              if (typeof original !== "string") prdFail("PRD_VENDOR_UNAVAILABLE", "原始 PRD prompt 不是文本");
+              const native = Reflect.apply(build, this, args);
+              if (typeof native !== "string") prdFail("PRD_VENDOR_UNAVAILABLE", "原始 PRD prompt 不是文本");
+              let original = kind === "production" ? native.replace(
+                /^    "visualReferences": \["《影片名》", "导演名"\],$/mu,
+                `    "visualReferences": ${JSON.stringify(visualReferences.slice(0, 1))},`,
+              ) : native;
+              if (kind === "production" && scope.authority.nativeShotAudioPolicy) original = original.replace(
+                /^    "musicStyle": "音乐风格（10-50字）",$/mu,
+                `    "musicStyle": ${JSON.stringify(scope.authority.nativeShotAudioPolicy)},`,
+              );
               builtPrompt = { original, complete: original + responseContext };
               return builtPrompt.complete;
             });
@@ -861,7 +943,8 @@ export function installPrdAuthorityBridge(
               check(scope);
               assertProductVisualContent(extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content), value, `raw-prd-${kind}`,
                 currentCreativeRuntime()?.omitUnverifiedMirrors);
-              const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile);
+              const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile, scope.authority.nativeShotAudioPolicy);
+              if (kind === "production") validateRequirementSchema(raw, effectiveSchema, "PRD production response");
               const parseInput = typeof value === "string" ? JSON.stringify(raw) : raw;
               const result = Reflect.apply(parse, this, [parseInput, ...args]);
               if (requirementHash(result) !== requirementHash(kind === "creative" ? { creativeCore: raw } : raw)) {
@@ -897,6 +980,7 @@ export function installPrdAuthorityBridge(
         scope.contract,
       );
       const result = bindPrdProvenance(normalized.prd, scope.authority, contract);
+      bindExactPrdShotSchedule(result, exactPrdShotSchedule(currentCreativeRuntime()?.contract, contract.scenes));
       if (!qualityPolicy) prdFail("PRD_QUALITY_INVALID", "本次原生规则调用没有形成质量阈值来源");
       scope.quality.set(result, structuredClone(qualityPolicy));
       scope.generated.add(result);
@@ -913,9 +997,12 @@ export function installPrdAuthorityBridge(
       const original = Reflect.apply(markdown, this, [result]);
       if (typeof original !== "string") prdFail("PRD_VENDOR_UNAVAILABLE", "原始 PRD Markdown 不是文本");
       if (original.split("## 9. 受众定位").length !== 2) prdFail("PRD_VENDOR_UNAVAILABLE", "PRD 受众 Markdown 的受控章节发生变化");
-      let labeled = original.replace("## 9. 受众定位", `## 9. 客户受众与模型细分推测\n\n`
+      let labeled = renderExactPrdShotSchedule(original, result, exactPrdShotSchedule(currentCreativeRuntime()?.contract, scope.contract!.scenes))
+        .replace("## 9. 受众定位", `## 9. 客户受众与模型细分推测\n\n`
         + `- **客户 Brief 权威受众原文**：${scope.contract!.ownerAudience ?? "客户未显式指定"}\n`
-        + `- **以下年龄、性别与兴趣细分仅为模型推测**：不覆盖客户原文，不构成已核实市场事实，仍待本次 G4 独立评审。\n\n### 模型细分原文`);
+        + `- **以下年龄、性别与兴趣细分仅为模型推测**：不覆盖客户原文，不构成已核实市场事实，仍待本次 G4 独立评审。\n`
+        + (scope.authority.nativeShotAudioPolicy ? `- **内部传播参考，不进入成片**：下方口号、评论示例、可复述表达均不构成画面文字、配音、字幕或侧车指令。\n` : "")
+        + `\n### 模型细分原文`);
       if (scope.contract!.cast.characters.length === 0) {
         const heading = "## 6. 角色系统\n\n无角色";
         const explicit = "## 6. 角色系统\n\n外观锚点与定妆照前置：不适用（cast.mode=none，与出镜角色合同一致）";

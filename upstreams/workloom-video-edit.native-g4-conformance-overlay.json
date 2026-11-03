@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0009",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T19:09:02.717603+00:00",
+  "scope": "Keep named sources, native audio and post media distinct; bind the exact shot plan across G4 summary and delivery; source upstream pin unchanged.",
+  "sourceOverlayCount": 6,
+  "files": [
+    {
+      "path": "packages/video-studio/src/named-reference-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/named-reference-authority.ts",
+      "targetSha256": "937cfae4db6fa745bb0fad7f953819e76fd8d91f3117c2aca4ee9eb1f04a311d",
+      "targetBytes": 4868,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.test.ts",
+      "targetSha256": "a1f2340ec0c830ca121bdb16f40ee314b32c7c6dd0cf3eca4c5c7e1deb04be38",
+      "targetBytes": 157155,
+      "evidence": "B",
+      "sourceSha256": "8da546f0535d8f939498343f5c48bb7aeb34b5ea8d8ecc56cf4f5e3c047a40f8",
+      "sourceBytes": 154424
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetSha256": "583400dd5a3b296159a2768be0a9673803899aef5466165cdcdd5cd3e3a8a0cc",
+      "targetBytes": 114791,
+      "evidence": "B",
+      "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
+      "sourceBytes": 82133
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.test-support.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test-support.ts",
+      "targetSha256": "239ebf72c476c5b8998a21ae3d7ccd508cecde99a06149b7f64dba138b4c3dba",
+      "targetBytes": 8566,
+      "evidence": "B",
+      "sourceSha256": "e62a5e88c25695b1f2363c7425bd843555758d25e520d66d15992dcfca513984",
+      "sourceBytes": 8508
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
+      "targetSha256": "89c26aa5b9f92f707c80ffc80014d29f8a6901b17a62ad7b858ad07ce19fac72",
+      "targetBytes": 40893,
+      "evidence": "B",
+      "sourceSha256": "a3af225eccf6df376bf4e35e433fbb1a7a5a02e546c49d5693586c3023611275",
+      "sourceBytes": 33456
+    },
+    {
+      "path": "packages/video-studio/src/prd-exact-schedule-summary.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-exact-schedule-summary.test.ts",
+      "targetSha256": "ea517a7a0e93c4e922a9af29e7d7ca765bc2d5396541f79cc7063a9c67b7fa89",
+      "targetBytes": 4124,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/prd-native-audio-policy.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-native-audio-policy.test.ts",
+      "targetSha256": "4bae3b9b8dfe036b0a5e8835f84c59ed24aa61ccfa7be3ba2150879ace0d7c34",
+      "targetBytes": 2524,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/requirement-authority.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.test.ts",
+      "targetSha256": "3e372c980c48979db13d4a43120a9bc8062968ed58fd8e0986cc6ad9a7105376",
+      "targetBytes": 32831,
+      "evidence": "B",
+      "sourceSha256": "f4c1f66a2f8f65cb14672204d11f8748b817a11918db378c9b4bb811effabec1",
+      "sourceBytes": 30612
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetSha256": "f74093d7dd05d6faa37416f0a5c7cb4514360f042ad84cd8cbe7a01c3a6e5551",
+      "targetBytes": 50275,
+      "evidence": "B",
+      "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
+      "sourceBytes": 29194
+    }
+  ]
+}

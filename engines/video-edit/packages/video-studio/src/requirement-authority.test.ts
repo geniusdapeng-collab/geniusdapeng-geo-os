@@ -110,9 +110,7 @@ function payloads(scene: unknown) {
     emotionTriggers: ["发现具体细节", "保留真实疑问"], contentExpectations: ["设计观察", "明确场地用途"], secondaryAudience: [], painPoints: [] },
   sceneStructure: scene,
   riskAssessment: { technicalRisks: [{ risk: "手部细节", level: "high", impact: "可能失真" }], businessConstraints: ["不虚构商品事实"], mitigationSuggestions: ["按已核资料核对"] },
-  referenceCases: { filmReferences: [{ title: "《极速车王》", relevance: "high", keyTakeaway: "只作光线艺术参考" },
-    { title: "《帕特森》", relevance: "medium", keyTakeaway: "只作节奏艺术参考" }],
-    adReferences: [{ brand: "合成视觉案例", relevance: "low", keyTakeaway: "仅作构图参考，不主张合作" }], styleReferences: ["自然光", "稳定镜头"] } };
+  referenceCases: { filmReferences: [], adReferences: [], styleReferences: ["自然光", "稳定镜头"] } };
 }
 function response(prompt: string, data: ReturnType<typeof payloads>) {
   const intro = prompt.slice(0, 180);
@@ -233,11 +231,31 @@ describe("current requirement authority and original transport", () => {
     for (const prompt of prompts) expect(prompt.split(f.authority.marketing.g1Artifact.content)).toHaveLength(2);
   });
 
+  it("does not ask native ReferenceCurator to invent films and brands, and rejects a stale named response", async () => {
+    install(); const f = fixture(), data = payloads(f.discovery.sceneStructure);
+    const stale = data.referenceCases as RequirementRecord;
+    stale.filmReferences = [{ title: "《极速车王》", relevance: "high", keyTakeaway: "低机位跟拍" },
+      { title: "《壮志凌云：独行侠》", relevance: "medium", keyTakeaway: "动作前后关系" }];
+    stale.adReferences = [{ brand: "Apple", relevance: "medium", keyTakeaway: "靠现场声收束" }];
+    const model = fakeEngine("structured", data);
+    const engine = new RequirementDiscoveryEngine({ llmEngine: model.engine, timeoutMs: 1000, agentTimeoutMs: 100 });
+    await expect(withRequirementContractScope(f.metadata, () => discover(engine, f.upstream), f.options))
+      .rejects.toThrow("REQUIREMENT_DISCOVERY_UNVERIFIED");
+    const calls = model.calls.filter(call => call.prompt.startsWith("根据本次客户 Brief 和主题设计可执行"));
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.prompt).not.toMatch(/Apple新春|至少一部|影片名称（带《》）/u);
+      expect(call.args[1]).toMatchObject({ properties: {
+        filmReferences: { minItems: 0, maxItems: 0 }, adReferences: { minItems: 0, maxItems: 0 },
+      } });
+    }
+  });
+
   it.each(["audienceProfile", "riskAssessment", "referenceCases"] as const)("rejects missing %s model fields instead of rule-filling them", async key => {
     install(); const f = fixture(), data = payloads(f.discovery.sceneStructure);
     if (key === "audienceProfile") delete (data.audienceProfile.primaryAudience as RequirementRecord).consumptionLevel;
     if (key === "riskAssessment") data.riskAssessment.businessConstraints = [];
-    if (key === "referenceCases") data.referenceCases.adReferences = [];
+    if (key === "referenceCases") delete (data.referenceCases as RequirementRecord).adReferences;
     const model = fakeEngine("structured", data);
     const engine = new RequirementDiscoveryEngine({ llmEngine: model.engine, timeoutMs: 1000, agentTimeoutMs: 100 });
     await expect(withRequirementContractScope(f.metadata, () => discover(engine, f.upstream), f.options)).rejects.toThrow("REQUIREMENT_DISCOVERY_UNVERIFIED");
