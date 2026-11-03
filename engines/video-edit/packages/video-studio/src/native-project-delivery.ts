@@ -182,9 +182,12 @@ async function inspectMother(dataRoot: string, outDir: string, projectId: string
   const frameRate = numerator! / denominator!;
   const durationSec = Number(video?.duration ?? measured.format?.duration);
   if (!video?.width || !video.height || Math.abs(video.width / video.height - ratioWidth! / ratioHeight!) > 0.004
-    || Math.min(video.width, video.height) !== Number(post.resolution.slice(0, -1)) || !Number.isFinite(frameRate) || Math.abs(frameRate - post.fps) > 0.001
+    || !Number.isFinite(frameRate) || Math.abs(frameRate - post.fps) > 0.001
     || !Number.isFinite(durationSec) || Math.abs(durationSec - seconds) > Math.max(0.12, 2 / post.fps) || !hasAudio) {
-    fail("NATIVE_MOTHER_CONTRACT_MISMATCH", "Measured mother duration, frame rate, resolution, aspect or audio disagrees with the approved local delivery plan");
+    fail("NATIVE_MOTHER_CONTRACT_MISMATCH", "Measured mother duration, frame rate, aspect or audio disagrees with the approved local delivery plan");
+  }
+  if (Math.min(video.width, video.height) !== Number(post.resolution.slice(0, -1))) {
+    fail("NATIVE_MOTHER_RESOLUTION_MISMATCH", "Measured mother resolution disagrees with the approved local delivery plan");
   }
   return { master, manifest, measured: { durationSec, width: video.width, height: video.height, frameRate, hasAudio },
     technicalQuality: "passed" as const, artisticQuality: "unverified" as const };
@@ -290,20 +293,30 @@ export async function runNativeProjectDelivery(input: NativeProjectDeliveryInput
     }
     const outDir = makeDirectory(job, "delivery");
     const publishedDir = post.resolution === "2160p" ? makeDirectory(outDir, "uhd") : outDir;
-    if (!existsSync(path.join(publishedDir, "current.json"))) {
+    const expectedClips = clips.map(item => ({ id: item.shotId, origin: item.copy.path, sha256: item.copy.sha256 }));
+    const inspect = () => inspectMother(dataRoot, publishedDir, handoff.projectId, handoff.durationSeconds, post, expectedClips);
+    let mother: Awaited<ReturnType<typeof inspect>> | undefined;
+    if (existsSync(path.join(publishedDir, "current.json"))) {
+      try { mother = await inspect(); }
+      catch (error) {
+        if (!(error instanceof ProductionClientError) || error.code !== "NATIVE_MOTHER_RESOLUTION_MISMATCH") throw error;
+        // The prior release is verified but used the source dimensions. Formal post will atomically publish a new release.
+      }
+    }
+    if (!mother) {
       const stages = ["compose", ...(post.preserveColor ? ["color"] : []), ...(post.subtitles ? ["subtitle"] : []),
         ...(post.music ? ["bgm"] : []), ...(post.cover ? ["cover"] : []), ...(post.subtitles === "both" ? ["mux"] : []), "master"];
       await formalLocalPost(dataRoot, makeDirectory(job, "post-home"), ["--shots", shotlist.path, "--project", handoff.projectId, "--work-dir", work, "--out", outDir,
         "--keys-file", emptyKeys, "--assembly-mode", "post-only", "--assembly-reason", "原生服务签发已通过并独立核实原片字节，使用正式本地后期",
-        "--route-kind", handoff.pipeline, "--platform", post.platform, "--fps", String(post.fps), "--stages", stages.join(","),
+        "--route-kind", handoff.pipeline, "--platform", post.platform, "--aspect", post.aspect, "--resolution", post.resolution,
+        "--fps", String(post.fps), "--stages", stages.join(","),
         // The approved native shots already sum to the full delivery length.
         // A requested still cover must not prepend an unapproved extra 0.6s.
         ...(post.cover ? ["--cover-intro-seconds", "0"] : []),
         ...(post.subtitles ? ["--subtitle-mode", post.subtitles] : []),
         ...(pinnedMusic ? ["--bgm-track", pinnedMusic.path] : [])], path.join(job, `post-workbench-${randomUUID()}.log`));
+      mother = await inspect();
     }
-    const mother = await inspectMother(dataRoot, publishedDir, handoff.projectId, handoff.durationSeconds, post,
-      clips.map(item => ({ id: item.shotId, origin: item.copy.path, sha256: item.copy.sha256 })));
     const current = await verify();
     const fileIdentity = (records: typeof current) => records.map(({ actualCny: _cost, ...item }) => item);
     if (productionHash(fileIdentity(current)) !== productionHash(fileIdentity(accepted))
@@ -337,9 +350,15 @@ export async function inspectNativeProjectDelivery(input: NativeProjectDeliveryI
   realDirectory(outDir, true);
   const sources = await verifyNativeRenderSources({ client: input.client, expectedSource: handoff, result: prior.render, providerModel: render.providerModel,
     workspaceId: input.workspaceId, mediaRoot: path.join(dataRoot, "media"), durationSeconds: handoff.durationSeconds });
-  const mother = await inspectMother(dataRoot, outDir, handoff.projectId, handoff.durationSeconds, post,
-    sources.map(item => ({ id: item.shotId, origin: path.join(job, "work", "clips", handoff.projectId, `${item.shotId}.mp4`),
-      sha256: item.original.sha256 })));
-  return { schemaVersion: SCHEMA, projectId: handoff.projectId, requestSha256, state: "delivered" as const, mother,
-    sources: sources.map(({ original, ...receipt }) => ({ ...receipt, sha256: original.sha256, bytes: original.bytes })) };
+  try {
+    const mother = await inspectMother(dataRoot, outDir, handoff.projectId, handoff.durationSeconds, post,
+      sources.map(item => ({ id: item.shotId, origin: path.join(job, "work", "clips", handoff.projectId, `${item.shotId}.mp4`),
+        sha256: item.original.sha256 })));
+    return { schemaVersion: SCHEMA, projectId: handoff.projectId, requestSha256, state: "delivered" as const, mother,
+      sources: sources.map(({ original, ...receipt }) => ({ ...receipt, sha256: original.sha256, bytes: original.bytes })) };
+  } catch (error) {
+    if (!(error instanceof ProductionClientError) || error.code !== "NATIVE_MOTHER_RESOLUTION_MISMATCH") throw error;
+    return { schemaVersion: SCHEMA, projectId: handoff.projectId, requestSha256, state: "blocked" as const,
+      postRecoveryCode: error.code, render: prior.render, mother: null };
+  }
 }

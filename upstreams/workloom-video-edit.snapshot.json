@@ -40880,8 +40880,8 @@
     {
       "path": "packages/video-studio/src/native-project-delivery.ts",
       "mode": "100644",
-      "bytes": 25302,
-      "targetSha256": "4dbaeb72fd27b6507f7f76e23382f1f9b7749cb6d8e84d0ede6f34c06b8a5ece",
+      "bytes": 26306,
+      "targetSha256": "42e47e367ba48f3c9531b0f7c21d8f10e5856c5b9fdf776cf4a14e442955cf8e",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
