@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
-import { creativeBudgetActive, creativeExecutionSignal, guardedCreativeModelCall, type CreativeModelOutcome } from "./creative-runtime.js";
+import { creativeBudgetActive, creativeExecutionSignal, guardedCreativeModelCall,
+  modelResponseEvidence, modelTransportFailureClass, type CreativeModelOutcome } from "./creative-runtime.js";
 import {
   normalizeModelContent,
   planDeepSeekWindow,
@@ -81,8 +82,8 @@ const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
  * discarding a successful paid response. Keep the public fetch-compatible
  * seam for fixtures, but use a bounded native HTTP request by default.
  */
-const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestInit = {}): Promise<Response> => {
-  const url = new URL(typeof input === "string" || input instanceof URL ? String(input) : input.url);
+async function nodeHttpFetch(input: string, init: RequestInit, onHeaders: (status: number | undefined, requestId: unknown) => void): Promise<Response> {
+  const url = new URL(input);
   if (!["http:", "https:"].includes(url.protocol)) throw new Error("MODEL_ENDPOINT_PROTOCOL_INVALID");
   const body = init.body === undefined || init.body === null
     ? undefined
@@ -101,6 +102,7 @@ const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestI
       method: init.method ?? "GET",
       headers: Object.fromEntries(headers.entries()),
     }, response => {
+      onHeaders(response.statusCode, response.headers["x-request-id"]);
       const chunks: Buffer[] = [];
       let bytes = 0;
       response.on("data", chunk => {
@@ -139,7 +141,7 @@ const nodeHttpFetch = (async (input: Parameters<typeof fetch>[0], init: RequestI
     if (body !== undefined) request.write(body);
     request.end();
   });
-}) as typeof fetch;
+}
 
 export function videoTextEndpointFromEnv(
   env: Record<string, string | undefined> = process.env,
@@ -160,7 +162,7 @@ function failureDetail(value: unknown): string {
     .slice(0, 500);
 }
 
-async function readBoundedBody(response: Response): Promise<string> {
+async function readBoundedBody(response: Response): Promise<Buffer> {
   const declared = response.headers.get("content-length");
   if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > MAX_RESPONSE_BYTES)) {
     throw new VideoTextDispatchError("MODEL_RESPONSE_TOO_LARGE", "模型响应超过允许的字节上限。", {
@@ -176,7 +178,7 @@ async function readBoundedBody(response: Response): Promise<string> {
         unknown: true,
       });
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return bytes;
   }
   const reader = response.body.getReader();
   const chunks: Buffer[] = [];
@@ -195,7 +197,7 @@ async function readBoundedBody(response: Response): Promise<string> {
       }
       chunks.push(Buffer.from(value));
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, size));
+    return Buffer.concat(chunks, size);
   } finally {
     reader.releaseLock();
   }
@@ -259,6 +261,7 @@ export async function completeVideoTextTask(input: {
   }
 
   let billedFailure: CreativeModelOutcome | undefined;
+  const unknownOutcome: CreativeModelOutcome = { usageKnown: false, success: false, actualCny: null };
   const requestHash = createHash("sha256").update(serialized).digest("hex");
   return guardedCreativeModelCall({
     requestHash, inputChars: requestBytes, requestBytes, inputTokenEstimate: budget.inputTokens,
@@ -270,10 +273,15 @@ export async function completeVideoTextTask(input: {
   const signals = [input.signal, executionSignal, AbortSignal.timeout(input.timeoutMs ?? 600_000)]
     .filter((signal): signal is AbortSignal => Boolean(signal));
   const signal = AbortSignal.any(signals);
-  const fetchImpl = input.fetchImpl ?? nodeHttpFetch;
+  let headersReceived = false;
+  const observeHeaders = (status: number | undefined, requestId: unknown) => {
+    headersReceived = true;
+    Object.assign(unknownOutcome, modelResponseEvidence(status, requestId, input.endpoint.apiKey));
+  };
   let response: Response;
   try {
-    response = await fetchImpl(`${input.endpoint.baseUrl}/chat/completions`, {
+    const url = `${input.endpoint.baseUrl}/chat/completions`;
+    const init: RequestInit = {
       method: "POST",
       redirect: "error",
       headers: {
@@ -282,8 +290,15 @@ export async function completeVideoTextTask(input: {
       },
       body: serialized,
       signal,
-    });
+    };
+    if (input.fetchImpl) {
+      response = await input.fetchImpl(url, init);
+      observeHeaders(response.status, response.headers.get("x-request-id"));
+    } else {
+      response = await nodeHttpFetch(url, init, observeHeaders);
+    }
   } catch (error) {
+    unknownOutcome.failureClass = modelTransportFailureClass(error, signal, headersReceived);
     throw new VideoTextDispatchError(
       input.signal?.aborted ? "MODEL_CANCELLED" : "MODEL_RESULT_UNKNOWN",
       input.signal?.aborted ? "模型调用已被调用方取消。" : "模型网络结果未知，不能自动重复可能已计费的请求。",
@@ -292,14 +307,18 @@ export async function completeVideoTextTask(input: {
   }
   let rawBody: string;
   try {
-    rawBody = response.body === null ? "" : await readBoundedBody(response);
+    const bytes = response.body === null ? Buffer.alloc(0) : await readBoundedBody(response);
+    unknownOutcome.responseHash = createHash("sha256").update(bytes).digest("hex");
+    rawBody = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch (error) {
+    unknownOutcome.failureClass = modelTransportFailureClass(error, signal, true);
     if (error instanceof VideoTextDispatchError) throw error;
     throw new VideoTextDispatchError("MODEL_RESPONSE_BODY_INVALID", "模型响应正文未完整读取或编码无效。", {
       retryable: false, unknown: true, status: response.status, cause: error,
     });
   }
   if (!response.ok) {
+    unknownOutcome.failureClass = "http_error";
     let parsedFailure: unknown;
     try { parsedFailure = JSON.parse(rawBody); } catch { /* non-JSON failures stay bounded */ }
     const detail = failureDetail(parsedFailure);
@@ -318,6 +337,7 @@ export async function completeVideoTextTask(input: {
     envelope = JSON.parse(rawBody) as Record<string, unknown>;
     if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) throw new Error("response envelope must be an object");
   } catch (error) {
+    unknownOutcome.failureClass = "response_json_invalid";
     throw new VideoTextDispatchError("MODEL_RESPONSE_JSON_INVALID", "模型响应不是合法 JSON。", {
       retryable: false,
       unknown: true,
@@ -326,6 +346,7 @@ export async function completeVideoTextTask(input: {
     });
   }
   if (envelope.model !== input.endpoint.model) {
+    unknownOutcome.failureClass = "response_identity_invalid";
     throw new VideoTextDispatchError(
       "MODEL_IDENTITY_CHANGED",
       `模型响应身份 ${String(envelope.model ?? "<missing>")} 与请求 ${input.endpoint.model} 不一致。`,
@@ -333,12 +354,15 @@ export async function completeVideoTextTask(input: {
     );
   }
   if (typeof envelope.id !== "string" || !/^[A-Za-z0-9_.:-]{1,200}$/.test(envelope.id)) {
+    unknownOutcome.failureClass = "response_identity_invalid";
     throw new VideoTextDispatchError(
       "MODEL_IDENTITY_MISSING",
       "模型响应缺少稳定的请求身份。",
       { retryable: false, unknown: true },
     );
   }
+  unknownOutcome.providerRequestId ??= modelResponseEvidence(undefined, envelope.id, input.endpoint.apiKey).providerRequestId;
+  unknownOutcome.failureClass = "response_usage_invalid";
   const usage = envelope.usage as {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -445,5 +469,5 @@ export async function completeVideoTextTask(input: {
     policyVersion: VIDEO_SCENE_POLICY_VERSION,
   };
   }, result => ({ ...billedFailure, usageKnown: true, success: true,
-    inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }), () => billedFailure);
+    inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }), () => billedFailure ?? unknownOutcome);
 }

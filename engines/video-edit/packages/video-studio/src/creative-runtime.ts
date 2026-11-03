@@ -29,6 +29,44 @@ export interface CreativeModelOutcome {
   inputTokens?: number; outputTokens?: number;
   totalTokens?: number; reasoningTokens?: number; finishReason?: "stop" | "length";
   providerRequestId?: string; responseHash?: string;
+  failureClass?: string; httpStatus?: number;
+}
+const modelFailureClasses = [
+  "outcome_unknown", "receipt_unavailable", "transport_error", "transport_timeout", "transport_cancelled",
+  "http_error", "response_body_unreadable", "response_body_timeout", "response_json_invalid",
+  "response_identity_invalid", "response_usage_invalid",
+] as const;
+type ModelFailureClass = typeof modelFailureClasses[number];
+type ModelFailureEvidence = Pick<CreativeModelOutcome, "failureClass" | "httpStatus" | "providerRequestId" | "responseHash">;
+
+function validModelRequestId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= 200 && !/[^A-Za-z0-9._:-]/.test(value);
+}
+
+export function modelFailureEvidence(outcome: ModelFailureEvidence): ModelFailureEvidence {
+  const { failureClass, httpStatus, providerRequestId, responseHash } = outcome;
+  return {
+    ...(modelFailureClasses.some(value => value === failureClass) ? { failureClass } : {}),
+    ...(typeof httpStatus === "number" && Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? { httpStatus } : {}),
+    ...(validModelRequestId(providerRequestId) ? { providerRequestId } : {}),
+    ...(typeof responseHash === "string" && responseHash.length === 64 && /^[a-f0-9]{64}$/.test(responseHash) ? { responseHash } : {}),
+  };
+}
+
+export function modelResponseEvidence(httpStatus: number | undefined, requestId: unknown, credential?: string): ModelFailureEvidence {
+  const echoesCredential = typeof requestId === "string" && credential
+    && (requestId === credential || (credential.length >= 12 && requestId.includes(credential)));
+  return modelFailureEvidence({ httpStatus,
+    providerRequestId: validModelRequestId(requestId) && !echoesCredential ? requestId : undefined });
+}
+
+export function modelTransportFailureClass(error: unknown, signal: AbortSignal | null | undefined, afterHeaders: boolean): ModelFailureClass {
+  const reason = signal?.aborted ? signal.reason : error;
+  if (reason instanceof Error && reason.name === "TimeoutError") {
+    return afterHeaders ? "response_body_timeout" : "transport_timeout";
+  }
+  if (afterHeaders) return "response_body_unreadable";
+  return signal?.aborted ? "transport_cancelled" : "transport_error";
 }
 export interface CreativeBudgetHooks {
   beforeModelCall(request: CreativeModelRequest): Promise<unknown>;
@@ -132,19 +170,42 @@ export function creativeBudgetedFetch(transport: typeof fetch): typeof fetch {
       inputTokenEstimate: window.inputTokens, inputTokenUpperBound: window.inputTokenUpperBound, inputTokenBasis: window.inputTokenBasis,
       maxOutputTokens, model: body.model,
       ...(window.imageTokens ? { imageInputTokens: window.imageTokens } : {}) }, async () => {
-      const response = await transport(input, { ...init, redirect: "error" });
-      // Clone only for billing evidence; the unchanged provider still owns validation and parsing.
-      let envelope: Recordish;
-      let rawResponse: string;
-      try {
-        rawResponse = await response.clone().text();
-        envelope = object(JSON.parse(rawResponse), "provider usage response");
+      const request = input instanceof Request ? input : undefined;
+      const signal = init.signal ?? request?.signal;
+      let response: Response;
+      try { response = await transport(input, { ...init, redirect: "error" }); }
+      catch (error) {
+        usage.failureClass = modelTransportFailureClass(error, signal, false);
+        throw error;
       }
-      catch { return response; }
+      const credential = new Headers(init.headers ?? request?.headers)
+        .get("authorization")?.replace(/^Bearer\s+/i, "");
+      Object.assign(usage, modelResponseEvidence(response.status, response.headers.get("x-request-id"), credential));
+      // Clone only for billing evidence; the unchanged provider still owns validation and parsing.
+      let rawResponse: string;
+      try { rawResponse = await response.clone().text(); }
+      catch (error) {
+        usage.failureClass = modelTransportFailureClass(error, signal, true);
+        return response;
+      }
+      const responseHash = creativeTextHash(rawResponse);
+      usage.responseHash = responseHash;
+      if (!response.ok) { usage.failureClass = "http_error"; return response; }
+      let envelope: Recordish;
+      try { envelope = object(JSON.parse(rawResponse), "provider usage response"); }
+      catch {
+        usage.failureClass = "response_json_invalid";
+        return response;
+      }
+      if (envelope.model !== body.model || !validModelRequestId(envelope.id)) {
+        usage.failureClass = "response_identity_invalid";
+        return response;
+      }
+      usage.providerRequestId ??= modelResponseEvidence(undefined, envelope.id, credential).providerRequestId;
+      usage.failureClass = "response_usage_invalid";
       const rawUsage = envelope.usage && typeof envelope.usage === "object" ? envelope.usage as Recordish : {};
       const inputTokens = rawUsage.prompt_tokens, outputTokens = rawUsage.completion_tokens, totalTokens = rawUsage.total_tokens;
-      if (response.ok && envelope.model === body.model && typeof envelope.id === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(envelope.id)
-        && Number.isSafeInteger(inputTokens) && Number(inputTokens) >= 0
+      if (Number.isSafeInteger(inputTokens) && Number(inputTokens) >= 0
         && Number.isSafeInteger(outputTokens) && Number(outputTokens) >= 0 && Number(outputTokens) <= maxOutputTokens
         && totalTokens === Number(inputTokens) + Number(outputTokens) && Number(totalTokens) <= DEEPSEEK_FLASH_CONTEXT_TOKENS) {
         const choice = Array.isArray(envelope.choices) && envelope.choices.length === 1 && envelope.choices[0] && typeof envelope.choices[0] === "object"
@@ -163,12 +224,12 @@ export function creativeBudgetedFetch(transport: typeof fetch): typeof fetch {
         }
         usage = { usageKnown: true, success: choice.finish_reason === "stop" && contentValid,
           inputTokens: Number(inputTokens), outputTokens: Number(outputTokens), totalTokens: Number(totalTokens),
-          providerRequestId: envelope.id, responseHash: creativeTextHash(rawResponse),
+          providerRequestId: envelope.id, responseHash,
           ...(reasoningValid ? { reasoningTokens: Number(reasoning) } : {}),
           ...(choice.finish_reason === "stop" || choice.finish_reason === "length" ? { finishReason: choice.finish_reason } : {}) };
       }
       return response;
-    }, () => usage);
+    }, () => usage, () => usage);
   }) as typeof fetch;
 }
 
@@ -202,10 +263,11 @@ async function reservedCreativeModelCall<T>(
   const reservation = await context.hooks.beforeModelCall({ ...request, attempt: ++context.state.calls });
   let settled = false;
   let providerCompleted = false;
+  let receipt: CreativeModelOutcome | undefined;
   try {
     assertExecution(context);
     const result = await operation(); providerCompleted = true;
-    const receipt = outcome(result);
+    receipt = outcome(result);
     await context.hooks.afterModelCall(reservation, receipt); settled = true;
     if (!receipt.usageKnown) {
       context.state.fatal = new CreativeContractError("CREATIVE_USAGE_UNKNOWN", "unknown usage retains its reservation and freezes execution");
@@ -214,18 +276,24 @@ async function reservedCreativeModelCall<T>(
     assertExecution(context); return result;
   } catch (error) {
     if (!settled) {
-      const knownFailure = !providerCompleted ? errorOutcome?.(error) : undefined;
-      if (knownFailure?.usageKnown) {
-        try { await context.hooks.afterModelCall(reservation, { ...knownFailure, success: false }); }
-        catch (journalError) {
-          context.state.fatal = new CreativeContractError("CREATIVE_RECEIPT_UNKNOWN", `budget receipt could not be persisted: ${journalError instanceof Error ? journalError.message : String(journalError)}`);
+      const providerFailure = !providerCompleted ? errorOutcome?.(error) : undefined;
+      if (providerFailure?.usageKnown) {
+        try { await context.hooks.afterModelCall(reservation, { ...providerFailure, success: false }); }
+        catch {
+          context.state.fatal = new CreativeContractError("CREATIVE_RECEIPT_UNKNOWN", "budget receipt could not be persisted");
         }
         throw context.state.fatal ?? error;
       }
       context.state.fatal ??= new CreativeContractError("CREATIVE_USAGE_UNKNOWN", "provider/receipt outcome unknown; preserve reservation and reconcile");
-      try { await context.hooks.afterModelCall(reservation, { actualCny: null, usageKnown: false, success: false }); }
-      catch (journalError) {
-        context.state.fatal = new CreativeContractError("CREATIVE_RECEIPT_UNKNOWN", `budget receipt could not be persisted: ${journalError instanceof Error ? journalError.message : String(journalError)}`);
+      const evidence = modelFailureEvidence({
+        // Known usage can carry a legacy completion ID. Do not project that
+        // ID into a failure receipt without the transport's credential check.
+        ...(providerFailure ?? (receipt?.usageKnown ? { responseHash: receipt.responseHash } : receipt)),
+        failureClass: providerFailure?.failureClass ?? (providerCompleted ? "receipt_unavailable" : "outcome_unknown"),
+      });
+      try { await context.hooks.afterModelCall(reservation, { ...evidence, actualCny: null, usageKnown: false, success: false }); }
+      catch {
+        context.state.fatal = new CreativeContractError("CREATIVE_RECEIPT_UNKNOWN", "budget receipt could not be persisted");
       }
     }
     throw context.state.fatal ?? error;

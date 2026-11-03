@@ -82,8 +82,8 @@
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
-      "targetSha256": "0663b5accef7202d185ff06a6b72e8b877217166622fafff355bddb9cdd27843",
-      "targetBytes": 17858
+      "targetSha256": "3c87d245ab22bdde93f68197b5c7eb4ebec7fda88ae2323b6fdba493fdaf3dae",
+      "targetBytes": 19162
     },
     {
       "path": "pengmanager-capabilities.json",
@@ -110,5 +110,5 @@
       "targetBytes": 17391
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T20:02:43.394834+00:00"
 }

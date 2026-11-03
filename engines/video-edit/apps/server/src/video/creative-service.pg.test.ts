@@ -8,7 +8,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeAllPools } from "@workloom/db";
 import { DEEPSEEK_INPUT_TOKEN_BASIS } from "@workloom/base/model-router";
-import { buildCreativeShots, compileCreativeContract, CREATIVE_ART_DIMENSIONS, creativeHash, creativeTextHash,
+import { buildCreativeShots, compileCreativeContract, completeVideoTextTask, CREATIVE_ART_DIMENSIONS, creativeHash, creativeTextHash, withCreativeBudget,
   type CreativeFinding, type CreativeScope } from "@hyperreality/video-studio";
 import type { TrpcContext } from "../trpc/context.js";
 import { acquireProjectLease, makeLedgerWriter, projectRunLockKey } from "./archive-host.js";
@@ -39,6 +39,7 @@ const ownerIdentity = { kind: "member", ...baseScope, memberId: "C-M", memberNo:
   plan: "pro", role: "owner" } as const;
 const fixtureIntent = "制作总时长 6 秒的窗边故事，保留 café <&>。";
 const model = "deepseek-flash";
+const failedModelBody = '{"error":{"message":"private fixture detail"}}';
 
 describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC and execution journal in PostgreSQL", () => {
   let admin: pg.Client, database: pg.Client, workDir: string, mockModel: Server;
@@ -157,6 +158,12 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
       let wire = "";
       for await (const chunk of req) wire += chunk.toString();
       const request = JSON.parse(wire);
+      if (req.url === "/unknown-model/chat/completions") {
+        posts++;
+        res.writeHead(503, { "x-request-id": "fixture-upstream-503", "set-cookie": "fixture=private" });
+        res.end(failedModelBody);
+        return;
+      }
       if (req.url === "/search") {
         searchPosts++;
         res.setHeader("content-type", "application/json");
@@ -360,23 +367,57 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
     }
   });
 
-  it("preserves unknown usage across session recreation and rejects outbound retry", async () => {
+  it.each([true, false])("persists only permitted unknown evidence across session recreation (valid: %s)", async valid => {
     const projectId = await project(), runId = randomUUID();
     const lease = await acquireProjectLease(baseScope, projectId);
     try {
       const session = await start(projectId, runId);
       await session.beginStage("preparation");
       const reservation = await session.beforeModelCall(modelRequest(1));
-      await session.afterModelCall(reservation, { usageKnown: false, success: false });
+      const supplied = { usageKnown: false, success: false,
+        failureClass: valid ? "http_error" : "fixture private detail",
+        httpStatus: valid ? 503 : 600,
+        providerRequestId: valid ? "fixture-upstream-request" : "https://private.invalid/trace?secret=fixture",
+        responseHash: valid ? creativeTextHash("completed malformed fixture body") : "untrusted",
+        rawBody: "private fixture body", headers: { authorization: "private fixture token" } };
+      await session.afterModelCall(reservation, supplied);
       await expect(session.beforeModelCall(modelRequest(2))).rejects.toThrow(/CREATIVE_USAGE_UNKNOWN/);
       await session.finish({ success: false });
     } finally { await lease?.release(); }
     const secondLease = await acquireProjectLease(baseScope, projectId);
     try { await expect(start(projectId)).rejects.toThrow(/CREATIVE_USAGE_UNKNOWN/); }
     finally { await secondLease?.release(); }
-    const { rows } = await database.query("SELECT state,cost,request_hash FROM video_pipeline_operations WHERE project_id=$1", [projectId]);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ state: "unknown", cost: { reserved: true }, request_hash: modelRequest(1).requestHash });
+    const { rows } = await database.query("SELECT state,cost,request_hash,receipt FROM video_pipeline_operations WHERE project_id=$1", [projectId]);
+    expect(rows).toEqual([{ state: "unknown", cost: { micros: 662, tokens: 1224, reserved: true },
+      request_hash: modelRequest(1).requestHash, receipt: { usageKnown: false,
+        ...(valid ? { failureClass: "http_error", httpStatus: 503, providerRequestId: "fixture-upstream-request",
+          responseHash: creativeTextHash("completed malformed fixture body") } : {}) } }]);
+  });
+
+  it("persists a native HTTP 503 receipt while preserving the original reservation", async () => {
+    const projectId = await project(), runId = randomUUID(), beforePosts = posts;
+    const lease = await acquireProjectLease(baseScope, projectId);
+    try {
+      const session = await start(projectId, runId);
+      await session.beginStage("preparation");
+      let reservedCost: unknown;
+      const beforeModelCall: typeof session.beforeModelCall = async request => {
+        const id = await session.beforeModelCall(request);
+        reservedCost = (await database.query("SELECT cost FROM video_pipeline_operations WHERE id=$1", [id])).rows[0]?.cost;
+        return id;
+      };
+      await expect(withCreativeBudget({ beforeModelCall, afterModelCall: session.afterModelCall }, () => completeVideoTextTask({
+        endpoint: { baseUrl: `${localOrigin}/unknown-model`, apiKey: "local-test-only", model },
+        scene: "video.deterministic", messages: [{ role: "user", content: fixtureIntent }], timeoutMs: 2_000,
+      }))).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      expect(posts - beforePosts).toBe(1);
+      expect(reservedCost).toMatchObject({ reserved: true });
+      expect((await database.query("SELECT state,cost,receipt FROM video_pipeline_operations WHERE pipeline_run_id=$1", [runId])).rows)
+        .toEqual([{ state: "unknown", cost: reservedCost, receipt: { usageKnown: false, failureClass: "http_error", httpStatus: 503,
+          providerRequestId: "fixture-upstream-503", responseHash: creativeTextHash(failedModelBody) } }]);
+      await expect(session.beforeModelCall(modelRequest(2))).rejects.toThrow(/CREATIVE_USAGE_UNKNOWN/);
+      await session.finish({ success: false });
+    } finally { await lease?.release(); }
   });
 
   it("keeps a reservation when reported usage exceeds its bound and preserves reported evidence", async () => {

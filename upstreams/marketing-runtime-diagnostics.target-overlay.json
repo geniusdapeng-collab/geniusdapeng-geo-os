@@ -196,8 +196,8 @@
       "path": "packages/video-studio/src/producer-gate.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
       "previousTargetSha256": "7443fda2afd39916644f08314eb7f0e4cd7b2b707a29c58e448b5fc7215f228d",
-      "targetSha256": "51928a4b20c35e3b4bcdbaa12c068f6ae906a6c00429de0bfd91400b82e2dd7d",
-      "targetBytes": 20906,
+      "targetSha256": "94de3a01696d80137db0accb058861dd053853151483b0c537f05a3bd8a73750",
+      "targetBytes": 21067,
       "targetMode": "100644"
     },
     {
@@ -273,5 +273,5 @@
       "targetMode": "100644"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T20:03:55.365414+00:00"
 }

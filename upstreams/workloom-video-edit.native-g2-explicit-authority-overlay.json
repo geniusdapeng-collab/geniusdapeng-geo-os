@@ -18,8 +18,8 @@
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/creative-runtime.ts",
-      "targetSha256": "f292879b6c31d9966b4e263050900b0c45acbafcd69772e9ea3926205025c949",
-      "targetBytes": 51823,
+      "targetSha256": "f9b488aa2736e420149691da14a20eaeca01fafe4358b4dc1c9f26646ae8b953",
+      "targetBytes": 55493,
       "evidence": "B",
       "targetOwned": true
     },
@@ -85,5 +85,5 @@
       "sourceBytes": 41259
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T20:06:45.123244+00:00"
 }

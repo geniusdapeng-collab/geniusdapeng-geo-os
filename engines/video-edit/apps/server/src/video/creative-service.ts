@@ -8,7 +8,7 @@ import { DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS, DEEPSE
   DEEPSEEK_REQUEST_BODY_LIMIT_BYTES } from "@workloom/base/model-router";
 import {
   assertCreativeContract, compileCreativeContract, creativeCanonical, creativeHash, CreativeContractError,
-  extractProductVisualAuthority,
+  extractProductVisualAuthority, modelFailureEvidence,
   type CompileCreativeInput, type CreativeContract, type CreativeFinding, type CreativeScope, type CreativeShot, type PrdMarketingAuthority,
 } from "@hyperreality/video-studio";
 import { artifactManifestHash, assertArtifactEnvelope } from "@workloom/pipeline-control";
@@ -335,6 +335,7 @@ interface ModelRequest {
 interface ModelOutcome {
   usageKnown: boolean; success: boolean; inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
   finishReason?: string; providerRequestId?: string; responseHash?: string;
+  failureClass?: string; httpStatus?: number;
 }
 export async function createCreativeExecutionSession(input: SessionInput) {
   const scope: CreativeScope = { ...input.scope, projectId: input.projectId };
@@ -609,11 +610,14 @@ export async function createCreativeExecutionSession(input: SessionInput) {
         ...(outcome.providerRequestId && /^[a-zA-Z0-9._:-]{1,200}$/.test(outcome.providerRequestId) ? { providerRequestId: outcome.providerRequestId } : {}),
         ...(outcome.responseHash && SHA.test(outcome.responseHash) ? { responseHash: outcome.responseHash } : {}),
       };
+      const unknownReceipt = outcome.usageKnown
+        ? (coherent ? { reportedUsage: usage, ...wireEvidence } : {})
+        : modelFailureEvidence(outcome);
       await client.query(
         `UPDATE video_pipeline_operations SET state=$2,receipt=$3,cost=$4,finished_at=now() WHERE id=$1`,
         [reservation, valid ? (outcome.success ? "accepted" : "failed") : "unknown",
           creativeCanonical(valid ? { usageKnown: true, success: outcome.success, ...usage, ...wireEvidence }
-            : { usageKnown: false, ...(coherent ? { reportedUsage: usage, ...wireEvidence } : {}) }),
+            : { usageKnown: false, ...unknownReceipt }),
           creativeCanonical(valid ? { micros: costMicros(inputTokens, outputTokens, budget.price), tokens: inputTokens + outputTokens, reserved: false } : operation.cost)],
       );
       return valid;
