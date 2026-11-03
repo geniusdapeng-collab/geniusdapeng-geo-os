@@ -13,10 +13,34 @@ memory for the guide. Re-read it when these instructions or the guide change.
 If the guide is unavailable, report that missing prerequisite rather than
 guessing its authorization and receipt rules.
 
-For Codex or another local AI client producing a video, follow the
-[video setup and production quickstart](docs/CODEX-VIDEO-QUICKSTART.md) after
-the required guide. Use the registered preflight to verify local readiness
-before any paid work. A plan or configured provider is not a production receipt.
+## Video requests in this repository
+
+When a user asks in ordinary language to produce, re-edit, repair or deliver a
+video in PengManager, activate this workflow without requiring a special prompt
+or skill mention. Keep video questions, plan-only requests and repository
+maintenance within their requested scope.
+
+After the required guide, read the
+[video setup and production quickstart](docs/CODEX-VIDEO-QUICKSTART.md) and the
+complete [embedded workbench guide](engines/video-edit/docs/ai-video-workbench-guide.md).
+Start the video workflow with the original intent through the registered
+`pengmanager.video.intake` capability. The local invocation is
+`node scripts/agent.mjs invoke pengmanager.video.intake --input-file -`, with
+an object containing `intent` on stdin. MCP uses `pengmanager_video_intake`.
+Preserve the original wording. Supply the current project ID and duration
+when the request or an authoritative project contract provides them. Set
+`operation` to `repair` or `deliver` for an existing project's task.
+
+Check the intake receipt for the PengManager and embedded Edit identities,
+guide hashes and the current native handoff. Use the registered preflight to
+check local readiness. Continue through the authorized native project,
+qualification, budget, polling, post and delivery checks in the quickstart.
+When the handoff is blocked, carry forward the actual missing requirement.
+For a handoff to an existing project, recover its authoritative project and
+owner receipt before continuing. Keep its identity through repair and delivery.
+Use the native service for paid generation and check an unknown result by its
+original task ID. Keep generation and publication within their respective
+authorizations.
 
 Use the guide's actual distinction between administrator preparation, scoped
 HTTP Agent execution, local browser actions, and native video CLI/MCP. In

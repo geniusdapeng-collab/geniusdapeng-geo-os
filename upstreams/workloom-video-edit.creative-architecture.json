@@ -189,8 +189,8 @@
     {
       "path": "apps/server/src/video/router.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
-      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
-      "targetBytes": 92097,
+      "targetSha256": "3e0d780727b42dec36489a45d6964740b79d31db71c3d101953c2f00bdbaae8d",
+      "targetBytes": 92858,
       "evidence": "B",
       "sourceSha256": "d6d20e0704d355d51841e792982bc16081ed62b9f3c010a924dcb491de7155bf",
       "sourceBytes": 85845
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T15:14:43.425696+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T15:52:15.078659+00:00"
 }

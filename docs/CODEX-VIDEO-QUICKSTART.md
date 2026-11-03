@@ -79,7 +79,7 @@ codex mcp list
 
 打开新会话或重启客户端连接后，用 `tools/list` 检查实际工具名称及 schema。Codex TUI 可用 `/mcp` 查看已连接服务器。CLI 和 MCP 使用同一私有运行时，一个数据目录同时只由一个监督进程管理。若 MCP 已启动原生服务，在工作完成、没有活跃本地作业后，先在**同一 MCP 会话**调用 `pengmanager_video_stop`，核对返回的 `status.state:stopped`，再关闭客户端或另起工作台。此操作只停止本进程拥有的服务，不能取消已派发供应商任务。客户端强制终止时，先检查本次私有实例的进程与任务状态；不要删除数据目录或终止其他服务。 [Codex MCP 的 stdio 配置和检查](https://learn.chatgpt.com/docs/extend/mcp)
 
-也可以直接检查这个本机进程的握手和目录。下列命令无需启动原生后端。输出应包含 `pengmanager-system` 和 `pengmanager_video_preflight`。
+也可以直接检查这个本机进程的握手和目录。下列命令无需启动原生后端。输出应包含 `pengmanager-system`、`pengmanager_video_intake` 和 `pengmanager_video_preflight`。
 
 ```bash
 printf '%s\n' \
@@ -93,6 +93,7 @@ printf '%s\n' \
 
 ```bash
 "$PM_NODE" scripts/agent.mjs list
+"$PM_NODE" scripts/agent.mjs describe pengmanager.video.intake
 "$PM_NODE" scripts/agent.mjs describe pengmanager.video.preflight
 "$PM_NODE" scripts/agent.mjs invoke growth.video.workbench.guide --data-dir "$PM_DATA"
 printf '%s\n' '{"startNative":true}' | \
@@ -112,11 +113,13 @@ MCP 对应的预检工具是 `pengmanager_video_preflight`。空输入只检查�
 
 | 顺序 | 实际入口 | 继续条件 |
 | --- | --- | --- |
-| 1. 发现与计划 | 通用 Agent CLI/MCP 的 `growth.video.production.plan`、`growth.video.production.status`。调用前 `describe` 或读 `tools/list` 的当前 schema。 | plan 预览材料，返回 `ready:false` 与 `execution:null`。status 读本地阶段账本。进入原生路径前核对当前项目状态。 |
-| 2. 正式预生产与档案 | 由有权限的本机原生客户端使用 `video.studio.start`，用 `video.studio.archive` 读同一项目档案。源文件见下方导航。 | 记录真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
+| 1. 需求接入 | 用原话调用 `pengmanager.video.intake`（MCP 为 `pengmanager_video_intake`）。CLI 用 `invoke pengmanager.video.intake --input-file -` 从 stdin 接收含 `intent` 的 JSON。 | 核对当前仓、内置引擎 pin、指南摘要与 `nativeHandoff`。缺时长先核对当前合同。返修和交付保留原项目 ID，先回读 owner 回执。intake 不启动原生工位或调用供应商。 |
+| 2. 正式预生产与档案 | 有权限的本机 owner 按[原生制作 CLI](PENGMANAGER-VIDEO-MAKE.md)使用 `scripts/pengmanager-video-make.mjs`，接续使用相同的请求 ID 和原话。原生服务使用 `video.studio.start` 和 `video.studio.archive`。 | 核对授权、预算、真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
 | 3. 核对真实当前镜头 | 通用 CLI/MCP 的 `growth.video.production.shots`，输入 `{"projectId":"实际项目ID"}`。 | 当前服务来源、镜头、长度、提示词、已接受素材和项目合同一致。缩减列表不能替代完整归档片单。 |
 | 4. 资格与提交 | 原生客户端使用 `video.production.qualifyShot` 及 `video.render.submit`，也可用下方正式逐镜 CLI。 | 按当前项目/镜头、模型、参数、素材、围栏、预算和人的授权判断。提交只消费当前真实资格，超时先查原请求。 |
 | 5. 轮询与后期 | 原生任务读取/轮询回填，取得实际媒体资产与文件，再用正式后期。 | 非 mock，逐镜关联原 task/job、媒体资产、文件与当前 SHA。发布另行授权。 |
+
+新制作的 intake 可返回 `ownerRequestId`，用原生 CLI 的 `identify` 核对。owner 的请求 JSON 使用原始 `intent`、`system: "pengmanager"` 和 5–180 秒的整数 `durationSeconds`。仅做方案讨论时可选用 `growth.video.production.plan` 预览。已有项目按原回执查询和接续。
 
 通用 MCP 的菜单按实际注册范围工作。当前 `archive`、`qualifyShot`、`render.submit` 和固定影片工位的 `film.start` 是原生服务入口；它们不因写进 prompt 而成为通用 MCP 工具。没有获准的原生客户端时，交接给当前本机 owner，在相应步骤保留明确阻塞。不要猜路由、构造审批数据、直连供应商补跑或把站点管理员的 bearer 当作本机身份。 [原生 Studio/渲染路由](../engines/video-edit/apps/server/src/video/router.ts) · [资格路由](../engines/video-edit/apps/server/src/video/production-router.ts)
 
@@ -191,4 +194,4 @@ cd "$PM_REPO"
 
 ### 给 Codex 的任务示例
 
-> 先完整阅读本仓 AGENTS.md、AI Agent 指南及本机工作台指南，运行不收费的安装与项目预检。以我给出的 Brief、已授权人物和真实商品资料制作一支 30 秒竖屏视频，先核对可复用的原片。前期、视频提交及后期使用仓库正式入口；每次付费都遵守当前项目的批准、报价和额度。没有获准的原生执行身份或本次资格时，告诉我实际缺失的阶段、回执和可继续完成的工作。已有 task ID 时先查该任务。最后交付真实可播放的母版、实测规格、文件 SHA、各阶段回执及仍未知的费用或授权。此次任务仅本机交付。
+> 用这个项目已授权的人物和商品资料做一支 30 秒竖屏视频。有已接受的原片就复用，只交付本机成片。

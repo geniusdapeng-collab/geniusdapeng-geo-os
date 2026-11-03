@@ -2864,9 +2864,9 @@
       "sourceMode": "100644",
       "gitBlob": "11dbcf3c7a00168fc42702996f7df4480d219f33",
       "bytes": 19651,
-      "targetBytes": 26340,
+      "targetBytes": 26543,
       "sourceSha256": "2ad8ca7e875702f8921759ecf2dceb71c67127fc382f678fe3a44e682984f151",
-      "targetSha256": "eb5180aa2c3e40ff34c5999705c7f1e6d61c55bf49549d85f59f11f6eca12552",
+      "targetSha256": "6643813e5baaed15514b73d327c6d25d2abcf8fc11b9a84cc7d32ce625d1beb8",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
@@ -2876,9 +2876,9 @@
       "sourceMode": "100644",
       "gitBlob": "21021af8e3cb01cb2cab85b0ce0656d262105979",
       "bytes": 85845,
-      "targetBytes": 92097,
+      "targetBytes": 92858,
       "sourceSha256": "d6d20e0704d355d51841e792982bc16081ed62b9f3c010a924dcb491de7155bf",
-      "targetSha256": "fdbeb0abbb48f0d72dea0c7a0e8ad5f2634353f27fd1af0ed26b55d3ebfc782e",
+      "targetSha256": "3e0d780727b42dec36489a45d6964740b79d31db71c3d101953c2f00bdbaae8d",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
@@ -28227,10 +28227,11 @@
       "sourceMode": "100644",
       "gitBlob": "cff4b62d09bd8773c43119624c84a0c42e810d6a",
       "bytes": 13909,
-      "targetBytes": 13909,
+      "targetBytes": 17044,
       "sourceSha256": "5c74b5b56e89a7a7e91ffd71c5f58142620867e3ac84f3419be6d27b809c49ae",
-      "targetSha256": "5c74b5b56e89a7a7e91ffd71c5f58142620867e3ac84f3419be6d27b809c49ae",
-      "evidence": "B"
+      "targetSha256": "5da1cca10aff5e56283a6df3427e64145c84a27e9f47a0d70175af1fe520fae9",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "packages/video-studio/src/production-client.ts",
@@ -28238,10 +28239,11 @@
       "sourceMode": "100644",
       "gitBlob": "9ca9a3ee4abdfb53d2d19e28d3737bd75e7dd742",
       "bytes": 15566,
-      "targetBytes": 15566,
+      "targetBytes": 21467,
       "sourceSha256": "1d6e01c3426604dbdcced093cf1056230638d65eb59a07c437eef04d4584c5e3",
-      "targetSha256": "1d6e01c3426604dbdcced093cf1056230638d65eb59a07c437eef04d4584c5e3",
-      "evidence": "B"
+      "targetSha256": "dae66391e33114a1be153f65eda445f6a12267f4ab18892a62ce4e5d8eb88a2a",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "packages/video-studio/src/production-lineage.test.ts",
@@ -40337,7 +40339,7 @@
       "evidence": "B"
     }
   ],
-  "targetOwnedFileCount": 99,
+  "targetOwnedFileCount": 101,
   "targetOwnedFiles": [
     {
       "path": "apps/server/src/service/embedded-paths.test.ts",
@@ -40574,8 +40576,8 @@
     {
       "path": "apps/server/src/video/render-poller.pg.test.ts",
       "mode": "100644",
-      "bytes": 14990,
-      "targetSha256": "58ad9b1622a5feade2a08f7be48e1f46499a2079559dd55ae937fb020fa654ee",
+      "bytes": 15826,
+      "targetSha256": "0d68bbd1d82a9dd0d53696de69fe5ddeaeee5f3cc7c6b744c634cf6ab2579ca7",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -40872,6 +40874,22 @@
       "mode": "100644",
       "bytes": 4670,
       "targetSha256": "2109e8fed20ec7d9d471ca932800931d3587bf91710a29b263fc6198c66a2ae1",
+      "evidence": "B",
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+    },
+    {
+      "path": "packages/video-studio/src/native-project-delivery.ts",
+      "mode": "100644",
+      "bytes": 25302,
+      "targetSha256": "4dbaeb72fd27b6507f7f76e23382f1f9b7749cb6d8e84d0ede6f34c06b8a5ece",
+      "evidence": "B",
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+    },
+    {
+      "path": "packages/video-studio/src/native-render-sources.ts",
+      "mode": "100644",
+      "bytes": 7420,
+      "targetSha256": "f8511fda2fee8b4c664c994a88870288ebd314bfc40237b55d75eaf9d8d976aa",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },

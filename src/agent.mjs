@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createVideoRuntime } from './video-runtime/index.mjs';
 import { privateDirectory, redactor, runtimeConfig } from './video-runtime/config.mjs';
 import { publicVideoCapabilities, publicVideoStatus } from './http/video-runtime.mjs';
+import { createVideoIntake, VIDEO_INTAKE } from './video-intake.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRODUCTION_PLAN = 'growth.video.production.plan';
@@ -54,6 +55,7 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
     { id: 'pengmanager.video.status', title: '读取鹏经理视频运行状态', description: '读取本实例的服务、数据库与版本状态，不启动服务或调用供应商。' },
     { id: 'pengmanager.video.capabilities', title: '读取完整视频员工、技能与工具目录', description: '读取完整内置能力与当前依赖状态；目录登记不代表已完成付费生成或媒体验收。' },
   ].map(item => ({ ...item, operation: 'read', risk: 'low', dataMode: 'unverified', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }));
+  specials.push(VIDEO_INTAKE);
   specials.push({
     id: VIDEO_PREFLIGHT, title: '检查本机视频工位',
     description: '默认只读检查安装和配置。startNative=true 时，在已安装的本机私有工作区启动受管服务并读取模型就绪状态，不调用生成供应商。',
@@ -132,6 +134,7 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
       if (!descriptor) throw new AgentError('NOT_FOUND', 'The capability is not registered.');
       if (id === 'pengmanager.video.status') { emptyInput(input); return publicVideoStatus(await runtime.status()); }
       if (id === 'pengmanager.video.capabilities') { emptyInput(input); return publicVideoCapabilities(await runtime.capabilities()); }
+      if (id === VIDEO_INTAKE.id) return createVideoIntake({ rootDir: config.rootDir, input });
       if (id === VIDEO_PREFLIGHT) return preflight(input, descriptor);
       if (id === VIDEO_STOP) {
         emptyInput(input);

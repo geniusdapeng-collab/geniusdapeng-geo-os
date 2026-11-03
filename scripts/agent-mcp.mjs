@@ -15,7 +15,7 @@ async function handle(request) {
       protocolVersion: versions.has(params?.protocolVersion) ? params.protocolVersion : '2025-11-25',
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: 'pengmanager-system', version: '1.0.0' },
-      instructions: '先用 pengmanager_video_preflight 检查本机工位。生产计划是预览；原生工作台负责项目预生产、当前镜头资格和生成提交。目录或已配置凭据不证明模型可用、预算已批或已出片。结果未知时按原任务查询，不重新派发。工作结束后，关闭客户端前先用 pengmanager_video_stop 停止本会话启动的私有工位。详见仓库 docs/CODEX-VIDEO-QUICKSTART.md。',
+      instructions: '制作、返修或交付视频时，先读鹏经理仓库规则和指南，然后把用户原话交给 pengmanager_video_intake。查询、排障和方案讨论按原任务范围执行。intake 只核对仓库来源和原始需求摘要；接续前再用 pengmanager_video_preflight 检查本机工位。原生入口负责项目、资格、预算和生成。结果未知时查原任务。工作结束后，关闭客户端前先用 pengmanager_video_stop 停止本会话启动的私有工位。详见仓库 docs/CODEX-VIDEO-QUICKSTART.md。',
     });
     return;
   }

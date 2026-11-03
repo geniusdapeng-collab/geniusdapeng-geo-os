@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ProductionClient, renderServiceProject, type ProductionProjectResult, type ServiceShotList } from "./production-client.js";
+import { ProductionClient, reconcileServiceProject, renderServiceProject, type ProductionProjectResult, type ServiceShotList } from "./production-client.js";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const dirs: string[] = [];
 afterEach(() => { dirs.splice(0).forEach(dir => rmSync(dir, { recursive: true, force: true })); });
@@ -54,6 +54,7 @@ describe("service production client", () => {
     expect(f.calls.map(c => c.route)).toEqual(["video.production.shots", "video.gen.estimate", "video.production.qualifyShot", "video.production.shots", "video.render.submit", "video.render.poll", "video.gen.jobs"]);
     expect(f.calls.find(c => c.route.endsWith("qualifyShot"))!.body.params).toEqual({ durationSec: 6, aspectRatio: "16:9", generateAudio: false });
     expect(f.calls.find(c => c.route.endsWith("submit"))!.body).toEqual({ qualificationToken });
+    expect(f.calls.find(c => c.route.endsWith("poll"))!.body).toEqual({ projectId: "P", jobIds: ["J-S1"], limit: 1 });
     expect(f.calls.every(c => c.authorization === `Bearer ${token}`)).toBe(true);
     expect(JSON.stringify(snapshots)).not.toContain(token); expect(JSON.stringify(snapshots)).not.toContain(qualificationToken);
     expect(snapshots.some(s => s.shots[0]!.status === "submitted")).toBe(true);
@@ -107,6 +108,46 @@ describe("service production client", () => {
     const result = await run(f);
     expect(result.status).toBe("unverified"); expect(result.shots[0]!.error).toContain("SOURCE_CHANGED");
     expect(f.calls.some(c => c.route.endsWith("submit"))).toBe(false);
+  });
+  it("refuses an obsolete coordinator handoff before a quote or review", async () => {
+    const f = fixture();
+    await expect(run(f, { expectedSource: { ...f.source, promptsSha256: digest("old approval") } })).rejects.toThrow("SOURCE_CHANGED");
+    expect(f.calls.map(call => call.route)).toEqual(["video.production.shots"]);
+  });
+  it("rejects a signed request for a different supplier model before submitting video", async () => {
+    const f = fixture((call, value) => {
+      if (!call.route.endsWith("qualifyShot")) return value;
+      const qualified = value as Record<string, unknown>;
+      const payload = { ...qualified, projectId: f.source.projectId, shotId: call.body.shotId, stageRunId: f.source.sourceStageRunId,
+        attempt: f.source.sourceAttempt, promptsSha256: f.source.promptsSha256, providerModel: "different-provider-model" };
+      return { ...qualified, qualificationToken: `${Buffer.from(JSON.stringify(payload)).toString("base64url")}.fixture-mac` };
+    });
+    const result = await run(f, { expectedSource: f.source, expectedProviderModel: "approved-provider-model" });
+    expect(result.shots[0]?.error).toContain("QUALIFICATION_PROVIDER_CHANGED");
+    expect(f.calls.some(call => call.route === "video.render.submit")).toBe(false);
+  });
+  it("waits for native ingestion of the same successful task without resubmitting", async () => {
+    let reads = 0;
+    const f = fixture((call, value) => call.route === "video.gen.jobs" && ++reads === 1
+      ? (value as Record<string, unknown>[]).map(row => ({ ...row, asset_id: null, local_path: null }))
+      : value);
+    await expect(run(f, { pollRounds: 2 })).resolves.toMatchObject({ status: "done", shots: [{ assetId: "A-S1" }] });
+    expect(f.calls.filter(call => call.route === "video.render.submit")).toHaveLength(1);
+    expect(f.calls.filter(call => call.route === "video.render.poll").map(call => call.body.jobIds)).toEqual([["J-S1"], ["J-S1"]]);
+  });
+  it("recovers a known job ID without a second qualification or submit", async () => {
+    const f = fixture();
+    const unresolved = await run(f, { pollRounds: 0 });
+    expect(unresolved.status).toBe("unverified");
+    const count = f.calls.length;
+    const recovered = await reconcileServiceProject({ client: f.client, expectedSource: f.source, previous: unresolved });
+    expect(recovered).toMatchObject({ status: "done", shots: [{ status: "done", taskId: "T-S1", assetId: "A-S1" }] });
+    expect(f.calls.slice(count).map(call => call.route)).toEqual(["video.production.shots", "video.render.poll", "video.gen.jobs"]);
+    expect(f.calls[count + 1]?.body).toEqual({ projectId: "P", jobIds: ["J-S1"], limit: 1 });
+    const after = f.calls.length;
+    delete unresolved.shots[0]!.taskId;
+    await expect(reconcileServiceProject({ client: f.client, expectedSource: f.source, previous: unresolved })).rejects.toThrow("RECOVERY_REQUIRED");
+    expect(f.calls.slice(after).map(call => call.route)).toEqual(["video.production.shots"]);
   });
   it("mock or malformed submission receipt cannot claim a real delivery", async () => {
     for (const reply of [{ jobId: "J-S1", taskId: "T-S1", mock: true, durationSec: 6 }, { jobId: "J-S1", mock: false, durationSec: 6 }]) {

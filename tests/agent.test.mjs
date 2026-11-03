@@ -109,6 +109,52 @@ test('agent preflight keeps a missing install passive and starts only the explic
   await agent.stop();
   assert.deepEqual(calls, ['start', 'stop']);
 });
+test('PengManager video intake binds the original request and pinned guides without starting the native runtime', async t => {
+  const { agent, calls, directory } = await fixture(t, { fetchImplementation: async () => assert.fail('no network is allowed during intake') });
+  const id = 'pengmanager.video.intake';
+  const intent = '按本项目制作一段 20 秒竖屏视频。保留原声。';
+  const first = await agent.invoke(id, { intent, durationSeconds: 20 });
+  const replay = await agent.invoke(id, { durationSeconds: 20, intent });
+  assert.deepEqual(replay, first);
+  assert.equal(first.schemaVersion, 'pengmanager.video-intake/v1');
+  assert.equal(first.repository.productId, 'pengmanager-system');
+  assert.equal(first.repository.embeddedProductId, 'workloom-ai-video-edit');
+  assert.match(first.repository.snapshotSha256, /^[a-f0-9]{64}$/u);
+  assert.match(first.guides.workbench.sha256, /^[a-f0-9]{64}$/u);
+  assert.equal(first.request.system, 'pengmanager');
+  assert.equal(first.request.durationSeconds, 20);
+  assert.match(first.nativeHandoff.ownerRequestId, /^[a-f0-9]{64}$/u);
+  assert.notEqual(first.nativeHandoff.ownerRequestId, first.request.sha256);
+  assert.notEqual(first.request.sha256, (await agent.invoke(id, { intent: intent + ' ', durationSeconds: 20 })).request.sha256);
+  assert.equal(first.providerCallsPerformed, false);
+  assert.equal(first.productionVerified, false);
+  assert.equal(first.nativeHandoff.authorizationGranted, false);
+  assert.equal(JSON.stringify(first).includes(intent), false);
+  assert.deepEqual(calls, []);
+  await assert.rejects(readFile(path.join(directory, 'process-model-keys-only.env')), { code: 'ENOENT' });
+});
+test('PengManager intake can capture intent before duration is resolved, and rejects any requested authority bypass', async t => {
+  const { agent, calls } = await fixture(t);
+  const id = 'pengmanager.video.intake';
+  const captured = await agent.invoke(id, { intent: '修一下上次项目的字幕。', operation: 'repair' });
+  assert.equal(captured.status, 'blocked');
+  assert.deepEqual(captured.nativeHandoff.missing, ['projectId']);
+  for (const input of [
+    { intent: ' ' }, { intent: '片'.repeat(2001) }, { intent: 'test', durationSeconds: Infinity },
+    { intent: 'test', durationSeconds: 4 }, { intent: 'test', durationSeconds: 5.5 }, { intent: 'test', durationSeconds: 181 },
+    { intent: 'test', providerUrl: 'https://example.invalid' }, { intent: 'test', system: 'growthtest' }, { intent: 'test', approvalGranted: true },
+  ]) {
+    await assert.rejects(agent.invoke(id, input), { code: 'INVALID_INPUT' });
+  }
+  for (const operation of ['produce', 'repair', 'deliver']) {
+    const existing = await agent.invoke(id, { intent: '继续已有项目。', operation, projectId: 'PRJ-1', durationSeconds: 20 });
+    assert.equal(existing.status, 'blocked');
+    assert.equal(existing.request.projectId, 'PRJ-1');
+    assert.equal(existing.nativeHandoff.ownerRequestId, null);
+    assert.ok(existing.nativeHandoff.blockers.includes('EXISTING_PROJECT_RECEIPT_REQUIRED'));
+  }
+  assert.deepEqual(calls, []);
+});
 test('existing process-only native session attaches without starting or stopping another supervisor', async t => {
   const { agent, calls } = await fixture(t, { env: { WORKLOOM_ACCESS_TOKEN: 'test-only-existing' }, fetchImplementation: async (_url, options) => {
     assert.equal(options.headers.authorization, 'Bearer test-only-existing');
@@ -152,6 +198,25 @@ test('actual CLI lists PengManager capabilities and reads stopped status without
     else assert.equal(value.ready, false);
   }
 });
+test('actual CLI accepts video intent from stdin and emits the same no-spend intake schema', async () => {
+  const result = await child('scripts/agent.mjs', ['invoke', 'pengmanager.video.intake', '--input-file', '-'], JSON.stringify({ intent: '做一条项目视频。' }));
+  assert.equal(result.code, 0, result.stderr);
+  const receipt = JSON.parse(result.stdout);
+  assert.equal(receipt.schemaVersion, 'pengmanager.video-intake/v1');
+  assert.equal(receipt.productionVerified, false);
+  assert.deepEqual(receipt.nativeHandoff.missing, ['durationSeconds']);
+});
+test('actual owner CLI identify reads the exact intent and returns the intake handoff ID', async () => {
+  const intent = '请制作 20 秒视频。\n保留原声。';
+  const durationSeconds = 20;
+  const intake = await child('scripts/agent.mjs', ['invoke', 'pengmanager.video.intake', '--input-file', '-'], JSON.stringify({ intent, durationSeconds }));
+  const owner = await child('scripts/pengmanager-video-make.mjs', ['identify'], JSON.stringify({ system: 'pengmanager', intent, durationSeconds }));
+  assert.equal(intake.code, 0, intake.stderr);
+  assert.equal(owner.code, 0, owner.stderr);
+  const identity = JSON.parse(owner.stdout), receipt = JSON.parse(intake.stdout);
+  assert.equal(identity.id, receipt.nativeHandoff.ownerRequestId);
+  assert.equal(identity.intentSha256, receipt.request.intentSha256);
+});
 test('actual MCP stdio initialize, list and call use valid JSON-RPC and preserve tool failures', async () => {
   const requests = [
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25' } },
@@ -159,13 +224,17 @@ test('actual MCP stdio initialize, list and call use valid JSON-RPC and preserve
     { jsonrpc: '2.0', id: 2, method: 'tools/list' },
     { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'pengmanager_video_status', arguments: {} } },
     { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'unregistered', arguments: {} } },
+    { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'pengmanager_video_intake', arguments: { intent: '制作项目视频。' } } },
   ];
   const result = await child('scripts/agent-mcp.mjs', [], requests.map(item => JSON.stringify(item)).join('\n') + '\n');
   assert.equal(result.code, 0, result.stderr); const messages = result.stdout.trim().split('\n').map(line => JSON.parse(line));
-  assert.deepEqual(messages.map(item => item.id), [1, 2, 3, 4]);
+  assert.deepEqual(messages.map(item => item.id), [1, 2, 3, 4, 5]);
   assert.equal(messages[0].result.serverInfo.name, 'pengmanager-system');
   assert.match(messages[0].result.instructions, /pengmanager_video_preflight/);
   assert.ok(messages[1].result.tools.some(item => item.name === 'pengmanager_core_workspace_profile'));
+  assert.equal(messages[1].result.tools.find(item => item.name === 'pengmanager_video_intake').annotations.readOnlyHint, true);
   assert.equal(messages[2].result.isError, false); assert.equal(JSON.parse(messages[2].result.content[0].text).ready, false);
   assert.equal(messages[3].result.isError, true); assert.equal(JSON.parse(messages[3].result.content[0].text).error.code, 'NOT_FOUND');
+  assert.equal(messages[4].result.isError, false);
+  assert.equal(JSON.parse(messages[4].result.content[0].text).providerCallsPerformed, false);
 });
