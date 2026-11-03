@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1103-0009",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T15:14:43.425696+00:00",
+  "scope": "Host-owned approved creative architecture implementation and subsequent audit; source upstream pin unchanged.",
+  "sourceOverlayCount": 0,
+  "files": [
+    {
+      "path": "apps/server/src/video/creative-api-service.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
+      "targetSha256": "27f38c261fd26428182348a5abfd890fcad6f734981b2275802eb88ed722c3b4",
+      "targetBytes": 42028,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetSha256": "2e997ef168308331b4c646c53f825707013e427c2b4500cc50cbd14601000ed1",
+      "targetBytes": 7820,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/creative-evaluation.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/creative-evaluation.ts",
+      "targetSha256": "0879a5d8d9d0d4105cb60df176cadf0beba07f0ed10b0b6a4375360202bbb101",
+      "targetBytes": 17446,
+      "evidence": "B",
+      "targetOwned": true
+    }
+  ]
+}
