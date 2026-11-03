@@ -529,8 +529,8 @@
     {
       "path": "packages/video-studio/src/video-text-client.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.test.ts",
-      "targetSha256": "bf79be269902bbc97f09231c2df1a06eb3bfec1872c17e0298f480d330dd1031",
-      "targetBytes": 16967,
+      "targetSha256": "7a8cb3d799b829d0edd8414e13b670e7e135a9a198a99c2595abea3f395e0544",
+      "targetBytes": 18169,
       "evidence": "B",
       "targetOwned": true
     },
@@ -543,5 +543,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T20:03:55.365414+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T20:06:45.123244+00:00"
 }

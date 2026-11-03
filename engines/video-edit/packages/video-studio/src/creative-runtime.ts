@@ -286,7 +286,9 @@ async function reservedCreativeModelCall<T>(
       }
       context.state.fatal ??= new CreativeContractError("CREATIVE_USAGE_UNKNOWN", "provider/receipt outcome unknown; preserve reservation and reconcile");
       const evidence = modelFailureEvidence({
-        ...(providerFailure ?? receipt),
+        // Known usage can carry a legacy completion ID. Do not project that
+        // ID into a failure receipt without the transport's credential check.
+        ...(providerFailure ?? (receipt?.usageKnown ? { responseHash: receipt.responseHash } : receipt)),
         failureClass: providerFailure?.failureClass ?? (providerCompleted ? "receipt_unavailable" : "outcome_unknown"),
       });
       try { await context.hooks.afterModelCall(reservation, { ...evidence, actualCny: null, usageKnown: false, success: false }); }

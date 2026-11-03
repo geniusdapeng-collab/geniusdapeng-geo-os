@@ -40871,8 +40871,8 @@
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "mode": "100644",
-      "bytes": 55272,
-      "targetSha256": "f1d058afa248e99bd4983e90948d040d14b7f117dd06903d94f6fa7bc458c3d8",
+      "bytes": 55493,
+      "targetSha256": "f9b488aa2736e420149691da14a20eaeca01fafe4358b4dc1c9f26646ae8b953",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -41023,8 +41023,8 @@
     {
       "path": "packages/video-studio/src/video-text-client.test.ts",
       "mode": "100644",
-      "bytes": 16967,
-      "targetSha256": "bf79be269902bbc97f09231c2df1a06eb3bfec1872c17e0298f480d330dd1031",
+      "bytes": 18169,
+      "targetSha256": "7a8cb3d799b829d0edd8414e13b670e7e135a9a198a99c2595abea3f395e0544",
       "evidence": "B",
       "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },

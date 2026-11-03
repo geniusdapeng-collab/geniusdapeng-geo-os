@@ -280,6 +280,23 @@ describe("embedded video text dispatcher", () => {
     }
   }, 5_000);
 
+  it("omits legacy completion IDs when a known response must fall back to an unknown journal receipt", async () => {
+    const payload = JSON.stringify(envelope(undefined, { id: endpoint.apiKey }));
+    const fetchImpl = vi.fn(async () => new Response(payload));
+    const afterModelCall = vi.fn(async (_reservation: unknown, _outcome: CreativeModelOutcome) => undefined)
+      .mockRejectedValueOnce(new Error("private journal detail"));
+    await expect(withCreativeBudget({ beforeModelCall: async () => 1, afterModelCall }, () => completeVideoTextTask({
+      endpoint, scene: "video.deterministic", messages: [{ role: "user", content: "检查账本写入故障" }], fetchImpl,
+    }))).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN",
+      message: "CREATIVE_USAGE_UNKNOWN: provider/receipt outcome unknown; preserve reservation and reconcile" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(afterModelCall).toHaveBeenCalledTimes(2);
+    expect(afterModelCall).toHaveBeenNthCalledWith(2, 1, {
+      usageKnown: false, success: false, actualCny: null, failureClass: "receipt_unavailable",
+      responseHash: createHash("sha256").update(payload).digest("hex"),
+    });
+  });
+
   it("rejects wrong model identity, truncation and missing usage after preserving the response", async () => {
     const cases = [
       [envelope('{"ok":true}', { model: "deepseek-v4-pro" }), "MODEL_IDENTITY_CHANGED"],
