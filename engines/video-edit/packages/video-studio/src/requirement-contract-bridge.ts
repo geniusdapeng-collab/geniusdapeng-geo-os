@@ -5,17 +5,17 @@ import {
   RequirementContractError, bindRequirementContract, renderRequirementContract, requirementCast,
   normalizeRiskResponseShape, requirementHash, requirementRecord, requirementScenes, structuredRiskFeedback,
   structuredSceneFeedback, structuredSceneInstructions, structuredScenePrompt, structuredSceneSchema,
-  validateRequirementSchema, verifiedRequirementContract, type RequirementCast, type RequirementRecord
+  validateRequirementSchema, verifiedRequirementContract, type RequirementCast, type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import {
   qualifyRequirementThemeInput, requirementAuthorityFailure, requirementAuthorityPrompt, scopedRequirementEngine,
   type RequirementAuthorityOptions
 } from "./requirement-authority.js";
-import { policyCoveragePlan } from "./prd-authority-bridge.js";
-import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
+import { exactPrdShotSchedule, policyCoveragePlan } from "./prd-authority-bridge.js";
+import { prdDurationContract, type PrdAuthority, type PrdProductionProfile } from "./prd-authority.js";
 import { currentCreativeRuntime } from "./creative-runtime.js";
-import { explicitCreativeShotPlan } from "./constraint-compiler.js";
+import { explicitCreativeShotPlan, type CreativeContract } from "./constraint-compiler.js";
 import { namedReferenceAuthority, referenceCuratorSchema, validateReferenceCases } from "./named-reference-authority.js";
 import {
   ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, INSPECTED_RC_REFERENCE_DETAIL_RULE,
@@ -284,6 +284,38 @@ function sceneValidationOptions(scope: Scope, fallbackDuration: unknown) {
   };
 }
 
+function requirementDeliveryFields(profile: PrdProductionProfile, brief: RequirementRecord) {
+  return {
+    platform: profile.targetPlatform ?? (typeof brief.platform === "string" ? brief.platform : undefined),
+    aspectRatio: profile.aspectRatio ?? (typeof (brief.aspectRatio ?? brief.aspect_ratio) === "string"
+      ? String(brief.aspectRatio ?? brief.aspect_ratio) : undefined),
+    resolution: profile.resolution,
+    frameRate: profile.frameRate,
+  };
+}
+
+/** Render the G3 contract from the same frozen delivery profile and interval map as PRD. */
+export function renderAuthoritativeRequirementContract(
+  contract: RequirementContract, metadata: RequirementRecord, profile?: PrdProductionProfile, creative?: CreativeContract,
+): string {
+  if (!profile) return renderRequirementContract(contract, metadata);
+  const brief = metadata.brief === undefined ? {} : requirementRecord(metadata.brief, "G3 Brief");
+  const delivery = requirementDeliveryFields(profile, brief);
+  const text = renderRequirementContract(contract, { ...metadata, brief: { ...brief,
+    duration: prdDurationContract(profile).finalDurationSeconds ?? brief.duration,
+    ...(delivery.aspectRatio ? { aspectRatio: delivery.aspectRatio } : {}),
+    ...(delivery.platform ? { platform: delivery.platform } : {}),
+  } });
+  const plan = exactPrdShotSchedule(creative, contract.scenes);
+  if (!plan) return text;
+  return text + `\n### 客户明确制作镜头段与叙事节点对应\n\n`
+    + `本次 ${plan.sceneCount} 个叙事节点按内容时间线映射到 ${plan.shotCount} 个制作镜头段，每段 ${plan.shotDurationSeconds} 秒。`
+    + `同一节点可以跨段，保留每个节点的原始顺序和时长；以下区间为内容时间，独立封面不占该时间线。\n\n`
+    + `| 制作镜头段 | 内容时间 | 叙事节点区间 |\n|---:|---|---|\n`
+    + plan.segments.map(segment => `| ${segment.index} | ${segment.start}–${segment.end}s | `
+      + `${segment.beats.map(beat => `${beat.sceneId} ${beat.start}–${beat.end}s`).join("、")} |`).join("\n") + "\n";
+}
+
 function presentationSection(scope: Scope, fallbackDuration: number): string {
   const authority = sceneAuthority(scope, fallbackDuration);
   if (!authority) return "";
@@ -294,15 +326,16 @@ function presentationSection(scope: Scope, fallbackDuration: number): string {
   const restrictions = Array.isArray(brief.restrictions)
     ? brief.restrictions.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     : [];
+  const delivery = requirementDeliveryFields(scope.authority!.profile, brief);
   return `\n\n## 六、宿主权威交付与事实边界（不可被模型改写）\n\n`
     + `- 内容时间线：${authority.targetContentDurationSeconds}s ±${authority.toleranceSeconds}s；`
     + `静音封面片头：${authority.coverIntroSeconds}s；最终成片：${authority.finalDurationSeconds}s ±${authority.toleranceSeconds}s。`
     + `封面片头是最终成片的一部分，不占内容节点合计，也不能在正文重复计算。\n`
     + `- 平台/画幅/分辨率/帧率：${JSON.stringify({
-      platform: scope.authority!.profile.targetPlatform ?? brief.platform ?? null,
-      aspectRatio: scope.authority!.profile.aspectRatio ?? brief.aspectRatio ?? null,
-      resolution: scope.authority!.profile.resolution ?? null,
-      frameRate: scope.authority!.profile.frameRate ?? null,
+      platform: delivery.platform ?? null,
+      aspectRatio: delivery.aspectRatio ?? null,
+      resolution: delivery.resolution ?? null,
+      frameRate: delivery.frameRate ?? null,
     })}\n`
     + `- 叙事披露原文（仅元数据/发布边界，不改成画面文字）：${JSON.stringify(authority.narrativeDisclosure ?? null)}\n`
     + `- 常驻字幕原文：${JSON.stringify(authority.persistentSubtitleText ?? null)}。它覆盖内容时间线0秒至内容末帧；插入封面后对应最终成片${authority.coverIntroSeconds}秒至末帧，封面段不承载正片常驻字幕。\n`
@@ -326,13 +359,17 @@ function applyRequirementProductionAuthority(value: unknown, scope: Scope): Requ
   if (!authority) return result;
   const final = authority.finalDurationSeconds;
   const tolerance = authority.toleranceSeconds;
+  const delivery = requirementDeliveryFields(scope.authority.profile, brief);
   result.targetDuration = final;
   result.contentDuration = authority.targetContentDurationSeconds;
   result.durationRange = [Number((final - tolerance).toFixed(6)), Number((final + tolerance).toFixed(6))];
-  if (typeof brief.aspectRatio === "string") result.aspectRatio = brief.aspectRatio;
-  if (typeof brief.platform === "string") result.platform = brief.platform;
+  if (delivery.aspectRatio !== undefined) result.aspectRatio = delivery.aspectRatio;
+  if (delivery.platform !== undefined) result.platform = delivery.platform;
   result.narrativeDisclosure = structuredClone(brief.narrativeDisclosure ?? null);
-  result.productionRequirements = structuredClone(production);
+  result.productionRequirements = { ...structuredClone(production),
+    ...(delivery.resolution ? { resolution: delivery.resolution } : {}),
+    ...(delivery.frameRate ? { frameRate: delivery.frameRate } : {}),
+  };
   result.persistentSubtitleText = authority.persistentSubtitleText ?? null;
   result.restrictions = Array.isArray(brief.restrictions) ? structuredClone(brief.restrictions) : [];
   const profile = result.productionProfile && typeof result.productionProfile === "object"
@@ -340,8 +377,8 @@ function applyRequirementProductionAuthority(value: unknown, scope: Scope): Requ
   if (profile) {
     profile.duration_target = final;
     profile.content_duration = authority.targetContentDurationSeconds;
-    if (typeof brief.aspectRatio === "string") profile.aspect_ratio = brief.aspectRatio;
-    if (typeof brief.platform === "string") profile.platform = brief.platform;
+    if (delivery.aspectRatio !== undefined) profile.aspect_ratio = delivery.aspectRatio;
+    if (delivery.platform !== undefined) profile.platform = delivery.platform;
     if (typeof brief.audience === "string") profile.audience = brief.audience;
     if (typeof brief.voice === "string" && /无对白|no dialogue/iu.test(brief.voice)) {
       profile.dialogue_density = "none";
@@ -511,7 +548,8 @@ export function installRequirementContractBridge(
         const { ads } = validateReferenceCases(cases, namedReferenceAuthority(scope.authority));
         references = `\n\n## 客户明确提供且本次选用的广告参考\n${JSON.stringify(ads)}\n`;
       }
-      return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"))
+      return renderAuthoritativeRequirementContract(contract, requirementRecord(metadata, "G3 metadata"),
+        scope.authority?.profile, currentCreativeRuntime()?.contract)
         + renderScenePolicyCoverage(scope.authority?.metadata ?? scope.metadata, contract as unknown as RequirementRecord)
         + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0)) + references;
     });
@@ -714,7 +752,7 @@ export function installRequirementContractBridge(
             requirementScenes(response, cast, target.targetDuration, target.options);
           } catch (error) {
             if (error instanceof ProductVisualAuthorityError && error.code === "PRODUCT_VISUAL_DETAIL_UNVERIFIED") {
-              currentValidationFailure = new RequirementContractError(error.code, "SceneArchitect 引用了未经核实的镜体或依赖镜体的机位");
+              currentValidationFailure = new RequirementContractError(error.code, "SceneArchitect 引用了本次登记原图未证实的部件、状态、配色或机位");
               pendingFeedback = "\n\n## 上一次原生场景校验反馈\n" + INSPECTED_RC_REFERENCE_DETAIL_RULE;
               throw currentValidationFailure;
             }

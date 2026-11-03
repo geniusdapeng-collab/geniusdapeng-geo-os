@@ -483,9 +483,9 @@
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "583400dd5a3b296159a2768be0a9673803899aef5466165cdcdd5cd3e3a8a0cc",
+      "targetSha256": "30e8319334704d6ef2d152099cce9c862577ef7c61c4e3edb42283efe199604f",
       "sourceBytes": 81284,
-      "targetBytes": 114791
+      "targetBytes": 115300
     },
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
@@ -539,9 +539,9 @@
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
-      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
+      "targetSha256": "04bad529941ff0c0184db3ba99d941be700355a4766af0ed93cca37dc4ef28c4",
       "sourceBytes": 59825,
-      "targetBytes": 74960
+      "targetBytes": 78774
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:33:47.608435+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }

@@ -11,17 +11,18 @@
       "path": "apps/server/src/video/builtin-character-selection.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.ts",
       "sourceSha256": "164eedde8740fc37068f9bec1788da057e2411b15978180467e08818d12ed7e9",
-      "targetSha256": "8debb2151fc2d3e77b0a5c52ab4fa5129ffc953d5a81058382c3accbcfda84db",
+      "targetSha256": "5d36206b0718f892a14aa482a31804e6391f3701098d7c0938c158ec67388687",
       "sourceBytes": 23750,
-      "targetBytes": 25506
+      "targetBytes": 30643
     },
     {
       "path": "apps/server/src/video/builtin-character-selection.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/builtin-character-selection.test.ts",
       "sourceSha256": "0a0e0e9044b410c07bb156189667ec36792c18c08bbd871e39dd2466527da4a0",
-      "targetSha256": "8467b2d682c2ffc0993770752f7229706d3f988b8cd96eb3ef89628d70bc94cb",
+      "targetSha256": "cfaff3707f561d19c95afc141efe525fd67b33471fd6e6288db03bf4a50236a0",
       "sourceBytes": 9554,
-      "targetBytes": 10265
+      "targetBytes": 13566
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }

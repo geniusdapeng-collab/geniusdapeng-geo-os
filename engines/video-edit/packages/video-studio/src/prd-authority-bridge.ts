@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import {
-  requirementHash, requirementRecord, validateRequirementSchema, verifiedRequirementContract,
+  requirementAppearanceContinuities, requirementHash, requirementRecord, validateRequirementSchema, verifiedRequirementContract,
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import {
@@ -580,6 +580,7 @@ function productionPlanningPrompt(scope: Scope): string {
   const castAnchors = { selection: contract.cast.selection, characters: contract.cast.characters.map(character =>
     Object.fromEntries(["id", "name", "portraitVersion", "activeWardrobeId", "wardrobeId"]
       .filter(key => Object.hasOwn(character, key)).map(key => [key, character[key]]))) };
+  const appearancePlans = requirementAppearanceContinuities(contract.cast);
   return `\n\n## 本次 G4 制作执行计划（由本次模型填写现有字段）\n`
     + `角色的 consistencyRequirements 除脸型、发型、服装外，还须写出 G5 前定妆照执行计划：逐角色绑定本次 characterId、档案 profilePath/profileSha256、registrySha256、已选服装与已知版本；`
     + `明确先从这些来源解析并复用该版本原始 front/closeup PNG，不把构图稿或新猜测人脸当原始参考。输入没有具体 PNG 路径或字节摘要时如实写“G5 前待解析和核验”，不得编造文件、摘要、授权或已批准状态。`
@@ -600,6 +601,7 @@ function productionPlanningPrompt(scope: Scope): string {
     + `按以上已给出的profilePath/profileSha256/registrySha256、人物与已知版本/服装逐项引用；已经给出的档案来源不得写成“待解析”。`
     + `“待解析和核验”仅适用于输入确实未提供的原始PNG路径、字节摘要或尚未完成的G5核验；即使原文提供PNG路径和摘要，也仅作为待G5核对的输入来源，不能提前批准。`
     + `发型执行沿用本次锁定的角色档案和 portraitVersion；只有已审动作中的可见变化可写入，不能编造独立发型版本或已核实定妆结果。\n`
+    + (appearancePlans.length ? `本片的项目服装版本与原档案基线服装分别列明。已有定妆照复用核验只证明其原图和人物用途；项目服装与头盔按下列当前 G3 承接的项目造型计划执行，原图无需穿本片服装。沿用同一头发的盔内遮挡、停稳后摘盔、松开束发及垂落顺序。\n${JSON.stringify(appearancePlans)}\n` : "")
     + `portraitPath仍留空，计划仍须由本次模型写入既有合法字段并交真实G4审核；宿主不会在响应后补写遗漏计划。\n`
     + productionScheduleContext(scope);
 }

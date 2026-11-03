@@ -27,9 +27,9 @@
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
       "sourceSha256": "47e98fbc5e7e24807d40b23cce667bad57045b518d2d1c7ed95844f149cf165a",
-      "targetSha256": "583400dd5a3b296159a2768be0a9673803899aef5466165cdcdd5cd3e3a8a0cc",
+      "targetSha256": "30e8319334704d6ef2d152099cce9c862577ef7c61c4e3edb42283efe199604f",
       "sourceBytes": 81284,
-      "targetBytes": 114791
+      "targetBytes": 115300
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.test.ts",
@@ -40,5 +40,5 @@
       "targetBytes": 157155
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:43:30.477150+00:00"
 }

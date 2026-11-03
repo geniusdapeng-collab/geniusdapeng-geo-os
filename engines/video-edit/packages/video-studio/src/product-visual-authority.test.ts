@@ -83,3 +83,37 @@ describe("G1 product visual authority", () => {
     });
   });
 });
+
+describe("exact registered reference lamp area", () => {
+  const authority: visual.ProductVisualAuthority = { mode: "verified_product_appearance", modeEvidence: null, required: true,
+    product: "张雪机车 820RR-RC", images: [], rule: "exact registered source only" };
+  const source = { productId: "zxmoto-820rr-rc", sha256: "575d2bb914d62fafecfa34e16dd8b37ce06e5f020ff1872a7d9a8b489c2e888d" };
+  const guarded = visual.registeredProductReferenceOmitsMirrors([source]);
+  it.each([
+    "最后一帧收到奖杯金属边缘的一道高光与赛道边赛车灯区同框的特写",
+    "赛车静止停在赛道边，灯区在暖光下与奖杯高光同框收束",
+    "登记原图可见的车灯亮起",
+    "对照登记原图保留尾灯",
+    "按本次登记原图保持车灯；随后独立特写灯区",
+    "按本次登记原图给车灯独立特写",
+  ])("rejects an unverified or operational vehicle lamp instruction (%s)", description => {
+    expect(guarded).toBe(true);
+    expect(() => visual.assertProductVisualContent(authority, { description }, "G3 SceneArchitect", guarded)).toThrow("PRODUCT_VISUAL_DETAIL_UNVERIFIED");
+    for (const references of [[{ ...source, productId: "other" }], [source, { ...source, sha256: "0".repeat(64) }]]) {
+      expect(() => visual.assertProductVisualContent(authority, { description }, "G3 SceneArchitect",
+        visual.registeredProductReferenceOmitsMirrors(references))).not.toThrow();
+    }
+  });
+
+  it.each([
+    "车身外观只按本次登记原图核对整流罩、灯区、排气与涂装",
+    "用已授权实物参考图保持车身整流罩、灯区、排气和涂装一致",
+    "奖杯高光与赛道边的整车同框收束",
+    "奖杯特写与整车同框，车灯区仅随整体车身保留本次登记原图可见的静态外形",
+    "维修区灯区提供中性顶光",
+    "禁止无来源锚点的车灯区特写",
+    visual.INSPECTED_RC_REFERENCE_DETAIL_RULE,
+  ])("preserves source-bound static appearance and valid omission instructions (%s)", description => {
+    expect(() => visual.assertProductVisualContent(authority, { description }, "G3 SceneArchitect", guarded)).not.toThrow();
+  });
+});
