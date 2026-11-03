@@ -2074,10 +2074,11 @@
       "sourceMode": "100644",
       "gitBlob": "1c970ece21017e9b81cb5f9c48b9355cd3e6323a",
       "bytes": 7714,
-      "targetBytes": 7714,
+      "targetBytes": 10276,
       "sourceSha256": "c2712517ecf7712bafd35a5075df7449aa08248e5569cac11ca2d94be536ef57",
-      "targetSha256": "c2712517ecf7712bafd35a5075df7449aa08248e5569cac11ca2d94be536ef57",
-      "evidence": "B"
+      "targetSha256": "ed57df42d2f004f922616191b4ca3f9c18b9acaccc4a05b11a71c21392396717",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "apps/server/src/video/gate-policy.ts",
@@ -2085,10 +2086,11 @@
       "sourceMode": "100644",
       "gitBlob": "4193a73730ae5e9f3f471ab5eaebd1f713f05316",
       "bytes": 16510,
-      "targetBytes": 16510,
+      "targetBytes": 17820,
       "sourceSha256": "e6b48d999052250d0ce1096947fbe34901bdfcdab8539872ca0685d2e61bc45a",
-      "targetSha256": "e6b48d999052250d0ce1096947fbe34901bdfcdab8539872ca0685d2e61bc45a",
-      "evidence": "B"
+      "targetSha256": "67acbd661022503575f54cb44f7f67c68576f0fa19fff1450217350114ee7983",
+      "evidence": "B",
+      "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
     {
       "path": "apps/server/src/video/gen/catalog.ts",

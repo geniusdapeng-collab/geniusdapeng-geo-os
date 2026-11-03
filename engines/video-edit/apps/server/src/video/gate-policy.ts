@@ -16,7 +16,7 @@ import type { ProducerStage } from "@hyperreality/video-studio";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, resolve, relative, sep } from "node:path";
-import type { ProducerArtifact, DeterministicCheck, PortraitIndex } from "@hyperreality/video-studio";
+import { currentCreativeSelectionContext, type ProducerArtifact, type DeterministicCheck, type PortraitIndex } from "@hyperreality/video-studio";
 import { loadPipelineFeatureFlags } from "@workloom/pipeline-control";
 
 /**
@@ -85,6 +85,29 @@ export function appliedApprovalFeedback(approved: boolean, suggestions: unknown)
   return suggestions.filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
 }
 
+function scanWithoutInitialCandidateParent(text: string): string {
+  const selection = currentCreativeSelectionContext()?.trimEnd();
+  // The current runtime owns the appended source. A lookalike or modified
+  // suffix in customer/vendor prose must not receive the exception.
+  if (!selection || !text.endsWith(selection)) return text;
+  const jsonStart = selection.lastIndexOf("\n") + 1;
+  try {
+    const envelope = JSON.parse(selection.slice(jsonStart)) as { assessment?: { shots?: Array<{
+      schemaVersion?: unknown; revision?: unknown; parentHash?: unknown;
+    }> } } | null;
+    const shots = envelope?.assessment?.shots;
+    if (!Array.isArray(shots)) return text;
+    for (const shot of shots) {
+      if (shot?.schemaVersion === "workloom.creative-shot/v1" && shot.revision === 1 && shot.parentHash === null) {
+        shot.parentHash = "";
+      }
+    }
+    // Use only the scan copy. The full approval artifact, digest and model
+    // evidence still use the original candidate and all of its bytes.
+    return text.slice(0, -selection.length) + selection.slice(0, jsonStart) + JSON.stringify(envelope);
+  } catch { return text; }
+}
+
 /**
  * 门内容的确定性检查（零 token 先判）：
  * 空内容 / 占位符 / 声称完成但没有产物 —— 一律硬失败，不浪费模型额度。
@@ -103,10 +126,11 @@ export function gateDeterministicChecks(gate: GateKey, content: string): Array<{
       detail: valid ? "完整本次来源/三站事实包可解析；null等JSON值不会当作占位词误杀" : "G1必须读取宿主本次完整来源事实包" }];
   }
   const hardPlaceholder = /undefined|NaN|\[object Object\]/.test(trimmed);
+  const nullScan = gate === "G2_THEME" || gate === "G4_PRD" ? scanWithoutInitialCandidateParent(trimmed) : trimmed;
   // Gate documents embed versioned JSON contracts whose schemas legitimately
   // use null for optional fields. Ignore `null` only inside a parseable fenced
   // JSON block; prose or broken JSON still fails closed.
-  const placeholderScan = gate === "G3_INSIGHT" ? "" : trimmed.replace(
+  const placeholderScan = gate === "G3_INSIGHT" ? "" : nullScan.replace(
     /```json\s*([\s\S]*?)```/gi,
     (block, body: string) => {
       try {

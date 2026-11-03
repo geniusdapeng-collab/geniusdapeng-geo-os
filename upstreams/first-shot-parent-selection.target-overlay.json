@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0003",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T17:00:26.958166+00:00",
+  "scope": "Preserve valid first revision selection metadata during hard placeholder checks; source upstream pin unchanged.",
+  "sourceOverlayCount": 2,
+  "files": [
+    {
+      "path": "apps/server/src/video/gate-policy.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.test.ts",
+      "targetSha256": "ed57df42d2f004f922616191b4ca3f9c18b9acaccc4a05b11a71c21392396717",
+      "targetBytes": 10276,
+      "evidence": "B",
+      "sourceSha256": "c2712517ecf7712bafd35a5075df7449aa08248e5569cac11ca2d94be536ef57",
+      "sourceBytes": 7714
+    },
+    {
+      "path": "apps/server/src/video/gate-policy.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gate-policy.ts",
+      "targetSha256": "67acbd661022503575f54cb44f7f67c68576f0fa19fff1450217350114ee7983",
+      "targetBytes": 17820,
+      "evidence": "B",
+      "sourceSha256": "e6b48d999052250d0ce1096947fbe34901bdfcdab8539872ca0685d2e61bc45a",
+      "sourceBytes": 16510
+    }
+  ]
+}
