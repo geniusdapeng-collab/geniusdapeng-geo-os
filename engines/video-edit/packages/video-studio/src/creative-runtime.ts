@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { DEEPSEEK_IMAGE_TOKEN_LIMIT } from "@workloom/base/model-router";
+import { DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MODEL_ID, normalizeModelContent, planDeepSeekWindow, type BudgetMessage } from "@workloom/base/model-router";
 import {
   assertCreativeContract, buildCreativeShots, compileCreativePrompt, creativeCacheKey,
   creativeCanonical, creativeHash, validateCreativeShots, validatePatchDelta,
@@ -17,11 +17,17 @@ const OPENING_TITLE_FIELDS = ["title_content", "subtitle_content", "title_animat
 type Recordish = Record<string, unknown>;
 export interface CreativeModelRequest {
   requestHash: string; inputChars: number; maxOutputTokens: number; model: string; attempt: number;
+  requestBytes: number;
+  inputTokenEstimate: number;
+  inputTokenUpperBound: number;
+  inputTokenBasis: string;
   imageInputTokens?: number;
 }
 export interface CreativeModelOutcome {
   actualCny?: number | null; usageKnown: boolean; success: boolean;
   inputTokens?: number; outputTokens?: number;
+  totalTokens?: number; reasoningTokens?: number; finishReason?: "stop" | "length";
+  providerRequestId?: string; responseHash?: string;
 }
 export interface CreativeBudgetHooks {
   beforeModelCall(request: CreativeModelRequest): Promise<unknown>;
@@ -105,21 +111,6 @@ export async function guardedCreativeExternalCall<T>(
   }
 }
 
-/** Independent image allowance for the actual serialized model message parts. */
-export function creativeImageInputTokens(messages: unknown): number {
-  if (!Array.isArray(messages)) return 0;
-  let count = 0;
-  for (const message of messages) {
-    if (!message || typeof message !== "object" || !Array.isArray(message.content)) continue;
-    for (const part of message.content) {
-      if (!part || typeof part !== "object") continue;
-      if (part.type === "image_url" && part.image_url && typeof part.image_url === "object"
-        || part.type === "file" && (typeof part.file_data === "string" || typeof part.file_id === "string")) count++;
-    }
-  }
-  return count * DEEPSEEK_IMAGE_TOKEN_LIMIT;
-}
-
 /** Wrap the existing provider transport so each actual HTTP attempt has its own reservation. */
 export function creativeBudgetedFetch(transport: typeof fetch): typeof fetch {
   return (async (input: Parameters<typeof fetch>[0], init: RequestInit = {}) => {
@@ -128,31 +119,52 @@ export function creativeBudgetedFetch(transport: typeof fetch): typeof fetch {
     let body: Recordish;
     try { body = object(JSON.parse(init.body), "provider body"); }
     catch { fail("CREATIVE_REQUEST_UNVERIFIED", "provider body is not complete JSON"); }
-    if (typeof body.model !== "string" || !Number.isSafeInteger(body.max_tokens) || Number(body.max_tokens) <= 0) fail("CREATIVE_REQUEST_UNVERIFIED", "model/output window unavailable");
+    if (body.model !== DEEPSEEK_FLASH_MODEL_ID || !Number.isSafeInteger(body.max_tokens) || Number(body.max_tokens) <= 0
+      || !Array.isArray(body.messages)) fail("CREATIVE_REQUEST_UNVERIFIED", "model, messages or output window unavailable");
+    const window = await planDeepSeekWindow({ messages: body.messages as BudgetMessage[], tools: body.tools,
+      responseFormat: body.response_format, thinking: body.thinking, reasoningEffort: body.reasoning_effort });
+    const maxOutputTokens = Number(body.max_tokens);
+    if (maxOutputTokens !== window.outputCeiling) fail("CREATIVE_REQUEST_UNVERIFIED", "actual max_tokens does not equal the complete legal output window");
+    const requestBytes = Buffer.byteLength(init.body);
     let usage: CreativeModelOutcome = { usageKnown: false, success: false, actualCny: null };
-    const imageInputTokens = creativeImageInputTokens(body.messages);
-    return guardedCreativeModelCall({ requestHash: creativeTextHash(init.body), inputChars: Buffer.byteLength(init.body),
-      maxOutputTokens: Number(body.max_tokens), model: body.model, ...(imageInputTokens ? { imageInputTokens } : {}) }, async () => {
+    return guardedCreativeModelCall({ requestHash: creativeTextHash(init.body), inputChars: requestBytes, requestBytes,
+      inputTokenEstimate: window.inputTokens, inputTokenUpperBound: window.inputTokenUpperBound, inputTokenBasis: window.inputTokenBasis,
+      maxOutputTokens, model: body.model,
+      ...(window.imageTokens ? { imageInputTokens: window.imageTokens } : {}) }, async () => {
       const response = await transport(input, { ...init, redirect: "error" });
       // Clone only for billing evidence; the unchanged provider still owns validation and parsing.
       let envelope: Recordish;
-      try { envelope = object(await response.clone().json(), "provider usage response"); }
+      let rawResponse: string;
+      try {
+        rawResponse = await response.clone().text();
+        envelope = object(JSON.parse(rawResponse), "provider usage response");
+      }
       catch { return response; }
       const rawUsage = envelope.usage && typeof envelope.usage === "object" ? envelope.usage as Recordish : {};
-      const inputTokens = rawUsage.prompt_tokens, outputTokens = rawUsage.completion_tokens;
-      if (envelope.model === body.model && typeof envelope.id === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(envelope.id)
+      const inputTokens = rawUsage.prompt_tokens, outputTokens = rawUsage.completion_tokens, totalTokens = rawUsage.total_tokens;
+      if (response.ok && envelope.model === body.model && typeof envelope.id === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(envelope.id)
         && Number.isSafeInteger(inputTokens) && Number(inputTokens) >= 0
-        && Number.isSafeInteger(outputTokens) && Number(outputTokens) >= 0 && Number(outputTokens) <= Number(body.max_tokens)) {
+        && Number.isSafeInteger(outputTokens) && Number(outputTokens) >= 0 && Number(outputTokens) <= maxOutputTokens
+        && totalTokens === Number(inputTokens) + Number(outputTokens) && Number(totalTokens) <= DEEPSEEK_FLASH_CONTEXT_TOKENS) {
         const choice = Array.isArray(envelope.choices) && envelope.choices.length === 1 && envelope.choices[0] && typeof envelope.choices[0] === "object"
           ? envelope.choices[0] as Recordish : {};
-        const content = choice.message && typeof choice.message === "object" ? (choice.message as Recordish).content : null;
-        let contentValid = typeof content === "string" && Boolean(content.trim());
+        const message = choice.message && typeof choice.message === "object" ? choice.message as Recordish : {};
+        const content = normalizeModelContent(message.content).trim();
+        const reasoning = rawUsage.completion_tokens_details && typeof rawUsage.completion_tokens_details === "object"
+          ? (rawUsage.completion_tokens_details as Recordish).reasoning_tokens : undefined;
+        const thinking = body.thinking && typeof body.thinking === "object" ? (body.thinking as Recordish).type : undefined;
+        const reasoningValid = Number.isSafeInteger(reasoning) && Number(reasoning) >= 0 && Number(reasoning) <= Number(outputTokens);
+        let contentValid = Boolean(content) && (reasoning === undefined || reasoningValid)
+          && (thinking !== "disabled" || (!String(message.reasoning_content ?? "").trim() && (reasoning ?? 0) === 0));
         if (contentValid && body.response_format && typeof body.response_format === "object" && (body.response_format as Recordish).type === "json_object") {
-          try { const value: unknown = JSON.parse(String(content)); contentValid = Boolean(value && typeof value === "object" && !Array.isArray(value)); }
+          try { const value: unknown = JSON.parse(content); contentValid = Boolean(value && typeof value === "object" && !Array.isArray(value)); }
           catch { contentValid = false; }
         }
-        usage = { usageKnown: true, success: response.ok && choice.finish_reason === "stop" && contentValid,
-          inputTokens: Number(inputTokens), outputTokens: Number(outputTokens) };
+        usage = { usageKnown: true, success: choice.finish_reason === "stop" && contentValid,
+          inputTokens: Number(inputTokens), outputTokens: Number(outputTokens), totalTokens: Number(totalTokens),
+          providerRequestId: envelope.id, responseHash: creativeTextHash(rawResponse),
+          ...(reasoningValid ? { reasoningTokens: Number(reasoning) } : {}),
+          ...(choice.finish_reason === "stop" || choice.finish_reason === "length" ? { finishReason: choice.finish_reason } : {}) };
       }
       return response;
     }, () => usage);

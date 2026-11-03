@@ -1,4 +1,5 @@
 import { hashObject, hashText } from "../domain/hash.mjs";
+import { DEEPSEEK_REQUEST_BODY_LIMIT_BYTES } from "../../engines/video-edit/packages/base/model-router/deepseek-window.mjs";
 import { parseStrictJson } from "../domain/strict-json.mjs";
 import { modelError } from "./errors.mjs";
 import { planWindow } from "./budget.mjs";
@@ -36,7 +37,7 @@ function validateUsage(usage, mode) {
   }
   const prompt = usage.prompt_tokens;
   const completion = usage.completion_tokens;
-  const total = usage.total_tokens ?? (safeInteger(prompt) && safeInteger(completion) ? prompt + completion : undefined);
+  const total = usage.total_tokens;
   if (!safeInteger(prompt) || !safeInteger(completion) || !safeInteger(total) || total !== prompt + completion) {
     throw modelError("MODEL_USAGE_INVALID", "模型 usage 缺失或不一致。");
   }
@@ -117,6 +118,20 @@ function requestHash(model, endpoint, scene, body, policy, budget) {
   });
 }
 
+function snapshotModelInput(messages, tools) {
+  try {
+    return JSON.parse(JSON.stringify({ messages, tools }, (_key, value) => {
+      if (["undefined", "function", "symbol"].includes(typeof value)
+        || (typeof value === "number" && !Number.isFinite(value))) {
+        throw new TypeError("Invalid model input value");
+      }
+      return value;
+    }));
+  } catch (error) {
+    throw modelError("MODEL_INPUT_JSON_INVALID", "完整模型输入无法无损序列化。", { cause: error });
+  }
+}
+
 export class ModelDispatcher {
   #apiKey;
   #scheduler = new WindowScheduler();
@@ -188,8 +203,13 @@ export class ModelDispatcher {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw modelError("MODEL_MESSAGES_REQUIRED", "模型任务至少需要一条完整消息。");
     }
+    if (!Array.isArray(tools)) {
+      throw modelError("MODEL_INPUT_JSON_INVALID", "模型工具定义必须是数组。");
+    }
+    const input = snapshotModelInput(messages, tools);
+    const { model, chatEndpoint, fetchImpl, timeoutMs, contextTokens, maxOutputTokens: modelMaxOutputTokens } = this;
     const policy = resolveScenePolicy(scene);
-    const thinking = policy.thinking;
+    const thinking = Object.freeze(policy.thinking);
     if (!["enabled", "disabled"].includes(thinking?.type)) {
       throw modelError("MODEL_THINKING_POLICY_INVALID", `场景 ${scene} 未显式声明思考模式。`);
     }
@@ -205,19 +225,20 @@ export class ModelDispatcher {
       ? { type: "json_object" }
       : undefined;
     void responseFormat;
-    const budget = await planWindow({
-      messages,
-      tools,
+    const budget = Object.freeze(await planWindow({
+      ...input,
       responseFormat: format,
-      contextTokens: this.contextTokens,
-      maxOutputTokens: this.maxOutputTokens,
+      thinking,
+      reasoningEffort: thinking.effort,
+      contextTokens,
+      maxOutputTokens: modelMaxOutputTokens,
       policyMaxOutputTokens: Number.isSafeInteger(policy.outputBudget)
         ? policy.outputBudget
         : maxOutputTokens,
-    });
+    }));
     const body = {
-      model: this.model,
-      messages,
+      model,
+      messages: input.messages,
       max_tokens: budget.outputCeiling,
       stream: false,
       thinking: thinking.type === "enabled"
@@ -225,17 +246,23 @@ export class ModelDispatcher {
         : { type: "disabled" },
     };
     if (thinking.type === "enabled") body.reasoning_effort = thinking.effort;
-    if (tools.length > 0) body.tools = tools;
+    if (input.tools.length > 0) body.tools = input.tools;
     if (format) body.response_format = format;
-    const hash = requestHash(this.model, this.chatEndpoint, scene, body, policy, budget);
+    const wire = JSON.stringify(body);
+    if (Buffer.byteLength(wire) > DEEPSEEK_REQUEST_BODY_LIMIT_BYTES) {
+      throw modelError("MODEL_REQUEST_BODY_TOO_LARGE", "完整 HTTP 请求超过供应商传输上限，尚未发送请求。");
+    }
+    const wireSha256 = hashText(wire);
+    const hash = requestHash(model, chatEndpoint, scene, body, policy, budget);
     let invoked = false;
     return {
       provider: TEXT_PRIMARY_MODEL.provider,
-      model: this.model,
+      model,
       scene,
       policy,
       budget,
       requestHash: hash,
+      wireSha256,
       upperBound: {
         inputTokens: budget.inputTokens,
         outputTokens: budget.outputCeiling,
@@ -250,7 +277,13 @@ export class ModelDispatcher {
           scene,
           policy,
           format,
-          body,
+          wire,
+          wireSha256,
+          model,
+          chatEndpoint,
+          contextTokens,
+          fetchImpl,
+          timeoutMs,
           budget,
           requestHash: hash,
           signal: executionSignal ?? signal,
@@ -265,19 +298,21 @@ export class ModelDispatcher {
     return prepared.execute({ signal: options.signal });
   }
 
-  async #executePrepared({ scene, policy, format, body, budget, requestHash: hash, signal, retries }) {
+  async #executePrepared({ scene, policy, format, wire, wireSha256, model, chatEndpoint,
+    contextTokens, fetchImpl, timeoutMs, budget, requestHash: hash, signal, retries }) {
     return this.#scheduler.run(async () => {
       let attempt = 0;
       let lastError;
       const retryEvidence = [];
       while (attempt <= retries) {
         attempt += 1;
-        const remaining = Math.max(1, this.timeoutMs - ((attempt - 1) * 1_000));
+        if (signal?.aborted) throw modelError("MODEL_CANCELLED", "模型请求已在发送前取消。");
+        const remaining = Math.max(1, timeoutMs - ((attempt - 1) * 1_000));
         const timeoutSignal = AbortSignal.timeout(remaining);
         const combined = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
         let response;
         try {
-          response = await this.fetchImpl(this.chatEndpoint, {
+          response = await fetchImpl(chatEndpoint, {
             method: "POST",
             redirect: "error",
             headers: {
@@ -285,19 +320,18 @@ export class ModelDispatcher {
               "Content-Type": "application/json",
               Accept: "application/json",
             },
-            body: JSON.stringify(body),
+            body: wire,
             signal: combined,
           });
         } catch (error) {
-          if (signal?.aborted) {
-            throw modelError("MODEL_CANCELLED", "模型调用已被调用方取消。", { cause: error });
-          }
           const timedOut = timeoutSignal.aborted;
           lastError = modelError(
-            timedOut ? "MODEL_TIMEOUT" : "MODEL_NETWORK_UNKNOWN",
-            timedOut ? "模型调用超时，输出结果未知。" : "模型网络结果未知。",
+            signal?.aborted ? "MODEL_CANCELLED" : timedOut ? "MODEL_TIMEOUT" : "MODEL_NETWORK_UNKNOWN",
+            signal?.aborted ? "模型请求已尝试发送，取消后的实际用量未知。"
+              : timedOut ? "模型调用超时，输出结果未知。" : "模型网络结果未知。",
             { unknown: true, retryable: false, cause: error },
           );
+          lastError.wireSha256 = wireSha256;
           lastError.attempts = retryEvidence.concat({
             attempt,
             code: lastError.code,
@@ -307,7 +341,6 @@ export class ModelDispatcher {
           throw lastError;
         }
 
-        const responseBytes = await readBoundedBytes(response, MAX_RESPONSE_BYTES);
         if (!response.ok) {
           // A 429 was explicitly rejected and is safe to retry. A 5xx may have
           // executed after accepting the request, so its result and cost stay
@@ -319,6 +352,10 @@ export class ModelDispatcher {
             `模型调用失败：HTTP ${response.status}。`,
             { retryable, httpStatus: response.status, unknown },
           );
+          lastError.wireSha256 = wireSha256;
+          // Status is sufficient for classification; the provider body can
+          // contain private input or itself fail partway through streaming.
+          await response.body?.cancel().catch(() => { lastError.bodyReleaseFailed = true; });
           const evidence = {
             attempt,
             code: lastError.code,
@@ -335,24 +372,48 @@ export class ModelDispatcher {
           throw lastError;
         }
 
+        let responseBytes;
+        try {
+          responseBytes = await readBoundedBytes(response, MAX_RESPONSE_BYTES);
+        } catch (cause) {
+          const error = modelError("MODEL_RESPONSE_UNKNOWN", "模型响应未完整读取，实际用量未知。", {
+            unknown: true, retryable: false, cause,
+          });
+          error.wireSha256 = wireSha256;
+          error.attempts = [...retryEvidence, { attempt, code: error.code, unknown: true, retryable: false }];
+          throw error;
+        }
         let envelope;
         try {
           envelope = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(responseBytes));
+          if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) throw new TypeError("Missing response envelope");
         } catch (error) {
-          throw modelError("MODEL_RESPONSE_JSON_INVALID", "模型响应不是合法 JSON。", {
+          const failure = modelError("MODEL_RESPONSE_JSON_INVALID", "模型响应不是合法 JSON。", {
             unknown: true,
             cause: error,
           });
+          failure.wireSha256 = wireSha256;
+          throw failure;
         }
-        const returnedModel = typeof envelope?.model === "string" ? envelope.model : "";
-        const responseId = typeof envelope.id === "string" ? envelope.id : null;
+        const returnedModel = typeof envelope.model === "string" ? envelope.model : "";
+        const responseId = typeof envelope.id === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(envelope.id)
+          ? envelope.id : null;
         const responseHash = hashObject(envelope);
+        if (returnedModel !== model || !responseId) {
+          const error = modelError(returnedModel !== model ? "MODEL_IDENTITY_CHANGED" : "MODEL_IDENTITY_MISSING",
+            returnedModel !== model ? "模型响应身份与请求不一致。" : "模型响应缺少稳定的 request identity。",
+            { unknown: true, providerRequestId: responseId });
+          error.wireSha256 = wireSha256;
+          error.responseHash = responseHash;
+          error.attempts = [...retryEvidence, { attempt, code: error.code, providerRequestId: responseId, unknown: true, retryable: false }];
+          throw error;
+        }
         let usage;
         try {
           usage = validateUsage(envelope.usage, policy.thinking.type);
-          if (usage.inputTokens > this.contextTokens
+          if (usage.inputTokens > contextTokens
             || usage.outputTokens > budget.outputCeiling
-            || usage.totalTokens > this.contextTokens) {
+            || usage.totalTokens > contextTokens) {
             throw modelError(
               "MODEL_USAGE_INVALID",
               "模型 usage 超过本次上下文或输出预算，结果不可用于结算。",
@@ -361,6 +422,7 @@ export class ModelDispatcher {
           }
         } catch (error) {
           error.unknown = true;
+          error.wireSha256 = wireSha256;
           error.providerRequestId = responseId;
           error.usageReceipt = {
             kind: "provider_response_usage",
@@ -399,6 +461,8 @@ export class ModelDispatcher {
           error.metering = metering;
           error.usageReceipt = usageReceipt;
           error.providerRequestId = responseId;
+          error.wireSha256 = wireSha256;
+          error.finishReason = typeof choice?.finish_reason === "string" ? choice.finish_reason : null;
           error.attempts = [...retryEvidence, {
             attempt,
             code: error.code ?? "MODEL_OUTPUT_INVALID",
@@ -413,16 +477,6 @@ export class ModelDispatcher {
         let content;
         let parsedValue;
         try {
-          if (returnedModel !== this.model) {
-            throw modelError(
-              "MODEL_IDENTITY_CHANGED",
-              `模型响应身份 ${returnedModel || "<missing>"} 与请求 ${this.model} 不一致。`,
-              { unknown: true },
-            );
-          }
-          if (!responseId || !/^[A-Za-z0-9_.:-]{1,200}$/.test(responseId)) {
-            throw modelError("MODEL_IDENTITY_MISSING", "模型响应缺少稳定的 request identity。");
-          }
           choice = Array.isArray(envelope.choices) && envelope.choices.length === 1
             ? envelope.choices[0]
             : null;
@@ -431,7 +485,7 @@ export class ModelDispatcher {
               ? "MODEL_OUTPUT_TRUNCATED"
               : "MODEL_OUTPUT_INCOMPLETE";
             throw modelError(code, `模型未完整结束：${choice?.finish_reason ?? "missing"}`, {
-              unknown: true,
+              unknown: choice?.finish_reason !== "length",
             });
           }
           if (policy.thinking.type === "disabled" && String(choice.message?.reasoning_content ?? "").trim()) {
@@ -460,15 +514,16 @@ export class ModelDispatcher {
             key: TEXT_PRIMARY_MODEL.key,
             version: TEXT_PRIMARY_REGISTRY_VERSION,
             provider: TEXT_PRIMARY_MODEL.provider,
-            requestedModel: this.model,
+            requestedModel: model,
             returnedModel,
             release: TEXT_PRIMARY_MODEL.release,
           },
           modelKey: TEXT_PRIMARY_MODEL.key,
-          requestedModel: this.model,
+          requestedModel: model,
           returnedModel,
           responseId,
           requestHash: hash,
+          wireSha256,
           responseHash,
           contentHash: hashText(content),
           finishReason: choice.finish_reason,
@@ -482,7 +537,7 @@ export class ModelDispatcher {
           text: content,
           value: format?.type === "json_object" ? parsedValue : content,
           raw: envelope,
-          requestedModel: this.model,
+          requestedModel: model,
           resolvedModel: returnedModel,
           model: returnedModel,
           mode: policy.thinking.type,
@@ -493,6 +548,7 @@ export class ModelDispatcher {
           usage,
           requestHash: hash,
           responseHash,
+          wireSha256,
           policyHash,
           registryVersion: TEXT_PRIMARY_REGISTRY_VERSION,
           attempts: [...retryEvidence],

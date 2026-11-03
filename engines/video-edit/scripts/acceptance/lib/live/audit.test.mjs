@@ -48,10 +48,11 @@ test("audit: every stream attempt is admitted and settled separately; call cap r
   await assert.rejects(() => collect(f.listeners.get("llm/stream")(request, next)), /上限/); assert.equal(calls, 1);
 });
 
-test("audit: retries accumulate actual tokens and conservative reservations", async (t) => {
-  const f = mounted(t); const call = f.listeners.get("llm/stream"); await collect(call(request, valid)); await collect(call(request, valid));
+test("audit: retries get separate reservations and accumulate measured tokens", async (t) => {
+  const f = mounted(t, { maxLlmTokens: 1010 }); const call = f.listeners.get("llm/stream"); await collect(call(request, valid)); await collect(call(request, valid));
   assert.equal(f.budget.summary().actual.llmCalls, 2); assert.equal(f.budget.summary().actual.llmTokens, 20);
-  assert.equal(f.budget.summary().used.llmTokens, 2000);
+  assert.equal(f.budget.summary().used.llmTokens, 20);
+  await assert.rejects(() => collect(call(request, valid)), /整轮 token 上限/);
 });
 
 test("audit: absent, unsafe or interrupted stream usage freezes the next attempt before external I/O", async (t) => {

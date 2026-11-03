@@ -329,11 +329,28 @@ export class WorkloomLLMEngine {
      * 真机教训（VID-1022）：首版实现返回已解析对象，而
      * `requirement-discovery-engine.js:262` 是 `return JSON.parse(extracted)` →
      * `JSON.parse(对象)` 走 `String(对象)` → `"[object Object]" is not valid JSON`，
-     * SceneArchitect 仍然全失败。此实现含输入截断与扫描预算，避免大响应冻结事件循环。
+     * SceneArchitect 仍然全失败。完整结构化回包直接解析，只有旧式混合文本受扫描预算约束。
      */
     if (!text || typeof text !== "string") return null;
-    const MAX_INPUT_LEN = 200_000;
-    const input = text.length > MAX_INPUT_LEN ? text.slice(0, MAX_INPUT_LEN) : text;
+    const whole = text.trim();
+    try {
+      JSON.parse(whole);
+      return whole;
+    } catch {
+      // Legacy vendor responses may wrap an otherwise complete JSON object in a code fence.
+    }
+    const fencedWhole = /^\x60\x60\x60json\s*([\s\S]*?)\s*\x60\x60\x60$/i.exec(whole);
+    if (fencedWhole?.[1]) {
+      const candidate = fencedWhole[1].trim();
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {
+        /* fall through to the bounded legacy scan */
+      }
+    }
+    if (whole.length > 200_000) return null;
+    const input = whole;
 
     const fenced = input.match(/```json\s*([\s\S]*?)\s*```/i);
     if (fenced?.[1]) {
@@ -341,15 +358,6 @@ export class WorkloomLLMEngine {
       try {
         JSON.parse(candidate);
         return candidate;
-      } catch {
-        /* 继续 */
-      }
-    }
-    const whole = input.trim();
-    if (whole) {
-      try {
-        JSON.parse(whole);
-        return whole;
       } catch {
         /* 继续 */
       }

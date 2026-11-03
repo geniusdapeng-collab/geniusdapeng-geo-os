@@ -113,8 +113,8 @@
       "sourceSha256": "b1f46d73da0727a0d3bcd3d485839f224bc6867fcf6b396c138706aa5c5fe828",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "targetMode": "100644",
-      "targetBytes": 49973,
-      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
+      "targetBytes": 50140,
+      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
       "transform": "none"
     },
     {
@@ -252,5 +252,5 @@
       "transform": "none"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

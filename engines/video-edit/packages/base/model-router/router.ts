@@ -108,6 +108,8 @@ export interface ModelTrace {
   reasoningTokens?: number;
   outputCeiling?: number;
   inputTokenEstimate?: number;
+  inputTokenUpperBound?: number;
+  inputTokenBasis?: string;
   imageCount?: number;
   policyVersion?: string;
   registryVersion?: string;
@@ -263,6 +265,8 @@ function traceFromResult(
     reasoningTokens: result.reasoningTokens,
     outputCeiling: result.outputCeiling,
     inputTokenEstimate: result.inputTokenEstimate,
+    inputTokenUpperBound: result.inputTokenUpperBound,
+    inputTokenBasis: result.inputTokenBasis,
     imageCount: result.imageCount,
     policyVersion: result.policyVersion,
     registryVersion: result.registryVersion,
@@ -571,7 +575,7 @@ export async function routeSmart(
             temperature: task.generation?.temperature ?? scenePolicy.temperature,
             topP: task.generation?.topP,
           }),
-      retries: task.generation?.maxTokens === undefined ? 0 : 0,
+      retries: 0,
     });
     sceneCircuits.delete(scene);
     const credits = computeCredits({

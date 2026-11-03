@@ -4,7 +4,7 @@
  */
 import type pg from "pg";
 import { gatewayAppend } from "../workdata/gateway.js";
-import type { EventSink } from "./router.js";
+import type { EventSink, ModelTrace } from "./router.js";
 
 export class GatewayEventSink implements EventSink {
   constructor(
@@ -30,10 +30,16 @@ export class GatewayEventSink implements EventSink {
     });
   }
 
-  async recordModelTrace(t: { model_id: string; tier: string; window: string; credits: number; action: string; reused?: boolean; scene?: string; bill_to?: "tenant" | "platform" }) {
+  async recordModelTrace(t: ModelTrace) {
     await this.write(
       { action: t.reused ? "memory.reuse" : "model.call", after: { action: t.action, model: t.model_id, reused: t.reused ?? false, scene: t.scene, bill_to: t.bill_to ?? "tenant" } },
-      { model_id: t.model_id, tier: t.tier, window: t.window, credits: t.credits },
+      { model_id: t.model_id, tier: t.tier, window: t.window, credits: t.credits,
+        mode: t.mode, effort: t.effort, finishReason: t.finishReason,
+        requestHash: t.requestHash, responseHash: t.responseHash, responseId: t.responseId,
+        inputTokens: t.inputTokens, outputTokens: t.outputTokens, reasoningTokens: t.reasoningTokens,
+        outputCeiling: t.outputCeiling, inputTokenEstimate: t.inputTokenEstimate,
+        inputTokenUpperBound: t.inputTokenUpperBound, inputTokenBasis: t.inputTokenBasis,
+        imageCount: t.imageCount, policyVersion: t.policyVersion, registryVersion: t.registryVersion },
     );
   }
 

@@ -8,27 +8,21 @@
  * The token estimate helper remains only for explanatory UI copy. Production
  * dispatch and tests use the pinned official tokenizer.
  */
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { Tokenizer } from "tokenizers";
+import { DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS } from "./deepseek-window.mjs";
+
+export {
+  DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS, DEEPSEEK_IMAGE_TOKEN_LIMIT,
+  DEEPSEEK_MAX_IMAGES, DEEPSEEK_REQUEST_BODY_LIMIT_BYTES, DEEPSEEK_IMAGE_LIMIT_BYTES,
+  DEEPSEEK_TOKENIZER_SHA256, DEEPSEEK_TOKENIZER_SOURCE, DEEPSEEK_INPUT_TOKEN_BASIS,
+  countDeepSeekTokens, getDeepSeekTokenizer, planDeepSeekWindow,
+} from "./deepseek-window.mjs";
 
 export const DEEPSEEK_FLASH_MODEL_ID = "deepseek-flash" as const;
-export const DEEPSEEK_FLASH_CONTEXT_TOKENS = 1_048_576 as const;
-export const DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS = 393_216 as const;
-export const DEEPSEEK_IMAGE_TOKEN_LIMIT = 1_024 as const;
-export const DEEPSEEK_MAX_IMAGES = 600 as const;
-export const DEEPSEEK_REQUEST_BODY_LIMIT_BYTES = 48 * 1024 * 1024;
-export const DEEPSEEK_IMAGE_LIMIT_BYTES = 32 * 1024 * 1024;
-export const DEEPSEEK_TOKENIZER_SHA256 =
-  "89085f12ef79460ac5f66d1119325ddfc694b4ab209d80bbd81d35f081dc9614" as const;
-export const TEXT_PRIMARY_REGISTRY_VERSION = "2026-10-30.1" as const;
+export const TEXT_PRIMARY_REGISTRY_VERSION = "2026-11-03.1" as const;
 export const TEXT_PRIMARY_POLICY_VERSION = "2026-10-30.1" as const;
 
 /** @deprecated Legacy compatibility only. New dispatches use the maximum legal window. */
 export const DEFAULT_JSON_OUTPUT_TOKENS = 16_384 as const;
-
-const DEEPSEEK_TOKENIZER_URL = new URL("./assets/deepseek-v4-tokenizer.json", import.meta.url);
-let tokenizerPromise: Promise<Tokenizer> | undefined;
 
 export interface ImageUrlPart {
   type: "image_url";
@@ -54,8 +48,12 @@ export type ModelContentPart = TextPart | ImageUrlPart | FileImagePart;
 export type ModelMessageContent = string | ModelContentPart[];
 
 export interface BudgetMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: ModelMessageContent;
+  role: "system" | "developer" | "user" | "assistant" | "tool";
+  content: ModelMessageContent | null;
+  tool_calls?: unknown[];
+  tool_call_id?: string;
+  reasoning_content?: string;
+  wo_eos?: boolean;
 }
 
 export function isDeepSeekFlashModel(model: string | null | undefined): boolean {
@@ -81,143 +79,29 @@ export function estimateDeepSeekTokens(text: string): number {
   return Math.ceil(cjk * 0.6 + textChars * 0.3 + symbols);
 }
 
-async function loadOfficialTokenizer(): Promise<Tokenizer> {
-  let bytes: Buffer;
-  try {
-    bytes = await readFile(DEEPSEEK_TOKENIZER_URL);
-  } catch (error) {
-    throw new Error("DEEPSEEK_TOKENIZER_MISSING", { cause: error });
-  }
-  const digest = createHash("sha256").update(bytes).digest("hex");
-  if (digest !== DEEPSEEK_TOKENIZER_SHA256) throw new Error("DEEPSEEK_TOKENIZER_CHANGED");
-  try {
-    return Tokenizer.fromString(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  } catch (error) {
-    throw new Error("DEEPSEEK_TOKENIZER_INVALID", { cause: error });
-  }
-}
-
-export function getDeepSeekTokenizer(): Promise<Tokenizer> {
-  tokenizerPromise ??= loadOfficialTokenizer();
-  return tokenizerPromise;
-}
-
-export async function countDeepSeekTokens(value: string): Promise<number> {
-  const tokenizer = await getDeepSeekTokenizer();
-  return (await tokenizer.encode(value)).getLength();
-}
-
-function dataUrlBytes(value: string): number {
-  const comma = value.indexOf(",");
-  if (comma < 0) return 0;
-  const payload = value.slice(comma + 1);
-  if (!/;base64(?:;|,)/i.test(value.slice(0, comma + 1))) return payload.length;
-  return Math.floor((payload.length * 3) / 4)
-    - (payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0);
-}
-
-function sanitizeForTokenizer(value: unknown): {
-  value: unknown;
-  imageCount: number;
-  inlineImageBytes: number;
-} {
-  let imageCount = 0;
-  let inlineImageBytes = 0;
-  const visit = (entry: unknown): unknown => {
-    if (Array.isArray(entry)) return entry.map(visit);
-    if (!entry || typeof entry !== "object") return entry;
-    const record = entry as Record<string, unknown>;
-    if (record.type === "image_url" && record.image_url && typeof record.image_url === "object") {
-      imageCount += 1;
-      const image = record.image_url as Record<string, unknown>;
-      const url = typeof image.url === "string" ? image.url : "";
-      if (url.startsWith("data:")) inlineImageBytes += dataUrlBytes(url);
-      return { ...record, image_url: { ...image, url: "<image>" } };
-    }
-    if (record.type === "file" && typeof record.file_data === "string") {
-      imageCount += 1;
-      inlineImageBytes += dataUrlBytes(record.file_data);
-      return { ...record, file_data: "<image>" };
-    }
-    if (record.type === "file" && typeof record.file_id === "string") imageCount += 1;
-    return Object.fromEntries(Object.entries(record).map(([key, item]) => [key, visit(item)]));
-  };
-  return { value: visit(value), imageCount, inlineImageBytes };
-}
-
-function validateImages(
-  messages: BudgetMessage[],
-  imageCount: number,
-  inlineImageBytes: number,
-): void {
-  if (imageCount > DEEPSEEK_MAX_IMAGES) throw new Error("DEEPSEEK_IMAGE_COUNT_EXCEEDED");
-  if (inlineImageBytes > DEEPSEEK_IMAGE_LIMIT_BYTES) throw new Error("DEEPSEEK_IMAGE_TOO_LARGE");
-  for (const message of messages) {
-    if (message.role !== "user" && Array.isArray(message.content)
-      && message.content.some((part) => part.type === "image_url" || part.type === "file")) {
-      throw new Error("DEEPSEEK_IMAGE_ROLE_INVALID");
-    }
-  }
-}
-
-export interface DeepSeekWindowPlan {
-  inputTokens: number;
-  imageTokens: number;
-  outputCeiling: number;
-  productConstrained: boolean;
-  requestBytes: number;
-  imageCount: number;
-}
-
-export async function planDeepSeekWindow(input: {
+export interface DeepSeekWindowOptions {
   messages: BudgetMessage[];
   tools?: unknown;
   responseFormat?: unknown;
+  thinking?: unknown;
+  reasoningEffort?: unknown;
+  requestBytes?: number;
   /** Host-priced image allowance for encoded media outside the token messages. */
   imageTokens?: number;
   contextTokens?: number;
   maxOutputTokens?: number;
   productOutputCap?: number;
-}): Promise<DeepSeekWindowPlan> {
-  const contextTokens = input.contextTokens ?? DEEPSEEK_FLASH_CONTEXT_TOKENS;
-  const maxOutputTokens = input.maxOutputTokens ?? DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS;
-  if (!Number.isSafeInteger(contextTokens) || contextTokens < 1) throw new Error("DEEPSEEK_CONTEXT_INVALID");
-  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1) {
-    throw new Error("DEEPSEEK_OUTPUT_BUDGET_INVALID");
-  }
+}
 
-  const requestEnvelope = {
-    messages: input.messages,
-    tools: input.tools ?? [],
-    responseFormat: input.responseFormat ?? null,
-  };
-  const requestBytes = Buffer.byteLength(JSON.stringify(requestEnvelope), "utf8");
-  if (requestBytes > DEEPSEEK_REQUEST_BODY_LIMIT_BYTES) throw new Error("DEEPSEEK_REQUEST_BODY_TOO_LARGE");
-
-  const sanitized = sanitizeForTokenizer(requestEnvelope);
-  validateImages(input.messages, sanitized.imageCount, sanitized.inlineImageBytes);
-  const textTokens = await countDeepSeekTokens(JSON.stringify(sanitized.value));
-  const framingTokens = 32 + Math.max(1, input.messages.length) * 8;
-  const hostImageTokens = input.imageTokens ?? 0;
-  if (!Number.isSafeInteger(hostImageTokens) || hostImageTokens < 0) {
-    throw new Error("DEEPSEEK_IMAGE_TOKEN_BUDGET_INVALID");
-  }
-  const imageTokens = sanitized.imageCount * DEEPSEEK_IMAGE_TOKEN_LIMIT + hostImageTokens;
-  const inputTokens = textTokens + framingTokens + imageTokens;
-  const legalRemaining = contextTokens - inputTokens;
-  if (legalRemaining < 1) throw new Error("DEEPSEEK_CONTEXT_EXCEEDED");
-
-  const mathematical = Math.min(maxOutputTokens, legalRemaining);
-  const requested = input.productOutputCap ?? mathematical;
-  if (!Number.isSafeInteger(requested) || requested < 1) throw new Error("DEEPSEEK_OUTPUT_BUDGET_INVALID");
-  return {
-    inputTokens,
-    imageTokens,
-    outputCeiling: Math.min(mathematical, requested),
-    productConstrained: requested < mathematical,
-    requestBytes,
-    imageCount: sanitized.imageCount,
-  };
+export interface DeepSeekWindowPlan {
+  inputTokens: number;
+  inputTokenUpperBound: number;
+  inputTokenBasis: string;
+  imageTokens: number;
+  outputCeiling: number;
+  productConstrained: boolean;
+  requestBytes: number;
+  imageCount: number;
 }
 
 /** @deprecated The dispatcher uses the complete request window. */

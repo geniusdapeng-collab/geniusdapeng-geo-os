@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { createModelDispatcher } from "../src/model-routing/dispatcher.mjs";
 import { resolveScenePolicy } from "../src/model-routing/policy.mjs";
 import {
@@ -136,6 +137,55 @@ test("input token count reduces output ceiling without truncating input", async 
   assert.ok(request.max_tokens < 20_000);
 });
 
+test("measures and sends the same frozen system, source, history and tool schema", async () => {
+  const messages = [
+    { role: "system", content: "完整任务要求，返回 JSON" },
+    { role: "assistant", content: "先前工作和来源" },
+    { role: "user", content: "原始证据：" + "逐条核对".repeat(1_200) },
+  ];
+  const tools = [{ type: "function", function: { name: "lookup", parameters: {
+    type: "object", properties: { claim: { type: "string", description: "原文" } },
+  } } }];
+  const original = structuredClone({ messages, tools });
+  let wire;
+  const dispatcher = createModelDispatcher({
+    apiKey: "test-only", baseUrl: "https://api.deepseek.com", contextTokens: 14_000,
+    fetchImpl: async (_url, init) => {
+      wire = init.body;
+      return new Response(JSON.stringify(envelope('{"ok":true}')));
+    },
+  });
+  const planning = dispatcher.prepareTask({ scene: "text.adapt", messages, tools });
+  messages[2].content += "不得出现的修改";
+  tools[0].function.parameters.properties.claim.description = "不得出现的修改";
+  const prepared = await planning;
+  messages.pop();
+  tools.pop();
+  const result = await prepared.execute();
+  assert.deepEqual(JSON.parse(wire).messages, original.messages);
+  assert.deepEqual(JSON.parse(wire).tools, original.tools);
+  assert.equal(JSON.parse(wire).max_tokens, 14_000 - prepared.budget.inputTokens);
+  assert.equal(result.receipt.wireSha256, createHash("sha256").update(wire).digest("hex"));
+});
+
+test("transport body interruption keeps usage unknown and does not retry", async () => {
+  let calls = 0;
+  const dispatcher = createModelDispatcher({
+    apiKey: "test-only", baseUrl: "https://api.deepseek.com", maxRetries: 2,
+    fetchImpl: async () => {
+      calls++;
+      return new Response(new ReadableStream({
+        start(controller) { controller.error(new Error("stream ended without usage")); },
+      }));
+    },
+  });
+  await assert.rejects(dispatcher.completeTask({
+    scene: "text.adapt", messages: [{ role: "user", content: "完整资料" }],
+  }), (error) => error.code === "MODEL_RESPONSE_UNKNOWN" && error.unknown === true
+    && error.retryable === false && /^[a-f0-9]{64}$/u.test(error.wireSha256));
+  assert.equal(calls, 1);
+});
+
 test("wrong model and truncated output fail closed while preserving usage evidence", async () => {
   for (const [payload, code] of [
     [envelope("完整回答", { model: "kimi-k2.6" }), "MODEL_IDENTITY_CHANGED"],
@@ -158,8 +208,17 @@ test("wrong model and truncated output fail closed while preserving usage eviden
       }),
       (error) => {
         assert.equal(error.code, code);
-        assert.equal(error.metering.inputTokens, 100);
-        assert.equal(error.usageReceipt.providerRequestId, "request-identity-1");
+        if (code === "MODEL_OUTPUT_TRUNCATED") {
+          assert.equal(error.metering.inputTokens, 100);
+          assert.equal(error.usageReceipt.providerRequestId, "request-identity-1");
+          assert.equal(error.finishReason, "length");
+          assert.equal(error.unknown, false);
+        } else {
+          assert.equal(error.unknown, true);
+          assert.equal(error.metering, undefined);
+          assert.equal(error.providerRequestId, "request-identity-1");
+          assert.match(error.responseHash, /^[a-f0-9]{64}$/u);
+        }
         return true;
       },
     );

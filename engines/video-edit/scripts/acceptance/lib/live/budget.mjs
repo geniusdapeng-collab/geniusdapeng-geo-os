@@ -10,7 +10,7 @@
  * 纪律：
  *   1. 上限只能收紧不能放宽：profile 声明值高于基座下限时按基座下限执行并写告警；
  *   2. 图片按张、视频按秒与段数双计量；LLM 按调用次数与 token 双计量；
- *   3. 任何一次调用前先占额（reserve），调用后回填实际用量（commit）；异常未回填则按预估计入（不释放）；
+ *   3. 调用前先预占，取得完整计量后按实际用量结算；实际用量未知则保留预占并冻结后续付费调用；
  *   4. 台账不得记录提示词全文以外的秘密；密钥永不进账。
  */
 import { appendFileSync, constants, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -65,6 +65,7 @@ export function normalizeBudgets(declared = {}) {
 
 const DEFAULT_PRICING = { llmCnyPer1kTokens: 0.002, imageCny: 0.35, videoCnyPerSecond: 1.2 };
 const SCHEMA = "workloom.live-budget/v2";
+export const ACTUAL_USAGE_SETTLEMENT = "actual-usage";
 const number = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
 const integer = (value) => number(value) && Number.isSafeInteger(value);
 
@@ -137,7 +138,7 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
         blocked.push({ taskId: row.taskId, reservationId: row.reservationId, reason: row.reason });
       } else if (row.event !== "budget-init") throw new Error("预算账本包含未知事件，禁止继续付费调用");
     }
-    if (init[0] && (!integer(init[0].startedAt) || init[0].startedAt > Date.now() || JSON.stringify(init[0].pricing) !== JSON.stringify(pricing))) throw new Error("预算账本初始时间/单价非法，禁止继续付费调用");
+    if (init[0] && (!integer(init[0].startedAt) || init[0].startedAt > Date.now() || JSON.stringify(init[0].pricing) !== JSON.stringify(pricing) || (init[0].settlementPolicy !== undefined && init[0].settlementPolicy !== ACTUAL_USAGE_SETTLEMENT))) throw new Error("预算账本初始时间/单价/结算口径非法，禁止继续付费调用");
     return { init: init[0] ?? null, reservations, blocked, frozen };
   }
 
@@ -147,7 +148,7 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
       if (JSON.stringify(state.init.budgets) !== JSON.stringify(budgets) || state.init.environmentKind !== environmentKind) {
         throw new Error("共享运行的预算/环境不一致，禁止重置或覆盖账本");
       }
-    } else record({ event: "budget-init", startedAt: Date.now(), budgets, pricing });
+    } else record({ event: "budget-init", startedAt: Date.now(), budgets, pricing, settlementPolicy: ACTUAL_USAGE_SETTLEMENT });
   });
 
   const emptyUsage = () => ({ llmCalls: 0, llmTokens: 0, images: 0, videoClips: 0, videoSeconds: 0, costCny: 0 });
@@ -158,18 +159,26 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
     const unmeasured = emptyUsage();
     for (const reservation of state.reservations.values()) {
       const s = reservation.settlement;
-      const conservative = { tokens: Math.max(reservation.tokens, s?.tokens ?? 0), units: Math.max(reservation.units, s?.units ?? 0) };
-      const cost = Math.max(reservation.estimateCny, estimate({ kind: reservation.kind, ...conservative }), s?.costCny ?? 0);
       const add = (to, tokens, units, costCny, calls = reservation.kind === "llm" ? 1 : 0) => {
         if (reservation.kind === "llm") { to.llmCalls += calls; to.llmTokens += tokens; }
         if (reservation.kind === "image") to.images += units;
         if (reservation.kind === "video") { to.videoClips += units > 0 ? 1 : 0; to.videoSeconds += units; }
         to.costCny += costCny;
       };
-      add(used, conservative.tokens, conservative.units, cost, reservation.kind === "llm" ? Math.max(1, s?.calls ?? 0) : 0);
+      if (s?.measured === true) {
+        const actualCost = s.costCny ?? estimate(s);
+        add(actual, s.tokens, s.units, actualCost, s.calls);
+        // Runs created before settlementPolicy keep their original accounting when replayed.
+        if (state.init.settlementPolicy === ACTUAL_USAGE_SETTLEMENT) {
+          add(used, s.tokens, s.units, actualCost, s.calls);
+          continue;
+        }
+      }
+      const conservative = { tokens: Math.max(reservation.tokens, s?.tokens ?? 0), units: Math.max(reservation.units, s?.units ?? 0) };
+      const cost = Math.max(reservation.estimateCny, estimate({ kind: reservation.kind, ...conservative }), s?.costCny ?? 0);
+      add(used, conservative.tokens, conservative.units, cost, Math.max(1, s?.calls ?? 0));
       if (!s) add(pending, reservation.tokens, reservation.units, reservation.estimateCny);
-      else if (s.measured) add(actual, s.tokens, s.units, s.costCny ?? estimate(s), s.calls);
-      else add(unmeasured, conservative.tokens, conservative.units, cost);
+      else if (!s.measured) add(unmeasured, conservative.tokens, conservative.units, cost);
     }
     return { used, pending, actual, unmeasured };
   }
@@ -217,7 +226,10 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
       if ((Date.now() - state.init.startedAt) / 60000 >= budgets.maxWallClockMin) return deny("reserve", args, "实测墙钟已达上限", est);
       if (exceededState(state).length) return deny("reserve", args, "此前实际用量已超额，禁止后续付费调用", est);
       if (used.costCny + est > budgets.maxCostCny) return deny("reserve", args, "本次预占将超过成本上限", est);
-      if (kind === "llm" && (used.llmCalls + 1 > budgets.maxLlmCalls || used.llmTokens + tokens > budgets.maxLlmTokens)) return deny("reserve", args, "本次预占将超过 LLM 调用/token 上限", est);
+      if (kind === "llm" && used.llmCalls + 1 > budgets.maxLlmCalls) return deny("reserve", args, "本次预占将超过 LLM 整轮调用次数上限", est);
+      if (kind === "llm" && used.llmTokens + tokens > budgets.maxLlmTokens) {
+        return deny("reserve", args, `本次预占 ${tokens} token，超过 LLM 整轮 token 上限 ${budgets.maxLlmTokens} 的剩余额度 ${budgets.maxLlmTokens - used.llmTokens}`, est);
+      }
       if (kind === "image" && used.images + units > budgets.maxImages) return deny("reserve", args, "本次预占将超过图片张数上限", est);
       if (kind === "video" && (units < budgets.minVideoSeconds || units > budgets.maxVideoSeconds || used.videoClips + 1 > budgets.maxVideoClips || used.videoSeconds + units > budgets.maxVideoSecondsTotal)) {
         return deny("reserve", args, "本次视频时长/段数/累计秒数超出允许范围", est);
@@ -228,7 +240,7 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
     });
   }
 
-  /** 回填实际用量：实际超过预估的部分补记；实际少于预估**不退还**（保守口径，防超支） */
+  /** 按完整计量结算。没有取得完整计量时，继续按预占及已知用量的较大值入账。 */
   function commit({ taskId, reservationId = taskId, kind, units = 0, tokens = 0, calls = kind === "llm" ? 1 : 0, costCny = null, measured = false, status = "ok", detail = "" }) {
     return locked(() => {
       const args = { taskId, reservationId, kind, units, tokens, calls, costCny, measured, status };
@@ -269,7 +281,8 @@ export function createBudget({ budgets: declaredBudgets, outDir, environmentKind
       runId,
       budgets,
       pricing,
-      costBasis: { used: "预占/实际用量取较大者的冻结单价估算", actual: "已取得供应商计量的用量按冻结单价估算；非供应商账单", unmeasured: "实际量不可得，继续持有预占；不能称为实际零用量", invoiced: null },
+      ...(state.init.settlementPolicy === undefined ? {} : { settlementPolicy: state.init.settlementPolicy }),
+      costBasis: { used: state.init.settlementPolicy === ACTUAL_USAGE_SETTLEMENT ? "完整计量按实际用量结算；累计加上待结算及计量不全的保守预占" : "预占/实际用量取较大者的冻结单价估算", actual: "已取得供应商计量的用量按冻结单价估算；非供应商账单", unmeasured: "实际量不可得，继续持有预占；不能称为实际零用量", invoiced: null },
       used: { ...rounded(used), wallClockMin: Number(((Date.now() - state.init.startedAt) / 60000).toFixed(2)) },
       pending: rounded(pending),
       actual: rounded(actual),

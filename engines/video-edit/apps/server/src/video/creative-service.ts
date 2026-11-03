@@ -4,6 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import type { PoolClient } from "pg";
 import { getAppPool, withWorkspace, type TenantScope } from "@workloom/db";
+import { DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS, DEEPSEEK_INPUT_TOKEN_BASIS,
+  DEEPSEEK_REQUEST_BODY_LIMIT_BYTES } from "@workloom/base/model-router";
 import {
   assertCreativeContract, compileCreativeContract, creativeCanonical, creativeHash, CreativeContractError,
   extractProductVisualAuthority,
@@ -328,8 +330,12 @@ interface SessionInput {
 }
 interface ModelRequest {
   requestHash: string; inputChars: number; imageInputTokens?: number; maxOutputTokens: number; model: string; attempt: number;
+  requestBytes: number; inputTokenEstimate: number; inputTokenUpperBound: number; inputTokenBasis: string;
 }
-interface ModelOutcome { usageKnown: boolean; success: boolean; inputTokens?: number; outputTokens?: number }
+interface ModelOutcome {
+  usageKnown: boolean; success: boolean; inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
+  finishReason?: string; providerRequestId?: string; responseHash?: string;
+}
 export async function createCreativeExecutionSession(input: SessionInput) {
   const scope: CreativeScope = { ...input.scope, projectId: input.projectId };
   const { runId, model } = input;
@@ -511,13 +517,17 @@ export async function createCreativeExecutionSession(input: SessionInput) {
 
   async function beforeModelCall(request: ModelRequest): Promise<string> {
     const imageInputTokens = request.imageInputTokens === undefined ? 0 : request.imageInputTokens;
+    const inputLimit = request.inputTokenUpperBound, outputLimit = request.maxOutputTokens;
     if (!budget || request.model !== model || !SHA.test(request.requestHash)
+      || request.inputTokenBasis !== DEEPSEEK_INPUT_TOKEN_BASIS || request.requestBytes > DEEPSEEK_REQUEST_BODY_LIMIT_BYTES
+      || request.requestBytes !== request.inputChars
       || !Number.isSafeInteger(imageInputTokens) || imageInputTokens < 0
-      || ![request.inputChars, request.maxOutputTokens, request.attempt].every(n => Number.isSafeInteger(n) && n > 0)) {
+      || ![request.requestBytes, request.inputTokenEstimate, inputLimit, outputLimit, request.attempt].every(n => Number.isSafeInteger(n) && n > 0)
+      || inputLimit < request.inputTokenEstimate || request.inputTokenEstimate < imageInputTokens || outputLimit > DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS
+      || inputLimit + outputLimit > DEEPSEEK_FLASH_CONTEXT_TOKENS) {
       return creativeError("CREATIVE_BUDGET_REQUEST_INVALID", "模型请求缺少可信价格、活动阶段或请求边界");
     }
-    // Serialized UTF-8 bytes bound text. Reserve provider framing and separately billed image tokens too.
-    const inputLimit = request.inputChars + 1024 + imageInputTokens, outputLimit = request.maxOutputTokens;
+    // Wire bytes and model tokens are separate. The transport plan already includes the vision allowance.
     const tokens = inputLimit + outputLimit, micros = costMicros(inputLimit, outputLimit, budget.price);
     return reserve(modelOperation, request.attempt, request.requestHash,
       { ...request, imageInputTokens, inputLimit, outputLimit, price: budget.price }, micros, tokens);
@@ -586,12 +596,24 @@ export async function createCreativeExecutionSession(input: SessionInput) {
       const operation = rows[0];
       if (!operation || operation.state !== "dispatched") return creativeError("CREATIVE_BUDGET_RECEIPT_CONFLICT", "模型请求回执已终结或不存在");
       const inputTokens = outcome.inputTokens ?? -1, outputTokens = outcome.outputTokens ?? -1;
-      const valid = outcome.usageKnown && Number.isSafeInteger(inputTokens) && Number.isSafeInteger(outputTokens)
-        && inputTokens >= 0 && outputTokens >= 0 && inputTokens <= operation.request.inputLimit && outputTokens <= operation.request.outputLimit;
+      const totalTokens = outcome.totalTokens, reasoningTokens = outcome.reasoningTokens;
+      const coherent = outcome.usageKnown && Number.isSafeInteger(inputTokens) && Number.isSafeInteger(outputTokens)
+        && inputTokens >= 0 && outputTokens >= 0 && Number.isSafeInteger(inputTokens + outputTokens)
+        && (totalTokens === undefined || (Number.isSafeInteger(totalTokens) && totalTokens === inputTokens + outputTokens))
+        && (reasoningTokens === undefined || (Number.isSafeInteger(reasoningTokens) && reasoningTokens >= 0 && reasoningTokens <= outputTokens));
+      const valid = coherent && inputTokens <= operation.request.inputLimit && outputTokens <= operation.request.outputLimit;
+      const usage = { inputTokens, outputTokens, ...(totalTokens !== undefined ? { totalTokens } : {}),
+        ...(reasoningTokens !== undefined ? { reasoningTokens } : {}) };
+      const wireEvidence = {
+        ...(outcome.finishReason === "stop" || outcome.finishReason === "length" ? { finishReason: outcome.finishReason } : {}),
+        ...(outcome.providerRequestId && /^[a-zA-Z0-9._:-]{1,200}$/.test(outcome.providerRequestId) ? { providerRequestId: outcome.providerRequestId } : {}),
+        ...(outcome.responseHash && SHA.test(outcome.responseHash) ? { responseHash: outcome.responseHash } : {}),
+      };
       await client.query(
         `UPDATE video_pipeline_operations SET state=$2,receipt=$3,cost=$4,finished_at=now() WHERE id=$1`,
         [reservation, valid ? (outcome.success ? "accepted" : "failed") : "unknown",
-          creativeCanonical(valid ? { usageKnown: true, success: outcome.success, inputTokens, outputTokens } : { usageKnown: false }),
+          creativeCanonical(valid ? { usageKnown: true, success: outcome.success, ...usage, ...wireEvidence }
+            : { usageKnown: false, ...(coherent ? { reportedUsage: usage, ...wireEvidence } : {}) }),
           creativeCanonical(valid ? { micros: costMicros(inputTokens, outputTokens, budget.price), tokens: inputTokens + outputTokens, reserved: false } : operation.cost)],
       );
       return valid;

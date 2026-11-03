@@ -213,7 +213,8 @@ export class SingleRequestModel {
             pricingSnapshotHash: this.pricingSnapshotHash,
             tokenBoundProofHash: dataHash(this.contextProof),
           } : null;
-          const code = error?.unknown === true && !metering && !usageReceipt
+          const identityFailure = ['MODEL_IDENTITY_CHANGED', 'MODEL_IDENTITY_MISSING'].includes(error?.code);
+          const code = error?.unknown === true && !metering && !usageReceipt && !identityFailure
             ? 'MODEL_RESULT_UNKNOWN'
             : typeof error?.code === 'string' ? error.code : 'MODEL_RESULT_UNKNOWN';
           const wrapped = new ContentOpsWorkerError(
@@ -224,6 +225,8 @@ export class SingleRequestModel {
           if (metering) wrapped.metering = metering;
           if (usageReceipt) wrapped.usageReceipt = usageReceipt;
           if (error?.providerRequestId !== undefined) wrapped.providerRequestId = error.providerRequestId;
+          if (error?.wireSha256 !== undefined) wrapped.wireSha256 = error.wireSha256;
+          if (error?.finishReason !== undefined) wrapped.finishReason = error.finishReason;
           if (Array.isArray(error?.attempts)) wrapped.attempts = error.attempts;
           throw wrapped;
         }
@@ -240,9 +243,11 @@ export class SingleRequestModel {
           const value = validateModelResult(kind, result.value, input);
           return { value, bytes: Buffer.from(JSON.stringify(value) + '\n'), mime: 'application/json', providerRequestId,
             usage: metering, usageReceipt, usageUnknown: false, executed: true, dryRun: false,
-            evidence: { kind, requestHash, responseHash: result.responseHash,
+            evidence: { kind, requestHash, responseHash: result.responseHash, wireSha256: result.wireSha256,
               checker: CHECK_KINDS.has(kind), mediaInspection: false, policy: result.receipt.policy,
               finishReason: result.finishReason, reasoningTokens: result.usage.reasoningTokens,
+              outputCeiling: result.outputCeiling, inputTokenEstimate: result.receipt.budget.inputTokenEstimate,
+              inputTokenUpperBound: result.receipt.budget.inputTokens, inputTokenBasis: result.receipt.budget.inputTokenBasis,
               attempts: result.attempts ?? [] } };
         } catch (error) {
           const failure = error instanceof ContentOpsWorkerError

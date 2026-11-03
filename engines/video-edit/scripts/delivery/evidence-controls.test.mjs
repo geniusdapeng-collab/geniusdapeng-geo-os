@@ -517,8 +517,9 @@ test("G05 measured zero-output video reservation reconciles zero actual clips (s
   const budgetPath = join(f.root, "live/budget-summary.json"); const original = JSON.parse(readFileSync(budgetPath));
   const budget = createBudget({ budgets: original.budgets, outDir: join(f.root, "live"), environmentKind: "deployed", runId: original.runId });
   assert.equal(budget.reserve({ taskId: "unused-video", kind: "video", units: 10 }).allowed, true);
+  assert.equal(budget.summary().pending.videoClips, 1);
   assert.equal(budget.commit({ taskId: "unused-video", kind: "video", units: 0, calls: 0, costCny: 0, measured: true, status: "blocked", detail: "Synthetic known unused provider attempt" }).committed, true);
-  const summary = budget.persist(); assert.equal(summary.actual.videoClips, 0); assert.equal(summary.used.videoClips, 1);
+  const summary = budget.persist(); assert.equal(summary.actual.videoClips, 0); assert.equal(summary.used.videoClips, 0);
   const livePath = join(f.root, "live/live-report.json"); const live = JSON.parse(readFileSync(livePath)); live.budget = summary; json(livePath, live);
   rebindAcceptance(f, null, ["live/budget-summary.json", "live/budget-ledger.jsonl"]);
   const result = cli(report, f.dir, ["--root", f.root]);

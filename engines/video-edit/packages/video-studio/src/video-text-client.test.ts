@@ -1,9 +1,11 @@
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import { completeVideoTextTask } from "./video-text-client.js";
-import { withCreativeBudget, type CreativeModelOutcome } from "./creative-runtime.js";
+import { creativeBudgetedFetch, withCreativeBudget, type CreativeModelOutcome, type CreativeModelRequest } from "./creative-runtime.js";
+import { DEEPSEEK_FLASH_CONTEXT_TOKENS, DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS } from "@workloom/base/model-router";
 
 const endpoint = {
   baseUrl: "https://api.deepseek.com",
@@ -79,8 +81,11 @@ describe("embedded video text dispatcher", () => {
       await expect(call()).resolves.toMatchObject({ value: { ok: true } });
     });
     expect(requests).toHaveLength(2);
-    expect(outcomes).toEqual([{ usageKnown: true, success: false, inputTokens: 100, outputTokens: 50 },
-      { usageKnown: true, success: true, inputTokens: 100, outputTokens: 50 }]);
+    expect(outcomes).toEqual([{ usageKnown: true, success: false, inputTokens: 100, outputTokens: 50,
+      providerRequestId: "video-text-request-1", responseHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      totalTokens: 150, reasoningTokens: 0, finishReason: kind === "truncated" ? "length" : "stop" },
+      { usageKnown: true, success: true, inputTokens: 100, outputTokens: 50, totalTokens: 150, reasoningTokens: 0, finishReason: "stop",
+        providerRequestId: "video-text-request-1", responseHash: expect.stringMatching(/^[0-9a-f]{64}$/) }]);
   });
 
   it.each(["wrong-identity", "missing-usage", "over-window"])("holds the charge and freezes dispatch when usage is unverified: %s", async kind => {
@@ -125,12 +130,13 @@ describe("embedded video text dispatcher", () => {
         endpoint: { ...endpoint, baseUrl: `http://127.0.0.1:${address.port}` },
         scene: "video.quality.producer-review",
         messages: [{ role: "user", content: [{ type: "text", text: "完整长评审" }] }],
-        tokenMessages: [{ role: "user", content: "完整长评审" }],
         timeoutMs: 2_000,
         requireJson: true,
       });
       expect(result.value).toEqual({ approved: true });
-      expect(JSON.parse(received)).toMatchObject({ model: "deepseek-flash", stream: false });
+      expect(JSON.parse(received)).toMatchObject({ model: "deepseek-flash", stream: false, max_tokens: 393_216,
+        messages: [{ role: "user", content: [{ type: "text", text: "完整长评审" }] }] });
+      expect(result.requestHash).toBe(createHash("sha256").update(received).digest("hex"));
       expect(globalFetch).not.toHaveBeenCalled();
     } finally {
       await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
@@ -144,7 +150,6 @@ describe("embedded video text dispatcher", () => {
       endpoint,
       scene: "video.quality.producer-review",
       messages: [{ role: "user", content: [{ type: "text", text: "完整评审" }] }],
-      tokenMessages: [{ role: "user", content: "完整评审" }],
       requireJson: true,
       fetchImpl: (async (_url, init) => {
         body = JSON.parse(String(init?.body));
@@ -163,6 +168,58 @@ describe("embedded video text dispatcher", () => {
     expect(result.value).toEqual({ ok: true });
     expect(result.requestHash).toHaveLength(64);
     expect(result.responseHash).toHaveLength(64);
+  });
+
+  it("uses the complete actual wire messages to reserve and send the remaining shared window", async () => {
+    const messages = [
+      { role: "system" as const, content: "输出 JSON；完整保留输入证据。" },
+      { role: "user" as const, content: `首段${" a".repeat(700_000)}末段` },
+    ];
+    const reservations: CreativeModelRequest[] = [];
+    let wire = "";
+    let actual: { messages: typeof messages; max_tokens: number; model: string } | undefined;
+    await withCreativeBudget({ beforeModelCall: async request => { reservations.push(request); return 1; },
+      afterModelCall: async () => undefined }, () => completeVideoTextTask({
+      endpoint, scene: "video.data.extract", requireJson: true, messages,
+      fetchImpl: (async (_url, init) => {
+        wire = String(init?.body);
+        actual = JSON.parse(wire);
+        return Response.json(envelope());
+      }) as typeof fetch,
+    }));
+    expect(actual?.messages).toEqual(messages);
+    expect(actual?.model).toBe(endpoint.model);
+    const [reservation] = reservations;
+    expect(reservation?.inputTokenUpperBound).toBeGreaterThan(655_360);
+    expect(actual?.max_tokens).toBe(Math.min(DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS,
+      DEEPSEEK_FLASH_CONTEXT_TOKENS - reservation!.inputTokenUpperBound!));
+    expect(reservation?.maxOutputTokens).toBe(actual?.max_tokens);
+    expect(reservation).toMatchObject({ requestBytes: Buffer.byteLength(wire), requestHash: createHash("sha256").update(wire).digest("hex") });
+  }, 20_000);
+
+  it("holds the reservation when total usage disagrees with provider components", async () => {
+    const outcomes: CreativeModelOutcome[] = [];
+    await expect(withCreativeBudget({ beforeModelCall: async () => 1,
+      afterModelCall: async (_id, outcome) => { outcomes.push(outcome); } }, () => completeVideoTextTask({
+      endpoint, scene: "video.data.extract", requireJson: true,
+      messages: [{ role: "user", content: "核对账本使用量" }],
+      fetchImpl: (async () => Response.json(envelope(undefined, { usage: {
+        prompt_tokens: 100, completion_tokens: 50, total_tokens: 1,
+      } }))) as typeof fetch,
+    }))).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+    expect(outcomes).toEqual([{ actualCny: null, usageKnown: false, success: false }]);
+  });
+
+  it("blocks a lower creative provider max_tokens before reservation or HTTP", async () => {
+    const transport = vi.fn(async () => Response.json(envelope()));
+    const beforeModelCall = vi.fn(async () => 1);
+    const send = creativeBudgetedFetch(transport);
+    await expect(withCreativeBudget({ beforeModelCall, afterModelCall: async () => undefined }, () => send(endpoint.baseUrl, {
+      method: "POST", body: JSON.stringify({ model: endpoint.model, max_tokens: 16_384,
+        thinking: { type: "disabled" }, messages: [{ role: "user", content: "完整文稿" }] }),
+    }))).rejects.toMatchObject({ code: "CREATIVE_REQUEST_UNVERIFIED" });
+    expect(beforeModelCall).not.toHaveBeenCalled();
+    expect(transport).not.toHaveBeenCalled();
   });
 
   it("rejects wrong model identity, truncation and missing usage after preserving the response", async () => {
