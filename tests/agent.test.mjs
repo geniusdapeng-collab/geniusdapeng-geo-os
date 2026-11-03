@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -30,6 +30,35 @@ test('PengManager CLI and MCP expose the complete reviewed catalog and local inv
   assert.deepEqual(result.catalog.tools.map(item => item.id), actual.tools.map(item => item.id));
   assert.deepEqual(calls, []);
 });
+test('embedded 30-second production preview never offers a direct paid command and reads only current process credential presence', async t => {
+  for (const env of [
+    { VOLCENGINE_ARK_API_KEY: '', ARK_API_KEY: 'test-only-ark-alias' },
+    { VOLCENGINE_ARK_API_KEY: '', ARK_API_KEY: '' },
+  ]) {
+    const { agent, calls, directory } = await fixture(t, { env });
+    await mkdir(path.join(directory, 'film'), { mode: 0o700 });
+    await writeFile(path.join(directory, 'film/route.json'), JSON.stringify({ decision: { route: 'marketing' } }));
+    await writeFile(path.join(directory, 'film/shots.json'), JSON.stringify({ shots:
+      Array.from({ length: 6 }, (_, index) => ({ shotId: `S${index + 1}`, durationSec: 5 })),
+    }));
+    const id = 'growth.video.production.plan';
+    const result = (await agent.invoke(id, { projectId: 'RC-30', routePath: 'film/route.json', shotlistPath: 'film/shots.json' })).result;
+    assert.equal(result.previewOnly, true);
+    assert.equal(result.ready, false);
+    assert.equal(result.execution, null);
+    assert.equal(result.recommendedCommand, null);
+    assert.equal(result.recommendedPowerShellCommand, null);
+    assert.ok(result.beforeRun.some(step => step.includes('工作台')));
+    assert.equal(result.checklist.find(check => check.id === 'ark-key').ok, Boolean(env.ARK_API_KEY));
+    assert.equal(result.checklist.find(check => check.id === 'route').ok, true);
+    assert.equal(result.checklist.find(check => check.id === 'shotlist').ok, true);
+    assert.ok(agent.describe(id).description.includes('原生工作台'));
+    assert.ok(agent.tools().find(tool => tool.name === 'pengmanager_growth_video_production_plan').description.includes('原生工作台'));
+    assert.ok(!JSON.stringify(result).includes('test-only-ark-alias'));
+    assert.ok(!(await readFile(path.join(directory, 'process-model-keys-only.env'), 'utf8')).includes('test-only-ark-alias'));
+    assert.deepEqual(calls, []);
+  }
+});
 test('native capability passes through the fixed backend with an actual runtime-issued session seam and no loginAs fallback', async t => {
   const transport = [];
   const { agent, calls } = await fixture(t, { fetchImplementation: async (url, options) => { transport.push({ url: String(url), options }); return new Response(JSON.stringify({ result: { data: { fixture: true } } })); } });
@@ -41,6 +70,36 @@ test('native capability passes through the fixed backend with an actual runtime-
   assert.equal(transport[0].options.headers.authorization, 'Bearer test-only-session');
   assert.equal(transport[0].options.redirect, 'error');
   await agent.stop(); assert.deepEqual(calls, ['start', 'session', 'stop']);
+});
+test('agent preflight keeps a missing install passive and starts only the explicitly requested prepared native runtime', async t => {
+  const { agent, calls, runtime } = await fixture(t);
+  let initialized = false;
+  runtime.doctor = async () => ({
+    ok: true, workspaceInitialized: initialized, checks: [{ key: 'complete-engine', ok: true }],
+    textModel: { configured: true, missing: [] },
+  });
+  runtime.start = async () => { calls.push('start'); };
+  runtime.status = async () => calls.includes('start')
+    ? { state: 'ready', ready: true, workbenchEnabled: false, backendHealth: { ok: true }, dbHealth: { ok: true, owned: true } }
+    : { state: 'stopped', ready: false, workbenchEnabled: false };
+  runtime.capabilities = async () => ({
+    modelReadiness: { source: 'current-authenticated-native-rpc', text: { configured: true, currentProcessProbeVerified: false } },
+  });
+  const id = 'pengmanager.video.preflight';
+  assert.equal((await agent.invoke(id, { startNative: true })).startup, 'setup-required');
+  initialized = true;
+  assert.equal((await agent.invoke(id)).startup, 'not-requested');
+  await assert.rejects(agent.invoke(id, { startNative: 'true' }), { code: 'INVALID_INPUT' });
+  assert.deepEqual(calls, []);
+  const report = await agent.invoke(id, { startNative: true });
+  assert.equal(report.startup, 'managed-native');
+  assert.equal(report.status.ready, true);
+  assert.equal(report.modelReadiness.text.currentProcessProbeVerified, false);
+  assert.equal(report.providerCallsPerformed, false);
+  assert.equal(report.productionVerified, false);
+  assert.equal(agent.tools().find(tool => tool.name === 'pengmanager_video_preflight').annotations.readOnlyHint, false);
+  await agent.stop();
+  assert.deepEqual(calls, ['start', 'stop']);
 });
 test('existing process-only native session attaches without starting or stopping another supervisor', async t => {
   const { agent, calls } = await fixture(t, { env: { WORKLOOM_ACCESS_TOKEN: 'test-only-existing' }, fetchImplementation: async (_url, options) => {
@@ -95,6 +154,7 @@ test('actual MCP stdio initialize, list and call use valid JSON-RPC and preserve
   assert.equal(result.code, 0, result.stderr); const messages = result.stdout.trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(messages.map(item => item.id), [1, 2, 3, 4]);
   assert.equal(messages[0].result.serverInfo.name, 'pengmanager-system');
+  assert.match(messages[0].result.instructions, /pengmanager_video_preflight/);
   assert.ok(messages[1].result.tools.some(item => item.name === 'pengmanager_core_workspace_profile'));
   assert.equal(messages[2].result.isError, false); assert.equal(JSON.parse(messages[2].result.content[0].text).ready, false);
   assert.equal(messages[3].result.isError, true); assert.equal(JSON.parse(messages[3].result.content[0].text).error.code, 'NOT_FOUND');

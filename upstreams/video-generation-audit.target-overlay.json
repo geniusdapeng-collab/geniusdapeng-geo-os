@@ -195,8 +195,8 @@
     {
       "path": "apps/server/src/video/gen/cost.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gen/cost.ts",
-      "targetSha256": "c1bb030edd0bcae6a8f2a82e806d561b3d55fe7e98220d7e0ad28a83a47282bc",
-      "targetBytes": 6544,
+      "targetSha256": "3921d77ce13ed610eb1efc679d489762b5534ba05c130ffaa2231588f19d9ffa",
+      "targetBytes": 6339,
       "evidence": "B",
       "sourceSha256": "917f72908053925e579d939f34b51d693ab24d6c3280fe98083ef97846f5f930",
       "sourceBytes": 6446
@@ -204,8 +204,8 @@
     {
       "path": "apps/server/src/video/gen/gen.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/gen/gen.test.ts",
-      "targetSha256": "eef1c39dfc6bdac9c5adcead53bfde14abd29933e954ddc5e8880b2497d4c599",
-      "targetBytes": 24934,
+      "targetSha256": "adedb81cec8ff3bef5bf1abbee7013bf2498aaf60be1d26ab00247ab04f4c449",
+      "targetBytes": 25154,
       "evidence": "B",
       "sourceSha256": "019aaa100c949e6f349d66e90268830272cdc49dd8750f427126409e69e2872f",
       "sourceBytes": 23721
@@ -319,8 +319,8 @@
     {
       "path": "apps/server/src/video/production-authority.pg.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/production-authority.pg.test.ts",
-      "targetSha256": "e9d2348e9fb77bfd753033d93d4baf3acc5361ee0a793e66d9c4d0ee6c43e13b",
-      "targetBytes": 44460,
+      "targetSha256": "0e89f137ab8dc6d1a8fdf88401d9a5ca51ae38e9bdc1bb1184eafa14c3025c2f",
+      "targetBytes": 51335,
       "evidence": "B",
       "sourceSha256": "ce8b6c4963155e5fc98b07103c631c110ea1df8e478c6ae0fbd0d353cc3dff8e",
       "sourceBytes": 23233
@@ -337,8 +337,8 @@
     {
       "path": "apps/server/src/video/production-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/production-authority.ts",
-      "targetSha256": "b326902764462bd74dfa5b3106d3930741a8dbfca00e9454773676415183d713",
-      "targetBytes": 51596,
+      "targetSha256": "cf413e412fe948db8e8d240a8b29906831f92360c467ff6922d2673f354f801c",
+      "targetBytes": 54233,
       "evidence": "B",
       "sourceSha256": "ac7bbb5a4e7b0962a21b30e89332b997d98c03dc137c77ec1472c5e87aecbe2e",
       "sourceBytes": 40321
@@ -542,5 +542,6 @@
       "evidence": "B",
       "targetOwned": true
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-03T13:43:29.647692+00:00"
 }

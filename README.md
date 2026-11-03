@@ -78,6 +78,10 @@ English bio:
 
 ## 本地启动
 
+Codex 和其他本机 Agent 从[视频接入与真实交付快速指南](docs/CODEX-VIDEO-QUICKSTART.md)开始。该路径可先完成私有视频运行时的核心安装与只读预检，再按项目补齐媒体工位、模型和授权。
+
+以下示例同时准备完整视频工作台并启动根控制台。
+
 使用 Node.js 24 或更高版本、pnpm，以及可执行的 FFmpeg / FFprobe。依赖版本与脚本以仓库 [`package.json`](package.json) 和锁文件为准；以下沿用仓库已有运行命令。
 
 ```bash
@@ -99,7 +103,7 @@ node scripts/agent.mjs invoke core.workspace.profile
 node scripts/agent-mcp.mjs
 ```
 
-`invoke` 接受 `--input-file <JSON文件或->`，`-` 从标准输入读取。MCP 使用 stdio，提供与 CLI 相同的已登记工具和 `pengmanager_video_status`、`pengmanager_video_capabilities`。完整目录包括全部内置角色、技能、工具；可直接调用的 Agent 工具以 `list` 的登记项为准，其他完整引擎能力保留原生 CLI/SDK 入口。原生调用通过真实本机身份进入原有权限、租户、审批、预算与回执流程，不提供任意 RPC 路径或自动审批。
+`invoke` 接受 `--input-file <JSON文件或->`，`-` 从标准输入读取。MCP 使用 stdio，提供与 CLI 相同的已登记工具，以及 `pengmanager_video_status`、`pengmanager_video_capabilities`、`pengmanager_video_preflight`。完整目录包括全部内置角色、技能、工具；可直接调用的 Agent 工具以 `list` 的登记项为准，其他完整引擎能力保留原生 CLI/SDK 入口。原生调用通过真实本机身份进入原有权限、租户、审批、预算与回执流程，不提供任意 RPC 路径或自动审批。
 
 独立 Agent 进程在首次需要原生服务时管理自己的服务生命周期，退出时清理；同一私有数据目录一次运行一个监督进程。已有会话可通过当前进程的 `WORKLOOM_ACCESS_TOKEN` 和相同的 `PENGMANAGER_VIDEO_BACKEND_PORT` 附着正在运行的本机后端，不会另起或停止它，令牌不写入文件或命令参数。网页可后续选择启用：`node scripts/video-start.mjs --with-workbench`，或设置 `PENGMANAGER_VIDEO_WORKBENCH=1`。根控制台仍位于 <http://127.0.0.1:4318>；查看状态和目录不会调用模型或提交生成任务。
 

@@ -361,25 +361,24 @@ GitHub 官方直接发布仅用于旧 v1 内容；v2 渠道稿在任何外发前
 
 ## 9. 本机完整视频 CLI／MCP
 
-在具备依赖的本机 checkout 中先发现能力，不要从云端是否 200 推断本机工位可用：
+新机器按 [Codex 与其他 Agent 视频接入](CODEX-VIDEO-QUICKSTART.md) 完成克隆、固定依赖、本机私有数据库、Codex/通用 stdio 配置及本次真实视频交付。所有步骤使用同一实际 checkout 和仓库外的私有数据目录。首次核心安装用 `video-setup.mjs --core-only --install --postgres-root <工具安装绝对路径>`，其余媒体工具按本次请求准备。已有其他实例时先核对目录和端口，避免争抢运行时锁。
+
+在当前仓库根运行以下发现和预检命令。选择了自定义私有目录时加 `--data-dir <实际绝对路径>`。
 
 ```bash
-node scripts/agent.mjs status
-node scripts/agent.mjs capabilities
+node scripts/video-doctor.mjs
 node scripts/agent.mjs list
+node scripts/agent.mjs invoke pengmanager.video.preflight
+node scripts/agent.mjs invoke growth.video.workbench.guide
 node scripts/agent.mjs describe growth.video.production.shots
-node scripts/agent.mjs describe growth.video.manual_bridge.eligibility
-node scripts/agent.mjs describe growth.video.manual_bridge.record
-node scripts/agent.mjs invoke growth.video.manual_bridge.list --input-file <项目输入JSON>
-node scripts/agent.mjs invoke core.workspace.profile
-node scripts/agent-mcp.mjs
+node scripts/agent.mjs describe growth.video.post.quality
 ```
 
-`list` 是已登记可调用入口；完整员工／技能／工具目录比该列表广。先 `describe` 查看当前 `inputSchema`、风险、数据模式和启用状态，再 `invoke <实际ID> --input-file <绝对JSON路径>`；`--input-file -` 支持标准输入。`execute` 类工具要求至少 8 字符的 `idempotencyKey`，同一个业务尝试沿用原值；不要给不同任务复用同一值。
+`list` 是已登记的可调用范围，完整员工／技能／工具目录更广。先 `describe` 核对 `inputSchema`、风险、数据模式和启用状态，再按当前 schema 用 `invoke <实际ID> --input-file <绝对JSON路径>`，也可用 `--input-file -` 读标准输入。登记为 `execute` 的工具要求至少 8 字符的 `idempotencyKey`，同一次尝试沿用原值。MCP 端以实际 `tools/list` 为准。需要当前实例的模型配置证据时，预检显式输入 `{"startNative":true}`。预检和安装都不能证明真实模型调用或交付已经成功。
 
-其他支持 stdio MCP 的平台，把本机 `node` 与仓库绝对路径 `scripts/agent-mcp.mjs` 注册为服务器进程，工作环境指向同一受保护数据目录。具体配置界面取决于宿主平台；不要注册为公网 HTTP 服务，不把 token 写入项目设置。可用工具名由该进程的 `tools/list` 返回，不猜名称或任意 tRPC 路径。
+模型密钥经本机受保护机制只送入运行进程。Codex 和其他 stdio 客户端使用本机 Node 与仓库内 `scripts/agent-mcp.mjs` 的绝对路径。若使用仓库外、用户独占的环境文件，只在配置中保存 `--env-file` 的路径。CLI/MCP 在需要原生后端时管理自己的服务，退出时只停止自己启动的服务。同一私有目录只运行一个监督进程。已取得同实例原生会话的本机客户端可以附着，云端 HTTP bearer 的权限不随之转移。
 
-CLI/MCP 在首次需要原生后端时管理自己的运行时，退出时停止自己启动的服务；同一私有目录只运行一个监督进程。已拥有本机原生 `WORKLOOM_ACCESS_TOKEN` 且后端端口相同时可附着现有会话；它不是 `ADMIN_AGENT_TOKEN_HASH` 对应的云端令牌。模型密钥仅在当前进程环境生效；原生围栏、预算、资格和审批照常执行。目录中 `declared`、`codePresent`、依赖 `ready`、`productionVerified` 含义不同；不能把目录存在、数据库健康或工具返回 envelope 当作视频产物验收。
+真实项目先用 `growth.video.production.plan` 做预览，正式预生产和档案由有权限的本机原生客户端调用 `video.studio.start` 与 `video.studio.archive`。从 `growth.video.production.shots` 核对本次当前镜头，用原生 `video.production.qualifyShot`、`video.render.submit` 或正式逐镜 CLI 走服务资格和提交。原生读写方法只有在实际注册后才会出现在通用 MCP。保留项目、审批、预算、原任务及实际入库文件；回执未知时查询原任务。再用已接受原片走正式后期，重新检查当前母版、清单、技术质检和可播放性。按真实文件和回执报告每一阶段，付费生成和平台发布分别授权。
 
 本机 owner 集成需要明确选用既有合成角色时，可用程序构造参数 `createVideoRuntime({ dataDir, portraitReuseManifestPath })` 选择复用 manifest；默认关闭，HTTP／metadata、继承的 `HR_PORTRAIT_REUSE_MANIFEST` 及媒体工具环境不能代替这个选择。manifest 必须是 `dataDir` 内既有的规范绝对路径、无软链普通文件，大小为 1–8,000,000 字节；在本 Mac 上，私有根、途中目录与文件都须由当前用户所有且无组／其他用户权限。构造时记录完整字节 hash，每次构建原生环境时重核，改变或失效即报 `PORTRAIT_REUSE_MANIFEST_CHANGED`／`PORTRAIT_REUSE_MANIFEST_INVALID`。后端只收到通过检查的路径；Studio 在任务首次读取时另验 schema、合成身份、明确版本与源字节，并用该次 manifest hash 绑定后续验收。同 UID owner 在后端启动后改文件仍可能影响下一任务选择，因此本参数不承诺整个运行期文件不可变，也不代替原生模型配置、审批、预算或产物验收。
 

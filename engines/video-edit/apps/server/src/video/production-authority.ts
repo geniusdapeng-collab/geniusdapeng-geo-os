@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import type pg from "pg";
 import { newId } from "@workloom/shared";
 import { gatewayAppendOnClient } from "@workloom/base/workdata";
-import { ABSTRACT_PRODUCT_VISUAL_MODE, assertProductVisualRenderPrompt, loadScenePolicies, ProductVisualAuthorityError, reviewStage,
+import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualRenderPrompt, loadScenePolicies, ProductVisualAuthorityError, reviewStage,
   type ProductVisualAuthority, type ProducerVerdict, type ScenePolicyReport } from "@hyperreality/video-studio";
 import { verifyMarketingFacts } from "./marketing-authority.js";
 import { archiveWorkDir, projectRunLockKey } from "./archive-host.js";
@@ -17,6 +17,7 @@ import type { AppPool, Scope } from "./gen/db.js";
 import type { RenderScriptLike } from "./gen/submit.js";
 import type { VideoGenParams } from "./gen/types.js";
 import { SubmissionError } from "./gen/submission-ledger.js";
+import { costCaps, estimateCost } from "./gen/cost.js";
 import { canonicalRenderJson, compileRenderRequest, renderSha256, supportsCompiledRequest, type CompiledProviderRequest } from "./gen/compiled-request.js";
 import { verifyPortraitArchiveReuseAcceptance, type PortraitArchiveReuseAcceptance } from "./portrait-reuse-acceptance.js";
 import { assertCreativeRenderBinding } from "./creative-render-binding.js";
@@ -382,14 +383,32 @@ async function compileQualifiedRequest(source: Source, input: Parameters<typeof 
     fail("MODEL_UNAVAILABLE", "正式镜头需要支持计划时长的视频生成模型");
   }
   const visual = source.productVisualAuthority;
+  const refs = params.referenceImageUrls ?? [];
+  const literalUrls = [params.firstFrameUrl, ...(params.referenceVideoUrls ?? []), ...(params.referenceAudioUrls ?? []),
+    ...(visual?.mode === ABSTRACT_PRODUCT_VISUAL_MODE ? [] : refs)];
+  if (literalUrls.some(url => typeof url === "string" && /^portrait:/iu.test(url.trim()))) {
+    fail("PRODUCT_VISUAL_REFERENCE_UNVERIFIED", "角色引用标识只能用于本次 G5 支持的角色参考图，不能作为供应商素材地址");
+  }
   const characterImages: BoundCharacterReference[] = [];
+  if (visual?.mode === VERIFIED_PRODUCT_VISUAL_MODE) {
+    if (params.referenceVideoUrls?.length
+      || (params.firstFrameUrl !== undefined && (!model.supports.includes("firstFrame") || refs.length > 0))
+      || (refs.length && (!model.modes.includes("r2v") || refs.length > (model.limits?.maxReferenceImages ?? 0)))) {
+      fail("PRODUCT_VISUAL_REFERENCE_UNVERIFIED", "真实商品外观仅接受模型支持的首帧或图片参考，不能混用或附加视频参考");
+    }
+    // G1 binds the canonical source URL. The remote file's bytes and usage rights require separate evidence.
+    const approvedUrls = new Set(visual.images.map(image => image.url).filter(url => url.startsWith("https://") && !url.includes("#")));
+    const imageUrls = params.firstFrameUrl === undefined ? refs : [params.firstFrameUrl];
+    if (imageUrls.some(url => !approvedUrls.has(url))) {
+      fail("PRODUCT_VISUAL_REFERENCE_UNVERIFIED", "商品首帧或图片参考必须与本次 G1 A1 已接受的 HTTPS 图片地址逐字一致");
+    }
+  }
   if (visual?.mode !== ABSTRACT_PRODUCT_VISUAL_MODE) return { ...compileRenderRequest(input), characterImages };
   // G5 portraits are references for an approved role. A first frame, video or
   // opaque provider input would grant a different, unverified visual use.
   if (params.firstFrameUrl || params.referenceVideoUrls?.length || (params.extra && Object.keys(params.extra).length)) {
     fail("PRODUCT_VISUAL_REFERENCE_UNVERIFIED", "抽象无商品外观请求不能使用未绑定用途和来源的首帧、图像、视频或供应商附加参数");
   }
-  const refs = params.referenceImageUrls ?? [];
   if (refs.length && (model.provider !== "seedance" || !model.modes.includes("r2v")
     || refs.length > Math.min(model.limits?.maxReferenceImages ?? 0, 4) || new Set(refs).size !== refs.length)) {
     fail("PRODUCT_VISUAL_REFERENCE_UNVERIFIED", "当前模型没有可核验的角色图引用能力，或引用数量/重复状态无效");
@@ -448,8 +467,15 @@ export async function qualifyProductionShot(input: {
       script_key: `qualified:${id}`, version: 1, status: "draft", md: source.shot.prompt as string,
       fields: { ...source.shot.fields as JsonRecord, durationSec: duration,
         production: { qualificationId: id, sourceStageRunId: source.row.id, sourceAttempt: source.row.attempt, promptsSha256: source.promptsHash } } };
-    const built = await compileQualifiedRequest(source, { script, model, params, scope, mode, env });
+    const { built, visualError } = await compileQualifiedRequest(source, { script, model, params, scope, mode, env }).then(
+      built => ({ built, visualError: undefined }),
+      (error: unknown) => {
+        if (!(error instanceof SubmissionError) || error.code !== "PRODUCT_VISUAL_REFERENCE_UNVERIFIED") throw error;
+        return { built: undefined, visualError: error };
+      },
+    );
     // UI 网络失败后再次按同一镜头点提交，不能通过重新签发随机 scriptId 绕过已派发任务的幂等键。
+    // 旧请求若触发新的视觉规则，仅原签发人可取回同源、同参数的已受理回执用于补账。
     const dispatched = await scopedTx(leased.app, scope, async client => {
       const found = await client.query<QualificationRow & { submission_state: string }>(`SELECT q.*,s.state AS submission_state
         FROM production_qualifications q JOIN generation_submissions s
@@ -457,17 +483,20 @@ export async function qualifyProductionShot(input: {
           AND s.script_id=q.script_id AND s.script_version=q.script_version
           AND s.request_hash=q.request_hash AND s.idempotency_key='render:' || q.request_hash
         WHERE q.tenant_id=$1 AND q.workspace_id=$2 AND q.project_id=$3 AND q.shot_id=$4
-          AND q.source_stage_run_id=$5 AND q.payload_hash=$6 AND q.model_id=$7 AND q.mode=$8 AND q.params=$9::jsonb
+          AND q.source_stage_run_id=$5 AND q.model_id=$7 AND q.mode=$8 AND q.params=$9::jsonb
           AND q.status='passed' AND s.state IN ('submitting','unknown','accepted','finalized')
+          AND (q.payload_hash=$6 OR ($6::text IS NULL AND s.state IN ('accepted','finalized')
+            AND s.dispatch_count>0 AND s.task_id IS NOT NULL AND q.created_by=$11
+            AND q.source_attempt=$12 AND q.source_output_sha256=$13 AND q.prompts_sha256=$14))
           AND (s.state<>'submitting' OR s.dispatch_count>0 OR (q.expires_at>$10 AND NOT EXISTS (
             SELECT 1 FROM production_qualifications newer
              WHERE newer.tenant_id=q.tenant_id AND newer.workspace_id=q.workspace_id AND newer.project_id=q.project_id
                AND newer.shot_id=q.shot_id AND newer.seq>q.seq
           )))
         ORDER BY q.seq DESC LIMIT 1`,
-        [scope.tenantId, scope.workspaceId, input.projectId, input.shotId, source.row.id, built.compiled.payloadHash, model.id, mode,
-          JSON.stringify(params), new Date(Date.now()).toISOString()]);
-      if (found.rows[0]) return found.rows[0];
+        [scope.tenantId, scope.workspaceId, input.projectId, input.shotId, source.row.id, built?.compiled.payloadHash ?? null, model.id, mode,
+          JSON.stringify(params), new Date(Date.now()).toISOString(), input.actor, source.row.attempt, source.row.output_sha256, source.promptsHash]);
+      if (found.rows[0] || !built) return found.rows[0];
       const pending = await client.query(
         `SELECT s.id FROM generation_submissions s JOIN render_scripts r
            ON r.id=s.script_id AND r.workspace_id=s.workspace_id AND r.project_id=s.project_id AND r.version=s.script_version
@@ -486,6 +515,12 @@ export async function qualifyProductionShot(input: {
         scriptId: dispatched.script_id!, scriptVersion: dispatched.script_version!, modelId: dispatched.model_id,
         params: dispatched.params, mode: dispatched.mode, requestHash: dispatched.request_hash, payloadHash: dispatched.payload_hash,
         promptSha256: renderSha256(script.md), expiresAt: new Date(dispatched.expires_at).toISOString() };
+    }
+    if (!built) throw visualError;
+    const caps = costCaps(env);
+    if ((caps.dailyCapCny !== null || caps.monthlyCapCny !== null)
+      && estimateCost(model, { seconds: duration }, env).cny === null) {
+      fail("RENDER_COST_UNVERIFIED", "已设置渲染成本上限，当前供应商报价未核实");
     }
     const requestRef = `qualifications/${id}.request.json`;
     const requestFile = path.join(source.root, requestRef);

@@ -195,9 +195,9 @@
       "path": "bundles/ai-video/bundle.json",
       "targetPath": "engines/video-edit/bundles/ai-video/bundle.json",
       "sourceSha256": "95b2feeac7f88559aaba3d9f98f765e2a7997cfd8e25d371d14d790d13c387ff",
-      "targetSha256": "2a818093f2cfd53a7a6b9678fd7cbef97601ad9dd4848e78332d5a92251148c7",
+      "targetSha256": "20f00798c3d887c96698fd0f9bd0101d0ab9af64d0f883be1e3b13178e0642de",
       "sourceBytes": 142775,
-      "targetBytes": 149047
+      "targetBytes": 143389
     },
     {
       "path": "bundles/ai-video/connectors/post-bridge/core.mjs",
@@ -259,9 +259,9 @@
       "path": "bundles/ai-video/library/characters/model-01-young-rider/gates.jsonl",
       "targetPath": "engines/video-edit/bundles/ai-video/library/characters/model-01-young-rider/gates.jsonl",
       "sourceSha256": "8a6817477c270b7b0f29e651fd311a5d6e1f5c70bdfe16539857c60124c35da8",
-      "targetSha256": "8e5e36f1d66e60d2a1de6d7dcbcb2e74cba9c4e5363ec2e10f3eca21ad807475",
+      "targetSha256": "f522137c406294b897702b5962443166e55f23e86ace0f0b5c3292c5d7b63ce9",
       "sourceBytes": 4672,
-      "targetBytes": 4366
+      "targetBytes": 8360
     },
     {
       "path": "bundles/geo-growth/connectors/visual-bridge/executor.ts",
@@ -635,9 +635,9 @@
       "path": "scripts/ci/ui-auth-bootstrap.mjs",
       "targetPath": "engines/video-edit/scripts/ci/ui-auth-bootstrap.mjs",
       "sourceSha256": "35426ec0d6ad4e522f271980a8dd57711aab5c94b4bd69b39c68905eed05bb6e",
-      "targetSha256": "cb14f17b5078d6318c38b0a49c5756fc73a310eb0bd573886db69b2d478668a8",
+      "targetSha256": "6461ba023b81168f29daa15ebaede9cd5b3ff3e53563d084eb920ade21e6b758",
       "sourceBytes": 28487,
-      "targetBytes": 30593
+      "targetBytes": 34673
     },
     {
       "path": "scripts/doctor.sh",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T13:43:29.647692+00:00"
 }

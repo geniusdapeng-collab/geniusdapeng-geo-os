@@ -209,6 +209,7 @@
         "library/characters/model-01-young-rider/profile.json",
         "library/characters/model-01-young-rider/provenance.json",
         "library/characters/model-01-young-rider/reviews/v1-owner-acceptance-2026-10-24T05-46-51-679Z.json",
+        "library/characters/model-01-young-rider/reviews/v2-owner-acceptance-2026-11-01T12-58-27-887Z.json",
         "library/characters/model-02-lin-yu-an/portraits/v1/林予安-actionPose.jpg",
         "library/characters/model-02-lin-yu-an/portraits/v1/林予安-back.jpg",
         "library/characters/model-02-lin-yu-an/portraits/v1/林予安-closeup.jpg",
@@ -862,7 +863,7 @@
   },
   "integrity": {
     "algorithm": "sha256",
-    "digest": "c881e123f92ff1433ca6b242168c8625e03b821426db98c00f8240337a9f8274",
+    "digest": "bdfb697adb8a7f09f6437baf6f50af387e6f4b72f20abcff35d3a66d22853874",
     "assets": {
       "connectors/bgm-bridge/audio-stems-trust.mjs": "701b20e1705b16b026be2900bb49430ef875c8f01f83515f297a5b0b9a50cf93",
       "connectors/bgm-bridge/audio-stems.mjs": "d83bc554f015115ed0f4ea71ac6ced4cf5bd8f44d61094489776e3d2a5ffa751",
@@ -996,7 +997,7 @@
       "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-side.png": "5805f87745627aecf1032d8cbc9248a287cd263ace73d3dc3f998f607b8a82c6",
       "library/characters/model-01-chen-zhuo/portraits/v3/平江路讲述人-threeQuarter.png": "6e3585addeaa2f1cb6761377d94f3a661a9e5c983fe662b24bd6cd179e221516",
       "library/characters/model-01-chen-zhuo/profile.json": "61bb310a32d483b4ffe52cab5c2a843ec61249bdbc61ef2aa7b79cb7959508be",
-      "library/characters/model-01-young-rider/gates.jsonl": "8e5e36f1d66e60d2a1de6d7dcbcb2e74cba9c4e5363ec2e10f3eca21ad807475",
+      "library/characters/model-01-young-rider/gates.jsonl": "f522137c406294b897702b5962443166e55f23e86ace0f0b5c3292c5d7b63ce9",
       "library/characters/model-01-young-rider/portrait-sets/v1.json": "75f3687c5d556cb9fdbaa832234bd14a91780344de48728f2d8f74202ab6b584",
       "library/characters/model-01-young-rider/portrait-sets/v2.json": "a6e16364eeb36d585447eeae81ecd7a531059f36c1d8515b20fa7cc265e99134",
       "library/characters/model-01-young-rider/portraits/v1/young-rider-01-actionPose.png": "87e3631377cc446906d9e5d0ad810a0bfbbd301ad7541ccb61dc6035ef83d4f2",
@@ -1035,6 +1036,7 @@
       "library/characters/model-01-young-rider/provenance/v2/threeQuarter.dispatch.json": "08688c3d4a7281eb6d4ecd53401a436c3143b9a2d7ea5ca19664fcdf0724ca9f",
       "library/characters/model-01-young-rider/provenance/v2/threeQuarter.provenance.json": "0654b16ade6f311e94d8ada1a0f0d20ef36f1967ad25a5f7ec4b0b7eb91c9582",
       "library/characters/model-01-young-rider/reviews/v1-owner-acceptance-2026-10-24T05-46-51-679Z.json": "c15ffb12fa77c66f76a8ee1598d79a1d7becea84f7b2b5baff5a6bfada7d59fe",
+      "library/characters/model-01-young-rider/reviews/v2-owner-acceptance-2026-11-01T12-58-27-887Z.json": "d493341455809af8517d2aa14078e48b29eda9cacf3bf8bb42f329a228918a6a",
       "library/characters/model-02-lin-yu-an/portraits/v1/林予安-actionPose.jpg": "aa1cfc19fbe49ee39d9ca8196709072d8deae97a3e6815cf047e6978e7d41291",
       "library/characters/model-02-lin-yu-an/portraits/v1/林予安-back.jpg": "9d25a38e3fa31cd6ecf9782aebe5c22a10f177ebc8bb6e1d9a720ccc70f40bf8",
       "library/characters/model-02-lin-yu-an/portraits/v1/林予安-closeup.jpg": "b1fbd3cbd6f4ec4ca490da4d11d54ee69f1c878abb15f3d1d765455ae9c51bdc",

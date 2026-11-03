@@ -128,3 +128,13 @@ test('CLI arguments reject unsupported or missing options',()=>{
   assert.throws(()=>parseVideoArgs(['--data-dir']),{code:'ARGUMENT_INVALID'});
   assert.throws(()=>parseVideoArgs(['--unknown']),{code:'ARGUMENT_INVALID'});
 });
+test('core setup requires pinned install inputs, stays headless, and rejects other command modes',()=>{
+  const args=['--core-only','--install','--postgres-root','fixture-pg','--data-dir','fixture-private'];
+  assert.deepEqual(parseVideoArgs(args,'setup'),{
+    coreOnly:true,serveWorkbench:false,dataDir:path.resolve('fixture-private'),
+    settings:{installDependencies:true,postgresSourceRoot:path.resolve('fixture-pg'),buildIndustryContract:true,installTools:false},
+  });
+  for(const mode of ['start','doctor'])assert.throws(()=>parseVideoArgs(args,mode),{code:'ARGUMENT_INVALID'});
+  for(const option of ['--build','--with-workbench'])assert.throws(()=>parseVideoArgs([...args,option],'setup'),{code:'ARGUMENT_INVALID'});
+  for(const missing of [['--core-only','--install'],['--core-only','--postgres-root','fixture-pg']])assert.throws(()=>parseVideoArgs(missing,'setup'),{code:'ARGUMENT_INVALID'});
+});

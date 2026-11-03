@@ -256,6 +256,20 @@ describe("桌面数据库安全引导", () => {
     }
   });
 
+  it("嵌入调用的数据库诊断写入指定日志，stdout 保留给机器回执", async t => {
+    const directory = mkdtempSync(join(tmpdir(), "workloom-helper-output-"));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const diagnostics = [];
+    const stdout = t.mock.method(console, "log", () => undefined);
+    const fake = fakeClientFactory({ dataDirectory: directory, databaseExists: false });
+    for (const mode of ["inspect", "prepare", "verify"]) {
+      await bootstrapDatabase({ Client: fake.Client, env: fixtureEnvironment(directory, mode), log: message => diagnostics.push(message) });
+    }
+    assert.equal(stdout.mock.callCount(), 0);
+    assert.match(diagnostics[0], /^workloom-db-identity /u);
+    assert.deepEqual(diagnostics.slice(1), ["✓ database workloom created", "bootstrap-db prepare ok", "bootstrap-db verify ok"]);
+  });
+
   it("trust 仍接受错误凭据时 verify 失败，不会误标为 SCRAM 生效", async () => {
     const root = mkdtempSync(join(tmpdir(), "workloom-helper-trust-"));
     const pgData = join(root, "pgdata");

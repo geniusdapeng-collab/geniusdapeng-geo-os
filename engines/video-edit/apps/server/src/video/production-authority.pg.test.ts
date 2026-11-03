@@ -116,11 +116,11 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     }; } } as unknown as pg.Pool;
   }
 
-  async function marketingSource(abstract = false) {
+  async function marketingSource(abstract = false, imageProtocol: "http" | "https" = "https") {
     const root = path.join(dir, "archive", scope.workspaceId, projectId);
     const body = "星野 F3 风扇支持 9 档风量；9 档不是能耗等级。", sourceUrl = "https://source.example.com/f3";
     const marketingSourceId = `SRC-${renderSha256(`${sourceUrl}\n${renderSha256(body)}`).slice(0, 24)}`;
-    const imageUrl = `${sourceUrl}/hero.png`;
+    const imageUrl = `${sourceUrl}/hero.png`.replace(/^https:/, `${imageProtocol}:`);
     const snapshot = { sourceId: marketingSourceId, requestedUrl: sourceUrl, finalUrl: sourceUrl, redirectChain: [], fetchedAt: new Date().toISOString(), contentType: "text/plain", rawSha256: renderSha256(body), textSha256: renderSha256(body), bytes: Buffer.byteLength(body), text: body, assetUrls: abstract ? [] : [imageUrl] };
     const prepared = await prepareMarketingFacts({ scope: { ...scope, projectId, runId: `RUN-${seq}`, attempt: 1 }, root, env,
       intent: abstract ? "介绍星野 F3 的风量档位；只使用抽象示意图，不展示产品外观。" : "介绍星野 F3 的风量档位", metadata: { brief: { product: "星野 F3" } },
@@ -142,7 +142,7 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     const bytes = JSON.stringify(output); await writeFile(outputFile, bytes);
     await owner.query("UPDATE video_projects SET kind='marketing' WHERE id=$1", [projectId]);
     await owner.query("UPDATE production_stage_runs SET output_sha256=$2 WHERE id=$1", [sourceId, renderSha256(bytes)]);
-    return { root, prepared, output, outputFile, prompts, promptsFile, g1File };
+    return { root, prepared, output, outputFile, prompts, promptsFile, g1File, imageUrl };
   }
 
   async function portraitProof(state: Awaited<ReturnType<typeof marketingSource>>) {
@@ -305,6 +305,24 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     if (dimension === "seconds") expect(completed?.budget).toEqual({ usedSeconds: 95, overageSeconds: 0 });
   });
 
+  it("rejects an unpriced capped shot before producer review while preserving an already accepted original", async () => {
+    env.VIDEO_MONTHLY_CAP_CNY = "1000";
+    const rejected = await issue().then(() => "unexpected-qualification", error => error.code);
+    expect(rejected).toBe("RENDER_COST_UNVERIFIED");
+    expect(calls).toHaveLength(0);
+    expect((await owner.query("SELECT id FROM production_qualifications WHERE project_id=$1", [projectId])).rowCount).toBe(0);
+
+    delete env.VIDEO_MONTHLY_CAP_CNY;
+    const qualified = await issue();
+    const accepted = await submitGenJob(await input(qualified.qualificationToken));
+    env.VIDEO_MONTHLY_CAP_CNY = "1000";
+    const before = calls.length;
+    expect(await issue()).toEqual(qualified);
+    expect(await submitGenJob(await input(qualified.qualificationToken)))
+      .toMatchObject({ jobId: accepted.jobId, taskId: accepted.taskId, deduped: true });
+    expect(calls).toHaveLength(before);
+  });
+
   it("fails closed before an unpriced provider POST when a cash cap is active", async () => {
     const qualified = await issue();
     env.VIDEO_MONTHLY_CAP_CNY = "1000";
@@ -372,6 +390,94 @@ describe.runIf(RUN_DB)("正式生成资格活库契约", () => {
     expect(calls.at(-1)?.body).toBe(stored.compiled_request.bodyJson);
     expect((await submitGenJob(approved)).deduped).toBe(true);
     expect(providerCalls).toBe(1);
+  });
+
+  it.each(["first_frame", "reference_image"] as const)("verified appearance sends the current G1 HTTPS image as %s", async role => {
+    const { imageUrl: url } = await marketingSource();
+    const params = role === "first_frame" ? { firstFrameUrl: url } : { referenceImageUrls: [url] };
+    const callsBefore = calls.length;
+    const qualification = await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+      modelId: "doubao-seedance-2-5", params, env });
+    const frozen = await input(qualification.qualificationToken);
+    await submitGenJob(frozen);
+    expect(JSON.parse(calls.at(-1)!.body).content[1]).toEqual({ type: "image_url", role, image_url: { url } });
+    expect(calls.at(-1)?.body).toBe(frozen.compiled.bodyJson);
+    expect(calls.slice(callsBefore).filter(call => call.url.endsWith("/chat/completions"))).toHaveLength(1);
+    expect(providerCalls).toBe(1);
+  });
+
+  it("verified appearance rejects unbound, opaque, noncanonical and unsupported visual inputs before review or dispatch", async () => {
+    const { imageUrl: url } = await marketingSource();
+    const unrelated = "https://unrelated-product.example.invalid/unapproved.png";
+    const callsBefore = calls.length;
+    for (const params of [{ referenceImageUrls: [url, unrelated] }, { firstFrameUrl: unrelated },
+      { firstFrameUrl: url.replace("https:", "http:") }, { referenceImageUrls: [`${url}#other`] },
+      { firstFrameUrl: ` ${url}` }, { referenceImageUrls: [`portrait:sha256:${"a".repeat(64)}`] },
+      { referenceVideoUrls: [url] }, { firstFrameUrl: url, referenceImageUrls: [url] }]) {
+      const result = await qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+        modelId: "doubao-seedance-2-5", params, env }).then(() => "unexpected-qualification", error => error.code);
+      expect.soft(result, JSON.stringify(params)).toBe("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    }
+    await expect(qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1",
+      modelId: "hf-seedance-2-0-t2v", params: { firstFrameUrl: url },
+      env: { ...env, HF_API_KEY_ID: "fixture-id", HF_API_KEY_SECRET: "fixture-secret" } }))
+      .rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    expect(calls).toHaveLength(callsBefore);
+    expect(providerCalls).toBe(0);
+    expect((await owner.query("SELECT id FROM production_qualifications WHERE project_id=$1", [projectId])).rowCount).toBe(0);
+  });
+
+  it("verified appearance rejects an HTTP image even when it is listed in the current G1 source", async () => {
+    const { imageUrl } = await marketingSource(false, "http");
+    const callsBefore = calls.length;
+    await expect(qualifyProductionShot({ app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1", modelId: "doubao-seedance-2-5",
+      params: { referenceImageUrls: [imageUrl] }, env }))
+      .rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    expect(calls).toHaveLength(callsBefore);
+    expect(providerCalls).toBe(0);
+  });
+
+  it("reacquires a matching signed accepted receipt after current visual rules no longer allow its request", async () => {
+    const { imageUrl } = await marketingSource();
+    const model = getModel("doubao-seedance-2-5")!;
+    const request = { app, scope, actor: "MEM-ORIGINAL", projectId, shotId: "S1", modelId: model.id,
+      params: { firstFrameUrl: imageUrl }, env };
+    const original = await qualifyProductionShot(request);
+    await expect(submitGenJob(await input(original.qualificationToken, faultPool("INSERT INTO render_jobs"))))
+      .rejects.toThrow("SUBMISSION_FINALIZATION_PENDING");
+    expect((await owner.query("SELECT state FROM generation_submissions WHERE project_id=$1", [projectId])).rows).toEqual([{ state: "accepted" }]);
+
+    const previousSupport = model.supports;
+    model.supports = previousSupport.filter(capability => capability !== "firstFrame");
+    try {
+      const before = calls.length;
+      await expect(qualifyProductionShot({ ...request, actor: "MEM-OTHER" })).rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+      await expect(qualifyProductionShot({ ...request, params: { ...request.params, aspectRatio: "9:16" } }))
+        .rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+      const recovered = await qualifyProductionShot(request);
+      expect(recovered).toEqual(original);
+      expect(await submitGenJob(await input(recovered.qualificationToken))).toMatchObject({ deduped: true, taskId: expect.any(String) });
+      expect(await qualifyProductionShot(request)).toEqual(original);
+      expect(calls).toHaveLength(before);
+      expect(providerCalls).toBe(1);
+      expect((await owner.query("SELECT id FROM production_qualifications WHERE project_id=$1", [projectId])).rows)
+        .toEqual([{ id: original.qualificationId }]);
+    } finally { model.supports = previousSupport; }
+  });
+
+  it("rejects reserved G5 handles in narrative and in abstract audio before review or dispatch", async () => {
+    const ref = `portrait:sha256:${"a".repeat(64)}`;
+    const qualify = (params: Parameters<typeof qualifyProductionShot>[0]["params"]) => qualifyProductionShot({ app, scope,
+      actor: "MEM-ORIGINAL", projectId, shotId: "S1", modelId: "doubao-seedance-2-5", params, env });
+    for (const params of [{ firstFrameUrl: ref }, { referenceImageUrls: [ref] }, { referenceVideoUrls: [ref] }]) {
+      await expect.soft(qualify(params)).rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    }
+    expect(calls).toHaveLength(0);
+    await marketingSource(true);
+    const callsBefore = calls.length;
+    await expect.soft(qualify({ referenceAudioUrls: [ref] })).rejects.toThrow("PRODUCT_VISUAL_REFERENCE_UNVERIFIED");
+    expect(calls).toHaveLength(callsBefore);
+    expect(providerCalls).toBe(0);
   });
 
   it("MC-011 ordinary G5 approval does not grant inline upload rights for a real or unproven face", async () => {

@@ -445,8 +445,7 @@ export async function installCanonicalFrozen({ repoRoot, storeDir, warmProof, pn
 
 export async function bootstrapInstall(options) {
   const state = JSON.parse(await readFile(join(options.repoRoot, '.workloom-ui.json'), 'utf8'));
-  const download = await downloadPinnedArchive({
-    releaseReadToken: options.releaseReadToken,
+  const download = await downloadInstallationArchive({
     state,
     fetchImplementation: options.fetchImplementation,
     signal: options.signal,
@@ -460,7 +459,7 @@ async function main() {
   const args = process.argv.slice(2); const allowed = new Set(['--repo', '--store-dir', '--staging-root', '--report']); const values = {};
   for (let i = 0; i < args.length; i += 2) { requireFact(allowed.has(args[i]) && args[i + 1] && !args[i + 1].startsWith('--'), 'UI_BOOTSTRAP_ARGUMENT'); requireFact(!values[args[i]], 'UI_BOOTSTRAP_DUPLICATE_ARGUMENT'); values[args[i]] = args[i + 1]; }
   requireFact(values['--store-dir'] && values['--report'], 'UI_BOOTSTRAP_REQUIRED_ARGUMENT');
-  const result = await bootstrapInstall({ repoRoot: resolve(values['--repo'] ?? '.'), storeDir: resolve(values['--store-dir']), stagingRoot: values['--staging-root'] ? resolve(values['--staging-root']) : tmpdir(), releaseReadToken: process.env.WORKLOOM_UI_RELEASE_READ_TOKEN });
+  const result = await bootstrapInstall({ repoRoot: resolve(values['--repo'] ?? '.'), storeDir: resolve(values['--store-dir']), stagingRoot: values['--staging-root'] ? resolve(values['--staging-root']) : tmpdir() });
   await writeFile(resolve(values['--report']), JSON.stringify(result, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
   process.stdout.write(JSON.stringify({ frozenInstallPassed: result.frozenInstallPassed, version: result.installedVersion, originalLockSha256: result.originalLockSha256, originalLockUnchanged: result.originalLockUnchanged }) + '\n');
 }

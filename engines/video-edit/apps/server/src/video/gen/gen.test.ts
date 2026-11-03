@@ -102,14 +102,13 @@ describe("报价与成本上限闸", () => {
     expect(denied.reason).toMatch(/超过上限/);
   });
 
-  it("上限闸：未核价时按 0 计放行，但必须给出可能低估的警示", () => {
-    const checked = checkCostCaps({
-      spentDayCny: 0, spentMonthCny: 100, estCny: null,
-      caps: { dailyCapCny: null, monthlyCapCny: 100 },
+  it.each([{ dailyCapCny: 100, monthlyCapCny: null }, { dailyCapCny: null, monthlyCapCny: 100 }])(
+    "人民币上限 %j 需核价；同一未知报价在未启用上限时仍保留 null", caps => {
+      const args = { spentDayCny: 0, spentMonthCny: 0, estCny: null };
+      expect(checkCostCaps({ ...args, caps })).toMatchObject({ allowed: false, estCny: null, reason: expect.stringMatching(/报价未核实/) });
+      expect(checkCostCaps({ ...args, caps: { dailyCapCny: null, monthlyCapCny: null } })).toMatchObject({ allowed: true, estCny: null });
     });
-    expect(checked.allowed).toBe(true);
-    expect(checked.warning).toMatch(/未核价/);
-  });
+
 
   it("costCaps 只接受正数（0/空 = 不设上限）", () => {
     expect(costCaps({ VIDEO_DAILY_CAP_CNY: "0", VIDEO_MONTHLY_CAP_CNY: "" } as NodeJS.ProcessEnv))
