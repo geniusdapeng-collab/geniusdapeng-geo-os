@@ -14,6 +14,7 @@ import { normalizeMarketingPrdContract } from "./marketing-prd-contract.js";
 import { acquireVendorRequirementEntry } from "./vendor-requirement-entry.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
 import { currentCreativeModelSlice, currentCreativeRuntime, currentCreativeSelectionContext } from "./creative-runtime.js";
+import { CreativeContractError, explicitCreativeShotPlan, type CreativeContract } from "./constraint-compiler.js";
 import { assertProductVisualContent, extractProductVisualAuthority } from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
@@ -993,6 +994,7 @@ export function installVendorPrdAuthorityBridge(constructor: { prototype: object
 interface ProductionDependencies {
   systemPrototype: RequirementRecord;
   productionPrototype: RequirementRecord;
+  scriptGeneratorPrototype?: RequirementRecord;
   phase1Prototype: RequirementRecord;
   phase2Prototype?: RequirementRecord;
   phase35Prototype?: RequirementRecord;
@@ -1050,6 +1052,25 @@ function retiredTitleIssue(value: string): boolean {
   return keys.length > 0 && new Set(keys).size === keys.length && keys.every(key => RETIRED_TITLES.slice(2).includes(key));
 }
 
+function assertNativeShotSchedule(scenesValue: unknown, plan: NonNullable<ReturnType<typeof explicitCreativeShotPlan>>): void {
+  const fail = () => {
+    throw new CreativeContractError("CREATIVE_NATIVE_PLAN_INFEASIBLE",
+      `剧本蓝图必须为 ${plan.count} 个连续镜头，每个 ${plan.durationSeconds} 秒`);
+  };
+  if (!Array.isArray(scenesValue) || scenesValue.length !== plan.count) return fail();
+  for (const [index, scene] of scenesValue.entries()) {
+    const timing = scene?.timing;
+    if (timing?.duration !== plan.durationSeconds
+      || !Number.isFinite(timing.start) || Math.abs(timing.start - index * plan.durationSeconds) > 1e-6
+      || !Number.isFinite(timing.end) || Math.abs(timing.end - (index + 1) * plan.durationSeconds) > 1e-6) fail();
+  }
+}
+
+function assertAdaptedShotSchedule(blueprintValue: unknown, contract: CreativeContract): void {
+  const plan = explicitCreativeShotPlan(contract);
+  if (plan) assertNativeShotSchedule(requirementRecord(blueprintValue, "实际制作蓝图").scenes, plan);
+}
+
 /** Fixed vendor dependency seam; all policy comes from the private, approved run scope. */
 export function installPrdProductionBridge(deps: ProductionDependencies): () => void {
   const { systemPrototype, productionPrototype, phase1Prototype, refinerPrototype, costumePrototype, fieldGuardPrototype, fusionPrototype,
@@ -1078,6 +1099,49 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const base: Method = original?.value ?? function () { return true; };
     changes.push({ owner, key, original, patched: wrap(base) });
   };
+  if (deps.scriptGeneratorPrototype) {
+    add(deps.scriptGeneratorPrototype, "_buildGenerationPrompt", original => function (...args) {
+      const prompt = Reflect.apply(original, this, args);
+      const contract = currentCreativeRuntime()?.contract;
+      const plan = contract && explicitCreativeShotPlan(contract);
+      if (!plan) return prompt;
+      if (typeof prompt !== "string") prdFail("PRD_VENDOR_UNAVAILABLE", "原生剧本提示词必须为文本");
+      return prompt + `\n\n## 客户明确指定的制作镜头时序\n`
+        + `structure.scenes 恰好 ${plan.count} 项，meta.scenes_count=${plan.count}。每项对应一个制作镜头，`
+        + `timing.duration 必须为数字 ${plan.durationSeconds} 秒。按顺序从 0 开始，每项 timing.start 等于上一项 timing.end，`
+        + `timing.end 等于 timing.start 加 timing.duration。保留上游已审情节顺序，同一镜头可以承载多个连续叙事节拍。\n`
+        + `此镜头时序优先于上面的场景数量建议及按复杂度分配场景时长的建议。\n`;
+    });
+    add(deps.scriptGeneratorPrototype, "_callLLM", original => function (...args) {
+      const contract = currentCreativeRuntime()?.contract;
+      const plan = contract && explicitCreativeShotPlan(contract);
+      if (!plan) return Reflect.apply(original, this, args);
+      const engine = requirementRecord(this.llmEngine, "原生剧本模型");
+      const generate = method(engine, "generate");
+      const receiver = Object.create(this) as RequirementRecord;
+      const durationAdvice = "场景时长按情感权重分配：climax 场景必须最长，留白场景必须有（高潮后的喘息），平均分配时长=没有节奏。";
+      receiver.llmEngine = {
+        generate(prompt: unknown, optionsValue: unknown) {
+          const options = requirementRecord(optionsValue, "原生剧本模型选项");
+          if (typeof options.systemPrompt !== "string" || !options.systemPrompt.includes(durationAdvice)) {
+            prdFail("PRD_VENDOR_UNAVAILABLE", "原生剧本系统提示词的时长指令已经变化");
+          }
+          const systemPrompt = options.systemPrompt.replace(durationAdvice,
+            `严格采用客户指定的 ${plan.count} 个镜头，每个 ${plan.durationSeconds} 秒。用动作和镜头内部节奏体现高潮与留白。`);
+          return Reflect.apply(generate, engine, [prompt, { ...options, systemPrompt }]);
+        },
+      };
+      return Reflect.apply(original, receiver, args);
+    });
+    add(deps.scriptGeneratorPrototype, "_enforceTargetDuration", original => function (value, ...args) {
+      const contract = currentCreativeRuntime()?.contract;
+      const plan = contract && explicitCreativeShotPlan(contract);
+      if (!plan) return Reflect.apply(original, this, [value, ...args]);
+      const structure = requirementRecord(requirementRecord(value, "原生剧本").structure, "原生剧本结构");
+      // Reject a model timing error before legacy normalization can hide it.
+      assertNativeShotSchedule(structure.scenes, plan);
+    });
+  }
   const inspect = (shotsValue: unknown, context: unknown, noTitle: boolean) => {
     if (!Array.isArray(shotsValue) || shotsValue.length === 0) prdFail("PRD_PRODUCTION_INVALID", "制作镜头必须为非空数组");
     const requiredFields = currentCreativeRuntime() ? [...fieldGroups.p0, ...fieldGroups.p1] : fields;
@@ -1222,7 +1286,10 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     const scope = productionScope(this);
     const creative = currentCreativeRuntime();
     if (!scope) {
-      if (creative) await creative.startProduction({ blueprint: blueprintValue });
+      if (creative) {
+        assertAdaptedShotSchedule(blueprintValue, creative.contract);
+        await creative.startProduction({ blueprint: blueprintValue });
+      }
       const output = await Reflect.apply(original, this, [blueprintValue, ...args]);
       if (creative) await creative.verifyHandoff(requirementRecord(output, "native production output").shots);
       return output;
@@ -1236,8 +1303,11 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
         g4: scope.reviewedHash, scope: scope.authority.marketing.scope }), scope: structuredClone(scope.authority.marketing.scope),
         profile: structuredClone(profile), g4Hash: scope.reviewedHash };
       const view = { ...blueprint, config: { ...config, ...(profile.aspectRatio ? { aspectRatio: profile.aspectRatio } : {}) }, _workloomProductionAuthority: marker };
-      if (creative) await creative.startProduction({ blueprint: view, reviewedG3: scope.contract,
-        reviewedG4: scope.reviewedResult, g4Hash: scope.reviewedHash });
+      if (creative) {
+        assertAdaptedShotSchedule(view, creative.contract);
+        await creative.startProduction({ blueprint: view, reviewedG3: scope.contract,
+          reviewedG4: scope.reviewedResult, g4Hash: scope.reviewedHash });
+      }
       const result = await Reflect.apply(original, this, [view, ...args]);
       if (creative) await creative.verifyHandoff(requirementRecord(result, "native production output").shots);
       check(scope);
@@ -1465,6 +1535,7 @@ export function installVendorPrdProductionBridge(constructor: { prototype: objec
     const standardizer = require(path.resolve(path.dirname(lease.identity.entryPath), "engines/field-standardizer.js")) as Pick<ProductionDependencies, "standardizeShot" | "validateShot"> & { CRITICAL_FIELDS: ProductionDependencies["fields"] };
     return installPrdProductionBridge({ systemPrototype: requirementRecord(constructor.prototype, "受控 system prototype"),
       productionPrototype: load("engines/production-engine/production-engine.js", "ProductionEngine"),
+      scriptGeneratorPrototype: load("engines/script-engine/core/script-generator.js", "ScriptGenerator"),
       phase1Prototype: load("engines/production-engine/phases/phase-1-scene-design.js", "Phase1SceneDesign"),
       phase2Prototype: load("engines/production-engine/phases/phase-2-visual-audio.js", "Phase2VisualAudio"),
       phase35Prototype: load("engines/production-engine/phases/phase-3-5-field-quality.js", "Phase35FieldQuality"),

@@ -108,9 +108,21 @@ function explicitDurations(raw: string): number[] {
 }
 
 /** Only a declared exhaustive uniform shot plan establishes content duration. */
-function explicitShotPlanDurations(raw: string): number[] {
+function explicitShotPlans(raw: string): Array<{ count: number; durationSeconds: number }> {
   const plan = /(?:恰好|仅有|仅含|总共|exactly)\s*(\d{1,2})\s*(?:个|段|[×x*])\s*(\d{1,3}(?:\.\d+)?)\s*(?:秒(?:钟)?|sec(?:onds?)?)\s*(?:镜头段|镜头|段|shots?)/giu;
-  return [...new Set([...raw.matchAll(plan)].map(match => Number((Number(match[1]) * Number(match[2])).toFixed(6))))];
+  const unique = new Map<string, { count: number; durationSeconds: number }>();
+  for (const match of raw.matchAll(plan)) {
+    const count = Number(match[1]), durationSeconds = Number(match[2]);
+    unique.set(`${count}:${durationSeconds}`, { count, durationSeconds });
+  }
+  return [...unique.values()];
+}
+
+/** Read the schedule from the immutable customer intent already in the contract. */
+export function explicitCreativeShotPlan(contract: CreativeContract) {
+  const plans = explicitShotPlans(contract.rawIntent);
+  if (plans.length > 1) fail("CONSTRAINT_CONFLICT", "conflicting exhaustive shot schedules");
+  return plans[0];
 }
 
 function sourceContainsClaims(content: string, claims: CreativeFactInput["claims"]): boolean {
@@ -152,8 +164,8 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   const declared = declaredDurations[0];
   const coverIntroSeconds = (resolved.openWithCover ?? production.openWithCover) === true
     ? finite(resolved.coverIntroSeconds ?? production.coverIntroSeconds, 0) : 0;
-  const shotPlans = explicitShotPlanDurations(input.rawIntent);
-  const contentDuration = shotPlans.length === 1 ? shotPlans[0] : undefined;
+  const shotPlans = explicitShotPlans(input.rawIntent), shotPlan = shotPlans.length === 1 ? shotPlans[0] : undefined;
+  const contentDuration = shotPlan && Number((shotPlan.count * shotPlan.durationSeconds).toFixed(6));
   const expectedDuration = declared?.seconds ?? rawDuration
     ?? (contentDuration === undefined ? undefined : contentDuration + coverIntroSeconds);
   const finalDuration = finite(resolved.targetDuration, expectedDuration ?? 30);
@@ -180,7 +192,7 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   preserve("profile.finalDuration", expectedDuration, finalDuration);
   for (const alias of declaredDurations.slice(1)) preserve(alias.field, declared?.seconds, alias.seconds);
   if (contentDuration !== undefined) preserve("intent.contentDuration", contentDuration, Number(profile.contentDuration.toFixed(6)));
-  if (shotPlans.length > 1) findings.push(finding("CONSTRAINT_CONFLICT", "intent.contentDuration", "one exhaustive content duration", shotPlans));
+  if (shotPlans.length > 1) findings.push(finding("CONSTRAINT_CONFLICT", "intent.shotPlan", "one exhaustive shot schedule", shotPlans));
   for (const value of [brief.aspectRatio, brief.aspect_ratio, production.aspectRatio]) preserve("profile.aspectRatio", value, profile.aspectRatio);
   for (const key of ["frameRate", "resolution", "subtitleMode"] as const) {
     preserve(`profile.${key}`, production[key], profile[key]);
@@ -222,6 +234,12 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   if (visual === "no_named_product" && namedProduct) findings.push(finding("CONSTRAINT_CONFLICT", "profile.visualMode", "named product cannot erase its authority", visual));
   const bounds = [profile.minShotSeconds, profile.maxShotSeconds, profile.minShots, profile.maxShots];
   if (bounds.some(n => !Number.isFinite(n) || n <= 0) || !Number.isInteger(profile.minShots) || !Number.isInteger(profile.maxShots) || profile.minShotSeconds > profile.maxShotSeconds || profile.minShots > profile.maxShots) fail("CREATIVE_SCHEMA_BOUNDS_INVALID", "invalid actual shot bounds");
+  if (shotPlan && (shotPlan.count < profile.minShots || shotPlan.count > profile.maxShots
+    || shotPlan.durationSeconds < profile.minShotSeconds || shotPlan.durationSeconds > profile.maxShotSeconds)) {
+    findings.push(finding("CONSTRAINT_TIMING_INFEASIBLE", "intent.shotPlan", {
+      count: [profile.minShots, profile.maxShots], durationSeconds: [profile.minShotSeconds, profile.maxShotSeconds],
+    }, shotPlan));
+  }
   if (Math.ceil(profile.contentDuration / profile.maxShotSeconds) > Math.floor(profile.contentDuration / profile.minShotSeconds) || profile.contentDuration < profile.minShots * profile.minShotSeconds || profile.contentDuration > profile.maxShots * profile.maxShotSeconds) findings.push(finding("CONSTRAINT_TIMING_INFEASIBLE", "profile.contentDuration", "duration allocation inside current bounds", profile.contentDuration));
   const facts = input.facts ? structuredClone(input.facts) : null;
   if (facts && (creativeTextHash(facts.content) !== facts.hash || !facts.content.trim() || new Set(facts.claims.map(c => c.id)).size !== facts.claims.length || facts.claims.some(c => !c.id || !c.sourceRef || !c.text) || !sourceContainsClaims(facts.content, facts.claims))) fail("FACT_EVIDENCE_INVALID", "fact bytes or claim provenance differ");
@@ -275,10 +293,13 @@ export function validateCreativeShots(contract: CreativeContract, shots: Creativ
   assertCreativeContract(contract);
   const findings: CreativeFinding[] = [], seen = new Set<string>(), profile = contract.profile;
   if (!Array.isArray(shots) || shots.length < profile.minShots || shots.length > profile.maxShots) return [finding("CREATIVE_SHOT_COUNT_INVALID", "shots", [profile.minShots, profile.maxShots], shots?.length ?? null)];
+  const plan = explicitCreativeShotPlan(contract);
+  if (plan && shots.length !== plan.count) findings.push(finding("CREATIVE_SHOT_COUNT_INVALID", "shots", plan.count, shots.length));
   for (const shot of shots) {
     if (seen.has(shot.id) || shot.contractHash !== contract.hash) findings.push(finding("CREATIVE_SHOT_STALE", "contractHash", contract.hash, shot.contractHash, [], shot.id));
     seen.add(shot.id);
     if (!Number.isFinite(shot.duration) || shot.duration < profile.minShotSeconds || shot.duration > profile.maxShotSeconds) findings.push(finding("CREATIVE_SHOT_DURATION", "duration", [profile.minShotSeconds, profile.maxShotSeconds], Number.isFinite(shot.duration) ? shot.duration : null, ["duration"], shot.id));
+    else if (plan && shot.duration !== plan.durationSeconds) findings.push(finding("CREATIVE_SHOT_DURATION", "duration", plan.durationSeconds, shot.duration, ["duration"], shot.id));
     if (!shot.prompt.trim() || !Object.keys(shot.fields).length) findings.push(finding("CREATIVE_SHOT_CONTENT_MISSING", "prompt", "native prompt and fields", shot.prompt, ["prompt", "fields"], shot.id));
     if (shot.fieldOrder.length !== Object.keys(shot.fields).length || new Set(shot.fieldOrder).size !== shot.fieldOrder.length || shot.fieldOrder.some(k => !Object.hasOwn(shot.fields, k))) findings.push(finding("CREATIVE_FIELD_ORDER_INVALID", "fieldOrder", "each actual field exactly once", shot.fieldOrder, [], shot.id));
     for (const key of contract.requiredFields) {

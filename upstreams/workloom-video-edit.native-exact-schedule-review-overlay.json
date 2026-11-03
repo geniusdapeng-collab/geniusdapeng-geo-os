@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0006",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T18:19:09.752298+00:00",
+  "scope": "Preserve explicit native shot schedule and retry settled malformed candidate reviews within original allocation; source upstream pin unchanged.",
+  "sourceOverlayCount": 1,
+  "files": [
+    {
+      "path": "apps/server/src/video/creative-api-service.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
+      "targetSha256": "a15287160d41e4fc3b500b8b21ef6d3bcdd85042df77c1a6a5b7ced7d87df580",
+      "targetBytes": 48642,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetSha256": "fb0034f02bc048e041eeffdb51a808241566fbbca30fe688d558c8c6ce38a296",
+      "targetBytes": 21017,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/constraint-compiler.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/constraint-compiler.ts",
+      "targetSha256": "7591113e569d3a957303d541cdd98cda233308355c6dab51d5b5aa9536fcbcd8",
+      "targetBytes": 31219,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/explicit-shot-schedule.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/explicit-shot-schedule.test.ts",
+      "targetSha256": "c0f318d3bae4f40fe1e70620e3b073c9d31b4a2860b560e55d345c711b9a07df",
+      "targetBytes": 9134,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/prd-authority-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
+      "targetSha256": "a620dd8c3a0233df04221966c976309e84764babcc1b823de572ed43553d29a1",
+      "targetBytes": 105152,
+      "evidence": "B",
+      "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
+      "sourceBytes": 82133
+    }
+  ]
+}

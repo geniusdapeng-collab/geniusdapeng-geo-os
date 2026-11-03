@@ -10,8 +10,8 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
-      "targetSha256": "709eb22640a7ce181e9fa6106c0f23495257e29157e0b43197943a17c6fbf0ce",
-      "targetBytes": 47799,
+      "targetSha256": "a15287160d41e4fc3b500b8b21ef6d3bcdd85042df77c1a6a5b7ced7d87df580",
+      "targetBytes": 48642,
       "evidence": "B",
       "targetOwned": true
     },
@@ -232,8 +232,8 @@
     {
       "path": "packages/video-studio/src/constraint-compiler.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/constraint-compiler.ts",
-      "targetSha256": "ccb46086113adaeb98537d34c798f7400a9e29fefe95eff57396616296432789",
-      "targetBytes": 29812,
+      "targetSha256": "7591113e569d3a957303d541cdd98cda233308355c6dab51d5b5aa9536fcbcd8",
+      "targetBytes": 31219,
       "evidence": "B",
       "targetOwned": true
     },
@@ -308,8 +308,8 @@
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "56da73b19240c376e4236c182f99ff51b1e2457075df3864e35047a98c7c00c5",
-      "targetBytes": 100573,
+      "targetSha256": "a620dd8c3a0233df04221966c976309e84764babcc1b823de572ed43553d29a1",
+      "targetBytes": 105152,
       "evidence": "B",
       "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
       "sourceBytes": 82133
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T18:05:37.936690+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:19:09.752298+00:00"
 }
