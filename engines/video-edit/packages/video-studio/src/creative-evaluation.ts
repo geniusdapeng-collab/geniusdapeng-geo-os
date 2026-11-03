@@ -7,7 +7,7 @@ export const CREATIVE_ART_RUBRIC_VERSION = "workloom.creative-art-rubric/v1";
 export const CREATIVE_ART_DIMENSIONS = ["readability", "hookPayoff", "emotionalProgression", "visualContrast", "brandFit", "novelty"] as const;
 export type CreativeArtDimension = typeof CREATIVE_ART_DIMENSIONS[number];
 export type CreativeArtScores = Record<CreativeArtDimension, { score: number; evidence: string }>;
-interface RequestEvidence { model: string; requestId: string; promptHash: string }
+interface RequestEvidence { model: string; requestId: string; promptHash: string; responseHash?: string }
 export interface CreativeCandidateAssessment {
   candidateId: string;
   shots: CreativeShot[];
@@ -61,6 +61,8 @@ export function rankCreativeCandidates(input: {
       || requestIds.filter(id => id === generation.requestId).length !== 1
       || requestIds.filter(id => id === review.requestId).length !== 1
       || !sha256.test(generation.promptHash) || !sha256.test(review.promptHash) || generation.promptHash === review.promptHash
+      || (generation.responseHash !== undefined && !sha256.test(generation.responseHash))
+      || (review.responseHash !== undefined && !sha256.test(review.responseHash))
       || review.contractHash !== input.contract.hash || review.candidateHash !== candidateHash
       || (review.rubricVersion ?? CREATIVE_ART_RUBRIC_VERSION) !== CREATIVE_ART_RUBRIC_VERSION
       || !Array.isArray(review.findings) || review.findings.some(finding => !finding || !text(finding.code)

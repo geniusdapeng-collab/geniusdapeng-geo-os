@@ -40337,7 +40337,7 @@
       "evidence": "B"
     }
   ],
-  "targetOwnedFileCount": 98,
+  "targetOwnedFileCount": 99,
   "targetOwnedFiles": [
     {
       "path": "apps/server/src/service/embedded-paths.test.ts",
@@ -40398,8 +40398,16 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "mode": "100644",
-      "bytes": 37544,
-      "targetSha256": "79a8377b4ec8e82ca06f5134b0a8929433a36f378affbd3d0951cbf806f0b80b",
+      "bytes": 42028,
+      "targetSha256": "27f38c261fd26428182348a5abfd890fcad6f734981b2275802eb88ed722c3b4",
+      "evidence": "B",
+      "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
+    },
+    {
+      "path": "apps/server/src/video/creative-candidate-wire.test.ts",
+      "mode": "100644",
+      "bytes": 7820,
+      "targetSha256": "2e997ef168308331b4c646c53f825707013e427c2b4500cc50cbd14601000ed1",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -40838,8 +40846,8 @@
     {
       "path": "packages/video-studio/src/creative-evaluation.ts",
       "mode": "100644",
-      "bytes": 17251,
-      "targetSha256": "9833e533bf9a77c207af1c1cfea4daada66c8deb48045878c5f5ca29f147e554",
+      "bytes": 17446,
+      "targetSha256": "0879a5d8d9d0d4105cb60df176cadf0beba07f0ed10b0b6a4375360202bbb101",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
