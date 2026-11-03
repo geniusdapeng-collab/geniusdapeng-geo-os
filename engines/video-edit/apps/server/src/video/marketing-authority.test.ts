@@ -66,11 +66,18 @@ async function prepare(options: { noSearch?: boolean; noAux?: boolean; badQuote?
   absoluteSellingPoint?: boolean;
   conflictingBrand?: string;
   selectedImageUrl?: string;
+  identityOnly?: { name?: string; model?: string };
 } = {}): Promise<PreparedMarketingFacts> {
   let searches = 0, a1Calls = 0;
   const imageMetadata = options.imageMetadata ?? (!options.noImages && !options.imageExtras ? "minimal" : undefined);
-  return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: options.intent ?? "做一条风扇介绍", metadata: { brief: { product: "星野 F3", brand: "星野" } }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
-    ...(options.selectedImageUrl ? { selectedImageSources: [{ productName: "星野 F3", pageUrl: sourceUrl, sourceUrl: options.selectedImageUrl }] } : {}),
+  const name = options.identityOnly?.name ?? "星野 F3";
+  return prepareMarketingFacts({ scope: { ...scope, attempt: options.attempt ?? 1 }, root, intent: options.intent ?? "做一条风扇介绍",
+    metadata: { brief: { product: name, brand: "星野", ...(options.identityOnly ? {
+      productionRequirements: { visualMode: "verified_product_appearance" },
+    } : {}) }, ...(options.identityOnly ? { dataMining: {
+      name, model: options.identityOnly.model ?? "F3", claimScope: "product-identity-only",
+    } } : {}) }, env: { ...env, ...(options.mode ? { VM_DATA_MINING_MODE: options.mode } : {}) },
+    ...(options.selectedImageUrl ? { selectedImageSources: [{ productName: name, pageUrl: sourceUrl, sourceUrl: options.selectedImageUrl }] } : {}),
     llm: { reason: async (prompt, llmOptions) => {
       extractionOptions.push(llmOptions);
       extractionCalls.push(prompt); if (options.modelFailure) return { success: false, error: "LLM unavailable" };
@@ -133,6 +140,40 @@ it("fails before extraction when the owner-selected image URL is absent from the
   await expect(prepare({ noSearch: true, selectedImageUrl: sourceUrl + "/other.png" })).rejects.toThrow("实际来源网页未包含");
   expect(extractionCalls).toHaveLength(0);
 });
+describe("explicit identity-only marketing", () => {
+  const selectedImageUrl = sourceUrl + "/hero.png";
+  const identityShot = [{ shotId: "S1", prompt: "展示星野 F3 的已授权参考外观，故事为虚构演绎。", fields: { 产品: "星野 F3" } }];
+
+  it("binds only the exact product name/model and registered image, then revalidates the native archive", async () => {
+    const prepared = await prepare({ identityOnly: {}, selectedImageUrl });
+    expect(extractionCalls).toEqual([]);
+    expect(prepared.bundle.stages.map(stage => stage.facts.claims.map(claim => [claim.pointer, claim.value])))
+      .toEqual([[["/identity/name", "星野 F3"], ["/identity/model", "F3"]], [], []]);
+    expect(prepared.bundle.rawByAgent.A1.identity).toEqual({
+      name: "星野 F3", model: "F3", specs: {}, prices: [], official_selling_points: [],
+    });
+    expect(prepared.bundle.restrictions.join(" ")).toContain("禁止价格");
+    expect(extractProductVisualAuthority(prepared.g1Content).images.map(image => [image.pageUrl, image.url]))
+      .toEqual([[sourceUrl, selectedImageUrl]]);
+    const saved = await finalizeMarketingFacts(prepared, identityShot, env);
+    const verified = await verifyMarketingFacts({ root, ...saved, scope, shots: identityShot });
+    expect(verified.rawByAgent).toEqual(prepared.bundle.rawByAgent);
+  });
+
+  it("refuses a similar model and a missing registered image before semantic review", async () => {
+    await expect(prepare({ identityOnly: {} })).rejects.toThrow("MARKETING_IDENTITY_SCOPE_INVALID");
+    await expect(prepare({ identityOnly: { name: "星野 F3-Pro", model: "F3-Pro" }, selectedImageUrl })).rejects
+      .toThrow("MARKETING_IDENTITY_SOURCE_MISMATCH");
+    expect(modelCalls).toHaveLength(0);
+  });
+
+  it("continues to block a substantive semantic rejection", async () => {
+    rejectJudge = true;
+    await expect(prepare({ identityOnly: {}, selectedImageUrl })).rejects.toThrow("MARKETING_SUPPORT_REJECTED");
+    expect(modelCalls).toHaveLength(1);
+  });
+});
+
 describe("营销事实宿主完整执行", () => {
   it("支持审核只读取文本事实，旧档案中的图片角度 claim 不进入审核事实包", () => {
     const facts = {

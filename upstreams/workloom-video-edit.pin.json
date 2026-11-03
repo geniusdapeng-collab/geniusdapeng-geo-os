@@ -2,7 +2,7 @@
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
   "commit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
   "tree": "2f1a5835d4363496efd692fd4434506e28254e70",
-  "verifiedAt": "2026-11-03T15:14:43.425696+00:00",
+  "verifiedAt": "2026-11-03T16:15:51.734255+00:00",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
@@ -10,7 +10,7 @@
   "sourceFileCount": 3650,
   "sourceBytes": 336706560,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "84d358fa5b98e5437bb80b922080c390a1420a657ff2792acdc19481ea13e89a",
+  "snapshotSha256": "dd009f8d5bb3c7e6082a00c5f8027cf92f2207111a550ee1b5f27e7719e5ca0a",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",

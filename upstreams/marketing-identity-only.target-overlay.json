@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0001",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T16:15:51.734255+00:00",
+  "scope": "Marketing product identity and original authorized visual evidence only; source upstream pin unchanged.",
+  "sourceOverlayCount": 3,
+  "files": [
+    {
+      "path": "apps/server/src/video/marketing-authority.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
+      "targetSha256": "58ccd0e21692b5585531ff80d12ec21bc006ddb4182941525c4134bfefee5584",
+      "targetBytes": 46111,
+      "evidence": "B",
+      "sourceSha256": "1896554a3d7b320fa68792b76b52aef5d8374656ff01cfeb15fcaf08391a17cc",
+      "sourceBytes": 38616
+    },
+    {
+      "path": "apps/server/src/video/marketing-authority.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
+      "targetSha256": "953a0702c6e273e3a00fecaf20546b5c8ae4d93eba42edcca84e6fd103ea52b9",
+      "targetBytes": 53270,
+      "evidence": "B",
+      "sourceSha256": "e3cb6c7ed60b6c29d1f182104532c0176fda9a3b86accaa45bc6e389b87202a3",
+      "sourceBytes": 42833
+    },
+    {
+      "path": "apps/server/src/video/marketing-facts.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/marketing-facts.ts",
+      "targetSha256": "d98c83ac86e0aa7d4303fe00d4debf9b95b4cae2cb511ffc8ca2a6e3f4509462",
+      "targetBytes": 18314,
+      "evidence": "B",
+      "sourceSha256": "763f36a4e3c64171cecf61c616bdedeaaa4f016f1b251af9837abf467babd5b7",
+      "sourceBytes": 16789
+    }
+  ]
+}
