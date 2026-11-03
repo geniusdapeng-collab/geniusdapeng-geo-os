@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { compileCreativeContract, CREATIVE_ART_DIMENSIONS, withCreativeBudget, type CreativeModelOutcome } from "@hyperreality/video-studio";
+import { compileCreativeContract, creativeTextHash, extractProductVisualAuthority, CREATIVE_ART_DIMENSIONS, withCreativeBudget, type CreativeModelOutcome } from "@hyperreality/video-studio";
 import { describe, expect, it } from "vitest";
 import { generateCreativeAssessments } from "./creative-api-service.js";
+import type { ProductionProductReference } from "./studio-product-references.js";
 
 const model = "deepseek-flash";
 const contract = compileCreativeContract({
@@ -54,6 +55,83 @@ function budget(settlements: CreativeModelOutcome[] = []) {
     afterModelCall: async (_reservation: unknown, outcome: CreativeModelOutcome) => { settlements.push(outcome); },
   };
 }
+
+describe("current owner product image in exact candidate and independent review inputs", () => {
+  const runId = "candidate-product-run", productName = "合成示例产品 A1";
+  const sourceUrl = "https://product-fixture.invalid/registered.jpg", pageUrl = "https://product-fixture.invalid/a1";
+  const sourceMetadata = { brief: { product: productName, duration: 10,
+    productionRequirements: { visualMode: "verified_product_appearance" } } };
+  const rawIntent = "只展示已授权产品实物外观，成片时长10秒。";
+  const content = JSON.stringify({ requestedIntent: rawIntent, requestedMetadata: sourceMetadata, facts: {
+    schemaVersion: "workloom.marketing-facts/v1", issuer: "workloom.marketing-authority",
+    scope: { ...contract.scope, runId, attempt: 1 }, productQuery: { name: productName },
+    stages: [{ stage: "A1", facts: { payload: { images: [{ url: sourceUrl, page_url: pageUrl }] } } }],
+    cards: { portrait_manifest: { reference_images: [{ id: "research-card", url: sourceUrl, license_risk: "high" }] } },
+  } });
+  const marketing = compileCreativeContract({ scope: contract.scope, rawIntent, metadata: sourceMetadata, isMarketing: true,
+    requiredFields: ["画面"], facts: { content, hash: creativeTextHash(content), claims: [] } });
+  const visual = extractProductVisualAuthority(content);
+  const ref: ProductionProductReference = { productId: "fixture-product", productName, assetId: "VA-fixture",
+    sourceUrl, pageUrl, sha256: "e".repeat(64), authorizationBasis: "owner-confirmed-reference-use",
+    projectId: contract.scope.projectId, rawIntentSha256: marketing.rawIntentHash,
+    relativePath: "PRIVATE-REGISTERED-FILE", bytes: 2048, mimeType: "image/jpeg", ownerManifestSha256: "f".repeat(64) };
+
+  it("binds the exact registered image to the candidate hash before independent review", async () => {
+    await withFixture(user => ({ value: user.candidateHash ? goodReview(user) : { shots: [shot] } }),
+      async (endpoint, requests, hashes) => {
+        const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({ contract: marketing,
+          endpoint, runId, visual, trustedProductReferences: [ref], count: 1, assertCurrent: async () => {} }));
+        const opaque = "product:sha256:" + ref.sha256;
+        const [generation, review] = requests.map(request => JSON.parse(request.messages.at(-1)!.content));
+        expect(requests).toHaveLength(2);
+        expect(generation.outputContract.schema.properties.shots.items.properties).not.toHaveProperty("assetRefs");
+        expect(generation.trustedProductReferences).toMatchObject([{ ref: opaque, assetId: ref.assetId, productName,
+          sha256: ref.sha256, ownerManifestSha256: ref.ownerManifestSha256,
+          authorizationBasis: "owner-confirmed-reference-use", g1ContentSha256: marketing.facts!.hash, g1ImageIndex: 0 }]);
+        expect(review.trustedProductReferences).toEqual(generation.trustedProductReferences);
+        expect(review.shots[0].assetRefs).toEqual([opaque]);
+        expect(result.selected?.shots[0]?.assetRefs).toEqual([opaque]);
+        expect(result.selected?.review).toMatchObject({ candidateHash: review.candidateHash, responseHash: hashes[1] });
+        expect(JSON.stringify(requests)).not.toContain(ref.relativePath);
+      });
+  });
+
+  it.each([
+    ["missing", []],
+    ["different project", [{ ...ref, projectId: "another-project" }]],
+    ["different intent", [{ ...ref, rawIntentSha256: "0".repeat(64) }]],
+    ["different product", [{ ...ref, productName: "Another product" }]],
+    ["different G1 image", [{ ...ref, sourceUrl: "https://product-fixture.invalid/other.jpg" }]],
+    ["duplicate", [ref, ref]],
+  ] as const)("refuses %s owner image receipt before a model call", async (_kind, trustedProductReferences) => {
+    await withFixture(() => ({ value: { shots: [shot] } }), async (endpoint, requests) => {
+      await expect(withCreativeBudget(budget(), () => generateCreativeAssessments({ contract: marketing,
+        endpoint, runId, visual, trustedProductReferences, count: 1, assertCurrent: async () => {} })))
+        .rejects.toMatchObject({ code: "CREATIVE_PRODUCT_REFERENCE_UNVERIFIED" });
+      expect(requests).toHaveLength(0);
+    });
+  });
+
+  it("refuses owner product references when the exact accepted G1 belongs to another run", async () => {
+    await withFixture(() => ({ value: { shots: [shot] } }), async (endpoint, requests) => {
+      await expect(withCreativeBudget(budget(), () => generateCreativeAssessments({ contract: marketing, endpoint,
+        runId: "another-run", visual, trustedProductReferences: [ref], count: 1, assertCurrent: async () => {} })))
+        .rejects.toMatchObject({ code: "CREATIVE_PRODUCT_REFERENCE_UNVERIFIED" });
+      expect(requests).toHaveLength(0);
+    });
+  });
+
+  it("rejects an invented product ref in a model candidate rather than adopting it", async () => {
+    await withFixture(() => ({ value: { shots: [{ ...shot, assetRefs: ["model-invented"] }] } }),
+      async (endpoint, requests) => {
+        const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({ contract: marketing, endpoint,
+          runId, visual, trustedProductReferences: [ref], count: 1, assertCurrent: async () => {} }));
+        expect(result.selected).toBeNull();
+        expect(result.rejected).toMatchObject([{ code: "CREATIVE_CANDIDATE_INVALID" }]);
+        expect(requests).toHaveLength(1);
+      });
+  });
+});
 
 describe("native creative candidate structure at the actual model transport", () => {
   it("sends complete JSON contracts, diagnoses malformed shape and uses one settled same-model successor within the candidate count", async () => {

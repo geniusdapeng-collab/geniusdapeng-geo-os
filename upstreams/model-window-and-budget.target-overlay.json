@@ -164,8 +164,8 @@
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
-      "targetBytes": 18699,
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
+      "targetBytes": 20016,
       "evidence": "B",
       "sourceSha256": "6a49f7dd52babf538a948f809e51dbb6661f3737a4a111d0ef2970ffa1b0abb0",
       "sourceBytes": 16655
@@ -173,8 +173,8 @@
     {
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
-      "targetBytes": 50140,
+      "targetSha256": "cb597acf0463de37221a293f39ff6bf4624a8e8a0d00245ce268e2921de32023",
+      "targetBytes": 56435,
       "evidence": "B",
       "sourceSha256": "d7c9e3958490e67a1bdf42c05b3791200ca474b6e667885c591cb832d03ccaf8",
       "sourceBytes": 37741
@@ -277,5 +277,5 @@
       "sourceBytes": 60979
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

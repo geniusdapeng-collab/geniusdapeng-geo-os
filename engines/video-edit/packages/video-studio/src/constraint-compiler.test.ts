@@ -10,6 +10,52 @@ describe("source-bound creative contract compiler", () => {
     expect(c.profile.contentDuration).toBe(25); expect(c.rawIntentHash).toBe(creativeTextHash(input.rawIntent));
     expect(Object.isFrozen(c.profile)).toBe(true); expect(c.hash).toBe(compileCreativeContract(input).hash);
   });
+  it.each([["durationSec", 30], ["durationSeconds", "30"], ["durationSeconds", 45]])(
+    "treats exact native duration alias %s=%s as customer authority without changing signed reference inputs", (key, value) => {
+      const rawIntent = "制作一条封闭场地的运动短片，人物用既有授权角色，产品用既有登记图。";
+      const rawIntentHash = creativeTextHash(rawIntent);
+      const metadata = { [key]: value, brief: { product: "合成示例商品" },
+        builtinCharacterSelection: { characterId: "fixture-actor", requestSha256: rawIntentHash, signature: "actor-fixture" },
+        products: [{ name: "合成示例商品", referenceManifest: { reference_images: [{ assetId: "fixture-asset" }] },
+          requestSha256: rawIntentHash, signature: "product-fixture" }],
+      };
+      const c = compileCreativeContract({ scope, rawIntent, metadata });
+      expect(c.feasibility.status).toBe("feasible");
+      expect(c.profile.finalDuration).toBe(Number(value));
+      expect(c.constraints.find(item => item.id === "duration.final")).toMatchObject({ source: "customer", value: Number(value) });
+      expect(c.rawIntent).toBe(rawIntent);
+      expect(c.rawIntentHash).toBe(rawIntentHash);
+      expect(c.sourceMetadata).toEqual(metadata);
+      expect(c.sourceMetadataHash).toBe(creativeHash(metadata));
+    },
+  );
+  it("keeps unmarked 30s as a system fallback and supports equal explicit aliases", () => {
+    const rawIntent = "制作运动短片。";
+    const omitted = compileCreativeContract({ scope, rawIntent });
+    expect(omitted.profile.finalDuration).toBe(30);
+    expect(omitted.constraints.find(rule => rule.id === "duration.final")?.source).toBe("system");
+    const exact = compileCreativeContract({ scope, rawIntent, metadata: { durationSec: 30, durationSeconds: "30", brief: { duration: 30 } } });
+    expect(exact.constraints.find(rule => rule.id === "duration.final")?.source).toBe("customer");
+    expect(exact.feasibility.status).toBe("feasible");
+  });
+  it.each(["制作运动短片，30秒，必须恰好3个10秒镜头段。", "制作运动短片，明确恰好 3×10秒镜头。"])(
+    "rejects conflicting typed 45s against an exhaustive 3x10 content plan: %s", rawIntent => {
+      const exact = compileCreativeContract({ scope, rawIntent, metadata: { durationSec: 30 } });
+      expect(exact.feasibility.status).toBe("feasible");
+      const blocked = compileCreativeContract({ scope, rawIntent, metadata: { durationSec: 45 } });
+      expect(blocked.feasibility.findings).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: "CONSTRAINT_CONFLICT", fieldPath: "intent.contentDuration", expected: 30, actual: 45 }),
+      ]));
+      expect(() => assertCreativeContract(blocked)).toThrow("CONSTRAINT_CONFLICT");
+    },
+  );
+  it("rejects differing or malformed explicit metadata instead of treating it as a default", () => {
+    const rawIntent = "制作运动短片。";
+    for (const metadata of [{ durationSec: 30, durationSeconds: 45 }, { durationSeconds: "30秒" },
+      { brief: { duration: 30 }, durationSeconds: 45 }, { durationSec: null }, { durationSec: true }]) {
+      expect(compileCreativeContract({ scope, rawIntent, metadata }).feasibility.status).toBe("blocked");
+    }
+  });
   it("does not turn every available fact into required film coverage", () => {
     const facts = { content: "Claim A. Claim B.", hash: creativeTextHash("Claim A. Claim B."), claims: [{ id: "A", text: "Claim A.", sourceRef: "source:A" }, { id: "B", text: "Claim B.", sourceRef: "source:B" }] };
     const c = compileCreativeContract({ scope, rawIntent: "30秒的营销片", isMarketing: true, facts, requiredClaimIds: ["A"] });

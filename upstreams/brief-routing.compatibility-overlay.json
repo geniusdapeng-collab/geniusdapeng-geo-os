@@ -26,8 +26,8 @@
       "sourceGitBlob": "00b08b3b000f26d28c3dca985967293b0ac38fbe",
       "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
       "targetMode": "100644",
-      "targetSha256": "3e0d780727b42dec36489a45d6964740b79d31db71c3d101953c2f00bdbaae8d",
-      "targetBytes": 92858,
+      "targetSha256": "2387a38f603955e472f6b0117ddc92225efc25a2aee3e892ad88c0d8ffd5094c",
+      "targetBytes": 93296,
       "transform": "none"
     },
     {
@@ -38,8 +38,8 @@
       "sourceGitBlob": "8cc6da377732b3685d216fb35262b73faf1d5067",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
       "targetMode": "100644",
-      "targetSha256": "793654ff13863d16d43c83c8850be71bd304a7de073520abadb0b8df98e2293c",
-      "targetBytes": 10919,
+      "targetSha256": "258e3caf95cec37a5d17280ca98c29056714618ac5fc188e43e1f86be7cc6f1c",
+      "targetBytes": 13701,
       "transform": "none"
     },
     {
@@ -159,5 +159,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T15:52:15.078659+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:15:47.210137+00:00"
 }

@@ -155,9 +155,9 @@
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "sourceSha256": "07354cb03c4056746be5cec40cb0f6fc11ff027f9a059c66ec872844cc896576",
-      "targetSha256": "0d3572b2c2aed74fe46c6f08a9c45d7c029905ba5d904a5a61dd26390a81a95c",
+      "targetSha256": "17ba6d98b2e8efd79ca6391daeefd362557d105cc01181af90eb3e7639424571",
       "sourceBytes": 90435,
-      "targetBytes": 100113
+      "targetBytes": 100338
     },
     {
       "path": "apps/server/src/voice/station.test.ts",
@@ -435,9 +435,9 @@
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "sourceSha256": "36fe2821fb973c76222061c965a026a12c710c488aa962e8f64c6c48f005bac5",
-      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
+      "targetSha256": "56cee08f3c453dbbda7ea2e36eada8946e4d135017708507551ec4f848c3e101",
       "sourceBytes": 20113,
-      "targetBytes": 18699
+      "targetBytes": 20016
     },
     {
       "path": "packages/video-studio/src/llm-config.test.ts",
@@ -531,17 +531,17 @@
       "path": "packages/video-studio/src/requirement-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.ts",
       "sourceSha256": "5cb43f08041d0df1668684f5c378cd08e5d264f96fd86011ad6dcc2cc60e3eb2",
-      "targetSha256": "0c8b12d6e6cf146b2aa2a2a83ef962b708167ef67d41ea794fa04de7a18f8c66",
+      "targetSha256": "23f57bb286a5f533c67f50da57a2afcac2cad7985591b30171fd59c0edfb679c",
       "sourceBytes": 12270,
-      "targetBytes": 15006
+      "targetBytes": 15319
     },
     {
       "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "sourceSha256": "4fd0cf15463e526f3f9768b6590298e1718c98bffb107e03514e5fc8ece6162d",
-      "targetSha256": "1ddae7d01239914fdc699adb3bc95a197724adefe9e432299178d5f1d40586d4",
+      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
       "sourceBytes": 59825,
-      "targetBytes": 59791
+      "targetBytes": 74412
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -571,17 +571,17 @@
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "sourceSha256": "2dcfc91a14f3214cae909896d76fdab8469ccd0281ea6be996f18d940751f7b5",
-      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
+      "targetSha256": "cb597acf0463de37221a293f39ff6bf4624a8e8a0d00245ce268e2921de32023",
       "sourceBytes": 35942,
-      "targetBytes": 50140
+      "targetBytes": 56435
     },
     {
       "path": "packages/video-studio/src/studio.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
       "sourceSha256": "c08ff3a534ab41b79e0ffa392acde8cd4e0e48535154d9868b471e3435502d19",
-      "targetSha256": "535a5ebcbc42e15b8dd3150cb61e6a1bf3ebe6e6ddec9f566590d2aef7dfed67",
+      "targetSha256": "d3677bc382d2ef6ac7fe84f8b65b47070b34f979dd4680b54f0fdfaa2e485132",
       "sourceBytes": 33809,
-      "targetBytes": 52239
+      "targetBytes": 54088
     },
     {
       "path": "packages/video-studio/src/vendor-compat.test.ts",
@@ -1155,5 +1155,5 @@
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:00:26.958166+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
 }

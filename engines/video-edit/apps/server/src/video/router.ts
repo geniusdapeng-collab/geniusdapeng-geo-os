@@ -234,9 +234,15 @@ function preproductionRethrow(err: unknown): never {
 /** Validate only the explicit duration here; legacy platform/production fields keep their existing paths. */
 function studioDurationOf(metadata?: Record<string, unknown>): number | undefined {
   const brief = metadata?.brief;
-  if (!brief || typeof brief !== "object" || Array.isArray(brief)) return undefined;
+  const briefDuration = brief && typeof brief === "object" && !Array.isArray(brief)
+    ? (brief as Record<string, unknown>).duration : undefined;
   try {
-    return normalizeExplicitBriefDuration((brief as Record<string, unknown>).duration);
+    const durations = [briefDuration, metadata?.durationSec, metadata?.durationSeconds].map(normalizeExplicitBriefDuration);
+    const duration = durations.find(value => value !== undefined);
+    if (durations.some(value => value !== undefined && value !== duration)) {
+      throw new PrdAuthorityError("PRD_PROFILE_INVALID", "Brief 明确时长字段不一致");
+    }
+    return duration;
   } catch (error) {
     if (error instanceof PrdAuthorityError) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error });
@@ -791,6 +797,7 @@ const studioRouter = router({
       metadata: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      studioDurationOf(input.metadata);
       const scope = scopeOf(ctx.identity);
       try {
         return await resumeProject(scope, {
@@ -799,6 +806,7 @@ const studioRouter = router({
           intent: input.intent,
           metadata: input.metadata,
           startRun: async (runInput) => {
+            const durationSec = studioDurationOf(runInput.metadata);
             const route = runInput.isMarketing ? "marketing" : "narrative";
             const decision = await routeVideoPipeline({ text: runInput.intent, metadata: runInput.metadata, explicit: route });
             if (decision.route !== route) throw new TRPCError({
@@ -809,7 +817,7 @@ const studioRouter = router({
             return startRun(scope, {
               ...runInput, rawIntent: runInput.intent, customerMetadata: runInput.metadata ?? null,
               intent: buildPipelineIntent(runInput.intent, {
-                durationSec: studioDurationOf(runInput.metadata), defaultDurationSec: 30,
+                durationSec, defaultDurationSec: 30,
                 aspectRatio: route === "marketing" ? selectedPlatform.decision.aspectRatio : undefined,
                 platform: selectedPlatform.decision.id,
               }),

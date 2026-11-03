@@ -31,6 +31,25 @@ interface Scope {
 }
 const scopes = new AsyncLocalStorage<Scope>();
 const receivers = new WeakMap<object, Scope>();
+// These examples match the pinned discovery agent schemas. All values are illustrative.
+const discoveryOutputExamples = new Map<string, RequirementRecord>([
+  ["audience", {
+    primaryAudience: { ageRange: "25-30", gender: "all", interestTags: ["示例兴趣一", "示例兴趣二"],
+      occupation: "示例职业", consumptionLevel: "medium" },
+    secondaryAudience: ["示例次要受众"], emotionTriggers: ["示例情绪触发一", "示例情绪触发二"],
+    painPoints: ["示例痛点"], contentExpectations: ["示例内容期待一", "示例内容期待二"],
+  }],
+  ["risk", {
+    technicalRisks: [{ risk: "示例风险", level: "medium", impact: "示例影响" }],
+    businessConstraints: ["示例业务约束"], mitigationSuggestions: ["示例镜头应对建议"],
+  }],
+  ["reference", {
+    filmReferences: [{ title: "《示例影片一》", relevance: "high", keyTakeaway: "示例构图手法" },
+      { title: "《示例影片二》", relevance: "medium", keyTakeaway: "示例剪辑手法" }],
+    adReferences: [{ brand: "示例品牌", relevance: "low", keyTakeaway: "示例叙事结构" }],
+    styleReferences: ["示例视听策略一", "示例视听策略二"],
+  }],
+]);
 const UNVERIFIED_PRODUCT_VISUAL = /后视镜|座椅.{0,5}接缝|轮胎接地面|轮胎接地局部|制动卡钳|刹车卡钳|浮动盘|排气口|轮辋|整流罩|配色分区|前\s*\/?\s*后\s*45\s*度/u;
 const NEGATIVE_VISUAL_CONSTRAINT = /不得|禁止|不要|不能|无需|省略|不新增|仅引用|只引用/u;
 
@@ -505,7 +524,7 @@ export function installRequirementContractBridge(
             const story = upstream._originalStoryText || upstream.original_story_text || "";
             if (typeof story !== "string") requirementAuthorityFailure("REQUIREMENT_DISCOVERY_CHANGED", "本次原始故事不是完整文本");
             return story;
-          }));
+          }, discoveryOutputExamples.get(name)));
           view._validateAndFill = function (this: RequirementRecord, value: unknown, schema: unknown) {
             requireActiveScope();
             validateRequirementSchema(value, schema);

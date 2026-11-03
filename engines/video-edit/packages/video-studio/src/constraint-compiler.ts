@@ -107,6 +107,12 @@ function explicitDurations(raw: string): number[] {
   }))];
 }
 
+/** Only a declared exhaustive uniform shot plan establishes content duration. */
+function explicitShotPlanDurations(raw: string): number[] {
+  const plan = /(?:恰好|仅有|仅含|总共|exactly)\s*(\d{1,2})\s*(?:个|段|[×x*])\s*(\d{1,3}(?:\.\d+)?)\s*(?:秒(?:钟)?|sec(?:onds?)?)\s*(?:镜头段|镜头|段|shots?)/giu;
+  return [...new Set([...raw.matchAll(plan)].map(match => Number((Number(match[1]) * Number(match[2])).toFixed(6))))];
+}
+
 function sourceContainsClaims(content: string, claims: CreativeFactInput["claims"]): boolean {
   const missing = claims.filter(claim => !content.includes(claim.text));
   if (!missing.length) return true;
@@ -137,11 +143,20 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   const sourceMetadata = structuredClone(metadata), sourceMetadataHash = creativeHash(sourceMetadata);
   const resolved = input.profile ?? {};
   const rawDurations = explicitDurations(input.rawIntent), rawDuration = rawDurations.length === 1 ? rawDurations[0] : undefined;
-  const declared = brief.duration === undefined ? undefined : typeof brief.duration === "string" && /^\d+(?:\.\d+)?$/.test(brief.duration.trim())
-    ? finite(Number(brief.duration), 0) : finite(brief.duration, 0);
-  const finalDuration = finite(resolved.targetDuration, declared ?? rawDuration ?? 30);
+  const declaredDurations = Object.entries({ "brief.duration": brief.duration,
+    "metadata.durationSec": metadata.durationSec, "metadata.durationSeconds": metadata.durationSeconds })
+    .filter(([, value]) => value !== undefined).map(([field, value]) => ({
+      field, seconds: typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim())
+        ? finite(Number(value), 0) : finite(value, 0),
+    }));
+  const declared = declaredDurations[0];
   const coverIntroSeconds = (resolved.openWithCover ?? production.openWithCover) === true
     ? finite(resolved.coverIntroSeconds ?? production.coverIntroSeconds, 0) : 0;
+  const shotPlans = explicitShotPlanDurations(input.rawIntent);
+  const contentDuration = shotPlans.length === 1 ? shotPlans[0] : undefined;
+  const expectedDuration = declared?.seconds ?? rawDuration
+    ?? (contentDuration === undefined ? undefined : contentDuration + coverIntroSeconds);
+  const finalDuration = finite(resolved.targetDuration, expectedDuration ?? 30);
   const visual = resolved.visualMode ?? production.visualMode;
   const namedProduct = Boolean(brief.product || (Array.isArray(brief.products) && brief.products.length));
   const rawRatios = [...new Set([...input.rawIntent.matchAll(/(?<!\d)(16\s*[:：]\s*9|9\s*[:：]\s*16|1\s*[:：]\s*1|4\s*[:：]\s*3|3\s*[:：]\s*4)(?!\d)/gu)].map(m => m[1]!.replace(/\s/g, "").replace("：", ":")))];
@@ -162,7 +177,10 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   const preserve = (path: string, expected: unknown, actual: unknown): void => {
     if (expected !== undefined && creativeCanonical(expected) !== creativeCanonical(actual)) findings.push(finding("CONSTRAINT_CONFLICT", path, expected, actual));
   };
-  preserve("profile.finalDuration", declared ?? rawDuration, finalDuration);
+  preserve("profile.finalDuration", expectedDuration, finalDuration);
+  for (const alias of declaredDurations.slice(1)) preserve(alias.field, declared?.seconds, alias.seconds);
+  if (contentDuration !== undefined) preserve("intent.contentDuration", contentDuration, Number(profile.contentDuration.toFixed(6)));
+  if (shotPlans.length > 1) findings.push(finding("CONSTRAINT_CONFLICT", "intent.contentDuration", "one exhaustive content duration", shotPlans));
   for (const value of [brief.aspectRatio, brief.aspect_ratio, production.aspectRatio]) preserve("profile.aspectRatio", value, profile.aspectRatio);
   for (const key of ["frameRate", "resolution", "subtitleMode"] as const) {
     preserve(`profile.${key}`, production[key], profile[key]);
@@ -184,7 +202,7 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
       predicate: id, severity, applicability: "applicable", basis: source === "customer" ? "Explicit customer input retained verbatim" : "Versioned host contract", ownerStage: "creative",
       repairScope: source === "customer" || source === "fact" ? [] : ["duration", "fields", "prompt"], verificationMethod: severity === "post_render" ? "media-measurement" : "deterministic-and-source-review", value });
   };
-  add("duration.final", finalDuration, declared !== undefined || rawDuration !== undefined ? "customer" : "system");
+  add("duration.final", finalDuration, expectedDuration !== undefined ? "customer" : "system");
   add("duration.content", profile.contentDuration, "system");
   for (const key of ["aspectRatio", "frameRate", "resolution", "subtitleMode"] as const) {
     const explicit = key === "aspectRatio" ? aspect !== undefined || rawRatios.length === 1 : Object.hasOwn(production, key) || Object.hasOwn(brief, key);
@@ -196,7 +214,9 @@ export function compileCreativeContract(input: CompileCreativeInput): CreativeCo
   add("creative.art-rubric", ["information-readability", "hook-payoff", "emotional-progression", "visual-variety", "brand-fit", "novelty"], "system", "film", "soft");
   add("media.actual-quality", "unverified-before-render", "system", "film", "post_render");
   if (!Number.isFinite(finalDuration) || finalDuration < 5 || finalDuration > 180 || !Number.isFinite(coverIntroSeconds) || coverIntroSeconds < 0 || coverIntroSeconds > 5 || profile.contentDuration <= 0) findings.push(finding("CONSTRAINT_DURATION_INVALID", "profile.contentDuration", "final 5..180; cover 0..5 and content >0", profile.contentDuration));
-  if (declared !== undefined && rawDuration !== undefined && declared !== rawDuration) findings.push(finding("CONSTRAINT_CONFLICT", "brief.duration", rawDuration, declared));
+  if (declared && rawDuration !== undefined && declared.seconds !== rawDuration) {
+    findings.push(finding("CONSTRAINT_CONFLICT", declared.field, rawDuration, declared.seconds));
+  }
   if (!["16:9", "9:16", "1:1", "4:3", "3:4"].includes(profile.aspectRatio) || ![24, 25, 30, 60].includes(profile.frameRate) || !["1080p", "4K"].includes(profile.resolution) || !["none", "both", "burned", "sidecar"].includes(profile.subtitleMode)) findings.push(finding("CONSTRAINT_DELIVERY_INVALID", "profile", "supported delivery profile", profile));
   if (visual !== undefined && !["abstract_without_product_appearance", "verified_product_appearance", "no_named_product"].includes(String(visual))) findings.push(finding("CONSTRAINT_VISUAL_MODE_INVALID", "profile.visualMode", "known mode", visual));
   if (visual === "no_named_product" && namedProduct) findings.push(finding("CONSTRAINT_CONFLICT", "profile.visualMode", "named product cannot erase its authority", visual));

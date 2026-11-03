@@ -5,6 +5,10 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { compileCreativeContract } from "./constraint-compiler.js";
+import { CreativeRuntime, withCreativeBudget, withCreativeRuntime, type CreativeModelOutcome } from "./creative-runtime.js";
+import { WorkloomLLMEngine } from "./llm-adapter.js";
+import { withPrdAuthorityScope } from "./prd-authority-bridge.js";
 import {
   assertRequirementContractBridge, installRequirementContractBridge, installVendorRequirementContractBridge,
   renderScenePolicyCoverage, sanitizeUnverifiedProductRisk, withRequirementContractScope
@@ -232,6 +236,91 @@ function expectCompleteSources(prompt: string, run: ReturnType<typeof privateRun
   expect(prompt).toContain(run.approvedTheme.contentMd);
   expect(prompt).toContain(JSON.stringify(run.approvedTheme.verdict));
 }
+
+describe("native discovery output contracts at the provider boundary", () => {
+  it.each(["settled", "unknown"] as const)("keeps the exact schemas and only corrects a known %s Risk response", async usage => {
+    installNativeDiscovery();
+    const run = privateRun("discovery-json-wire-" + usage, 30, physicalScene([10, 10, 10]));
+    const sent: Array<{ role: keyof typeof run.modules; prompt: string }> = [];
+    const settled: CreativeModelOutcome[] = [];
+    let reservations = 0;
+    const contracts: Array<{ role: keyof typeof run.modules; schema: unknown; example: unknown }> = [];
+    const engine = new WorkloomLLMEngine({ baseUrl: "http://127.0.0.1:1", model: "deepseek-flash", apiKey: "test-only",
+      fetchImpl: async (_url, init) => {
+        expect(reservations).toBe(settled.length + 1);
+        const body = JSON.parse(String(init?.body));
+        expect(body.model).toBe("deepseek-flash");
+        expect(body.response_format).toEqual({ type: "json_object" });
+        const prompt = body.messages.at(-1).content as string;
+        const intro = prompt.slice(0, 180);
+        const role = intro.includes("受众分析") ? "audience" : intro.includes("电影导演") ? "scene"
+          : intro.includes("技术制片人") ? "risk" : "reference";
+        sent.push({ role, prompt });
+        if (role !== "scene") {
+          const schemaHeading = "【响应 JSON Schema，仅用于校验】";
+          const exampleHeading = "【合规 JSON 对象示例，仅说明结构】";
+          const suffix = prompt.split(schemaHeading)[1];
+          if (suffix?.includes(exampleHeading)) {
+            const [schema, example] = suffix.split(exampleHeading);
+            contracts.push({ role, schema: JSON.parse(schema!.trim()), example: JSON.parse(example!.trim()) });
+          }
+        }
+        const firstRisk = role === "risk" && sent.filter(call => call.role === "risk").length === 1;
+        const value = firstRisk ? { ...run.modules.risk, "PRIVATE-UNDECLARED-KEY": "PRIVATE-RAW-RISK" } : run.modules[role];
+        return Response.json({ id: `local-discovery-${sent.length}`, model: body.model,
+          choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }],
+          ...(usage === "unknown" && firstRisk ? {} : { usage: { prompt_tokens: 100, completion_tokens: 60, total_tokens: 160 } }) });
+      },
+    });
+    const model = engine as unknown as RequirementRecord;
+    const discovery = new RequirementDiscoveryEngine({ llmEngine: engine, timeoutMs: 45_000, agentTimeoutMs: 15_000 });
+    const { tenantId, workspaceId, projectId } = run.authority.marketing.scope;
+    const runtime = new CreativeRuntime({ contract: compileCreativeContract({
+      scope: { tenantId, workspaceId, projectId }, rawIntent: run.story,
+    }), model: "deepseek-flash", nativeSchemaHash: "a".repeat(64),
+    fields: { keys: ["frame"], labels: { frame: "画面" } },
+    cache: { read: async () => null, write: async () => {} },
+    generate: async () => { throw new Error("unexpected creative generation"); } });
+    const selectionContext = "\n\n完整宿主已选候选证据";
+    vi.spyOn(runtime, "selectionContext").mockReturnValue(selectionContext);
+    const operation = withCreativeBudget({
+      beforeModelCall: async () => ++reservations,
+      afterModelCall: async (_reservation, outcome) => { settled.push(outcome); },
+    }, () => withCreativeRuntime(runtime, () =>
+      withPrdAuthorityScope(run.authority, () => runDiscovery(run, model, discovery))));
+    if (usage === "settled") {
+      const result = await operation;
+      expect(result.riskAssessment).toEqual(run.modules.risk);
+      expect(sent.map(call => call.role)).toEqual(["audience", "scene", "risk", "risk", "reference"]);
+      const retry = sent[3]!.prompt;
+      expect(promptJson(retry, "## 上一次原生风险校验反馈")).toMatchObject({
+        keyword: "additionalProperties", missingFields: [], allowedFields: ["technicalRisks", "businessConstraints", "mitigationSuggestions"],
+      });
+      expect(retry).not.toContain("PRIVATE-UNDECLARED-KEY");
+      expect(retry).not.toContain("PRIVATE-RAW-RISK");
+      expect(settled.every(receipt => receipt.usageKnown)).toBe(true);
+    } else {
+      await expect(operation).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      expect(sent.map(call => call.role)).toEqual(["audience", "scene", "risk"]);
+      expect(settled.map(receipt => receipt.usageKnown)).toEqual([true, true, false]);
+    }
+    expect(contracts.map(contract => contract.role)).toEqual(sent.filter(call => call.role !== "scene").map(call => call.role));
+    for (const { role, schema, example } of contracts) {
+      validateRequirementSchema(example, schema);
+      expect(Object.keys(requirementRecord(example, "output example")).sort()).toEqual(Object.keys(run.modules[role]).sort());
+    }
+    const context = requirementAuthorityPrompt(run.authority, run.approvedTheme);
+    for (const call of sent) {
+      expect(call.prompt.split(context)).toHaveLength(2);
+      expect(call.prompt.split(run.story)).toHaveLength(2);
+      expect(call.prompt.split(selectionContext)).toHaveLength(2);
+      if (call.role !== "scene") {
+        expect(call.prompt.indexOf("【响应 JSON Schema，仅用于校验】")).toBeGreaterThan(call.prompt.indexOf(selectionContext));
+        expect(call.prompt).not.toContain("【目标JSON结构示例】");
+      }
+    }
+  }, 45_000);
+});
 
 describe("actual native scene prompt and strict production response", () => {
   const network = vi.fn(async () => { throw new Error("Unexpected network/model request"); });

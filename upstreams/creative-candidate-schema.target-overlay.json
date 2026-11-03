@@ -10,16 +10,16 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
-      "targetSha256": "2d4212cf049d3bdd77654298c44f222654b9e5de9f31ca4cbba3ca2cd86a4a20",
-      "targetBytes": 43376,
+      "targetSha256": "709eb22640a7ce181e9fa6106c0f23495257e29157e0b43197943a17c6fbf0ce",
+      "targetBytes": 47799,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "apps/server/src/video/creative-candidate-wire.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-candidate-wire.test.ts",
-      "targetSha256": "18674432b9a033a267ad54307e6ca32899b25a012edc2bf9cc776b7bf87a93e9",
-      "targetBytes": 12145,
+      "targetSha256": "7d52955590552917ec8cf7528a311956b61cdbdfedaf23de68f6f8fe130a48f0",
+      "targetBytes": 17735,
       "evidence": "B",
       "targetOwned": true
     },
@@ -32,5 +32,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T16:47:31.017521+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T17:38:20.657072+00:00"
 }
