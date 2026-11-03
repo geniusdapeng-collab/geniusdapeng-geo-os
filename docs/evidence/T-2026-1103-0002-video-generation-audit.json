@@ -1,0 +1,597 @@
+{
+  "schemaVersion": "pengmanager.video-generation-audit-acceptance/v1",
+  "taskId": "T-2026-1103-0002",
+  "issue": "https://github.com/geniusdapeng-collab/geniusdapeng-geo-os/issues/70",
+  "auditBaseline": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+  "sourceCommit": "14d40571dabb6db0b452e573414fcdfc4303f609",
+  "sourceTree": "da1313dafe985e19ddbfc43f9ee481378143bc0c",
+  "sourceDeltaFiles": 79,
+  "observedAt": "2026-11-03T04:52:47.093575+00:00",
+  "environment": "local-preview",
+  "coverage": {
+    "total": 658,
+    "A": 84,
+    "B": 538,
+    "C": 36,
+    "unread": 0
+  },
+  "coverageSha256": "affa14f646a2660d44498545e5df2f747c00fcfd853b2dded3424dca48db979c",
+  "migrationEvidenceSha256": "2362eb8537329f350713d00db0671ce18e1c4f4ef5d2b8d255e1a7590b7251f3",
+  "fullSnapshot": {
+    "upstreamCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+    "upstreamFileCount": 3650,
+    "sha256": "60a5a1be88c65ecbacb72c1ee48e98b8fbe0835bb1b7fe8f1236feca2ddb784a"
+  },
+  "cards": [
+    {
+      "id": "MC-001",
+      "severity": "P1",
+      "title": "模型网关空响应使视频工作进程退出",
+      "root": {
+        "file": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
+        "line": 112,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "resolve(new Response(Buffer.concat(chunks)"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "1ddde3999c0ebbf5fcb89d7d7b477d20c08fdf06d76c1be66e7c8f7e104c4374"
+      ],
+      "verification": [
+        {
+          "expected": "真实子进程 HTTP 路径逐一返回 204/205/304；进程存活、结构化错误、每种响应一个 POST，现有成功和用量分支回归通过。",
+          "sha256": "7d1df27f1edc18f2593d403105cb734e488c11a42eaad8a4f2b73924989d14f6",
+          "outputSha256": [
+            "c1ede9fe7815db127a6c153c5e322d591e564cfd493e6f309cbc975542fa0143"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-002",
+      "severity": "P1",
+      "title": "监制图像和视频抽帧未绑定实际送审字节",
+      "root": {
+        "file": "engines/video-edit/packages/video-studio/src/producer-gate.ts",
+        "line": 449,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "let bytes = readFileSync(path);"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "78ccae36e1c125b02dab8f0d2c74aaa6f96cf8ea1433fd71b3d9d864a59d8306",
+        "db49abf4d3094e299c7f58bc4321cb1bde08a7ea4e0ead0baff77de34c1ff274"
+      ],
+      "verification": [
+        {
+          "expected": "替换中仍只送审已核字节，压缩摘要与模型请求一致，所有抽帧来自同一快照，要求原件时超限零请求。",
+          "sha256": "f49a3248705b653cccda17a59014195e135b411c077af5c22e874784a7b9953e",
+          "outputSha256": [
+            "70f380807ad1e0fddad5148855602e37fd4a04649f046366e9f8471f6377c2e0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-003",
+      "severity": "P0",
+      "title": "已接受真实任务的轮询能误写模拟成功、错误失败或重复终态",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/render-poller.ts",
+        "line": 76,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "return pool.get(provider ??"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "a5f4f935375b6f1250a9e7512b215079039d1ad843c494d0f6e3ca6fd33a7f82"
+      ],
+      "verification": [
+        {
+          "expected": "两角色 PG 上验证 mock 隔离、429/503/队列/错 ID/无地址后同任务可成功、并发终态一次、跨租户零查询、真实终态、队列轮换。",
+          "sha256": "6bacae55ae5aa05cf160cbfe792449bb6ef89e719d528380a19ac900a38e2450",
+          "outputSha256": [
+            "19f8ddf33ffd3b0bd045f3428ddfd9f285ad766f2acc8a6a1f5d94fcf03bc64b"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-004",
+      "severity": "P1",
+      "title": "渲染完成后的素材下载不可恢复，且入库字节不能证明与摘要一致",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/ingest.ts",
+        "line": 94,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "copyFileSync(srcPath, absPath)"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "8772b040241c7f99c7a2b9eca6fd603c9014ddeae282bfc54863a11943bc0678",
+        "a24ac13373558910069796b86079fec2fcc0b2a1baa35195694ffb1dd2432bf9",
+        "11d7ad8d7f9d4923a73b3c543d75c73fd741f2a6d566be4de60cd12f6071717c"
+      ],
+      "verification": [
+        {
+          "expected": "超限主动停止、空结果/非法路径/已篡改摘要拒绝；真实 PG 和 FFmpeg 验证 503、HTTP200 HTML、有效 MP4，终态与入库各一条，没有再次提交。",
+          "sha256": "b8f6399b9f5331d36ca63d4ffd449e09cae8d2c55f0b848e5eaa781a63be86b2",
+          "outputSha256": [
+            "cf91447e4b85952b577aa31913641f9c0a275c38c812e18bee206ca66bc98942"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-005",
+      "severity": "P1",
+      "title": "商品档案可使用越界或已变更的主图",
+      "root": {
+        "file": "engines/video-edit/packages/video-studio/src/product-archive.ts",
+        "line": 212,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const abs = resolve(options.dir, photo.file);"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "003ce918c261bdfc73809f55462d8ad9fa38dde77b51d7f3ae9bde2b9dce94bc"
+      ],
+      "verification": [
+        {
+          "expected": "拒绝越界软链和选择后的换图，同时保持合法商品、多型号、公司和方案档案的解析。",
+          "sha256": "4fa0da826ad541ba0bd69a8e4d216850e18cbe6d571706673aef2b992c70b1a2",
+          "outputSha256": [
+            "acfb74b51fa32cd1b21e6ace6ab244d30451fa50345868b61b52c43ab82d194d"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-006",
+      "severity": "P0",
+      "title": "定妆派发不确定或已接受下载失败后会重复付费",
+      "root": {
+        "file": "engines/video-edit/packages/video-studio/src/portrait-runtime.ts",
+        "line": 707,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const url = await generateImage(payload);"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "2bd0f5eb1f403650a1fe3497c16045d1b5db84def68091b2d27f4891005e3744"
+      ],
+      "verification": [
+        {
+          "expected": "未核实或损坏回执重启和并发零重复 POST，已接受且下载失败后沿原 GET 恢复，锁、预算、旧有效缓存和合成人物复用回归通过。",
+          "sha256": "aa6c6d8a676970d8f3552950ff80b25e84a3ab211ae769f1a7df3c2534b92d92",
+          "outputSha256": [
+            "43e177405836b73a82c1b64b65bb8af257ff9d6f87dda471f95527ef84062c98"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-007",
+      "severity": "P0",
+      "title": "商品定妆会把调用方任意宿主机路径发送给供应商",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/studio-worker.ts",
+        "line": 504,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "function collectReferenceImages("
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "f8f6ec336e0d81278b2f3784c6722ec476427de21ba11771e69ec514188c442b"
+      ],
+      "verification": [
+        {
+          "expected": "外部文件零模型请求。真实 PostgreSQL 隔离和原生两个 SKU 各五角度请求验证每个实际图像字节只对应正确商品；跨租户、项目、失效权利、软链及假图阻断。",
+          "sha256": "9e9c03460d4aca025487a7889abd7d136215dee525889e93cb33154b8da05374",
+          "outputSha256": [
+            "5de801568485959f4e293794fb22bdb6038700187208238f3be821c900904aee"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-008",
+      "severity": "P0",
+      "title": "商品主图投影访问内网并会把另一张图当成当前主图",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/media/products.ts",
+        "line": 172,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const res = await fetch(url,"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "4f2b1ab34918d2276872e3759d2005bbcc7b56aa1e5e57918a0a68a29dfc4a59"
+      ],
+      "verification": [
+        {
+          "expected": "实际回环监听器收到零请求，旧图缺失时不冒充当前图；不改 dossier 正文也能登记新主图、清除已删除图；正文来源网络和重定向回归通过。",
+          "sha256": "99a0ba1b47f6016ff81feefda8637caa4eb2bbbbdafa0a79fcd487186f1f4928",
+          "outputSha256": [
+            "8364ba79f3e308a4e1328667c3f3172f1e6a443005362f9738bd2e3c2fbcf4af"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-010",
+      "severity": "P0",
+      "title": "供应商受理不明时可换参数重开同一镜头的生成资格",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/production-authority.ts",
+        "line": 450,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const dispatched = await scopedTx"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "44477062d3d0f69fbe3c11f4bffc79f86f6d05b6902078d9462d4c184f240ffe"
+      ],
+      "verification": [
+        {
+          "expected": "真实 PG 保留一条 unknown 和一次 POST；改参数时监制与生成新增调用为零；原接受回执继续补账。",
+          "sha256": "70d789b9d0f7093c268dfda3bca92d52998d0f5596ba23d9c3705f2456eb5db6",
+          "outputSha256": [
+            "93f90385d35d15d4c07bc3f69f2d40049e639f7c28ebbcc0d6107a1c94408ba5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-011",
+      "severity": "P1",
+      "title": "正式视频资格可签发相冲突的时长和不同产物类型",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/compiled-request.ts",
+        "line": 125,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "export function validateProductionParams"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "44477062d3d0f69fbe3c11f4bffc79f86f6d05b6902078d9462d4c184f240ffe",
+        "eb85cd60e9b12c9b46dd15aa46f7524c73f59f43614abcbbc619b85a145e3edb"
+      ],
+      "verification": [
+        {
+          "expected": "帧数、caller callback、扩展和图片模型在签发/评审/生成前拒绝；合成角色 G5 绑定与原通过路径维持精确请求体。",
+          "sha256": "4067616302a5a5c40aa6dfc53414a4117a94925c70d6b89727460369bc5b0a2f",
+          "outputSha256": [
+            "9d187e83a3cc2fecd7ef94c06915852ccb67c3c46549ab76bcf6f869df17aff5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-012",
+      "severity": "P0",
+      "title": "并发提交可绕过同一工作区的渲染人民币上限和套餐秒数",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/submission-ledger.ts",
+        "line": 172,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "async recordDispatch"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "10a27c3e17f43c64b3343a9770746de743feab33a3d987fb27ebdfc67e34b2ac"
+      ],
+      "verification": [
+        {
+          "expected": "两个项目并发只派发一次；人民币/套餐分别验证；有上限时未报价零派发；相同结算不会再叠加已结算预占。",
+          "sha256": "8f8ce1a475c8e05f61aab798b8006a652f61bb6628cd8509e0f5cb39f86b57dc",
+          "outputSha256": [
+            "a7157a89be36a1b9593ecbab1c4704d546efc87b1d2dec7528c0f375d5009f34"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-013",
+      "severity": "P1",
+      "title": "供应商已返回任务号时一次数据库故障可令已知受理无法补账",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/submit.ts",
+        "line": 277,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "await ledger.recordAccepted"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "799686f7bc30ef77dc6289a22b788274e0fdf8f546bdec7c5ba92c45bf00fea8"
+      ],
+      "verification": [
+        {
+          "expected": "真实 PG 注入 SQL 失败及 COMMIT 前/后故障，各完成一条任务、原回包、两条原事件且一次外部 submit；持续故障保留已知 ID 和待核实。",
+          "sha256": "e8ca83d2af348e87703cffc2222193c2e6aa58b087821819d27225a76059d8fa",
+          "outputSha256": [
+            "5400071f30474401dd21423b40101f38f757efb99e86c03c8114df2d9f47c949"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-014",
+      "severity": "P1",
+      "title": "本地合成引擎缺失仍可生成模拟成功回执",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/submit.ts",
+        "line": 119,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const mock = authorization ? false"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "81a89102b0b3e40ed210f526f551b23b6792167685043d16f12c1e26a31db91e"
+      ],
+      "verification": [
+        {
+          "expected": "无引擎或仅有远端时零派发；恢复后同键实际使用本地引擎一次；已知回执离线仍保持原任务和真实提供者。",
+          "sha256": "393d405f5def7584911b896b268c3e992778d59c6a6d596942d10e8ccb5c534b",
+          "outputSha256": [
+            "c86d045f40a29a101712e99922b1fbcfb0ba94ff079f3d570f6e1c12b729fce4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-015",
+      "severity": "P1",
+      "title": "派发前中断会永久卡住原生成预占",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/submit.ts",
+        "line": 166,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "if (row.state !== \"reserved\") throw pending(row)"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "cea6a3898cda96ce7c479a89cbc9ea20648e9abeca195dcde5ca4f0ffe6f4b87"
+      ],
+      "verification": [
+        {
+          "expected": "真实 PG 验证共享租约竞争时零派发；锁空闲的原资格可换 owner 后只派发一次；旧 owner 无法继续；count=1 仍保持待核实。过期/被取代的零派发资格可重新审核，原请求仍无法派发。",
+          "sha256": "ad28e6818ab0c1ecde7bd109c9ad68a282827bfb2c4f2370912028bd3f6360be",
+          "outputSha256": [
+            "9555f7387672629b9c992685fd56b32ffe9daf4a9d5a0ca844694513acbe4c99"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-020",
+      "severity": "P0",
+      "title": "口播提交接受调用者指定的主机路径和工程写入路径",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/explainer/router.ts",
+        "line": 211,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "uploadPath: z.string()"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "93f5145522fde8daecdb9dac1eb0c0adf32a50520937dd974046da81f82a77bc"
+      ],
+      "verification": [
+        {
+          "expected": "实际 tRPC 拒绝绝对路径、跨域路径、符号链接、字节替换和并发重复准备；同域原件进入正常预剪；旧审批不能越过当前 G8，真实接受回执按原请求补账。",
+          "sha256": "225232cd8624abcdd6bc1606eae65a2e9a588f42df94b3b3563510fabce07102",
+          "outputSha256": [
+            "9c1d35070c5124fcf544f0d2b39f6b7db0c7b85fa1ee2096dca2f78ea580a02c"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-021",
+      "severity": "P1",
+      "title": "旧档案恢复会替换原意图、误入另一片型并跨过未对账状态",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/archive-resume.ts",
+        "line": 232,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "intent: opts.intent ?? project.title"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "ea8b80e9842468e34b49aa92328de1b411032b659daad6cb16dec3c36fb75536"
+      ],
+      "verification": [
+        {
+          "expected": "真实 tRPC 与 PostgreSQL 保留口播片型；跨入口零外部调用；精确恢复已知账务的原意图和 metadata；篡改、合同更新或 unknown 时无法启动。",
+          "sha256": "6ac8a33ea0f5c7cfd095c5196f9e61efcd994b59cd8f962ef9244f76bdb26183",
+          "outputSha256": [
+            "521b3619f22ddd6579c3e73ded400f16360e701b02e6655ed093ea10d392c1a6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-022",
+      "severity": "P1",
+      "title": "口播后期可登记另一任务的完整文件",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/explainer/router.ts",
+        "line": 481,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "requireProviderState: true"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "6220f424eb4ebae8d4c66c83af1ec7b852e8fde7c669e17a8d60cdd6dbc4e99e"
+      ],
+      "verification": [
+        {
+          "expected": "真实 ffmpeg 生成文件经实际 tRPC，异任务、篡改字节、错误/缺失回执均不登记；原始任务仍可读回并保留原片原声。",
+          "sha256": "2e53d2d03f1a70d3164de5a5f533f486687de45558dbd369eae94e180449c82f",
+          "outputSha256": [
+            "c35752bb8d92cc0059a2893baa4ab97543536659c6f4d40bc4f601714d81f3d1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-023",
+      "severity": "P0",
+      "title": "口播配音跨工作区使用全局工位，异常后可重发并采纳回包任意路径",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/explainer/voice-prep.ts",
+        "line": 203,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "if (produced !== cache) copyFileSync(produced, cache)"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "ed3877e5430e942badcb63b014c9b40f6ae9f2467cfcdea581bdefc8a76458ad"
+      ],
+      "verification": [
+        {
+          "expected": "真实环回 HTTP 与 FFmpeg 验证已知完成的第二次执行只复用原字节，掉线或其他回包路径各只有一个 POST，其他工作区零准备。",
+          "sha256": "553b45fcb4ab3035ed574ef40270a7f6837d12fbc785a3757fd5bc77a06c0488",
+          "outputSha256": [
+            "aed2141a074d23c679c8b29738e6fad3c241810be7dc49c556e166fdddff6406"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-024",
+      "severity": "P1",
+      "title": "口播路由丢弃用户选定的横屏画幅",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/explainer/router.ts",
+        "line": 237,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const size = explainerOutputSize(\"9:16\""
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "4b36621f53a83b058f5b76f206ea08a2ded6711f8b913b98b72de3cae10dc284"
+      ],
+      "verification": [
+        {
+          "expected": "真实 tRPC 在 PostgreSQL 保留 16:9；提交通过准备和生成入口携带 1920x1080；原 9:16 HD/UHD、幂等及成片核验回归通过。",
+          "sha256": "878726ea229ae96e1f01b7bab6dec061652cc619a31dd045f8b5f37da4b6805c",
+          "outputSha256": [
+            "61a96fa2d82fa6120b404680c94eb94154a054c656cfc94100a0b938589ad1f0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-030",
+      "severity": "P0",
+      "title": "固定影片工位的新作业可绕过未核实请求，取消仍可能发出 POST",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/film-ledger.ts",
+        "line": 372,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "SELECT * FROM film_component_requests WHERE job_id=$1 AND idempotency_key=$2"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "f2db70813db13da826c66c8406581bcaba8c83219be15ceb0b6c54cad4ca6e61"
+      ],
+      "verification": [
+        {
+          "expected": "实际 PG 拒绝同镜头改键和跨作业改镜头，保留原未知费用与迟到任务 ID；可继续本地素材处理。原生工位测试验证取消前 0 POST、已取得任务号时恰好一次 POST 和无后续查询。",
+          "sha256": "d608bfc2ae26d8cbc8e3e76a603e47567b53fbc643aff4014488997308f35e29",
+          "outputSha256": [
+            "08c68dd81a242f87f47ba0bf838a5f810c83a152d8f0442a6940f3abb5c1c242"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-031",
+      "severity": "P1",
+      "title": "渲染完成后的已知费用写入失败时没有独立补账路径",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/render-poller.ts",
+        "line": 320,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "await recordRenderCost(app, gateway, scope,"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "2b1ec418b47dee37ac04aba8423e38d49565b137bc039ffb564188f401beb53a",
+        "d7533754af7fa32341a9ea735bf2357ed06de176bd4406ae275a46d8aecf13cb"
+      ],
+      "verification": [
+        {
+          "expected": "真实 PG 故障注入后再轮询仅补成本，金额和发生时刻匹配原终态，只有一次成本/终态事件，无新供应商查询、下载或提交。",
+          "sha256": "085667964b3de892087f698feaaac2a41482aa44bf04a1e096aa905c52ca8ffd",
+          "outputSha256": [
+            "205e29e8a82506a268999845d8f4664217062f4ab7f1c0843cc1f41bb214715e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MC-032",
+      "severity": "P0",
+      "title": "远端渲染供应商给出的结果 URL 可以使媒体工位请求内网",
+      "root": {
+        "file": "engines/video-edit/apps/server/src/video/gen/ingest.ts",
+        "line": 53,
+        "commit": "98629c4e1cc73000e610623bf9a0a3f8799d254f",
+        "symbol": "const fetchImpl = opts.fetchImpl ?? fetch"
+      },
+      "repairActor": "codex-root-video-audit-repair",
+      "acceptanceActor": "codex-independent-review",
+      "baselineFailureSha256": [
+        "919cd5f878296f5d54d81790513dd24b22f99d368fb67a0c9cd849eb653f0493",
+        "237b95cc43202016fcfdbedda02f22e0d522a8c6bc360427bfdb719eaf86f8f4"
+      ],
+      "verification": [
+        {
+          "expected": "真实 loopback 服务零请求；公网域名解析混入链路本地 IP 被拒；现有真实 DNS pin、边界和视频流式回归通过。",
+          "sha256": "9269507f613626f1dc88100ee7f789b7d59bb33376c05fd681df5aa4ccc290a0",
+          "outputSha256": [
+            "9da0278e8166b37148ffdc60737dde13ec5903726b06555d58775868bf84f45b"
+          ]
+        }
+      ]
+    }
+  ],
+  "gateSha256": "f56c182afa2f75128857fbca4328cdc7caff0c50a48daa9bc7e901c6a4df330f",
+  "independentReceiptSha256": "87a0cbff14c3cda175e29d4049a851d4f8a73f46b9298c3d0acde67c5e080bd3",
+  "fixtureMatrix": {
+    "executed": 60,
+    "passed": 60,
+    "actualBillableProviderRequests": 0,
+    "artifactSha256": "c5862531dcd58d1710ae260bf0c4b6c10da867d5211a8f6f884436a9ea4f778f"
+  },
+  "limits": [
+    "Isolated PostgreSQL, fixture HTTP endpoints, native process and FFmpeg; no paid provider/deployment.",
+    "Fresh marketing attempt revalidates G1. Provider-side renewal/unknown billing and unresolved hard-kill portrait receipt require reconciliation.",
+    "Optional TalkCraft vendor inventory check skips when the external engine is not installed.",
+    "Offline fixtures do not establish gains in real creative quality, latency, or cost."
+  ]
+}
