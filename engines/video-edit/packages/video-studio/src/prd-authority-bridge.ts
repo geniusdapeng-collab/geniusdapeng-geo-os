@@ -7,7 +7,7 @@ import {
   type RequirementContract, type RequirementRecord
 } from "./requirement-contract.js";
 import {
-  authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdModelSchema, prdAuthorityPrompt, prdFail,
+  authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdModelSchema, prdAuthorityPrompt, prdDeliveryProfile, prdFail,
   validatePrdDelivery, validatePrdModelPayload, validatePrdProduction, type PrdAuthority
 } from "./prd-authority.js";
 import { normalizeMarketingPrdContract } from "./marketing-prd-contract.js";
@@ -562,7 +562,7 @@ function verifyOutput(scope: Scope, value: unknown, schema: RequirementRecord): 
       || requirementHash(marker.scope) !== requirementHash(scope.authority.marketing.scope)
       || requirementHash(marker.profile) !== requirementHash(profile)
       || ["targetDuration", "aspectRatio", "targetPlatform", "resolution", "frameRate"].some(key => Object.hasOwn(profile, key) && positioning[key] !== profile[key as keyof typeof profile])
-      || Object.keys(profile).some(key => output[key] !== profile[key as keyof typeof profile])) {
+      || Object.entries(prdDeliveryProfile(profile)).some(([key, value]) => output[key] !== value)) {
       prdFail("PRD_AUTHORITY_CHANGED", "PRD 权威规格或本次场景/人物来源在生成后发生变化");
     }
     return result;
