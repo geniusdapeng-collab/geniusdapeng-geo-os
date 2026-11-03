@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 export interface ServiceShot { shotId: string; durationSec: number; prompt: string; fields: Record<string, unknown>; promptSha256: string }
 export interface ServiceShotList { projectId: string; sourceStageRunId: string; sourceAttempt: number; promptsSha256: string; shots: ServiceShot[] }
+export type ProductionSourceIdentity = Pick<ServiceShotList, "projectId" | "sourceStageRunId" | "sourceAttempt" | "promptsSha256">;
 export interface QualifiedShot {
   qualificationId: string; qualificationToken: string; scriptId: string; scriptVersion: number; modelId: string;
   params: Record<string, unknown>; mode: "auto"; requestHash: string; payloadHash: string; promptSha256: string; expiresAt: string;
@@ -17,6 +18,12 @@ export interface ProductionProjectResult {
   mode: "service-production"; projectId: string; modelId: string; sourceStageRunId: string; sourceAttempt: number;
   estimatedCny: number; status: "running" | "done" | "failed" | "unverified"; shots: ProductionShotResult[];
 }
+export function assertProductionSource(current: ServiceShotList, expected: ProductionSourceIdentity): void {
+  if (current.projectId !== expected.projectId || current.sourceStageRunId !== expected.sourceStageRunId
+    || current.sourceAttempt !== expected.sourceAttempt || current.promptsSha256 !== expected.promptsSha256) {
+    throw new ProductionClientError("SOURCE_CHANGED", "The authenticated project archive no longer matches the accepted preproduction handoff");
+  }
+}
 export class ProductionClientError extends Error {
   constructor(readonly code: string, message: string) { super(`${code}: ${message}`); this.name = "ProductionClientError"; }
 }
@@ -27,6 +34,25 @@ function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
   if (obj(value)) return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stable(value[key])}`).join(",")}}`;
   return JSON.stringify(value);
+}
+function assertQualifiedProvider(q: QualifiedShot, source: ServiceShotList, shot: ServiceShot, expected: string): void {
+  let payload: unknown;
+  try {
+    const [encoded, mac, ...rest] = q.qualificationToken.split(".");
+    if (!encoded || !mac || rest.length || encoded.length > 65_536
+      || !/^[A-Za-z0-9_-]+$/.test(encoded) || !/^[A-Za-z0-9_-]+$/.test(mac)) throw new Error("invalid token envelope");
+    payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+  } catch {
+    throw new ProductionClientError("QUALIFICATION_MISMATCH", "The service did not issue a decodable signed qualification");
+  }
+  // The service alone owns the signing key and verifies the MAC at submission.
+  if (!obj(payload) || payload.providerModel !== expected || payload.modelId !== q.modelId
+    || payload.projectId !== source.projectId || payload.shotId !== shot.shotId
+    || payload.stageRunId !== source.sourceStageRunId || payload.attempt !== source.sourceAttempt || payload.promptsSha256 !== source.promptsSha256
+    || payload.scriptId !== q.scriptId || payload.scriptVersion !== q.scriptVersion || payload.qualificationId !== q.qualificationId
+    || payload.requestHash !== q.requestHash || payload.payloadHash !== q.payloadHash) {
+    throw new ProductionClientError("QUALIFICATION_PROVIDER_CHANGED", "The signed qualification differs from the approved supplier model or exact source");
+  }
 }
 export class ProductionClient {
   private readonly url: string;
@@ -46,7 +72,9 @@ export class ProductionClient {
     return message.slice(0, 1200);
   }
   async request<T>(route: string, input: unknown, method: "GET" | "POST" = "POST"): Promise<T> {
-    if (!/^video\.(production|render|gen)\.[A-Za-z]+$/.test(route)) throw new ProductionClientError("ROUTE_INVALID", "Only production service routes are permitted");
+    if (!/^video\.(production|render|gen)\.[A-Za-z]+$/.test(route) && !(route === "video.media.get" && method === "GET")) {
+      throw new ProductionClientError("ROUTE_INVALID", "Only production and scoped media read routes are permitted");
+    }
     const suffix = method === "GET" ? `?input=${encodeURIComponent(JSON.stringify(input))}` : "";
     let response: Response;
     try {
@@ -96,6 +124,8 @@ export class ProductionClient {
 /** No automatic re-submit after timeout, rejection or malformed response; resume through the same service archive. */
 export async function renderServiceProject(input: {
   client: ProductionClient; projectId: string; modelId: string; only?: string[]; params?: Record<string, unknown>;
+  expectedSource?: ProductionSourceIdentity;
+  expectedProviderModel?: string;
   maxEstimatedCny?: number; pollRounds?: number; pollIntervalMs?: number;
   onProgress?: (result: ProductionProjectResult) => void | Promise<void>; wait?: (ms: number) => Promise<void>;
 }): Promise<ProductionProjectResult> {
@@ -105,6 +135,7 @@ export async function renderServiceProject(input: {
     || (input.maxEstimatedCny !== undefined && (!Number.isFinite(input.maxEstimatedCny) || input.maxEstimatedCny < 0))) throw new ProductionClientError("LIMIT_INVALID", "Polling and budget limits are invalid");
   if (input.params?.durationSec !== undefined) throw new ProductionClientError("DURATION_SOURCE_REQUIRED", "Duration is loaded from the service archive");
   const source = await input.client.shots(input.projectId);
+  if (input.expectedSource) assertProductionSource(source, input.expectedSource);
   const only = input.only ?? [];
   if (new Set(only).size !== only.length || only.some(id => !source.shots.some(shot => shot.shotId === id))) throw new ProductionClientError("SHOT_SCOPE_INVALID", "Selected shots are missing or repeated");
   const shots = only.length ? source.shots.filter(shot => only.includes(shot.shotId)) : source.shots;
@@ -126,6 +157,7 @@ export async function renderServiceProject(input: {
     const row = result.shots[index]!; let submitting = false;
     try {
       const q = await input.client.qualify(input.projectId, shot, input.modelId, input.params ?? {});
+      if (input.expectedProviderModel !== undefined) assertQualifiedProvider(q, source, shot, input.expectedProviderModel);
       const current = await input.client.shots(input.projectId);
       if (current.sourceStageRunId !== source.sourceStageRunId || current.sourceAttempt !== source.sourceAttempt || current.promptsSha256 !== source.promptsSha256
         || stable(current.shots) !== stable(source.shots)) throw new ProductionClientError("SOURCE_CHANGED", "Service preproduction changed after the batch was quoted; no new generation was submitted");
@@ -145,8 +177,10 @@ export async function renderServiceProject(input: {
   for (let round = 0; round < rounds && result.shots.some(row => ["submitted", "rendering"].includes(row.status)); round++) {
     await wait(interval);
     try {
-      await input.client.request("video.render.poll", { limit: 100 });
-      const jobs = await input.client.request<Array<Record<string, unknown>>>("video.gen.jobs", { projectId: input.projectId, limit: 100 }, "GET");
+      const pendingIds = result.shots.filter(row => ["submitted", "rendering"].includes(row.status)).map(row => row.jobId!);
+      await input.client.request("video.render.poll", { projectId: input.projectId, jobIds: pendingIds, limit: pendingIds.length });
+      const jobs = await input.client.request<Array<Record<string, unknown>>>("video.gen.jobs",
+        { projectId: input.projectId, jobIds: pendingIds, limit: pendingIds.length }, "GET");
       if (!Array.isArray(jobs)) throw new ProductionClientError("JOB_RESPONSE_INVALID", "Service jobs response is not an array");
       for (const row of result.shots) {
         if (!["submitted", "rendering"].includes(row.status)) continue;
@@ -154,7 +188,10 @@ export async function renderServiceProject(input: {
         const job = matches[0]!;
         if (matches.length !== 1 || job.project_id !== input.projectId || job.script_id !== row.scriptId || job.script_version !== row.scriptVersion || job.task_id !== row.taskId || job.mock !== false) throw new ProductionClientError("JOB_IDENTITY_MISMATCH", "Job receipt does not match the submitted service revision");
         if (job.status === "done") {
-          if (typeof job.asset_id !== "string" || !job.asset_id || typeof job.local_path !== "string" || !job.local_path) throw new ProductionClientError("MEDIA_UNVERIFIED", "Generation has no persisted media receipt");
+          if (typeof job.asset_id !== "string" || !job.asset_id || typeof job.local_path !== "string" || !job.local_path) {
+            row.status = "rendering";
+            continue; // provider success is durable, and the native media ingest can be reconciled for this job
+          }
           row.status = "done"; row.assetId = job.asset_id; row.localPath = job.local_path; row.resultUrl = typeof job.result_url === "string" ? job.result_url : null;
           row.actualCny = typeof job.actual_cny === "number" && Number.isFinite(job.actual_cny) ? job.actual_cny : null;
         } else if (job.status === "failed") { row.status = "failed"; row.error = "SERVICE_GENERATION_FAILED: inspect the service job receipt before retry"; }
@@ -171,4 +208,50 @@ export async function renderServiceProject(input: {
   for (const row of unresolved) { row.status = "unknown"; row.error = "POLL_LIMIT: generation may still be running; inspect its existing job, do not re-submit"; }
   result.status = result.shots.every(row => row.status === "done") ? "done" : result.shots.some(row => row.status === "failed") ? "failed" : "unverified";
   await persist(); return result;
+}
+
+/** Recover only issued task IDs. An ambiguous or unsubmitted shot is never dispatched from this path. */
+export async function reconcileServiceProject(input: {
+  client: ProductionClient; expectedSource: ProductionSourceIdentity; previous: ProductionProjectResult;
+}): Promise<ProductionProjectResult> {
+  const { client, expectedSource } = input;
+  const result = structuredClone(input.previous);
+  assertProductionSource(await client.shots(expectedSource.projectId), expectedSource);
+  if (result.projectId !== expectedSource.projectId || result.sourceStageRunId !== expectedSource.sourceStageRunId
+    || result.sourceAttempt !== expectedSource.sourceAttempt || result.mode !== "service-production"
+    || !result.shots.length || result.shots.some(row => !row.jobId || !row.taskId || !row.scriptId || !row.scriptVersion || row.mock !== false)) {
+    throw new ProductionClientError("RECOVERY_REQUIRED", "At least one paid operation has no stable task ID; reconcile the current native receipt without resubmitting");
+  }
+  const jobIds = result.shots.map(row => row.jobId!);
+  if (jobIds.length > 100 || new Set(jobIds).size !== jobIds.length) {
+    throw new ProductionClientError("RECOVERY_REQUIRED", "Existing issued task IDs are duplicated or outside the native poll limit");
+  }
+  await client.request("video.render.poll", { projectId: result.projectId, jobIds, limit: jobIds.length });
+  const jobs = await client.request<Array<Record<string, unknown>>>("video.gen.jobs",
+    { projectId: result.projectId, jobIds, limit: jobIds.length }, "GET");
+  if (!Array.isArray(jobs)) throw new ProductionClientError("JOB_RESPONSE_INVALID", "Service jobs response is not an array");
+  for (const row of result.shots) {
+    const matches = jobs.filter(job => job?.id === row.jobId);
+    const job = matches[0];
+    if (matches.length !== 1 || job?.project_id !== result.projectId || job.script_id !== row.scriptId
+      || job.script_version !== row.scriptVersion || job.task_id !== row.taskId || job.mock !== false) {
+      throw new ProductionClientError("JOB_IDENTITY_MISMATCH", "Recovery job no longer binds the issued native task");
+    }
+    if (job.status === "done" && typeof job.asset_id === "string" && job.asset_id && typeof job.local_path === "string" && job.local_path) {
+      Object.assign(row, { status: "done", assetId: job.asset_id, localPath: job.local_path,
+        actualCny: typeof job.actual_cny === "number" && Number.isFinite(job.actual_cny) ? job.actual_cny : null });
+      delete row.error;
+    } else if (job.status === "failed") {
+      row.status = "failed";
+      row.error = "SERVICE_GENERATION_FAILED: inspect the existing native job before authorizing another attempt";
+    } else if (job.status === "submitted" || job.status === "rendering" || job.status === "done") {
+      row.status = job.status === "done" ? "rendering" : job.status;
+      delete row.error;
+    } else {
+      throw new ProductionClientError("JOB_STATUS_UNVERIFIED", "Existing native job is not in a reconcilable media state");
+    }
+  }
+  result.status = result.shots.every(row => row.status === "done") ? "done"
+    : result.shots.some(row => row.status === "failed") ? "failed" : "running";
+  return result;
 }

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1103-0006",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T16:32:01.808920+00:00",
+  "scope": "PengManager native Codex video request intake, resumable owner execution, and exact native media delivery; source upstream pin unchanged.",
+  "sourceOverlayCount": 4,
+  "files": [
+    {
+      "path": "apps/server/src/video/render-poller.pg.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/render-poller.pg.test.ts",
+      "targetSha256": "0d68bbd1d82a9dd0d53696de69fe5ddeaeee5f3cc7c6b744c634cf6ab2579ca7",
+      "targetBytes": 15826,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/render-poller.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/render-poller.ts",
+      "targetSha256": "6643813e5baaed15514b73d327c6d25d2abcf8fc11b9a84cc7d32ce625d1beb8",
+      "targetBytes": 26543,
+      "evidence": "B",
+      "sourceSha256": "2ad8ca7e875702f8921759ecf2dceb71c67127fc382f678fe3a44e682984f151",
+      "sourceBytes": 19651
+    },
+    {
+      "path": "apps/server/src/video/router.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/router.ts",
+      "targetSha256": "3e0d780727b42dec36489a45d6964740b79d31db71c3d101953c2f00bdbaae8d",
+      "targetBytes": 92858,
+      "evidence": "B",
+      "sourceSha256": "d6d20e0704d355d51841e792982bc16081ed62b9f3c010a924dcb491de7155bf",
+      "sourceBytes": 85845
+    },
+    {
+      "path": "packages/video-studio/src/native-project-delivery.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/native-project-delivery.ts",
+      "targetSha256": "4dbaeb72fd27b6507f7f76e23382f1f9b7749cb6d8e84d0ede6f34c06b8a5ece",
+      "targetBytes": 25302,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/native-render-sources.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/native-render-sources.ts",
+      "targetSha256": "f8511fda2fee8b4c664c994a88870288ebd314bfc40237b55d75eaf9d8d976aa",
+      "targetBytes": 7420,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/production-client.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/production-client.test.ts",
+      "targetSha256": "5da1cca10aff5e56283a6df3427e64145c84a27e9f47a0d70175af1fe520fae9",
+      "targetBytes": 17044,
+      "evidence": "B",
+      "sourceSha256": "5c74b5b56e89a7a7e91ffd71c5f58142620867e3ac84f3419be6d27b809c49ae",
+      "sourceBytes": 13909
+    },
+    {
+      "path": "packages/video-studio/src/production-client.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/production-client.ts",
+      "targetSha256": "dae66391e33114a1be153f65eda445f6a12267f4ab18892a62ce4e5d8eb88a2a",
+      "targetBytes": 21467,
+      "evidence": "B",
+      "sourceSha256": "1d6e01c3426604dbdcced093cf1056230638d65eb59a07c437eef04d4584c5e3",
+      "sourceBytes": 15566
+    }
+  ]
+}

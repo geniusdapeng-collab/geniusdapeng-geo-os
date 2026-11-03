@@ -1383,9 +1383,16 @@ const renderRouter = router({
 
   /** 渲染轮询回填（v3.0 异步任务制第二步）：submitted/rendering → done/failed + render.complete/failed 事件 */
   poll: writeProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(100).default(20) }).optional())
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).default(20),
+      projectId: z.string().min(1).max(200).optional(),
+      jobIds: z.array(z.string().min(1).max(200)).min(1).max(100).optional(),
+    }).refine(input => !input.jobIds || (input.projectId !== undefined && new Set(input.jobIds).size === input.jobIds.length),
+      "精确任务轮询必须绑定当前项目且任务不能重复").optional())
     .mutation(async ({ ctx, input }) => {
-      return pollRenderJobs(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), { limit: input?.limit });
+      return pollRenderJobs(getAppPool(), getGatewayPool(), scopeOf(ctx.identity), {
+        limit: input?.limit, projectId: input?.projectId, jobIds: input?.jobIds,
+      });
     }),
 });
 
@@ -1804,8 +1811,10 @@ const genRouter = router({
   jobs: protectedProcedure
     .input(z.object({
       projectId: z.string().min(1).optional(),
+      jobIds: z.array(z.string().min(1).max(200)).min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).default(30),
-    }))
+    }).refine(input => !input.jobIds || (input.projectId !== undefined && new Set(input.jobIds).size === input.jobIds.length),
+      "精确任务读取必须绑定当前项目且任务不能重复"))
     .query(async ({ ctx, input }) => {
       const scope = scopeOf(ctx.identity);
       const rows = await scopedQuery<{
@@ -1826,9 +1835,10 @@ const genRouter = router({
            LEFT JOIN render_scripts s ON s.id = j.script_id AND s.workspace_id = j.workspace_id
            LEFT JOIN video_assets a ON a.id = j.asset_id AND a.workspace_id = j.workspace_id
           WHERE j.workspace_id = $1 AND ($2::text IS NULL OR j.project_id = $2)
+            AND ($4::text[] IS NULL OR j.id = ANY($4::text[]))
           ORDER BY j.created_at DESC
           LIMIT $3`,
-        [scope.workspaceId, input.projectId ?? null, input.limit],
+        [scope.workspaceId, input.projectId ?? null, input.limit, input.jobIds ?? null],
       );
       return rows.map((r) => ({
         ...r,

@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { standardVideoIntent } from '../src/video-runtime/standard-workflow.mjs';
+import { standardVideoExecutor, standardVideoIntent } from '../src/video-runtime/standard-workflow.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const token = 'synthetic-pengmanager-member';
+const publishedSourceMain = 'a544ab8b068790bfb14b7977efc81b33897fc9de';
 const raw = ' 用鹏经理把 820RR 做成十七秒的营销片。 ';
 const statusRow = { runId: 'RUN-17', projectId: 'VID-17', status: 'finished', pendingApprovalId: null };
 const archive = { projectId: 'VID-17', archiveExists: true, pendingApprovalId: null, manualBridges: [], stages: [
@@ -30,7 +32,7 @@ async function cli(args, { input, env = {}, command = 'scripts/video-standard.mj
     child.stdin.end(input === undefined ? undefined : JSON.stringify(input));
   });
 }
-async function fixture(t, { start = { kind: 'routed', pipeline: 'marketing', runId: 'RUN-17', projectId: 'VID-17' },
+async function fixture(t, { previousState = 'routed', statusData = statusRow,
   scope = { tenantId: 'tenant-pengmanager-video', workspaceId: 'ws-pengmanager-video' },
   archiveData = archive, shotsData = shots } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'peng-video-standard-'));
@@ -42,10 +44,9 @@ async function fixture(t, { start = { kind: 'routed', pipeline: 'marketing', run
     if (req.method === 'POST') { let body = ''; for await (const part of req) body += part; input = JSON.parse(body); }
     calls.push({ path: url.pathname, method: req.method, input, authorized: req.headers.authorization === `Bearer ${token}` });
     if (!calls.at(-1).authorized) { res.writeHead(401).end('{}'); return; }
-    if (url.pathname === '/trpc/video.studio.start' && start === 'connection-lost') { res.destroy(); return; }
     const values = {
-      '/trpc/members.me': { identity: scope }, '/trpc/video.studio.start': start,
-      '/trpc/video.studio.status': statusRow, '/trpc/video.studio.archive': archiveData, '/trpc/video.production.shots': shotsData,
+      '/trpc/members.me': { identity: scope },
+      '/trpc/video.studio.status': statusData, '/trpc/video.studio.archive': archiveData, '/trpc/video.production.shots': shotsData,
     };
     if (!Object.hasOwn(values, url.pathname)) { res.writeHead(404).end('{}'); return; }
     res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ result: { data: values[url.pathname] } }));
@@ -53,9 +54,25 @@ async function fixture(t, { start = { kind: 'routed', pipeline: 'marketing', run
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const env = { WORKLOOM_ACCESS_TOKEN: token, PENGMANAGER_VIDEO_BACKEND_PORT: String(server.address().port) };
-  const startCli = (input, environment = {}) => cli(['start', '--input-file', '-', '--data-dir', directory], { input, env: { ...env, ...environment } });
-  const statusCli = job => cli(['status', '--job', job, '--data-dir', directory], { env });
-  return { calls, directory, startCli, statusCli };
+  const invoke = (action, input, environment = {}) => cli([action, '--input-file', '-', '--data-dir', directory], { input, env: { ...env, ...environment } });
+  const startCli = (input, environment) => invoke('start', input, environment);
+  const statusCli = (job, environment = {}) => cli(['status', '--job', job, '--data-dir', directory], { env: { ...env, ...environment } });
+  // Seed the exact published v1 key and receipt format, independent of the new CLI.
+  const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+  const jobId = hash(JSON.stringify({ intent: raw, route: 'auto', metadata: { brief: { duration: 17 } } }));
+  const previous = { schemaVersion: 'pengmanager.standard-video-start/v1', jobId, sourceMain: publishedSourceMain,
+    workspaceId: 'ws-pengmanager-video', backendPort: server.address().port, intentSha256: hash(raw), requestedDurationSec: 17,
+    complete: false, state: previousState,
+    ...(previousState === 'routed' ? { projectId: 'VID-17', runId: 'RUN-17', pipeline: 'marketing', next: 'status' } : {}),
+    ...(previousState === 'clarify' ? { missing: ['product'], next: 'resolve-native-route' } : {}),
+  };
+  if (previousState) {
+    await mkdir(path.join(directory, 'standard-video-runs'), { mode: 0o700 });
+    await writeFile(path.join(directory, 'standard-video-runs', jobId + '.json'), JSON.stringify(previous) + '\n', { mode: 0o600 });
+  }
+  const upgradedExecutor = standardVideoExecutor({ dataRoot: await realpath(directory), sourceMain: 'f'.repeat(40),
+    ports: { backend: server.address().port }, env });
+  return { calls, directory, jobId, previous, invoke, startCli, statusCli, upgradedExecutor };
 }
 
 test('the one-sentence plan is read-only, exact, and does not default an explicit request to 30', async () => {
@@ -74,14 +91,13 @@ test('the one-sentence plan is read-only, exact, and does not default an explici
   assert.throws(() => standardVideoIntent({ intent: raw, shots: [] }), { code: 'STANDARD_VIDEO_INTENT_INVALID' });
 });
 
-test('subprocess dispatch uses the native auto route once; status proves only current preproduction', async t => {
-  const { calls, directory, startCli, statusCli } = await fixture(t);
+test('standard CLI retains the old job ID and status reads only the current preproduction', async t => {
+  const { calls, directory, previous, startCli, statusCli } = await fixture(t);
   const started = await startCli({ intent: raw });
   assert.equal(started.code, 0, started.err);
   const first = started.result;
-  assert.equal(first.pipeline, 'marketing');
-  assert.equal(first.requestedDurationSec, 17);
-  assert.equal(first.complete, false);
+  assert.deepEqual(first, previous);
+  assert.deepEqual(calls, []);
   const repeated = await startCli({ intent: raw });
   assert.deepEqual(repeated.result, first);
   const checked = await statusCli(first.jobId);
@@ -90,32 +106,43 @@ test('subprocess dispatch uses the native auto route once; status proves only cu
   assert.equal(checked.result.next, 'video.production.qualifyShot');
   assert.equal(checked.result.complete, false);
   assert.equal(checked.result.promptsSha256, 'b'.repeat(64));
-  const posts = calls.filter(row => row.method === 'POST');
-  assert.deepEqual(posts, [{ path: '/trpc/video.studio.start', method: 'POST', authorized: true,
-    input: { intent: raw, route: 'auto', metadata: { brief: { duration: 17 } } } }]);
+  assert.equal(calls.some(row => row.method === 'POST'), false);
   assert.ok(calls.every(row => row.authorized));
   const file = await readFile(path.join(directory, 'standard-video-runs', `${first.jobId}.json`), 'utf8');
   assert.ok(!file.includes(token) && !file.includes(raw));
 });
 
-test('a lost native result keeps the original pending receipt and never resubmits', async t => {
-  const { calls, startCli, statusCli } = await fixture(t, { start: 'connection-lost' });
-  const uncertain = await startCli({ intent: raw });
-  assert.equal(uncertain.code, 1);
-  assert.equal(uncertain.error.code, 'STANDARD_VIDEO_START_RECONCILE');
+test('pending legacy receipt never resubmits and points resume and delivery to the old job', async t => {
+  const { calls, invoke, startCli, statusCli } = await fixture(t, { previousState: 'pending' });
   const original = await startCli({ intent: raw });
   assert.equal(original.result.state, 'pending');
   const checked = await statusCli(original.result.jobId);
   assert.equal(checked.result.next, 'reconcile-original-start');
-  assert.equal(calls.filter(row => row.method === 'POST').length, 1);
+  for (const mode of ['resume', 'deliver']) {
+    const denied = await invoke(mode, { intent: raw });
+    assert.equal(denied.code, 2, denied.err);
+    assert.equal(denied.result.jobId, original.result.jobId);
+    assert.equal(denied.result.previousState, 'pending');
+    assert.equal(denied.result.code, 'STANDARD_VIDEO_LEGACY_PROJECT_READBACK_REQUIRED');
+  }
+  assert.deepEqual(calls, []);
 });
 
-test('wrong workspace stops before POST; a clarification does not look like a real project', async t => {
+test('an engine pin refresh still permits verified readback of the published v1 receipt', async t => {
+  const { calls, jobId, previous, upgradedExecutor } = await fixture(t);
+  assert.deepEqual(upgradedExecutor.lookup(jobId), previous);
+  const checked = await upgradedExecutor.status(jobId);
+  assert.equal(checked.stage, 'preproduction-verified');
+  assert.equal(checked.sourceMain, publishedSourceMain);
+  assert.ok(calls.every(row => row.method === 'GET' && row.authorized));
+});
+
+test('wrong workspace stops legacy readback; clarification does not look like a real project', async t => {
   const other = await fixture(t, { scope: { tenantId: 'tenant-other', workspaceId: 'ws-other' } });
-  const denied = await other.startCli({ intent: raw });
+  const denied = await other.statusCli(other.jobId);
   assert.equal(denied.error.code, 'STANDARD_VIDEO_SCOPE_MISMATCH');
-  assert.equal(other.calls.some(row => row.method === 'POST'), false);
-  const unclear = await fixture(t, { start: { kind: 'clarify', missing: ['product'] } });
+  assert.deepEqual(other.calls.map(row => row.path), ['/trpc/members.me']);
+  const unclear = await fixture(t, { previousState: 'clarify' });
   const result = (await unclear.startCli({ intent: raw })).result;
   assert.equal(result.state, 'clarify');
   assert.deepEqual(result.missing, ['product']);
@@ -135,7 +162,7 @@ test('standard work rejects manual bridging, stale source attempts and a differe
     const denied = await statusCli(first.jobId);
     assert.equal(denied.code, 1);
     assert.equal(denied.error.code, code);
-    assert.equal(calls.filter(row => row.method === 'POST').length, 1);
+    assert.equal(calls.some(row => row.method === 'POST'), false);
   }
 });
 
@@ -150,15 +177,27 @@ test('a proxy and a credential echo cannot receive or create a reusable native r
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
   t.after(() => new Promise(resolve => proxy.close(resolve)));
-  const direct = await producer.startCli({ intent: raw }, { HTTP_PROXY: `http://127.0.0.1:${proxy.address().port}`, NO_PROXY: '', NODE_USE_ENV_PROXY: '1' });
+  const direct = await producer.statusCli(producer.jobId, { HTTP_PROXY: `http://127.0.0.1:${proxy.address().port}`, NO_PROXY: '', NODE_USE_ENV_PROXY: '1' });
   assert.equal(direct.code, 0, direct.err);
   assert.equal(proxyRequests, 0);
-  const echo = await fixture(t, { start: { kind: 'routed', pipeline: 'marketing', runId: token, projectId: 'VID-17' } });
-  const rejected = await echo.startCli({ intent: raw });
-  assert.equal(rejected.error.code, 'STANDARD_VIDEO_START_RECONCILE');
-  const pending = (await echo.startCli({ intent: raw })).result;
-  assert.equal(pending.state, 'pending');
-  assert.ok(!JSON.stringify(pending).includes(token));
+  const echo = await fixture(t, { statusData: { ...statusRow, leaked: token } });
+  const rejected = await echo.statusCli(echo.jobId);
+  assert.equal(rejected.error.code, 'STANDARD_VIDEO_RESPONSE_INVALID');
+  const retained = (await echo.startCli({ intent: raw })).result;
+  assert.deepEqual(retained, echo.previous);
+  assert.ok(!JSON.stringify(retained).includes(token));
+});
+
+test('fresh standard start needs private owner authority even when a legacy native bearer is supplied', async t => {
+  const { calls, startCli, invoke, jobId } = await fixture(t, { previousState: null });
+  const result = await startCli({ intent: raw });
+  assert.equal(result.code, 2, result.err);
+  assert.equal(result.result.schemaVersion, 'pengmanager.standard-video-production/v1');
+  assert.equal(result.result.code, 'OWNER_PRODUCTION_AUTHORITY_REQUIRED');
+  assert.equal(result.result.complete, false);
+  assert.notEqual(result.result.jobId, jobId);
+  assert.equal((await invoke('deliver', { intent: raw })).result.code, 'VIDEO_MAKE_NOT_FOUND');
+  assert.deepEqual(calls, []);
 });
 
 test('registered local Agent capability returns only the same native handoff plan', async () => {

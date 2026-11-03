@@ -189,6 +189,8 @@ export async function pollRenderJobs(
   scope: Scope,
   opts: {
     limit?: number;
+    projectId?: string;
+    jobIds?: string[];
     pool?: Map<string, GenProvider>;
     /** 成片入库开关（默认 true；测试可关） */
     ingest?: boolean;
@@ -253,13 +255,15 @@ export async function pollRenderJobs(
             ORDER BY e.seq DESC LIMIT 1
          ) complete ON true
         WHERE j.workspace_id=$1 AND w.tenant_id=$2 AND j.task_id IS NOT NULL
+          AND ($5::text IS NULL OR j.project_id=$5)
+          AND ($6::text[] IS NULL OR j.id=ANY($6::text[]))
           AND (j.status IN ('submitted','rendering') OR
             (j.status='done' AND j.result_url IS NOT NULL AND NOT j.mock
               AND j.task_id NOT LIKE 'mock-%' AND j.result_url NOT LIKE 'mock:%'
               AND (($4 AND j.asset_id IS NULL) OR complete.completed_at IS NOT NULL)))
         ORDER BY j.updated_at ASC, j.created_at ASC, j.id ASC
         LIMIT $3`,
-      [scope.workspaceId, scope.tenantId, opts.limit ?? 20, opts.ingest !== false],
+      [scope.workspaceId, scope.tenantId, opts.limit ?? 20, opts.ingest !== false, opts.projectId ?? null, opts.jobIds ?? null],
     );
     jobs = rows.rows;
     await client.query("COMMIT");

@@ -46,7 +46,7 @@ describe.runIf(isolated)("provider result authority (real PostgreSQL and actual 
         pool: new Map(provider ? [[provider.providerId, provider]] : []),
         ingest: false, archive: null, ...options,
       });
-    return { workspaceId, jobId, taskId, row, terminal, poll };
+    return { workspaceId, projectId, jobId, taskId, row, terminal, poll };
   }
 
   function provider(poll: GenProvider["poll"]): GenProvider {
@@ -154,6 +154,18 @@ describe.runIf(isolated)("provider result authority (real PostgreSQL and actual 
       await expect(old.poll(native, { limit: 1 })).resolves.toMatchObject({ checked: 1, failed: 0 });
     }
     expect(seen).toEqual([old.taskId, fresh.taskId]);
+  });
+
+  it("polls only the requested job and project inside the authenticated workspace", async () => {
+    const own = await fixture(), unrelated = await fixture(own.workspaceId);
+    const read = vi.fn<GenProvider["poll"]>().mockResolvedValue({ status: "running" });
+    const native = provider(read);
+    await expect(own.poll(native, { projectId: unrelated.projectId, jobIds: [own.jobId] })).resolves.toMatchObject({ checked: 0 });
+    await expect(own.poll(native, { projectId: own.projectId, jobIds: [unrelated.jobId, own.jobId] }))
+      .resolves.toMatchObject({ checked: 1, details: [{ jobId: own.jobId, status: "running" }] });
+    expect(read).toHaveBeenCalledExactlyOnceWith(own.taskId);
+    expect(await unrelated.row()).toMatchObject({ status: "submitted" });
+    expect(native.submit).not.toHaveBeenCalled();
   });
 
   it("recovers actual local media after download failure and rejects an HTTP success containing HTML", async () => {

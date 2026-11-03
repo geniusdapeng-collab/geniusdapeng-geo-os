@@ -13,14 +13,14 @@ printf '%s\n' '{"intent":"用鹏经理做一支三十秒的赛道短片"}' |
   node scripts/video-standard.mjs plan --input-file -
 ```
 
-也可以用 MCP `pengmanager_video_workflow` 或 `node scripts/agent.mjs invoke pengmanager.video.workflow --input-file -`。三种形式都只返回原生输入与证据要求，不派单。已有同一私有目录、同一端口的原生服务和获准的进程级 `WORKLOOM_ACCESS_TOKEN` 时，使用下列固定 CLI；否则在有权限的本机工作台用 `plan.input` 启动同一正式入口。云端 Agent bearer 不适用。
+也可以用 MCP `pengmanager_video_workflow` 或 `node scripts/agent.mjs invoke pengmanager.video.workflow --input-file -`。三种形式都只返回原生输入与证据要求。正式制作使用同一个标准 CLI，由本机 owner 的私有授权和原生运行时核验当前模型、费用和围栏。 [本机授权与状态说明](PENGMANAGER-VIDEO-MAKE.md)
 
 ```bash
-node scripts/video-standard.mjs start --data-dir "$PM_DATA" --input-file "$PM_VIDEO_INTENT_JSON"
-node scripts/video-standard.mjs status --data-dir "$PM_DATA" --job "$PM_VIDEO_JOB_ID"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs start --data-dir "$PM_DATA" --input-file "$PM_VIDEO_INTENT_JSON"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs status --data-dir "$PM_DATA" --job "$PM_VIDEO_JOB_ID"
 ```
 
-输入 JSON 含 `intent`；原话有多处秒数时，只有能从原话识别全片时长才另填 `durationSec`，不能猜。`start` 会在私有目录先占回执，再调用一次 `video.studio.start`。重复运行回读原回执；`pending` 需核对原生项目，禁止重新提交。`status` 核对本轮档案与片单总时长；`preproduction-verified` 的下一步仍是同轮服务资格。标准模式遇到人工搭桥、旧尝试或源不一致会停止。用下文步骤继续正式渲染和后期；需要人工审批时沿用原生票据，文件可播放且实际清单、来源与质检都回读后才交件。
+输入 JSON 含 `intent`。原话有多处秒数时，只能按用户原话或当前合同确认的总时长填写 `durationSec`。`start` 先核验当前授权、模型和预算，再留存待派发回执。已有作业通过同一 `jobId` 查询。前期恢复用 `resume`，已有同一请求的后续交付用 `deliver`，均传入原输入。待对账时沿原项目查询。旧作业继续按原编号读取，`preproduction-verified` 表示同轮前期核验已完成。标准模式遇到人工搭桥、旧尝试或源不一致会停止。只有文件可播放且清单、来源与质检均回读后才交件。
 
 ## 1. 克隆并准备本机依赖
 
@@ -141,8 +141,8 @@ MCP 对应的预检工具是 `pengmanager_video_preflight`。空输入只检查�
 
 | 顺序 | 实际入口 | 继续条件 |
 | --- | --- | --- |
-| 1. 发现与计划 | 通用 Agent CLI/MCP 的 `growth.video.production.plan`、`growth.video.production.status`。调用前 `describe` 或读 `tools/list` 的当前 schema。 | plan 预览材料，返回 `ready:false` 与 `execution:null`。status 读本地阶段账本。进入原生路径前核对当前项目状态。 |
-| 2. 正式预生产与档案 | 由有权限的本机原生客户端使用 `video.studio.start`，用 `video.studio.archive` 读同一项目档案。源文件见下方导航。 | 记录真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
+| 1. 需求接入 | 用原话调用 `pengmanager.video.workflow`，或 `video-standard.mjs plan`。`growth.video.production.plan` 可用于另行预览已有文件。 | 核对原话、总时长和当前项目。已有项目沿原回执推进。 |
+| 2. 正式预生产与档案 | 本机 owner 按 [标准 CLI 授权说明](PENGMANAGER-VIDEO-MAKE.md) 使用 `video-standard.mjs start`。服务使用 `video.studio.start`，回读同一项目的 `video.studio.archive`。 | 记录真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
 | 3. 核对真实当前镜头 | 通用 CLI/MCP 的 `growth.video.production.shots`，输入 `{"projectId":"实际项目ID"}`。 | 当前服务来源、镜头、长度、提示词、已接受素材和项目合同一致。缩减列表不能替代完整归档片单。 |
 | 4. 资格与提交 | 原生客户端使用 `video.production.qualifyShot` 及 `video.render.submit`，也可用下方正式逐镜 CLI。 | 按当前项目/镜头、模型、参数、素材、围栏、预算和人的授权判断。提交只消费当前真实资格，超时先查原请求。 |
 | 5. 轮询与后期 | 原生任务读取/轮询回填，取得实际媒体资产与文件，再用正式后期。 | 非 mock，逐镜关联原 task/job、媒体资产、文件与当前 SHA。发布另行授权。 |
