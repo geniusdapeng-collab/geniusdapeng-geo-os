@@ -27,10 +27,10 @@
       "path": "packages/video-studio/src/requirement-authority.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-authority.test.ts",
       "sourceSha256": "b9ddfbb7f48277976df7ce1fc2b6227321126ea965cbcaab0749202ad71b7719",
-      "targetSha256": "06120899b5c8ae96a74bbb7b713b56a9539d7f081b99704fbcad12485020889c",
+      "targetSha256": "3e372c980c48979db13d4a43120a9bc8062968ed58fd8e0986cc6ad9a7105376",
       "sourceBytes": 30605,
-      "targetBytes": 30598
+      "targetBytes": 32831
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
 }

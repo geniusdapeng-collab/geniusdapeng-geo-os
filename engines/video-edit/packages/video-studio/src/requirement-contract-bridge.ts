@@ -16,6 +16,7 @@ import { policyCoveragePlan } from "./prd-authority-bridge.js";
 import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
 import { currentCreativeRuntime } from "./creative-runtime.js";
 import { explicitCreativeShotPlan } from "./constraint-compiler.js";
+import { namedReferenceAuthority, referenceCuratorSchema, validateReferenceCases } from "./named-reference-authority.js";
 import {
   ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, UNVERIFIED_MIRROR_DETAIL_RULE,
   assertProductVisualContent, extractProductVisualAuthority, ProductVisualAuthorityError,
@@ -49,9 +50,8 @@ const discoveryOutputExamples = new Map<string, RequirementRecord>([
     businessConstraints: ["示例业务约束"], mitigationSuggestions: ["示例镜头应对建议"],
   }],
   ["reference", {
-    filmReferences: [{ title: "《示例影片一》", relevance: "high", keyTakeaway: "示例构图手法" },
-      { title: "《示例影片二》", relevance: "medium", keyTakeaway: "示例剪辑手法" }],
-    adReferences: [{ brand: "示例品牌", relevance: "low", keyTakeaway: "示例叙事结构" }],
+    filmReferences: [],
+    adReferences: [],
     styleReferences: ["示例视听策略一", "示例视听策略二"],
   }],
 ]);
@@ -478,6 +478,11 @@ export function installRequirementContractBridge(
       const bound = bindRequirementContract(original, discovery, upstream, metadata, expectedCast!,
         typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null, scope.sceneSchema,
         scope.authority && extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content));
+      if (scope.authority) {
+        const referenceCases = requirementRecord(discovery, "实际需求洞察").referenceCases;
+        validateReferenceCases(referenceCases, namedReferenceAuthority(scope.authority));
+        bound._workloomReferenceCasesSha256 = requirementHash(referenceCases);
+      }
       if (scope && !scope.authority && bound && typeof bound === "object") {
         scope.metadata._workloomRequirementContract = structuredClone(
           (bound as RequirementRecord)._workloomRequirementContract,
@@ -497,9 +502,18 @@ export function installRequirementContractBridge(
       if (contract.ownerAudience !== (typeof ownerAudience === "string" && ownerAudience.trim() ? ownerAudience : null)) {
         throw new RequirementContractError("REQUIREMENT_AUDIENCE_CHANGED", "G3 与本次宿主冻结的客户受众口径不一致");
       }
+      let references = "";
+      if (scope.authority) {
+        const cases = requirementRecord(discovery, "G3 discovery").referenceCases;
+        if (requirementRecord(list, "G3 需求清单")._workloomReferenceCasesSha256 !== requirementHash(cases)) {
+          throw new RequirementContractError("REQUIREMENT_REFERENCE_CHANGED", "G3 参考案例与当前清单快照不一致");
+        }
+        const { ads } = validateReferenceCases(cases, namedReferenceAuthority(scope.authority));
+        references = `\n\n## 客户明确提供且本次选用的广告参考\n${JSON.stringify(ads)}\n`;
+      }
       return renderRequirementContract(contract, requirementRecord(metadata, "G3 metadata"))
         + renderScenePolicyCoverage(scope.authority?.metadata ?? scope.metadata, contract as unknown as RequirementRecord)
-        + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0));
+        + presentationSection(scope, contract.scenes.reduce((sum, scene) => sum + scene.duration, 0)) + references;
     });
   };
   const discovered: Method = async function (input) {
@@ -511,6 +525,7 @@ export function installRequirementContractBridge(
       const agents = requirementRecord(this.agents, "需求洞察 agents");
       const inputHash = scope.authority ? requirementHash(input) : undefined;
       const originalEngine = this;
+      const referenceAuthority = scope.authority && namedReferenceAuthority(scope.authority);
       const requireActiveScope = () => {
         guard(scope, () => {
           check(scope);
@@ -534,11 +549,28 @@ export function installRequirementContractBridge(
           view._validateAndFill = function (this: RequirementRecord, value: unknown, schema: unknown) {
             requireActiveScope();
             validateRequirementSchema(value, schema);
+            if (name === "reference" && referenceAuthority) validateReferenceCases(value, referenceAuthority);
             if (name === "audience" && currentCreativeRuntime()?.omitUnverifiedMirrors) {
               assertProductVisualContent(extractProductVisualAuthority(scope.authority!.marketing.g1Artifact.content), value, "G3 AudienceProfiler", true);
             }
             return structuredClone(value);
           };
+          if (name === "reference" && referenceAuthority) {
+            const run = method(agent, "run");
+            view.run = function (this: RequirementRecord, value: unknown, schema: unknown) {
+              requireActiveScope();
+              return Reflect.apply(run, this, [value, referenceCuratorSchema(schema, referenceAuthority)]);
+            };
+            view._buildPrompt = function (this: RequirementRecord, value: unknown) {
+              requireActiveScope();
+              const { type, theme, tone, visual_style } = requirementRecord(value, "ReferenceCurator input");
+              return `根据本次客户 Brief 和主题设计可执行的构图、剪辑、光色或声音手法。\n`
+                + `制作上下文：${JSON.stringify({ type, theme, tone, visual_style })}\n`
+                + `只输出 filmReferences、adReferences、styleReferences。前两项是客户明确授权名称的候选，未授权时必须为空数组 []。\n`
+                + `允许的影片名称：${JSON.stringify(referenceAuthority.films)}\n允许的广告品牌：${JSON.stringify(referenceAuthority.ads)}\n`
+                + `styleReferences 写 2–4 条不带影片、导演、品牌或外部作品名称的可执行视听手法。保留客户指定技法，禁止自行举例或补充其他参考。\n`;
+            };
+          }
         }
         view._callLLM = function (this: RequirementRecord, ...args: unknown[]) {
           requireActiveScope();

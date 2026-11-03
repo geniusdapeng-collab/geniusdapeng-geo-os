@@ -50,8 +50,8 @@
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "395c3179a12cdbd0d38b2c1ea36592b60f239d5ac64dcf78aac0296a51fe8966",
-      "targetBytes": 107923,
+      "targetSha256": "583400dd5a3b296159a2768be0a9673803899aef5466165cdcdd5cd3e3a8a0cc",
+      "targetBytes": 114791,
       "evidence": "B",
       "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
       "sourceBytes": 82133
@@ -68,8 +68,8 @@
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "82dce332f4f0290cc94c967d06b42e200edf36214caa791a8c657147be80104e",
-      "targetBytes": 39130,
+      "targetSha256": "89c26aa5b9f92f707c80ffc80014d29f8a6901b17a62ad7b858ad07ce19fac72",
+      "targetBytes": 40893,
       "evidence": "B",
       "sourceSha256": "a3af225eccf6df376bf4e35e433fbb1a7a5a02e546c49d5693586c3023611275",
       "sourceBytes": 33456
@@ -93,8 +93,8 @@
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "80296e0c8ce536a690c9e552a4c9ed7397f73371cbab8304666eb4a49ac1ad8c",
-      "targetBytes": 47937,
+      "targetSha256": "f74093d7dd05d6faa37416f0a5c7cb4514360f042ad84cd8cbe7a01c3a6e5551",
+      "targetBytes": 50275,
       "evidence": "B",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
       "sourceBytes": 29194
@@ -108,5 +108,6 @@
       "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
       "sourceBytes": 41259
     }
-  ]
+  ],
+  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
 }

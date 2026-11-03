@@ -50,8 +50,8 @@
       "sourceGitBlob": "c61a26151824867ace6c26147e61b78d577aedbb",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
       "targetMode": "100644",
-      "targetSha256": "82dce332f4f0290cc94c967d06b42e200edf36214caa791a8c657147be80104e",
-      "targetBytes": 39130,
+      "targetSha256": "89c26aa5b9f92f707c80ffc80014d29f8a6901b17a62ad7b858ad07ce19fac72",
+      "targetBytes": 40893,
       "transform": "none"
     },
     {
@@ -159,5 +159,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T18:51:13.134463+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
 }

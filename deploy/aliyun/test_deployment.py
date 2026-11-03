@@ -279,7 +279,7 @@ class DeploymentTests(unittest.TestCase):
         base.mkdir()
         outside = self.path / "outside-cache"
         outside.mkdir()
-        for name in ("runtimes", "tooling", "pnpm-store", "npm-cache"):
+        for name in ("runtimes", "tooling", "pnpm-store", "pnpm-store-copy-v1", "npm-cache"):
             with self.subTest(directory=name), mock.patch.object(DEPLOY, "BASE", base):
                 link = base / name
                 link.symlink_to(outside)
@@ -535,7 +535,7 @@ class DeploymentTests(unittest.TestCase):
                 release = base / "releases" / manifest["gitSha"]
                 node = base / "runtimes/node-v24/bin/node"
                 pnpm = base / "tooling/pnpm/bin/pnpm.cjs"
-                account = SimpleNamespace(pw_uid=1234, pw_gid=1234)
+                account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
                 probes = []
 
                 def make_runtime(*_):
@@ -545,9 +545,17 @@ class DeploymentTests(unittest.TestCase):
 
                 def invoke(argv, *, cwd, **_):
                     if "install" in argv:
-                        (cwd / "node_modules" / ".pnpm").mkdir(parents=True)
+                        self.assertIn("--config.package-import-method=copy", argv)
+                        store = argv[argv.index("--store-dir") + 1]
+                        self.assertEqual(store, base / "pnpm-store-copy-v1")
+                        self.assertEqual(stat.S_IMODE(store.stat().st_mode), 0o700)
+                        dependency = cwd / "node_modules" / ".pnpm" / "fixture-bin"
+                        dependency.parent.mkdir(parents=True)
+                        dependency.touch()
+                        dependency.chmod(0o6777)
                         return ""
                     self.assertEqual(cwd, release)
+                    self.assertEqual(stat.S_IMODE((cwd / "node_modules" / ".pnpm" / "fixture-bin").stat().st_mode), 0o755)
                     self.assertEqual(argv[:6], ["runuser", "--user", DEPLOY.USER, "--", "/usr/bin/env", "-i"])
                     self.assertIn(node, argv)
                     self.assertNotIn("NODE_OPTIONS", " ".join(map(str, argv)))
@@ -588,6 +596,39 @@ class DeploymentTests(unittest.TestCase):
                 self.assertFalse(list(release.parent.glob(".release-*")))
                 self.assertEqual(stat.S_IMODE(data.stat().st_mode), 0o700)
                 self.assertEqual(list(data.iterdir()), [])
+
+    def test_prepare_release_rejects_store_hardlinks_before_hardening(self):
+        base = self.path / "opt"
+        legacy = base / "pnpm-store"
+        legacy.mkdir(mode=0o700, parents=True)
+        blob = legacy / "fixture-cached-file"
+        blob.write_bytes(b"legacy cache fixture")
+        blob.chmod(0o660)
+        previous = blob.read_bytes(), stat.S_IMODE(blob.stat().st_mode), blob.stat().st_ino
+        archive = self.path / "source.tar.gz"
+        manifest = DEPLOY.verify_source(archive, source_archive(archive))
+        account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
+
+        def invoke(argv, *, cwd, **_):
+            if "install" in argv:
+                destination = cwd / "node_modules" / ".pnpm" / "fixture-cached-file"
+                destination.parent.mkdir(parents=True)
+                os.link(blob, destination)
+                self.assertEqual(blob.stat().st_ino, destination.stat().st_ino)
+            return ""
+
+        with mock.patch.object(DEPLOY, "BASE", base), \
+                mock.patch.object(DEPLOY, "ensure_runtime", return_value=(base / "node", base / "pnpm.cjs")), \
+                mock.patch.object(DEPLOY.os, "chown") as chown, \
+                mock.patch.object(DEPLOY, "run", side_effect=invoke), \
+                mock.patch.object(DEPLOY, "verify_prepared_release") as smoke:
+            with self.assertRaisesRegex(DEPLOY.DeployError, "hardlink"):
+                DEPLOY.prepare_release(archive, manifest, account)
+        self.assertEqual((blob.read_bytes(), stat.S_IMODE(blob.stat().st_mode), blob.stat().st_ino), previous)
+        self.assertEqual(blob.stat().st_nlink, 1)
+        self.assertFalse(any(Path(call.args[0]) == legacy for call in chown.call_args_list))
+        self.assertFalse(list((base / "releases").iterdir()))
+        smoke.assert_not_called()
 
     def test_prepare_release_rejects_retained_unreadable_tree_without_changing_it(self):
         base = self.path / "opt"

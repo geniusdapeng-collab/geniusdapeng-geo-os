@@ -179,7 +179,7 @@ nginx 模式证书默认独立存放在 `/etc/letsencrypt/live/pengmanager-syste
 
 ### 独立 Caddy 模式与共用运行时
 
-Node 固定版本与 Linux x64／arm64 的校验值在 [`runtime.json`](../deploy/aliyun/runtime.json)，来源为[官方 Node v24.22.1 校验表](https://nodejs.org/dist/v24.22.1/SHASUMS256.txt)。安装会同时比较提交的 pin、官方校验表、下载文件三者，不运行 `curl | sh`。pnpm 版本由 `package.json` 精确锁定；通过私有 prefix 安装，依赖安装使用 `--frozen-lockfile --ignore-scripts --prod=false`，不更改宿主 Node／pnpm。
+Node 固定版本与 Linux x64／arm64 的校验值在 [`runtime.json`](../deploy/aliyun/runtime.json)，来源为[官方 Node v24.22.1 校验表](https://nodejs.org/dist/v24.22.1/SHASUMS256.txt)。安装会同时比较提交的 pin、官方校验表、下载文件三者，不运行 `curl | sh`。pnpm 版本由 `package.json` 精确锁定；通过私有 prefix 安装，依赖安装使用 `--frozen-lockfile --ignore-scripts --prod=false`，不更改宿主 Node／pnpm。 安装器使用独立的 0700 依赖缓存 `/opt/pengmanager-system/pnpm-store-copy-v1/`，用 `--config.package-import-method=copy` 将依赖复制到发布目录。发布目录收紧权限前会拒绝其中的硬链接文件，避免修改缓存中同一个文件的所有者或权限。原 `pnpm-store` 保留供排查。
 
 引导 pnpm 时，npm 的用户配置固定为 `/dev/null`，全局配置使用私有 tooling 临时目录中的独立空文件（目录0700、文件0600），完成或失败后清理；子进程清除继承的 `NPM_CONFIG_*` 环境项，不读取操作者的用户或全局 npmrc。两层配置不能共用同一路径，[该 Node 版本附带的 npm 配置加载器](https://github.com/nodejs/node/blob/v24.22.1/deps/npm/node_modules/%40npmcli/config/lib/index.js)会拒绝重复加载。部署测试会用实际 npm 执行配置加载，不安装业务依赖；默认寻找 Node 配套的 npm，也可通过 `NPM_CLI_PATH` 指定已校验的 `npm-cli.js`，缺失时明确跳过该项。
 
