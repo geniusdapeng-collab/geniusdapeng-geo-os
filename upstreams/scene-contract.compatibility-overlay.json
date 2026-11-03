@@ -62,8 +62,8 @@
       "sourceGitBlob": "5e86d7bd61b791e3b12fa3f422955ffd5bc01392",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
       "targetMode": "100644",
-      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
-      "targetBytes": 74412,
+      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
+      "targetBytes": 74960,
       "transform": "none"
     },
     {
@@ -83,5 +83,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:21:58.715248+00:00"
 }

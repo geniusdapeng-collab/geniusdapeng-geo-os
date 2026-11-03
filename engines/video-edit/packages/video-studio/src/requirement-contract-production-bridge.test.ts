@@ -123,23 +123,26 @@ function physicalScene(durations: number[]): RequirementRecord {
     ending: node(durations.at(-1)!, durations.length - 1),
     totalDuration: durations.reduce((sum, duration) => sum + duration, 0), sceneCount: durations.length, narrativeArc: "linear" };
 }
-function nativeModules(scene: RequirementRecord) {
+function nativeModules(scene: RequirementRecord, legacyReferences = false) {
   return {
     audience: { primaryAudience: { ageRange: "18-24", gender: "all", interestTags: ["设计", "运动"], consumptionLevel: "medium" },
       emotionTriggers: ["观察具体细节", "保留真实疑问"], contentExpectations: ["完整可见动作", "明确场地用途"], secondaryAudience: [], painPoints: [] },
     scene,
     risk: { technicalRisks: [{ risk: "合成商品细节", level: "high", impact: "细节失真影响观察" }],
       businessConstraints: ["不虚构商品参数"], mitigationSuggestions: ["按完整来源核对外观"] },
-    reference: { filmReferences: [{ title: "《合成参考一》", relevance: "high", keyTakeaway: "仅作构图艺术参考" },
-      { title: "《合成参考二》", relevance: "medium", keyTakeaway: "仅作节奏艺术参考" }],
-    adReferences: [{ brand: "合成视觉案例", relevance: "low", keyTakeaway: "仅作光线参考，不主张合作" }], styleReferences: ["自然光", "稳定镜头"] }
+    reference: {
+      filmReferences: legacyReferences ? [{ title: "《合成参考一》", relevance: "high", keyTakeaway: "仅作构图艺术参考" },
+        { title: "《合成参考二》", relevance: "medium", keyTakeaway: "仅作节奏艺术参考" }] : [],
+      adReferences: legacyReferences ? [{ brand: "合成视觉案例", relevance: "low", keyTakeaway: "仅作光线参考，不主张合作" }] : [],
+      styleReferences: ["自然光", "稳定镜头"],
+    },
   };
 }
 async function nativePromptParts(input: RequirementRecord) {
   const engine = new RequirementDiscoveryEngine(), agents = requirementRecord(engine.agents, "native agents");
   const scene = requirementRecord(agents.scene, "native scene"), build = scene._buildPrompt as NativeMethod;
   const prompt = Reflect.apply(build, scene, [input]) as string;
-  const modules = nativeModules(physicalScene([10, 10, 10]));
+  const modules = nativeModules(physicalScene([10, 10, 10]), true);
   let schema: RequirementRecord | undefined;
   for (const [name, value] of Object.entries(agents)) {
     requirementRecord(value, name).run = async (_input: unknown, nativeSchema: unknown) => {
@@ -291,6 +294,7 @@ describe("native discovery output contracts at the provider boundary", () => {
     if (usage === "settled") {
       const result = await operation;
       expect(result.riskAssessment).toEqual(run.modules.risk);
+      expect(result.referenceCases).toEqual({ filmReferences: [], adReferences: [], styleReferences: ["自然光", "稳定镜头"] });
       expect(sent.map(call => call.role)).toEqual(["audience", "scene", "risk", "risk", "reference"]);
       const retry = sent[3]!.prompt;
       expect(promptJson(retry, "## 上一次原生风险校验反馈")).toMatchObject({
@@ -308,6 +312,9 @@ describe("native discovery output contracts at the provider boundary", () => {
     for (const { role, schema, example } of contracts) {
       validateRequirementSchema(example, schema);
       expect(Object.keys(requirementRecord(example, "output example")).sort()).toEqual(Object.keys(run.modules[role]).sort());
+      if (role === "reference") expect(schema).toMatchObject({ properties: {
+        filmReferences: { minItems: 0, maxItems: 0 }, adReferences: { minItems: 0, maxItems: 0 },
+      } });
     }
     const context = requirementAuthorityPrompt(run.authority, run.approvedTheme);
     for (const call of sent) {
@@ -939,10 +946,12 @@ describe("actual native private RiskAssessor bounded retry feedback", () => {
   it.each(["legacy-scope", "unscoped"])("preserves the native %s Risk behavior without private authority", async mode => {
     installNativeDiscovery();
     const run = privateRun(`risk-${mode}`, 30, physicalScene([10, 10, 10])), value = riskResponse(run, "mitigationSuggestions", 5);
+    run.modules = nativeModules(run.modules.scene, true);
     const model = modelFor(run, [run.modules.scene], [value]), discovery = nativeDiscovery(model.engine);
     const operation = () => Reflect.apply(discovery.discover as NativeMethod, discovery, [run.input]) as Promise<RequirementRecord>;
     const result = await (mode === "legacy-scope" ? withRequirementContractScope(run.metadata, operation) : operation());
     expect(requirementHash(result.riskAssessment)).toBe(requirementHash(value)); expect(riskCalls(model.calls)).toHaveLength(1);
+    expect(result.referenceCases).toEqual(run.modules.reference);
     for (const call of model.calls) { expect(call.prompt).not.toContain(riskFeedbackHeading); expect(call.prompt).not.toContain("本次宿主需求权威输入"); }
   });
 

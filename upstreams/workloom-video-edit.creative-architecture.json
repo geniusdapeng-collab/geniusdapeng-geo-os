@@ -10,8 +10,8 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
-      "targetSha256": "3082ff3384e03857f3c6b034f264c51291e27c43d64c53343536d874c5b09783",
-      "targetBytes": 49097,
+      "targetSha256": "6fb701e1761a35b61945c08ae7c8fe4ca094a11831828300f333ede03cdb5465",
+      "targetBytes": 50267,
       "evidence": "B",
       "targetOwned": true
     },
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T19:09:02.717603+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T19:21:58.715248+00:00"
 }

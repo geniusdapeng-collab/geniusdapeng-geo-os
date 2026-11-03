@@ -28479,9 +28479,9 @@
       "sourceMode": "100644",
       "gitBlob": "abf483a813943d155259839efa71a043577c0f65",
       "bytes": 60734,
-      "targetBytes": 74412,
+      "targetBytes": 74960,
       "sourceSha256": "56ec4894fb3b0ccb923213f81ac42a8b40f8b0cb676333334223ded13f2dca7c",
-      "targetSha256": "73616c94766b5bf793fba4c5d924c073e028b9598b4fab3ac76cdbfe23070f37",
+      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
@@ -40405,16 +40405,16 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "mode": "100644",
-      "bytes": 49097,
-      "targetSha256": "3082ff3384e03857f3c6b034f264c51291e27c43d64c53343536d874c5b09783",
+      "bytes": 50267,
+      "targetSha256": "6fb701e1761a35b61945c08ae7c8fe4ca094a11831828300f333ede03cdb5465",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
     {
       "path": "apps/server/src/video/creative-candidate-wire.test.ts",
       "mode": "100644",
-      "bytes": 24868,
-      "targetSha256": "14e30c5f469a9300d939145bd932c2a56496ff3441e95969b676e26dee42fb42",
+      "bytes": 29665,
+      "targetSha256": "9db1647635cc1827dd7c8979664d3673388162fc13d1179aacc73d8356eb9d8b",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },

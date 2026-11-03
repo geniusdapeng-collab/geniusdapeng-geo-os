@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0010",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T19:21:58.715248+00:00",
+  "scope": "Bind the outbound creative-candidate JSON schema and example to the current exact production shot schedule; source upstream pin unchanged.",
+  "sourceOverlayCount": 1,
+  "files": [
+    {
+      "path": "apps/server/src/video/creative-api-service.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
+      "targetSha256": "6fb701e1761a35b61945c08ae7c8fe4ca094a11831828300f333ede03cdb5465",
+      "targetBytes": 50267,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-candidate-wire.test.ts",
+      "targetSha256": "9db1647635cc1827dd7c8979664d3673388162fc13d1179aacc73d8356eb9d8b",
+      "targetBytes": 29665,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-production-bridge.test.ts",
+      "targetSha256": "945f1bd906a3db562d72ee865d11aff46d92af5169cd0e6f4b4f734bc3fbdfee",
+      "targetBytes": 74960,
+      "evidence": "B",
+      "sourceSha256": "56ec4894fb3b0ccb923213f81ac42a8b40f8b0cb676333334223ded13f2dca7c",
+      "sourceBytes": 60734
+    }
+  ]
+}
