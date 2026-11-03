@@ -403,9 +403,10 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
   const evidence: NonNullable<ProducerVerdict["evidence"]> = [];
   let contract: ProducerReviewContract | undefined;
   const reject = (reason: string, via: ProducerVerdict["via"] = "deterministic", model?: string): ProducerVerdict => ({
-    stage, status: "unverified", approved: false, score: 0, hardFailures: [], contractHash: contract?.contractHash,
+    stage, status: "unverified", approved: false, score: 0, hardFailures: [],
+    ...(contract ? { contractHash: contract.contractHash } : {}),
     issues: [...softFailures, reason], suggestions: ["补齐有效证据或修复评审组件后重跑本环节"],
-    rerun: true, via, model, ms: Date.now() - started, reason, degraded: true, evidence
+    rerun: true, via, ...(model ? { model } : {}), ms: Date.now() - started, reason, degraded: true, evidence
   });
   try { if (options.contracts !== undefined) contract = buildProducerReviewContract(options.contracts); }
   catch (error) {
@@ -616,7 +617,8 @@ export async function reviewStage(options: ProducerGateOptions): Promise<Produce
     }
     if (contract && options.contracts && shotIntentHash(options.contracts) !== contract.sourceHash) throw new Error("评审期间原镜头合同发生变化");
     const approved = answers.every((a) => a.approved && a.score >= minScore);
-    return { stage, status: approved ? "passed" : "failed", approved, contractHash: contract?.contractHash, score: Math.min(...answers.map((a) => a.score)),
+    return { stage, status: approved ? "passed" : "failed", approved, ...(contract ? { contractHash: contract.contractHash } : {}),
+      score: Math.min(...answers.map((a) => a.score)),
       hardFailures: [], issues: [...softFailures, ...answers.flatMap((a) => a.issues)], suggestions: answers.flatMap((a) => a.suggestions),
       rerun: !approved, via: "llm", model: llm.model, ms: Date.now() - started,
       reason: answers.map((a) => a.reason).join("；") + (approved ? "" : `（所有证据批次需通过且评分≥${minScore}）`), degraded: false,
