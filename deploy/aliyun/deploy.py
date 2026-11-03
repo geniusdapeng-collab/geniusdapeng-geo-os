@@ -547,6 +547,35 @@ def remove_failed_install_link(link, release):
     link.unlink()
 
 
+@contextmanager
+def release_build_umask():
+    # The immutable application tree and public tooling must remain readable
+    # after preparation changes their owner from the service account to root.
+    previous = os.umask(0o022)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+def verify_prepared_release(source, node):
+    command = ["runuser", "--user", USER, "--", "/usr/bin/env", "-i",
+               f"PATH={BASE}/node-current/bin:/usr/bin:/bin", node, "--max-old-space-size=256"]
+    dependency_probe = (
+        "await import('yaml'); await import('zod'); "
+        "import { DatabaseSync } from 'node:sqlite'; const db=new DatabaseSync(':memory:'); db.close();"
+    )
+    require(run([*command, "--import", "tsx", "--input-type=module", "-e", dependency_probe],
+                cwd=source, capture=False, allow_failure=True) is not None,
+            "Prepared release dependencies are unavailable to the service user; details withheld.")
+    # An import does not construct the application, open the installed data,
+    # start services or load runtime.env. Use Node's normal loader for the entrypoint.
+    require(run([*command, "--input-type=module", "-e", "await import('./src/server.mjs')"],
+                cwd=source, capture=False, allow_failure=True) is not None,
+            "Prepared release entrypoint is unavailable to the service user; details withheld.")
+
+
+@release_build_umask()
 def prepare_release(archive, manifest, account):
     releases = BASE / "releases"
     managed_directory(releases)
@@ -559,7 +588,8 @@ def prepare_release(archive, manifest, account):
         require((release / "node_modules").is_dir() and (release / "var").is_symlink(), "Existing release is incomplete.")
         # A previous failed activation may have restored node-current to the old release's
         # runtime while retaining this fully prepared candidate for a safe retry.
-        ensure_runtime(release, account)
+        node, _ = ensure_runtime(release, account)
+        verify_prepared_release(release, node)
         return release
     stage = Path(tempfile.mkdtemp(prefix=".release-", dir=releases))
     stage.chmod(0o755)
@@ -577,9 +607,6 @@ def prepare_release(archive, manifest, account):
         # Existing runtime imports tsx/yaml/zod from devDependencies; --prod would break them.
         run(["runuser", "--user", USER, "--", node, pnpm, "install", "--frozen-lockfile", "--ignore-scripts",
              "--prod=false", "--store-dir", cache, "--config.userconfig=/dev/null"], cwd=stage, capture=False)
-        run(["runuser", "--user", USER, "--", node, "--import", "tsx", "--input-type=module", "-e",
-             "await import('yaml'); await import('zod'); import { DatabaseSync } from 'node:sqlite'; const db=new DatabaseSync(':memory:'); db.close();"],
-            cwd=stage, capture=False)
         for record in manifest["files"]:
             require(sha256(stage / record["path"]) == record["sha256"],
                     "Source changed during dependency preparation; candidate release was not activated.")
@@ -594,6 +621,8 @@ def prepare_release(archive, manifest, account):
                     os.chown(path, 0, 0)
                     path.chmod(stat.S_IMODE(path.stat().st_mode) & ~0o022)
         stage.rename(release)
+        stage = release
+        verify_prepared_release(release, node)
         return release
     except Exception:
         # A failed staging release has never served traffic or held production data.
@@ -903,8 +932,9 @@ def deploy(args, manifest):
                 "Existing runtime configuration differs; it will not be overwritten.")
     else:
         require(previous is not None and UNIT.is_file(), "No installed release exists; use install.sh first.")
-    for path in (BASE, CONFIG):
-        path.mkdir(parents=True, exist_ok=True, mode=0o755 if path == BASE else 0o700)
+    with release_build_umask():
+        BASE.mkdir(parents=True, exist_ok=True, mode=0o755)
+    CONFIG.mkdir(parents=True, exist_ok=True, mode=0o700)
     CONFIG.chmod(0o700)
     account = ensure_user()
     node_link = BASE / "node-current"

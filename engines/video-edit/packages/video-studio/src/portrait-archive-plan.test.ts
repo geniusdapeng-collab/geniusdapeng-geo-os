@@ -1,8 +1,10 @@
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./portrait-archive-plan.js";
+import { currentFinalizedArchivePortraits, installPortraitArchivePlanBridge, withPortraitArchivePlan } from "./portrait-archive-plan.js";
 import type { PortraitRuntimePlan, PortraitRuntime } from "./portrait-runtime.js";
 import { installSharedBridge, listSharedBridges } from "./vendor-compat.js";
 
@@ -11,15 +13,21 @@ const require = createRequire(import.meta.url);
 const { PortraitStudio } = require(resolve(repoRoot,
   "vendor/supermickey/hyperreality-system/engines/portrait-studio/index.js")) as {
   PortraitStudio: {
-    new (options?: Record<string, unknown>): { plan(context?: Record<string, unknown>): PortraitRuntimePlan };
-    prototype: { plan(context?: Record<string, unknown>): PortraitRuntimePlan };
+    new (options?: Record<string, unknown>): NativePortraitStudio;
+    prototype: NativePortraitStudio;
   };
 };
+interface NativePortraitStudio {
+  plan(context?: Record<string, unknown>): PortraitRuntimePlan;
+  finalize(plan: PortraitRuntimePlan, meta: { runId: string }): { stats: { completedPortraits: number } };
+}
 const nativePlan = PortraitStudio.prototype.plan;
+const nativeFinalize = PortraitStudio.prototype.finalize;
 const disposers: Array<() => void> = [];
 afterEach(() => {
   for (const dispose of disposers.splice(0).reverse()) dispose();
   expect(PortraitStudio.prototype.plan).toBe(nativePlan);
+  expect(PortraitStudio.prototype.finalize).toBe(nativeFinalize);
 });
 
 function install() {
@@ -38,6 +46,31 @@ function runtime(label: string): PlanRuntime {
 }
 
 describe("archived portrait planning bridge", () => {
+  it("captures the real archive finalizer result only from the current prepared plan and run", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "portrait-finalized-"));
+    try {
+      const portrait = new PortraitStudio({ outputDir: directory });
+      const foreign = portrait.plan();
+      install();
+      await withPortraitArchivePlan(runtime("archive"), () => {
+        expect(currentFinalizedArchivePortraits("current")).toBeUndefined();
+        expect(() => portrait.finalize(foreign, { runId: "current" })).toThrow("PORTRAIT_ARCHIVE_FINALIZATION_INVALID");
+        const own = portrait.plan();
+        const actual = portrait.finalize(own, { runId: "current" });
+        expect(currentFinalizedArchivePortraits("wrong")).toBeUndefined();
+        expect(currentFinalizedArchivePortraits("current")).toEqual(actual.stats);
+        actual.stats.completedPortraits = 8;
+        expect(currentFinalizedArchivePortraits("current")?.completedPortraits).toBe(0);
+        expect(() => portrait.finalize(own, { runId: "current" })).toThrow("PORTRAIT_ARCHIVE_FINALIZATION_INVALID");
+      }, true);
+      expect(currentFinalizedArchivePortraits("current")).toBeUndefined();
+      await withPortraitArchivePlan(runtime("legacy"), () => {
+        expect(portrait.finalize(foreign, { runId: "legacy" }).stats.completedPortraits).toBe(0);
+        expect(currentFinalizedArchivePortraits("legacy")).toBeUndefined();
+      });
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+
   it("keeps the real vendor plan and instance context unchanged without an archive hook", async () => {
     const portrait = new PortraitStudio({ mode: "auto", executor: "spec" });
     const context = { characters: [{ id: "hero", name: "主角", role: "protagonist", description: "原创人物" }] };

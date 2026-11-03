@@ -49,8 +49,8 @@
       "sourceBytes": 24660,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "a620dd8c3a0233df04221966c976309e84764babcc1b823de572ed43553d29a1",
-      "targetBytes": 105152,
+      "targetSha256": "759b690a21b2c0ce2eb99f0c1ef53431bca242b20fe3e917dc81b131f2a70c06",
+      "targetBytes": 105544,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -85,8 +85,8 @@
       "sourceBytes": 30971,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "d3677bc382d2ef6ac7fe84f8b65b47070b34f979dd4680b54f0fdfaa2e485132",
-      "targetBytes": 54088,
+      "targetSha256": "4e860572db3980d54b496bd28da26dd225442f90564c615136488f4c2bc682c1",
+      "targetBytes": 55511,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -145,8 +145,8 @@
       "sourceBytes": 86049,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
-      "targetSha256": "17ba6d98b2e8efd79ca6391daeefd362557d105cc01181af90eb3e7639424571",
-      "targetBytes": 100338,
+      "targetSha256": "97418e913d46e3165ea79d2d8235a7ae169c11de5fc5ecdf1e2e5e8eaa0a9603",
+      "targetBytes": 104088,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -157,8 +157,8 @@
       "sourceBytes": 54207,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.test.ts",
-      "targetSha256": "1aee5ed3ec57ed543ffa3c605201cb6108260d715e858f92210fd40a86fc69d6",
-      "targetBytes": 78986,
+      "targetSha256": "13b9fb490a83ca470f1b2d58b671be6fe7b0e812f517b11f55ea1f655ff463be",
+      "targetBytes": 82698,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -217,5 +217,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-03T18:19:09.752298+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:33:38.460941+00:00"
 }

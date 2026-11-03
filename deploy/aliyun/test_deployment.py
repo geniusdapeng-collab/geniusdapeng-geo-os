@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -511,7 +512,8 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(source, release)
             DEPLOY.atomic_link(candidate_node, base / "node-current")
             return candidate_node / "bin/node", base / "pnpm.cjs"
-        with mock.patch.object(DEPLOY, "BASE", base), mock.patch.object(DEPLOY, "ensure_runtime", side_effect=runtime_for_release):
+        with mock.patch.object(DEPLOY, "BASE", base), mock.patch.object(DEPLOY, "ensure_runtime", side_effect=runtime_for_release), \
+                mock.patch.object(DEPLOY, "run", return_value="") as commands:
             DEPLOY.prepare_release(self.path / "unused.tar.gz", manifest, account)
             self.assertEqual((base / "node-current").resolve(), candidate_node)
             # This is the actual rollback link operation used by a failed update.
@@ -519,6 +521,99 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual((base / "node-current").resolve(), old_node)
             DEPLOY.prepare_release(self.path / "unused.tar.gz", manifest, account)
             self.assertEqual((base / "node-current").resolve(), candidate_node)
+            self.assertEqual(commands.call_count, 4)
+            self.assertTrue(all(call.kwargs["cwd"] == release for call in commands.call_args_list))
+
+    def test_prepare_release_under_private_umask_probes_frozen_source(self):
+        for fail_probe in (False, True):
+            with self.subTest(fail_probe=fail_probe):
+                base = self.path / str(fail_probe) / "opt"
+                data = self.path / str(fail_probe) / "private-data"
+                data.mkdir(mode=0o700, parents=True)
+                archive = self.path / str(fail_probe) / "source.tar.gz"
+                manifest = DEPLOY.verify_source(archive, source_archive(archive))
+                release = base / "releases" / manifest["gitSha"]
+                node = base / "runtimes/node-v24/bin/node"
+                pnpm = base / "tooling/pnpm/bin/pnpm.cjs"
+                account = SimpleNamespace(pw_uid=1234, pw_gid=1234)
+                probes = []
+
+                def make_runtime(*_):
+                    node.parent.mkdir(parents=True)
+                    pnpm.parent.mkdir(parents=True)
+                    return node, pnpm
+
+                def invoke(argv, *, cwd, **_):
+                    if "install" in argv:
+                        (cwd / "node_modules" / ".pnpm").mkdir(parents=True)
+                        return ""
+                    self.assertEqual(cwd, release)
+                    self.assertEqual(argv[:6], ["runuser", "--user", DEPLOY.USER, "--", "/usr/bin/env", "-i"])
+                    self.assertIn(node, argv)
+                    self.assertNotIn("NODE_OPTIONS", " ".join(map(str, argv)))
+                    self.assertIn(mock.call(str(release.parent / staged[0] / "src"), 0, 0), chown.call_args_list)
+                    for path in (base, base / "releases", release / "src", release / "node_modules" / ".pnpm",
+                                 node.parent, pnpm.parent):
+                        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755, str(path))
+                    self.assertEqual((release / "var").resolve(), data)
+                    probes.append(argv)
+                    if fail_probe and "await import('./src/server.mjs')" in argv:
+                        return None
+                    return ""
+
+                def mark_stage(*_, **kwargs):
+                    result = real_mkdtemp(*_, **kwargs)
+                    staged.append(Path(result).name)
+                    return result
+
+                staged = []
+                real_mkdtemp = tempfile.mkdtemp
+                original = os.umask(0o077)
+                try:
+                    with mock.patch.multiple(DEPLOY, BASE=base, DATA=data), \
+                            mock.patch.object(DEPLOY, "ensure_runtime", side_effect=make_runtime), \
+                            mock.patch.object(DEPLOY.os, "chown") as chown, \
+                            mock.patch.object(DEPLOY.tempfile, "mkdtemp", side_effect=mark_stage), \
+                            mock.patch.object(DEPLOY, "run", side_effect=invoke):
+                        if fail_probe:
+                            with self.assertRaisesRegex(DEPLOY.DeployError, "entrypoint"):
+                                DEPLOY.prepare_release(archive, manifest, account)
+                            self.assertFalse(release.exists())
+                        else:
+                            self.assertEqual(DEPLOY.prepare_release(archive, manifest, account), release)
+                    self.assertEqual(os.umask(0o077), 0o077)
+                finally:
+                    os.umask(original)
+                self.assertEqual(len(probes), 2)
+                self.assertFalse(list(release.parent.glob(".release-*")))
+                self.assertEqual(stat.S_IMODE(data.stat().st_mode), 0o700)
+                self.assertEqual(list(data.iterdir()), [])
+
+    def test_prepare_release_rejects_retained_unreadable_tree_without_changing_it(self):
+        base = self.path / "opt"
+        manifest = {"gitSha": "a" * 40, "contentSha256": "c" * 64}
+        release = base / "releases" / manifest["gitSha"]
+        (release / "node_modules").mkdir(parents=True)
+        (release / "src").mkdir(mode=0o700)
+        (release / "src/server.mjs").write_text("export {};\n")
+        (release / "deployment-manifest.json").write_text(json.dumps(manifest))
+        (release / "var").symlink_to(self.path / "data")
+        previous = (release / "src/server.mjs").read_bytes()
+
+        def invoke(argv, *, cwd, **_):
+            self.assertEqual(cwd, release)
+            if "await import('./src/server.mjs')" in argv:
+                return None
+            return ""
+
+        with mock.patch.object(DEPLOY, "BASE", base), \
+                mock.patch.object(DEPLOY, "ensure_runtime", return_value=(base / "bin/node", base / "pnpm.cjs")), \
+                mock.patch.object(DEPLOY, "run", side_effect=invoke) as commands:
+            with self.assertRaisesRegex(DEPLOY.DeployError, "entrypoint"):
+                DEPLOY.prepare_release(self.path / "unused.tar.gz", manifest, SimpleNamespace())
+        self.assertEqual(commands.call_count, 2)
+        self.assertEqual(stat.S_IMODE((release / "src").stat().st_mode), 0o700)
+        self.assertEqual((release / "src/server.mjs").read_bytes(), previous)
 
     def test_nginx_update_uses_persisted_proxy_and_rolls_back_reload_failure(self):
         for fail_reload in (False, True):

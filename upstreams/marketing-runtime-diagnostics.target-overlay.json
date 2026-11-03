@@ -92,8 +92,8 @@
       "path": "apps/server/src/video/studio-worker.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-worker.ts",
       "previousTargetSha256": "1c8b0e5d5eea0edce5dc6d1ba84ddd9e2d24b7fcecaa7448128e10a1df79fd0c",
-      "targetSha256": "17ba6d98b2e8efd79ca6391daeefd362557d105cc01181af90eb3e7639424571",
-      "targetBytes": 100338,
+      "targetSha256": "97418e913d46e3165ea79d2d8235a7ae169c11de5fc5ecdf1e2e5e8eaa0a9603",
+      "targetBytes": 104088,
       "targetMode": "100644"
     },
     {
@@ -273,5 +273,5 @@
       "targetMode": "100644"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T18:05:37.936690+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:33:38.460941+00:00"
 }

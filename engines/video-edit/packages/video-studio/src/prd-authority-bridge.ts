@@ -1322,6 +1322,11 @@ export function installPrdProductionBridge(deps: ProductionDependencies): () => 
     await currentCreativeRuntime()?.verifyHandoff(shots);
     return Reflect.apply(original, this, [shots, ...args]);
   });
+  if (typeof systemPrototype._confirmPreproductionResult === "function") add(systemPrototype, "_confirmPreproductionResult", original => async function (result, ...args) {
+    const creative = currentCreativeRuntime();
+    if (creative) await creative.verifyHandoff(requirementRecord(result, "G7 实际制作结果").shots);
+    return Reflect.apply(original, this, [result, ...args]);
+  });
   if (deps.dualSyncPrototype) add(deps.dualSyncPrototype, "syncShotsToPrompts", original => function (stage, shots, prompts, ...args) {
     if (stage === "DirectorSkills") currentCreativeRuntime()?.keepDirectorAdvice(shots, prompts);
     return Reflect.apply(original, this, [stage, shots, prompts, ...args]);
