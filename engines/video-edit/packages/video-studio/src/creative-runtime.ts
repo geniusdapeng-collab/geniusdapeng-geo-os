@@ -7,7 +7,8 @@ import {
   CreativeContractError, type CreativeContract, type CreativeFinding, type CreativeScope, type CreativeShot,
 } from "./constraint-compiler.js";
 import {
-  ABSTRACT_PRODUCT_RENDER_RULE, assertProductVisualContent,
+  ABSTRACT_PRODUCT_RENDER_RULE, REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE, UNVERIFIED_MIRROR_DETAIL_RULE,
+  VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualContent, registeredProductReferenceOmitsMirrors,
   type ProductVisualAuthority,
 } from "./product-visual-authority.js";
 import { creativeCandidateHash, rankCreativeCandidates, type CreativeCandidateAssessment } from "./creative-evaluation.js";
@@ -290,6 +291,24 @@ export class CreativeRuntime {
       const selected = snapshot(options.selectedCandidate);
       const ranked = rankCreativeCandidates({ contract: options.contract, generationModel: options.model, candidates: [selected] });
       if (ranked.eligible.length !== 1) fail("CREATIVE_SELECTION_UNVERIFIED", "selected candidate lacks separate current hard-valid review");
+      const references = selected.trustedProductReferences;
+      if (references !== undefined) {
+        const sha256 = /^[a-f0-9]{64}$/;
+        if (options.visualAuthority?.mode !== VERIFIED_PRODUCT_VISUAL_MODE || options.contract.route !== "marketing"
+          || !Array.isArray(references) || references.length < 1 || references.length > 4
+          || references.some(reference => !reference || Object.keys(reference).length !== 11
+            || reference.productName !== options.visualAuthority!.product || !reference.productId || !reference.assetId
+            || reference.authorizationBasis !== "owner-confirmed-reference-use" || !sha256.test(reference.sha256)
+            || reference.ref !== `product:sha256:${reference.sha256}` || !sha256.test(reference.ownerManifestSha256)
+            || reference.g1ContentSha256 !== options.contract.facts?.hash
+            || !Number.isSafeInteger(reference.g1ImageIndex) || !options.visualAuthority!.images[reference.g1ImageIndex]
+            || !Number.isSafeInteger(reference.bytes) || reference.bytes < 1024 || reference.bytes > 8_000_000
+            || !["image/png", "image/jpeg", "image/webp"].includes(reference.mimeType))
+          || new Set(references.map(reference => reference.ref)).size !== references.length
+          || selected.shots.some(shot => creativeHash(shot.assetRefs) !== creativeHash(references.map(reference => reference.ref)))) {
+          fail("CREATIVE_PRODUCT_REFERENCE_UNVERIFIED", "selected candidate product receipt differs from current G1 or shot references");
+        }
+      }
       this.selectedCandidate = selected;
     }
     this.options = options; this.contract = options.contract;
@@ -320,12 +339,26 @@ export class CreativeRuntime {
       policyVersion: CREATIVE_EXECUTOR_VERSION, config: { stage, fields: this.options.fields,
         selectedCandidateHash: this.selectedCandidate ? creativeCandidateHash(this.contract.hash, this.selectedCandidate.shots) : null } });
   }
+  get omitUnverifiedMirrors(): boolean {
+    return registeredProductReferenceOmitsMirrors(this.selectedCandidate?.trustedProductReferences);
+  }
+  private productReferenceContext(): string {
+    const references = this.selectedCandidate?.trustedProductReferences;
+    if (!references) return "";
+    return `\n\n## 本次已登记商品原图参考用途回执\n`
+      + `宿主已核对当前项目、意图、登记字节和本次 G1 的同源图。本回执仅授权使用以下已登记字节作为本项目外观参考；`
+      + `G1 公开资料卡的 license_risk 和 licensed_for_delivery 原样适用其公开素材，无从本回执获得新的传播权。不得将两种来源混用。\n`
+      + REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE + (this.omitUnverifiedMirrors ? UNVERIFIED_MIRROR_DETAIL_RULE : "") + "\n"
+      + creativeCanonical({ schemaVersion: "workloom.registered-product-reference/v1", scope: this.contract.scope,
+        rawIntentSha256: this.contract.rawIntentHash, references }) + "\n";
+  }
   selectionContext(): string | undefined {
     if (!this.selectedCandidate) return undefined;
-    return `\n\n## 本次已独立评审的创意候选（仍须经过当前正式确认门）\n`
+    const { trustedProductReferences: _references, ...assessment } = this.selectedCandidate;
+    return this.productReferenceContext() + `\n\n## 本次已独立评审的创意候选（仍须经过当前正式确认门）\n`
       + `这是同一合同下选定的创作来源，不是客户新指令或商品事实授权。后续主题、洞察与PRD应消费完整候选，允许按正式审核改进；不得把此候选直接标作G2/G3/G4批准。\n`
       + creativeCanonical({ contractHash: this.contract.hash,
-        candidateHash: creativeCandidateHash(this.contract.hash, this.selectedCandidate.shots), assessment: this.selectedCandidate }) + "\n";
+        candidateHash: creativeCandidateHash(this.contract.hash, assessment.shots), assessment }) + "\n";
   }
   private async cached<T>(stage: string, input: unknown, validate: (value: T, fromCache: boolean) => void, operation: () => Promise<T>): Promise<T> {
     await this.assertCurrent(); const key = this.cacheKey(stage, input), found = await this.options.cache.read(key);
@@ -353,7 +386,7 @@ export class CreativeRuntime {
       current: source, previous: index > 0 ? this.sources.get(ids[index - 1]!) ?? null : null,
       next: index + 1 < ids.length ? this.sources.get(ids[index + 1]!) ?? null : null,
       visualAuthority: this.options.visualAuthority ?? null,
-    })}\n以下为本次已接受事实的完整原件，不是摘要；仅在批准用途内引用：\n${this.contract.facts?.content ?? "通用叙事不消费营销G1事实"}\n`;
+    })}\n以下为本次已接受事实的完整原件，不是摘要；仅在批准用途内引用：\n${this.contract.facts?.content ?? "通用叙事不消费营销G1事实"}\n` + this.productReferenceContext();
   }
   private validateFields(shot: CreativeShot): CreativeFinding[] {
     const required = this.options.fields.requiredKeys ?? this.options.fields.keys;
@@ -403,10 +436,10 @@ export class CreativeRuntime {
     if (this.validateFields(ir).length) fail("CREATIVE_CACHE_INVALID", "accepted native fields no longer meet current schema");
   }
   private render(shot: CreativeShot): string {
-    if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, { fields: shot.fields, prompt: shot.prompt }, "creative-ir");
+    if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, { fields: shot.fields, prompt: shot.prompt }, "creative-ir", this.omitUnverifiedMirrors);
     let prompt = compileCreativePrompt(this.contract, shot);
     if (this.contract.profile.visualMode === "abstract_without_product_appearance" && !prompt.includes(ABSTRACT_PRODUCT_RENDER_RULE)) prompt += `\n${ABSTRACT_PRODUCT_RENDER_RULE}`;
-    if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, prompt, "creative-compiled-prompt");
+    if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, prompt, "creative-compiled-prompt", this.omitUnverifiedMirrors);
     return prompt;
   }
   private async deriveTechnicalFields(native: Recordish): Promise<Recordish> {

@@ -206,8 +206,8 @@
     {
       "path": "packages/video-studio/src/prd-authority.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.test.ts",
-      "targetSha256": "89005e323dedb54bd874774db57c1f784f1fed5bfa6a3ac6ac5eadb7ec441dc6",
-      "targetBytes": 42628,
+      "targetSha256": "9628701031c50ec59845db743bc8e498196c8ca144dae09a8d8d62221f7c3119",
+      "targetBytes": 44210,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "7141e5d5d597485bee6f718aaa8ae7504f35bacc65160614f9cf3664ed9a363a",
@@ -216,8 +216,8 @@
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "e6e29e9a87ee798e66cfcf554dbc8b5efc9641f5f8ad786a667a4e5a352d6dac",
-      "targetBytes": 37343,
+      "targetSha256": "82dce332f4f0290cc94c967d06b42e200edf36214caa791a8c657147be80104e",
+      "targetBytes": 39130,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "a3af225eccf6df376bf4e35e433fbb1a7a5a02e546c49d5693586c3023611275",
@@ -226,8 +226,8 @@
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
-      "targetBytes": 46302,
+      "targetSha256": "80296e0c8ce536a690c9e552a4c9ed7397f73371cbab8304666eb4a49ac1ad8c",
+      "targetBytes": 47937,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
@@ -266,8 +266,8 @@
     {
       "path": "packages/video-studio/src/studio.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "4e860572db3980d54b496bd28da26dd225442f90564c615136488f4c2bc682c1",
-      "targetBytes": 55511,
+      "targetSha256": "a9b39f600b7261f34d5942133ff74a7316a9bfd83876155f3f73551585ce9ef7",
+      "targetBytes": 55782,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T18:33:38.460941+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:51:13.134463+00:00"
 }

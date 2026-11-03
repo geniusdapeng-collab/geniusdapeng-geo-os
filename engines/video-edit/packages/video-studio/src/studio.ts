@@ -312,6 +312,7 @@ export class VideoStudio {
     const creativeEnforce = cfg.creativeExecution?.mode === "enforce";
     const metadata = structuredClone(input.metadata ?? {});
     delete metadata._dataDossier;
+    let creativePrdSource: CreativeContract | undefined;
     if (creativeEnforce && cfg.creativeExecution) {
       // Carry explicit customer values into the native view before it chooses
       // defaults. The persisted customer bytes and G1 inputs remain untouched.
@@ -325,6 +326,7 @@ export class VideoStudio {
       const currentSource = compileCreativeContract({ scope: seed.scope, rawIntent: seed.rawIntent,
         metadata: seed.sourceMetadata, isMarketing: seed.route === "marketing" });
       assertCreativeContract(currentSource, { allowNeedsInput: true });
+      if (input.isMarketing) creativePrdSource = currentSource;
       const duration = currentSource.constraints.find(constraint => constraint.id === "duration.final" && constraint.source === "customer");
       const nativeBrief = metadata.brief && typeof metadata.brief === "object" && !Array.isArray(metadata.brief)
         ? metadata.brief as Record<string, unknown> : {};
@@ -358,7 +360,8 @@ export class VideoStudio {
       metadata.dataMining = structuredClone(verified.productQuery);
       verifiedRaw = parsed;
       if (!verified.prdAuthority) throw new Error("MARKETING_PRD_AUTHORITY_REQUIRED：营销 PRD 缺少本次宿主私有 G1 权威原件");
-      prdAuthority = preparePrdAuthority({ metadata, marketing: verified.prdAuthority, workDir: cfg.workDir, projectId: input.projectId });
+      prdAuthority = preparePrdAuthority({ metadata, marketing: verified.prdAuthority, workDir: cfg.workDir, projectId: input.projectId,
+        ...(creativePrdSource ? { creativeContract: creativePrdSource } : {}) });
       const prepared = prdAuthority, preparedHash = requirementHash(prepared);
       const rawHash = verified.sha256, queryHash = requirementHash(verified.productQuery);
       validateRequirementAuthority = () => {
@@ -371,7 +374,7 @@ export class VideoStudio {
         // Reuse the existing verifier with Studio-owned workDir/project, including
         // exact current file bytes. Do not infer a path from untrusted metadata.
         const checked = preparePrdAuthority({ metadata: prepared.metadata, marketing: current.prdAuthority,
-          workDir: cfg.workDir, projectId: input.projectId });
+          workDir: cfg.workDir, projectId: input.projectId, ...(creativePrdSource ? { creativeContract: creativePrdSource } : {}) });
         if (requirementHash(checked) !== preparedHash) {
           throw new Error("REQUIREMENT_AUTHORITY_CHANGED：本次宿主私有 G1 或客户口径与冻结快照不一致");
         }

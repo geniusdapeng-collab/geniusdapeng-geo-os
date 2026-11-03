@@ -14,7 +14,12 @@ import {
 } from "./requirement-authority.js";
 import { policyCoveragePlan } from "./prd-authority-bridge.js";
 import { prdDurationContract, type PrdAuthority } from "./prd-authority.js";
-import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualContent, extractProductVisualAuthority } from "./product-visual-authority.js";
+import { currentCreativeRuntime } from "./creative-runtime.js";
+import { explicitCreativeShotPlan } from "./constraint-compiler.js";
+import {
+  ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, UNVERIFIED_MIRROR_DETAIL_RULE,
+  assertProductVisualContent, extractProductVisualAuthority, ProductVisualAuthorityError,
+} from "./product-visual-authority.js";
 
 type Method = (this: RequirementRecord, ...args: unknown[]) => unknown;
 interface Scope {
@@ -241,7 +246,8 @@ function sceneAuthority(scope: Scope, fallbackDuration: unknown) {
   if (targetContentDurationSeconds === undefined) {
     requirementAuthorityFailure("REQUIREMENT_SCENE_UNVERIFIED", "本次内容时间线目标时长缺失");
   }
-  const toleranceSeconds = duration.toleranceSeconds
+  const creative = currentCreativeRuntime()?.contract;
+  const toleranceSeconds = creative && explicitCreativeShotPlan(creative) ? 0 : duration.toleranceSeconds
     ?? (scope.authority.profile.durationToleranceFrames === undefined ? 5 : 0);
   const productVisualAuthority = extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content);
   const brief = scope.authority.metadata.brief && typeof scope.authority.metadata.brief === "object"
@@ -528,6 +534,9 @@ export function installRequirementContractBridge(
           view._validateAndFill = function (this: RequirementRecord, value: unknown, schema: unknown) {
             requireActiveScope();
             validateRequirementSchema(value, schema);
+            if (name === "audience" && currentCreativeRuntime()?.omitUnverifiedMirrors) {
+              assertProductVisualContent(extractProductVisualAuthority(scope.authority!.marketing.g1Artifact.content), value, "G3 AudienceProfiler", true);
+            }
             return structuredClone(value);
           };
         }
@@ -645,6 +654,8 @@ export function installRequirementContractBridge(
           const original = Reflect.apply(build, this, [input]);
           const upstream = requirementRecord(input, "SceneArchitect 上游输入");
           const target = sceneValidationOptions(scope, upstream.duration_sec);
+          const creative = currentCreativeRuntime()?.contract;
+          const plan = creative && explicitCreativeShotPlan(creative);
           return structuredScenePrompt(
             original,
             input,
@@ -655,7 +666,7 @@ export function installRequirementContractBridge(
             cast,
             audience(scope),
             sceneAuthority(scope, upstream.duration_sec),
-          ) + attemptFeedback;
+          ) + (plan ? `\n\n客户明确生产时间线为 ${plan.count} 段，每段 ${plan.durationSeconds} 秒。这里是叙事节点，可在同一生产段内安排多个节点；有明确时段的事件必须留在客户指定的生产段内。\n` : "") + attemptFeedback;
         };
         runView._validateAndFill = function (this: RequirementRecord, response: unknown, responseSchema: unknown) {
           requireActiveScope();
@@ -664,8 +675,17 @@ export function installRequirementContractBridge(
           try {
             validateRequirementSchema(response, responseSchema);
             const target = sceneValidationOptions(scope, upstream.duration_sec);
+            const visual = target.options.productVisualAuthority;
+            if (visual && currentCreativeRuntime()?.omitUnverifiedMirrors) {
+              assertProductVisualContent(visual, response, "G3 SceneArchitect", true);
+            }
             requirementScenes(response, cast, target.targetDuration, target.options);
           } catch (error) {
+            if (error instanceof ProductVisualAuthorityError && error.code === "PRODUCT_VISUAL_DETAIL_UNVERIFIED") {
+              currentValidationFailure = new RequirementContractError(error.code, "SceneArchitect 引用了未经核实的镜体或依赖镜体的机位");
+              pendingFeedback = "\n\n## 上一次原生场景校验反馈\n" + UNVERIFIED_MIRROR_DETAIL_RULE;
+              throw currentValidationFailure;
+            }
             const feedback = structuredSceneFeedback(error);
             if (feedback && error instanceof RequirementContractError) {
               currentValidationFailure = error;

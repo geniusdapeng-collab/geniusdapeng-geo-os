@@ -8,6 +8,8 @@ import {
 import { TARGET_DURATION_TOLERANCE_SECONDS } from "./duration-contract.js";
 import { ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, extractProductVisualAuthority,
   isDeclaredProductVisualMode, type DeclaredProductVisualMode } from "./product-visual-authority.js";
+import { assertCreativeContract, type CreativeContract } from "./constraint-compiler.js";
+import { resolvePlatformIntent } from "./platform-intent.js";
 
 export interface PrdMarketingScope {
   tenantId: string;
@@ -222,6 +224,8 @@ export function prdDurationContract(
 /** Recheck exact current bytes, including the full nested support review; never reduce this to summary cards. */
 export function preparePrdAuthority(input: {
   metadata: RequirementRecord; marketing: PrdMarketingAuthority; workDir: string; projectId: string;
+  /** Private Studio contract; caller metadata cannot supply this projection. */
+  creativeContract?: CreativeContract;
 }): PrdAuthority {
   const authority = structuredClone(input.marketing);
   const scope = requirementRecord(authority?.scope, "PRD 宿主营销作用域") as unknown as PrdMarketingScope;
@@ -262,6 +266,24 @@ export function preparePrdAuthority(input: {
   }
   const metadata = structuredClone(input.metadata);
   const profile = normalizePrdProductionProfile(metadata);
+  if (input.creativeContract) {
+    const creative = input.creativeContract;
+    assertCreativeContract(creative, { allowNeedsInput: true });
+    if (creative.route !== "marketing" || creative.scope.projectId !== scope.projectId
+      || creative.scope.tenantId !== scope.tenantId || creative.scope.workspaceId !== scope.workspaceId) {
+      prdFail("PRD_PROFILE_INVALID", "制作合同与本次营销 PRD 作用域不一致");
+    }
+    // Fill the same effective delivery settings as the creative path. Preserve
+    // explicit Brief declarations and do not write host defaults into customer bytes.
+    const { aspectRatio, resolution, frameRate, subtitleMode } = creative.profile;
+    if (aspectRatio === "16:9" || aspectRatio === "9:16" || aspectRatio === "1:1" || aspectRatio === "4:3") profile.aspectRatio ??= aspectRatio;
+    if (resolution === "1080p" || resolution === "4K") profile.resolution ??= resolution;
+    if (frameRate === 24 || frameRate === 25 || frameRate === 30 || frameRate === 60) profile.frameRate ??= frameRate;
+    if (subtitleMode === "none" || subtitleMode === "both" || subtitleMode === "burned" || subtitleMode === "sidecar") profile.subtitleMode ??= subtitleMode;
+    const declaredPlatform = creative.sourceMetadata.platform;
+    const platform = resolvePlatformIntent(creative.rawIntent, typeof declaredPlatform === "string" ? declaredPlatform : undefined);
+    if (platform.source !== "default") profile.targetPlatform ??= platform.label;
+  }
   const visual = extractProductVisualAuthority(authority.g1Artifact.content);
   if (profile.visualMode && profile.visualMode !== visual.mode) {
     prdFail("PRD_VISUAL_AUTHORITY_CHANGED", "制作资料中的视觉模式与本次通过 G1 的原始客户证据不一致");
@@ -280,7 +302,7 @@ export function prdAuthorityPrompt(authority: PrdAuthority, contract: Requiremen
   return `\n\n## 本次宿主 PRD 权威输入（补充前述通用模板，冲突时以本节为准）\n`
     + `完整客户 Brief：\n${JSON.stringify(authority.metadata.brief)}\n`
     + `本次商品视觉模式和执行限制：\n${JSON.stringify(visual)}\n${visual.rule}\n`
-    + `客户明确提供的生产/交付要求（缺省字段没有客户权威，不得伪称客户已指定；分辨率为交付档声明，不替代模型原生能力与提交前验证）：\n${JSON.stringify(authority.profile)}\n`
+    + `本次生效的生产/交付规格（含客户明确值及宿主适用的制作默认值；未写入原始 Brief 的值不得伪称客户明确指定。分辨率是母版交付规格，不替代原生模型能力核验）：\n${JSON.stringify(authority.profile)}\n`
     + `本次 G3 已审的完整场景、道具、动作和宿主选角合同：\n${JSON.stringify(contract)}\n`
     + `客户受众原文是权威口径；模型年龄/性别细分仅为推测。只使用合同内人物，characterId 必须等于所选 id，姓名一致。`
     + `人物档案是人物表达依据，不能当成商品事实；保留其人物档案/版本来源锚点。portraitPath 可以留空，G5 后续独立核验，不能提前声称出图或一致性已通过。\n`

@@ -473,6 +473,44 @@ function truthBoundary(scope: Scope, nativeLines: string[]): TruthBoundary {
   return { nativeLines: structuredClone(nativeLines), constraints: [...new Set(constraints)] };
 }
 
+/** Relate approved content beats to an explicit user schedule without changing either timeline. */
+export function exactPrdShotSchedule(
+  contract: CreativeContract | undefined, scenes: ReadonlyArray<{ id: string; duration: number }>,
+) {
+  const plan = contract && explicitCreativeShotPlan(contract);
+  if (!plan) return undefined;
+  const seconds = (value: number) => Number(value.toFixed(6));
+  let elapsed = 0;
+  const beats = scenes.map(scene => {
+    const start = elapsed;
+    elapsed = seconds(elapsed + scene.duration);
+    return { sceneId: scene.id, start, end: elapsed };
+  });
+  const totalSeconds = seconds(plan.count * plan.durationSeconds);
+  if (elapsed !== totalSeconds) {
+    prdFail("PRD_SCENE_DURATION_CONFLICT", "本次已审叙事节点时间线须完整覆盖客户明确的生产镜头段时间线");
+  }
+  return {
+    sceneCount: scenes.length, shotCount: plan.count, shotDurationSeconds: plan.durationSeconds, totalSeconds,
+    segments: Array.from({ length: plan.count }, (_, index) => {
+      const start = seconds(index * plan.durationSeconds), end = seconds(start + plan.durationSeconds);
+      return { index: index + 1, start, end, beats: beats.flatMap(beat => {
+        const from = Math.max(beat.start, start), to = Math.min(beat.end, end);
+        return from < to ? [{ sceneId: beat.sceneId, start: from, end: to }] : [];
+      }) };
+    }),
+  };
+}
+
+function productionScheduleContext(scope: Scope): string {
+  const plan = exactPrdShotSchedule(currentCreativeRuntime()?.contract, scope.contract!.scenes);
+  if (!plan) return "";
+  return `\n\n## 本次客户的明确生产镜头段与已审叙事节点对应\n`
+    + `以下是按内容时间线计算的区间，保持已审叙事节点、其顺序与时长；同一叙事节点可以跨生产段。`
+    + `scenePlan.scenes 是叙事节点，原生 shotMapping 的 estimatedShots 是该节点内的规划提示。最终镜头段数量与每段时长以以下客户明确合同为准，未产生供应商任务。\n`
+    + JSON.stringify(plan) + "\n";
+}
+
 /** Request executable planning in existing schema fields; never manufacture that plan after the response. */
 function productionPlanningPrompt(scope: Scope): string {
   const profile = scope.authority.profile;
@@ -502,7 +540,9 @@ function productionPlanningPrompt(scope: Scope): string {
     + `\n### 本次已知人物来源锚点（原G3选角来源，不是G5完成凭据）\n${JSON.stringify(castAnchors)}\n`
     + `按以上已给出的profilePath/profileSha256/registrySha256、人物与已知版本/服装逐项引用；已经给出的档案来源不得写成“待解析”。`
     + `“待解析和核验”仅适用于输入确实未提供的原始PNG路径、字节摘要或尚未完成的G5核验；即使原文提供PNG路径和摘要，也仅作为待G5核对的输入来源，不能提前批准。`
-    + `portraitPath仍留空，计划仍须由本次模型写入既有合法字段并交真实G4审核；宿主不会在响应后补写遗漏计划。\n`;
+    + `发型执行沿用本次锁定的角色档案和 portraitVersion；只有已审动作中的可见变化可写入，不能编造独立发型版本或已核实定妆结果。\n`
+    + `portraitPath仍留空，计划仍须由本次模型写入既有合法字段并交真实G4审核；宿主不会在响应后补写遗漏计划。\n`
+    + productionScheduleContext(scope);
 }
 interface Change { owner: RequirementRecord; key: string; original: PropertyDescriptor; patched: Method }
 interface Installed { changes: Change[]; schema: RequirementRecord; schemaHash: string }
@@ -819,7 +859,8 @@ export function installPrdAuthorityBridge(
           agentView._parseResult = function (this: RequirementRecord, value: unknown, ...args: unknown[]) {
             return guard(scope, () => {
               check(scope);
-              assertProductVisualContent(extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content), value, `raw-prd-${kind}`);
+              assertProductVisualContent(extractProductVisualAuthority(scope.authority.marketing.g1Artifact.content), value, `raw-prd-${kind}`,
+                currentCreativeRuntime()?.omitUnverifiedMirrors);
               const raw = validatePrdModelPayload(value, kind, schema, contract, scope.authority.profile);
               const parseInput = typeof value === "string" ? JSON.stringify(raw) : raw;
               const result = Reflect.apply(parse, this, [parseInput, ...args]);
@@ -915,7 +956,8 @@ export function installPrdAuthorityBridge(
         + `qualityPolicy.thresholds 是已经同时写入制作约束与验收的当前执行值，fallbackTrigger 使用同一视觉值；来源摘要绑定本次统一前的原生规则来源。`
         + `角色原始 PNG 来源/复用与待 G5 核验条件见 consistencyRequirements；字幕安全区、持续起止、sidecar 一致性与原生声音原速保留的后续验证方法见原始视觉/声音要求。`
         + `shotMapping原样展示实际数组；原生场景文字中的箭头仅为Markdown连接展示，不是shotBreakdownHint的原始枚举值。`
-        + `缺失计划继续交本次 G4 判断，不能用此说明替代实际计划或批准。\n\n\`\`\`json\n${JSON.stringify(planning, null, 2)}\n\`\`\`\n`;
+        + `缺失计划继续交本次 G4 判断，不能用此说明替代实际计划或批准。\n\n\`\`\`json\n${JSON.stringify(planning, null, 2)}\n\`\`\`\n`
+        + productionScheduleContext(scope);
     });
   };
   const reviewed: Method = async function (content, value) {

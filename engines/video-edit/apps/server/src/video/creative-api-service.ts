@@ -4,12 +4,13 @@ import path from "node:path";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import {
-  ABSTRACT_PRODUCT_RENDER_RULE, assertCreativeContract, assertProductVisualContent, buildCreativeShots,
+  ABSTRACT_PRODUCT_RENDER_RULE, REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE, UNVERIFIED_MIRROR_DETAIL_RULE,
+  assertCreativeContract, assertProductVisualContent, buildCreativeShots, registeredProductReferenceOmitsMirrors,
   compileCreativeContract, creativeTextHash, extractProductVisualAuthority, reviewStage, WorkloomLLMEngine,
   compileCreativePrompt, completeVideoTextTask, creativeBudgetActive, videoTextEndpointFromEnv, withCreativeBudget, CREATIVE_ART_DIMENSIONS, CREATIVE_ART_RUBRIC_VERSION, creativeCandidateHash,
   creativeCanonical, creativeHash, CreativeContractError, ProductVisualAuthorityError, VideoTextDispatchError, rankCreativeCandidates, validateCreativeShots,
   validatePatchDelta, type CreativeCandidateAssessment, type CreativeContract, type CreativeFinding,
-  type CreativeScope, type CreativeShot, type ProductVisualAuthority,
+  type CreativeProductReferenceReceipt, type CreativeScope, type CreativeShot, type ProductVisualAuthority,
 } from "@hyperreality/video-studio";
 import { acquireProjectLease, projectRunLockKey } from "./archive-host.js";
 import {
@@ -180,7 +181,7 @@ export interface CandidateResponse {
 
 /** Project only receipts supplied by the private native worker after exact G1 and owner checks. */
 function candidateProductReferences(contract: CreativeContract, runId: string | undefined,
-  visual: ProductVisualAuthority | undefined, references: readonly ProductionProductReference[] | undefined) {
+  visual: ProductVisualAuthority | undefined, references: readonly ProductionProductReference[] | undefined): CreativeProductReferenceReceipt[] | undefined {
   if (references === undefined) return undefined;
   const invalid = () => creativeError("CREATIVE_PRODUCT_REFERENCE_UNVERIFIED", "创意候选缺少与本次 G1、项目及原始意图一致的已登记商品参考");
   if (contract.route !== "marketing" || !contract.facts || !runId || visual?.mode !== "verified_product_appearance"
@@ -230,8 +231,10 @@ export async function generateCreativeAssessments(input: {
   if (!Number.isSafeInteger(count) || count < 1 || count > 3) return creativeError("CREATIVE_CANDIDATE_COUNT_INVALID", "候选数量必须为 1 到 3");
   const trustedProductReferences = candidateProductReferences(contract, input.runId, visual, input.trustedProductReferences);
   const referenceEvidence = trustedProductReferences ? { trustedProductReferences } : {};
+  const omitUnverifiedMirrors = registeredProductReferenceOmitsMirrors(trustedProductReferences);
   const referenceInstruction = trustedProductReferences
-    ? " trustedProductReferences 是本项目宿主核验的已登记原图，用于商品外观；商品公开资料卡的授权风险仍然独立。本系统为镜头附带精确 assetRefs，禁止模型创造或输出该字段。"
+    ? " trustedProductReferences 是本项目宿主核验的已登记原图，用于商品外观；商品公开资料卡的授权风险仍然独立。本系统为镜头附带精确 assetRefs，禁止模型创造或输出该字段。" + REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE
+      + (omitUnverifiedMirrors ? UNVERIFIED_MIRROR_DETAIL_RULE : "")
     : "";
   const referenceReviewInstruction = trustedProductReferences
     ? " 逐镜核对 shots.assetRefs 是否与宿主本次 trustedProductReferences 的授权商品原图一致。该回执仅证明对应注册字节获本次商品外观参考授权；公开资料卡仍保留自己的授权风险，不能替代或扩张本回执。"
@@ -278,7 +281,7 @@ export async function generateCreativeAssessments(input: {
       continue;
     }
     if (visual) {
-      try { for (const shot of shots) assertProductVisualContent(visual, shot, "creative-candidate"); }
+      try { for (const shot of shots) assertProductVisualContent(visual, shot, "creative-candidate", omitUnverifiedMirrors); }
       catch (error) {
         if (!(error instanceof ProductVisualAuthorityError)) throw error;
         failedCandidates.push({ candidateId, code: error.code, findings: [] });
@@ -326,7 +329,7 @@ export async function generateCreativeAssessments(input: {
       if (reviewFailure) break;
       continue;
     }
-    assessments.push({ candidateId, shots,
+    assessments.push({ candidateId, shots, ...referenceEvidence,
       generation: { model: generation.model, requestId: generation.responseId, promptHash: generation.requestHash, responseHash: generation.responseHash },
       review: { ...reviewed.data, scores: reviewed.data.scores as CreativeCandidateAssessment["review"]["scores"],
         model: review.model, requestId: review.responseId, promptHash: review.requestHash, responseHash: review.responseHash },

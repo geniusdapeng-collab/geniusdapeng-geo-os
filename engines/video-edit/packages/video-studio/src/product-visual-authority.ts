@@ -43,6 +43,18 @@ export const ABSTRACT_PRODUCT_RENDER_RULE = "不得生成或展示产品外观�
 const abstractRule = "本次产品只可通过非写实的抽象图形、代码与示意画面表达；" + ABSTRACT_PRODUCT_RENDER_RULE
   + "商品名和已核实主张仍可按客户用途限制作为文字或旁白；抽象隐喻不能冒充实际操作、性能或效果，不改变配色、人物、旁白或音乐要求。";
 const modeSource = "requestedMetadata.brief.productionRequirements.visualMode";
+export const REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE = "已登记原图授权仅覆盖本次确切字节及可见内容。未逐项证实的部件和机位不得用于执行字段。";
+export const UNVERIFIED_MIRROR_DETAIL_RULE = "禁止生成或描写车辆后视镜、镜中反射或依赖镜体的视角，原图未证实这些细节。";
+/** This inspected source alone does not establish a mirror. A different or additional source may. */
+export function registeredProductReferenceOmitsMirrors(
+  references: readonly { productId: string; sha256: string }[] | undefined,
+): boolean {
+  const reference = references?.length === 1 ? references[0] : undefined;
+  return reference?.productId === "zxmoto-820rr-rc"
+    && reference.sha256 === "575d2bb914d62fafecfa34e16dd8b37ce06e5f020ff1872a7d9a8b489c2e888d";
+}
+const UNVERIFIED_MIRROR = /后视镜|倒车镜|车载反光镜|\b(?:rear[- ]?view|side[- ]?view|wing)\s+mirrors?\b/iu;
+const MIRROR_OMISSION = /^(?:(?:全片|全程|本片|画面|镜头)\s*)?(?:不得|禁止|不要|不可|不安排|不使用|不展示|不出现|不描写|不推断|不补写|不新增|省略|do not\b|never\b|omit\b|no\b)/iu;
 
 function object(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -103,9 +115,14 @@ export function explicitProductVisualMode(intent: unknown, metadataValue: unknow
 }
 
 /** Check deterministic positive conflicts only; independent G3/G4/G6/final reviews still judge full semantics. */
-export function assertProductVisualContent(authority: ProductVisualAuthority, value: unknown, phase: string): void {
-  if (authority.mode !== ABSTRACT_PRODUCT_VISUAL_MODE) return;
+export function assertProductVisualContent(
+  authority: ProductVisualAuthority, value: unknown, phase: string, omitUnverifiedMirrors = false,
+): void {
+  const abstract = authority.mode === ABSTRACT_PRODUCT_VISUAL_MODE;
+  const omitMirrors = omitUnverifiedMirrors && authority.mode === VERIFIED_PRODUCT_VISUAL_MODE;
+  if (!abstract && !omitMirrors) return;
   const fail = (field: string) => {
+    if (omitMirrors) throw new ProductVisualAuthorityError(`${phase} 包含未经本次已登记原图逐项确认的镜体或依赖镜体的机位`, "PRODUCT_VISUAL_DETAIL_UNVERIFIED");
     throw new ProductVisualAuthorityError(`${phase}/${field} 与本次禁止产品外观、包装、真实界面或操作演示的合同冲突`, "PRODUCT_VISUAL_CONTENT_CONFLICT");
   };
   const active = new Set<object>();
@@ -118,9 +135,13 @@ export function assertProductVisualContent(authority: ProductVisualAuthority, va
         if (parsed !== undefined) { visit(parsed, field); return; }
       }
       for (const part of clauses(clean.normalize("NFKC"))) {
-        if (part === "$product") fail(field);
+        if (abstract && part === "$product") fail(field);
         // A negated rule cannot cover a later affirmative instruction after a clause boundary.
         const clause = part.replace(/^[\s*#>-]*(?:\d{1,3}\.\s*)?(?:【)?(?:负面约束|负面清单|负面提示(?:词)?|负向提示(?:词)?|negative(?: prompt)?)(?:】)?\*{0,2}[:：]?\s*/iu, "");
+        if (omitMirrors) {
+          if (UNVERIFIED_MIRROR.test(clause) && (!MIRROR_OMISSION.test(clause) || IN_CLAUSE_REVERSAL.test(clause))) fail(field);
+          continue;
+        }
         const normalizedProduct = authority.product?.normalize("NFKC").toLowerCase();
         const namedDepiction = normalizedProduct && ["展示", "实拍", "近拍", "特写", "操作", "打开", "show ", "film ", "demonstrate "]
           .some(verb => clause.toLowerCase().includes(`${verb}${normalizedProduct}`));
@@ -132,8 +153,8 @@ export function assertProductVisualContent(authority: ProductVisualAuthority, va
       try {
         if (Array.isArray(item)) item.forEach((entry, index) => visit(entry, `${field}[${index}]`));
         else for (const [key, entry] of Object.entries(item)) {
-          if (key === "visualMode" && entry !== ABSTRACT_PRODUCT_VISUAL_MODE) fail(`${field}.${key}`);
-          if (/^(?:productReferences?|productImages?|productPortraits?|productReferenceImages?|商品图|商品定妆照|商品参考图)$/iu.test(key)
+          if (abstract && key === "visualMode" && entry !== ABSTRACT_PRODUCT_VISUAL_MODE) fail(`${field}.${key}`);
+          if (abstract && /^(?:productReferences?|productImages?|productPortraits?|productReferenceImages?|商品图|商品定妆照|商品参考图)$/iu.test(key)
             && entry !== undefined && entry !== null && entry !== "" && !(Array.isArray(entry) && !entry.length)) fail(`${field}.${key}`);
           visit(entry, `${field}.${key}`);
         }

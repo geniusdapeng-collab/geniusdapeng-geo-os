@@ -23,7 +23,7 @@ const scenes = (durations: number[]) => {
   });
 };
 const unused = (...names: string[]): RecordValue => Object.fromEntries(names.map(name => [name, vi.fn()]));
-function run<T>(contract: CreativeContract, completeStage: ReturnType<typeof vi.fn>, operation: () => Promise<T>) {
+function run<T>(contract: CreativeContract, completeStage: (stage: string, output: unknown) => Promise<void>, operation: () => Promise<T>) {
   const runtime = new CreativeRuntime({
     contract, model: "offline-fixture", nativeSchemaHash: creativeTextHash("fixture"),
     fields: { keys: ["scene"], labels: { scene: "场景" } },
