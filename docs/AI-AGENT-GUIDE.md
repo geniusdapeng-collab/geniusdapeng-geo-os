@@ -378,7 +378,7 @@ node scripts/agent.mjs describe growth.video.post.quality
 
 模型密钥经本机受保护机制只送入运行进程。Codex 和其他 stdio 客户端使用本机 Node 与仓库内 `scripts/agent-mcp.mjs` 的绝对路径。若使用仓库外、用户独占的环境文件，只在配置中保存 `--env-file` 的路径。CLI/MCP 在需要原生后端时管理自己的服务，退出时只停止自己启动的服务。同一私有目录只运行一个监督进程。已取得同实例原生会话的本机客户端可以附着，云端 HTTP bearer 的权限不随之转移。
 
-接到制作、返修或交付请求，先把用户原话交给 `pengmanager.video.intake`（MCP 为 `pengmanager_video_intake`）。核对回执中的仓库、指南和原生接续状态。方案讨论可用 `growth.video.production.plan` 预览。正式制作按[本机 owner CLI](PENGMANAGER-VIDEO-MAKE.md)推进，原生服务核对当前档案、镜头、资格与预算。已存在的项目沿原回执接续。供应商结果未知时查询原任务。用已接受原片走正式后期，检查当前母版、清单、技术质检和可播放性。按真实文件和回执报告每一阶段，付费生成和平台发布分别授权。
+收到一句视频制作意图先用 `pengmanager.video.workflow` 固定原话与秒数，按 [标准本机入口](CODEX-VIDEO-QUICKSTART.md#默认收到一句制作意图时) 启动；`growth.video.production.plan` 仅作可选的文件预览。正式预生产和档案由有权限的本机原生客户端调用 `video.studio.start` 与 `video.studio.archive`。从 `growth.video.production.shots` 核对本次当前镜头，用原生 `video.production.qualifyShot`、`video.render.submit` 或正式逐镜 CLI 走服务资格和提交。原生读写方法只有在实际注册后才会出现在通用 MCP。保留项目、审批、预算、原任务及实际入库文件；回执未知时查询原任务。再用已接受原片走正式后期，重新检查当前母版、清单、技术质检和可播放性。按真实文件和回执报告每一阶段，付费生成和平台发布分别授权。
 
 本机 owner 集成需要明确选用既有合成角色时，可用程序构造参数 `createVideoRuntime({ dataDir, portraitReuseManifestPath })` 选择复用 manifest；默认关闭，HTTP／metadata、继承的 `HR_PORTRAIT_REUSE_MANIFEST` 及媒体工具环境不能代替这个选择。manifest 必须是 `dataDir` 内既有的规范绝对路径、无软链普通文件，大小为 1–8,000,000 字节；在本 Mac 上，私有根、途中目录与文件都须由当前用户所有且无组／其他用户权限。构造时记录完整字节 hash，每次构建原生环境时重核，改变或失效即报 `PORTRAIT_REUSE_MANIFEST_CHANGED`／`PORTRAIT_REUSE_MANIFEST_INVALID`。后端只收到通过检查的路径；Studio 在任务首次读取时另验 schema、合成身份、明确版本与源字节，并用该次 manifest hash 绑定后续验收。同 UID owner 在后端启动后改文件仍可能影响下一任务选择，因此本参数不承诺整个运行期文件不可变，也不代替原生模型配置、审批、预算或产物验收。
 
@@ -386,7 +386,7 @@ node scripts/agent.mjs describe growth.video.post.quality
 
 ### 9.1 连续失败的人工搭桥兜底
 
-通用视频或营销视频的同一 `projectId + stageId + subtaskKey` 至少失败 3 次（首次失败后再完成 2 次重试）且没有未知付费结果时，Codex 可以按该环节当前正式 schema、事实边界和下游接口人工补齐一份准入接缝产物。未达到门槛、外部结果未知、审批/权利未决或根因未定位时不得使用。
+普通标准视频作业不会自动选择人工搭桥。只有用户另行明确授权，且通用视频或营销视频的同一 `projectId + stageId + subtaskKey` 至少失败 3 次（首次失败后再完成 2 次重试）且没有未知付费结果时，Codex 可以按该环节当前正式 schema、事实边界和下游接口人工补齐一份准入接缝产物。未达到门槛、外部结果未知、审批/权利未决或根因未定位时不得使用。
 
 人工搭桥不代表模型调用、供应商任务或外部发布成功；不得用占位文、静帧或手写回执冒充真实媒体/平台结果，也不得跳过门禁、事实核对、预算或审批。每份搭桥必须写入项目归档的 `manual-bridges/` 独立路径，记录失败 attempt、输入、schema、输出、SHA-256、校验器与交叉字段结果、事实是否失实、未解决项、外部副作用和下游交接回执，并使用 [视频人工搭桥清单](video-manual-bridge.schema.json) 与 `scripts/validate-video-manual-bridge.mjs` 核验。
 

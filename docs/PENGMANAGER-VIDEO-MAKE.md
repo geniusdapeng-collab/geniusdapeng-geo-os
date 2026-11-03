@@ -1,28 +1,28 @@
 # 鹏经理本机视频制作入口
 
-`pengmanager.video.intake` 帮助 Agent 找到本机流程并冻结题目、系统和时长。拥有私有视频运行时的本机 owner 才能用下列命令推进真实项目。沿用[本机视频工位安装、真实模式和现有模型配置](CODEX-VIDEO-QUICKSTART.md)。已有同项目的原片或供应商任务时，优先沿该项目读回和核验。
+`pengmanager.video.workflow` 和 `video-standard.mjs plan` 用于冻结用户原话与时长。拥有私有视频运行时的本机 owner 用同一个标准 CLI 推进真实项目。沿用[本机视频工位安装、真实模式和现有模型配置](CODEX-VIDEO-QUICKSTART.md)。已有同项目的原片或供应商任务时，优先沿该项目读回和核验。
 
 ```sh
 # PM_NODE 是已核验的 Node 24+，PM_MODEL_ENV 是既有私有进程配置。
-# PM_BRIEF 是仓库外的私有 JSON，包含 system、intent 和 durationSeconds。
-"$PM_NODE" scripts/pengmanager-video-make.mjs identify < "$PM_BRIEF"
-"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/pengmanager-video-make.mjs start < "$PM_BRIEF"
-"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/pengmanager-video-make.mjs status "$PM_MAKE_ID"
-"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/pengmanager-video-make.mjs resume < "$PM_BRIEF"
-"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/pengmanager-video-make.mjs deliver < "$PM_BRIEF"
+# PM_BRIEF 是仓库外的私有 JSON，包含 intent，按需提供 durationSec。
+"$PM_NODE" scripts/video-standard.mjs plan --input-file "$PM_BRIEF"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs start --input-file "$PM_BRIEF" --data-dir "$PM_DATA"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs status --job "$PM_VIDEO_JOB_ID" --data-dir "$PM_DATA"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs resume --input-file "$PM_BRIEF" --data-dir "$PM_DATA"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs deliver --input-file "$PM_BRIEF" --data-dir "$PM_DATA"
 ```
 
-`system` 取 `pengmanager`，`intent` 保存用户的完整原话，`durationSeconds` 为 5–180 的整数。`identify` 只返回请求摘要与可重算 ID。其余命令默认使用 `PENGMANAGER_VIDEO_DATA_DIR` 指定的私有运行时，或者用末尾的 `--data-dir <实际目录>` 选择本机实例。通过 stdin 传请求，避免在命令参数与普通日志中复制完整简报。恢复原项目时使用相同字节的 `intent` 和同一时长。
+`intent` 保存用户的完整原话，`durationSec` 为 5–180 的整数，可由 `plan` 按明确的原话提取。正式命令使用 `--data-dir` 或 `PENGMANAGER_VIDEO_DATA_DIR` 指向同一私有运行时。也可用 `--input-file -` 从 stdin 传请求。恢复原项目时使用相同字节的 `intent` 和同一时长。旧的 `pengmanager.standard-video-start/v1` 作业继续以原 `jobId` 回读，已有原生会话时可在进程中提供该会话用于只读状态核验。新作业返回 `pengmanager.standard-video-production/v1` 和它自己的 `jobId`。
 
 ## 已授权的执行边界
 
-当前私有运行时的 `video-make-authority.json` 保存 owner 已确认的请求范围和原生执行设置。该文件位于仓库外，并使用仅 owner 可读写权限。业务对话、HTTP Agent、intake 和生成模型都没有授予这个权限的入口。当前项目已审过的真实模式、素材授权、价格和预算可以复用，只有未具备或不匹配的项才需要准备。
+当前私有运行时的 `video-make-authority.json` 保存 owner 已确认的请求范围和原生执行设置。该文件位于仓库外，并使用仅 owner 可读写权限。执行权限由本机 owner 的私有策略和当前原生记录共同核验。当前项目已审过的真实模式、素材授权、价格和预算可以复用，只有未具备或不匹配的项才需要准备。
 
 文件 schema 为 `pengmanager.video-make-authority/v1`。在 `approvedRequests` 数组中，每条记录包含：
 
 | 字段 | 使用的值 |
 | --- | --- |
-| `intentSha256` 和 `durationSeconds` | `identify` 的同一条记录 |
+| `intentSha256` 和 `durationSeconds` | `plan` 的 `intentSha256` 和 `requestedDurationSec` |
 | `validUntil` | 授权失效时间，ISO 8601 |
 | `metadata` | 本次实际批准的原生 Studio metadata，如平台、商品、已核实的事实源与制作要求。入口加入和请求一致的时长。 |
 | `creative` | `maxCny`、`maxCalls`、`maxTokens`、`maxWallMs`。本机配置仍须开启原生执行协调器，并在这里的界限内提供实际模型价格和额度。 |

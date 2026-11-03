@@ -16,7 +16,7 @@ const liveAuthority = {
     post: { title: '平江路', platform: 'douyin', aspect: '9:16', resolution: '1080p', fps: 30 } }],
 };
 const authority = approvedVideoMakeAuthority(liveAuthority, identity);
-const archive = (stage = {}) => ({ projectId: 'VID-10', archiveExists: true, stages: [
+const archive = (stage = {}) => ({ projectId: 'VID-10', archiveExists: true, manualBridges: [], stages: [
   { runId: 'RUN-1', stageId: 'preproduction', attempt: 1, status: 'done', outputRef: 'stages/preproduction/attempt-1.output.json', outputSha256: 'a'.repeat(64), ...stage },
 ] });
 const shots = { projectId: 'VID-10', sourceStageRunId: 'STAGE-1', sourceAttempt: 1, promptsSha256: 'b'.repeat(64),
@@ -161,6 +161,8 @@ test('downstream receives exact completed attempt only, never mismatched duratio
   capConsumed = true; // Recovery stays possible after an existing job consumes the full available cap.
   f.view(archive({ outputSha256: null }));
   assert.equal((await f.make.deliver(request, authority)).code, 'NATIVE_ARCHIVE_MISMATCH');
+  f.view({ ...archive(), manualBridges: [{ bridgeId: 'existing-bridge' }] });
+  assert.equal((await f.make.deliver(request, authority)).code, 'STANDARD_VIDEO_ARCHIVE_UNVERIFIED');
   assert.equal(delivered, undefined);
   f.view(archive());
   assert.equal((await f.make.deliver(request, authority)).state, 'downstream-control');
@@ -211,17 +213,16 @@ test('private owner receipt reader rejects permissions and symlinks', t => {
   }
 });
 
-test('owner CLI identifies and fails closed without authority before runtime start', t => {
+test('standard CLI derives the owner request ID and fails closed before runtime start', t => {
   const { dataRoot } = fixture(t);
-  const script = new URL('../scripts/pengmanager-video-make.mjs', import.meta.url);
-  const call = (...args) => spawnSync(process.execPath, [script.pathname, ...args], { input: JSON.stringify(request), encoding: 'utf8' });
-  const identified = call('identify');
-  assert.equal(identified.status, 0, identified.stderr);
-  assert.deepEqual(JSON.parse(identified.stdout), identity);
-  const existingOnly = call('deliver', '--data-dir', dataRoot);
+  const script = new URL('../scripts/video-standard.mjs', import.meta.url);
+  const call = action => spawnSync(process.execPath, [script.pathname, action, '--input-file', '-', '--data-dir', dataRoot],
+    { input: JSON.stringify({ intent: request.intent, durationSec: request.durationSeconds }), encoding: 'utf8' });
+  const existingOnly = call('deliver');
   assert.equal(existingOnly.status, 2, existingOnly.stderr);
   assert.equal(JSON.parse(existingOnly.stdout).code, 'VIDEO_MAKE_NOT_FOUND');
-  const missing = call('start', '--data-dir', dataRoot);
+  const missing = call('start');
   assert.equal(missing.status, 2, missing.stderr);
   assert.equal(JSON.parse(missing.stdout).code, 'OWNER_PRODUCTION_AUTHORITY_REQUIRED');
+  assert.equal(JSON.parse(missing.stdout).jobId, identity.id);
 });

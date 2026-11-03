@@ -194,6 +194,9 @@ export function createNativeVideoMake({ store, native, selectRoute, qualifyStart
       || (current && current.runId !== row.runId)) return receiptResult(row, 'blocked', { code: 'NATIVE_RUN_SCOPE_CHANGED', ...ids });
     if (archive?.pendingApprovalId || status?.pendingApprovalId || status?.blocker?.kind === 'approval') return receiptResult(row, 'blocked', { code: 'NATIVE_APPROVAL_REQUIRED', ...ids });
     if (status?.status === 'reconciling' || status?.blocker?.kind === 'unknown_operation') return receiptResult(row, 'blocked', { code: 'NATIVE_USAGE_RECONCILIATION_REQUIRED', ...ids });
+    if (archive?.manualBridges?.length || (current?.status === 'done' && !Array.isArray(archive.manualBridges))) {
+      return receiptResult(row, 'blocked', { code: 'STANDARD_VIDEO_ARCHIVE_UNVERIFIED', ...ids });
+    }
     if (current?.status === 'done') {
       try {
         const handoff = nativeIdentity(row, status, archive, await native.shots(row.projectId));

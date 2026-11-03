@@ -1,42 +1,18 @@
-/** Owner-only local entry. The broad Agent/MCP surface does not run this command. */
+/** Owner-only native execution behind the standard video CLI. */
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { createVideoRuntime, VideoRuntimeError } from '../src/video-runtime/index.mjs';
-import { runtimeConfig, requireEngineModule, verifiedPortraitReuseManifest, SCOPE } from '../src/video-runtime/config.mjs';
-import { localJson, wait } from '../src/video-runtime/process.mjs';
-import { advanceVideoMakeDelivery, approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from '../src/video-runtime/video-make.mjs';
+import { createVideoRuntime, VideoRuntimeError } from './index.mjs';
+import { runtimeConfig, requireEngineModule, verifiedPortraitReuseManifest, SCOPE } from './config.mjs';
+import { localJson, wait } from './process.mjs';
+import { advanceVideoMakeDelivery, approvedVideoMakeAuthority, createNativeVideoMake, createVideoMakeStore, identifyVideoMake, readPrivateVideoJson } from './video-make.mjs';
 
-const rootDir = path.resolve(import.meta.dirname, '..');
 const fail = (code, message) => { throw new VideoRuntimeError(code, message); };
 const positive = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const envLimit = (env, key, max, integer = true) => {
   const value = Number(env[key]);
   return positive(value) && (!integer || Number.isSafeInteger(value)) && value <= max;
 };
-
-function argumentsOf(args) {
-  const [action, ...tail] = args;
-  if (!['start', 'status', 'resume', 'deliver', 'identify'].includes(action)) fail('VIDEO_MAKE_ARGUMENT_INVALID', 'Use start|resume|deliver|identify with the exact brief JSON on stdin, or status <receipt-id>. Optional --data-dir PATH.');
-  const id = action === 'status' ? tail.shift() : null;
-  if (action === 'status' && !/^[a-f0-9]{64}$/.test(id ?? '')) fail('VIDEO_MAKE_ID_INVALID', 'Use the exact video make receipt ID.');
-  if (tail.length !== 0 && (tail.length !== 2 || tail[0] !== '--data-dir' || !tail[1] || action === 'identify')) {
-    fail('VIDEO_MAKE_ARGUMENT_INVALID', 'Optional --data-dir PATH must be the final two arguments.');
-  }
-  return { action, id, dataDir: tail[1] };
-}
-
-async function requestFromStdin() {
-  const chunks = [];
-  let length = 0;
-  for await (const chunk of process.stdin) {
-    length += chunk.length;
-    if (length > 16 * 1024) fail('VIDEO_MAKE_REQUEST_INVALID', 'Brief JSON exceeded 16 KiB.');
-    chunks.push(chunk);
-  }
-  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
-  catch { return fail('VIDEO_MAKE_REQUEST_INVALID', 'The brief must be a complete JSON object on stdin.'); }
-}
 
 async function qualify(config, native, authority, pipeline) {
   const { env } = config;
@@ -66,11 +42,8 @@ async function qualify(config, native, authority, pipeline) {
   return null;
 }
 
-async function run() {
-  const { action, id, dataDir } = argumentsOf(process.argv.slice(2));
-  const request = action === 'status' ? null : await requestFromStdin();
+export async function runOwnerVideoMake({ action, id, dataDir, rootDir, request }) {
   const identity = request && identifyVideoMake(request);
-  if (action === 'identify') return identity;
   const base = runtimeConfig({ rootDir, dataDir });
   const store = createVideoMakeStore(base.dataRoot);
   const row = store.read(id ?? identity.id);
@@ -204,14 +177,4 @@ async function run() {
     process.removeListener('SIGTERM', abort);
     await runtime.stop();
   }
-}
-
-try {
-  const result = await run();
-  process.stdout.write(JSON.stringify(result) + '\n');
-  if (result.state === 'blocked') process.exitCode = 2;
-} catch (cause) {
-  process.stdout.write(JSON.stringify({ schemaVersion: 'pengmanager.video-make/v1', state: 'blocked',
-    code: typeof cause?.code === 'string' && /^[A-Z][A-Z0-9_]+$/.test(cause.code) ? cause.code : 'NATIVE_VIDEO_MAKE_FAILED' }) + '\n');
-  process.exitCode = 2;
 }

@@ -2,6 +2,26 @@
 
 适用于在同一台电脑上使用 Codex、其他编程 Agent 或本地 stdio MCP 客户端的人。先完成不调用供应商的本机验收，再按当前项目授权进行预生产、渲染和后期。网站控制台、GitHub 仓库权限与本机视频运行时分别验证。
 
+## 默认收到一句制作意图时
+
+在 Codex 将鹏经理仓库选为当前项目根，或在项目外克隆后显式读根 `AGENTS.md`、[项目技能](../.agents/skills/pengmanager-standard-video/SKILL.md)和 [AI Agent 指南](AI-AGENT-GUIDE.md)。只需说“用鹏经理做一支三十秒的赛道短片”；不必另说“严格按管线”。默认由原生 Studio 按 `route:auto` 分流；只有确实缺少总时长或正式分流返回歧义时才补齐必需信息。用户原话保持不变，整数秒数写入 `metadata.brief.duration`（5–180）。
+
+首次使用先按第 1 节安装根仓依赖。只查看计划时，完成根仓依赖安装即可运行下列命令。
+
+```bash
+printf '%s\n' '{"intent":"用鹏经理做一支三十秒的赛道短片"}' |
+  node scripts/video-standard.mjs plan --input-file -
+```
+
+也可以用 MCP `pengmanager_video_workflow` 或 `node scripts/agent.mjs invoke pengmanager.video.workflow --input-file -`。三种形式都只返回原生输入与证据要求。正式制作使用同一个标准 CLI，由本机 owner 的私有授权和原生运行时核验当前模型、费用和围栏。 [本机授权与状态说明](PENGMANAGER-VIDEO-MAKE.md)
+
+```bash
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs start --data-dir "$PM_DATA" --input-file "$PM_VIDEO_INTENT_JSON"
+"$PM_NODE" --env-file="$PM_MODEL_ENV" scripts/video-standard.mjs status --data-dir "$PM_DATA" --job "$PM_VIDEO_JOB_ID"
+```
+
+输入 JSON 含 `intent`。原话有多处秒数时，只能按用户原话或当前合同确认的总时长填写 `durationSec`。`start` 先核验当前授权、模型和预算，再留存待派发回执。已有作业通过同一 `jobId` 查询。前期恢复用 `resume`，已有同一请求的后续交付用 `deliver`，均传入原输入。待对账时沿原项目查询。旧作业继续按原编号读取，`preproduction-verified` 表示同轮前期核验已完成。标准模式遇到人工搭桥、旧尝试或源不一致会停止。只有文件可播放且清单、来源与质检均回读后才交件。
+
 ## 1. 克隆并准备本机依赖
 
 用已获授权的 Git 身份克隆。令牌由 Git 凭据机制提供，不放进仓库 URL。已有 checkout 先检查当前分支和未提交改动。
@@ -15,19 +35,28 @@ git rev-parse HEAD
 
 PM_REPO="$(pwd -P)"
 PM_NODE="$(command -v node)"
+PM_ROOT_PNPM="$(command -v pnpm)"
 PM_PNPM="$(command -v pnpm)"
 PM_DATA="$HOME/.local/share/pengmanager/video-runtime"
 PM_PG_ROOT="/absolute/path/to/postgresql17-with-pgvector"
 "$PM_NODE" --version
-"$PM_PNPM" --version
+"$PM_NODE" -p 'require("./package.json").packageManager'
+"$PM_ROOT_PNPM" --version
 "$PM_NODE" -p 'require("./engines/video-edit/package.json").packageManager'
+(cd engines/video-edit && "$PM_PNPM" --version)
 ```
 
-- Node.js 需 24 或以上。用 `engines/video-edit/package.json` 中的确切 pnpm 版本，当前内置引擎声明 `pnpm@10.14.0`。若本机只有其他版本，先安装清单所写的版本，再将 `PM_NODE` 与 `PM_PNPM` 设为真实绝对路径。安装器可通过 `PENGMANAGER_PNPM_BIN` 选择该版本的二进制或 JavaScript 入口。根仓的 pnpm 版本用于根仓开发。 [pnpm 安装与版本选择](https://pnpm.io/installation#installing-a-specific-version)
+- Node.js 需 24 或以上。分别按根仓 `package.json` 和 `engines/video-edit/package.json` 的 `packageManager` 选择 pnpm，核对上述实际版本。需要两个不同的可执行文件时，将 `PM_ROOT_PNPM` 和 `PM_PNPM` 分别设为其绝对路径。引擎安装器通过 `PENGMANAGER_PNPM_BIN` 选择其固定版本。 [pnpm 安装与版本选择](https://pnpm.io/installation#installing-a-specific-version)
 - 准备与本机架构匹配、含 pgvector 的 PostgreSQL 17 工具安装目录。将 `PM_PG_ROOT` 设为真实绝对路径。目录含 `bin`、`lib`、`share`，并且该安装自身没有指向目录外的符号链接。准备的是程序工具，运行时会复制工具、初始化本机私有数据库。
 - `PM_DATA` 可改成任一源码仓库外的私有绝对路径。后续命令及 MCP 统一使用同一目录。已有目录需保持仅当前用户可访问，已有数据库和凭据随该目录一起保留。默认位置和端口见[视频运行时](VIDEO-RUNTIME.md)。
 
-先安装无界面的核心运行时。安装使用仓库快照固定的 UI 包及锁文件，在私有依赖 store 里预热，初始化完成后停止本次启动的 PostgreSQL。安装需要访问依赖来源。无需把视频供应商密钥传给安装命令。
+在仓库根目录先安装计划命令、Agent 和视频工位共同使用的依赖，包括本地文本计量所需的 tokenizer。 [pnpm 锁文件安装](https://pnpm.io/cli/install#--frozen-lockfile)
+
+```bash
+"$PM_ROOT_PNPM" install --frozen-lockfile --ignore-scripts
+```
+
+需要正式制作时，再安装无界面的核心运行时。安装使用仓库快照固定的 UI 包及锁文件，在私有依赖 store 里预热，初始化完成后停止本次启动的 PostgreSQL。安装需要访问依赖来源。无需把视频供应商密钥传给安装命令。
 
 ```bash
 PENGMANAGER_PNPM_BIN="$PM_PNPM" "$PM_NODE" scripts/video-setup.mjs --core-only --install \
@@ -79,7 +108,7 @@ codex mcp list
 
 打开新会话或重启客户端连接后，用 `tools/list` 检查实际工具名称及 schema。Codex TUI 可用 `/mcp` 查看已连接服务器。CLI 和 MCP 使用同一私有运行时，一个数据目录同时只由一个监督进程管理。若 MCP 已启动原生服务，在工作完成、没有活跃本地作业后，先在**同一 MCP 会话**调用 `pengmanager_video_stop`，核对返回的 `status.state:stopped`，再关闭客户端或另起工作台。此操作只停止本进程拥有的服务，不能取消已派发供应商任务。客户端强制终止时，先检查本次私有实例的进程与任务状态；不要删除数据目录或终止其他服务。 [Codex MCP 的 stdio 配置和检查](https://learn.chatgpt.com/docs/extend/mcp)
 
-也可以直接检查这个本机进程的握手和目录。下列命令无需启动原生后端。输出应包含 `pengmanager-system`、`pengmanager_video_intake` 和 `pengmanager_video_preflight`。
+也可以直接检查这个本机进程的握手和目录。下列命令无需启动原生后端。输出应包含 `pengmanager-system` 和 `pengmanager_video_preflight`。
 
 ```bash
 printf '%s\n' \
@@ -93,7 +122,6 @@ printf '%s\n' \
 
 ```bash
 "$PM_NODE" scripts/agent.mjs list
-"$PM_NODE" scripts/agent.mjs describe pengmanager.video.intake
 "$PM_NODE" scripts/agent.mjs describe pengmanager.video.preflight
 "$PM_NODE" scripts/agent.mjs invoke growth.video.workbench.guide --data-dir "$PM_DATA"
 printf '%s\n' '{"startNative":true}' | \
@@ -113,13 +141,11 @@ MCP 对应的预检工具是 `pengmanager_video_preflight`。空输入只检查�
 
 | 顺序 | 实际入口 | 继续条件 |
 | --- | --- | --- |
-| 1. 需求接入 | 用原话调用 `pengmanager.video.intake`（MCP 为 `pengmanager_video_intake`）。CLI 用 `invoke pengmanager.video.intake --input-file -` 从 stdin 接收含 `intent` 的 JSON。 | 核对当前仓、内置引擎 pin、指南摘要与 `nativeHandoff`。缺时长先核对当前合同。返修和交付保留原项目 ID，先回读 owner 回执。intake 不启动原生工位或调用供应商。 |
-| 2. 正式预生产与档案 | 有权限的本机 owner 按[原生制作 CLI](PENGMANAGER-VIDEO-MAKE.md)使用 `scripts/pengmanager-video-make.mjs`，接续使用相同的请求 ID 和原话。原生服务使用 `video.studio.start` 和 `video.studio.archive`。 | 核对授权、预算、真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
+| 1. 需求接入 | 用原话调用 `pengmanager.video.workflow`，或 `video-standard.mjs plan`。`growth.video.production.plan` 可用于另行预览已有文件。 | 核对原话、总时长和当前项目。已有项目沿原回执推进。 |
+| 2. 正式预生产与档案 | 本机 owner 按 [标准 CLI 授权说明](PENGMANAGER-VIDEO-MAKE.md) 使用 `video-standard.mjs start`。服务使用 `video.studio.start`，回读同一项目的 `video.studio.archive`。 | 记录真实 project/run/attempt、分流、G1 等本次前期裁决和完整镜头文件 SHA。需要模型参与的前期也计费。 |
 | 3. 核对真实当前镜头 | 通用 CLI/MCP 的 `growth.video.production.shots`，输入 `{"projectId":"实际项目ID"}`。 | 当前服务来源、镜头、长度、提示词、已接受素材和项目合同一致。缩减列表不能替代完整归档片单。 |
 | 4. 资格与提交 | 原生客户端使用 `video.production.qualifyShot` 及 `video.render.submit`，也可用下方正式逐镜 CLI。 | 按当前项目/镜头、模型、参数、素材、围栏、预算和人的授权判断。提交只消费当前真实资格，超时先查原请求。 |
 | 5. 轮询与后期 | 原生任务读取/轮询回填，取得实际媒体资产与文件，再用正式后期。 | 非 mock，逐镜关联原 task/job、媒体资产、文件与当前 SHA。发布另行授权。 |
-
-新制作的 intake 可返回 `ownerRequestId`，用原生 CLI 的 `identify` 核对。owner 的请求 JSON 使用原始 `intent`、`system: "pengmanager"` 和 5–180 秒的整数 `durationSeconds`。仅做方案讨论时可选用 `growth.video.production.plan` 预览。已有项目按原回执查询和接续。
 
 通用 MCP 的菜单按实际注册范围工作。当前 `archive`、`qualifyShot`、`render.submit` 和固定影片工位的 `film.start` 是原生服务入口；它们不因写进 prompt 而成为通用 MCP 工具。没有获准的原生客户端时，交接给当前本机 owner，在相应步骤保留明确阻塞。不要猜路由、构造审批数据、直连供应商补跑或把站点管理员的 bearer 当作本机身份。 [原生 Studio/渲染路由](../engines/video-edit/apps/server/src/video/router.ts) · [资格路由](../engines/video-edit/apps/server/src/video/production-router.ts)
 
@@ -194,4 +220,4 @@ cd "$PM_REPO"
 
 ### 给 Codex 的任务示例
 
-> 用这个项目已授权的人物和商品资料做一支 30 秒竖屏视频。有已接受的原片就复用，只交付本机成片。
+> 用鹏经理做一支 30 秒竖屏短片，主题是雨夜赛道。
