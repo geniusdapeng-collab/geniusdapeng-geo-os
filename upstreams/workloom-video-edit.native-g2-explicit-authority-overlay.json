@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0011",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T19:34:16.124811+00:00",
+  "scope": "Bind the explicit film title and named reference sources at G2, and keep the exact inspected vehicle image distinct from wardrobe; source upstream pin unchanged.",
+  "sourceOverlayCount": 5,
+  "files": [
+    {
+      "path": "apps/server/src/video/creative-api-service.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
+      "targetSha256": "a44058b2e7ed4100261a93d5b9edc87595ae161f95268b79147b99d6be850a83",
+      "targetBytes": 50656,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/creative-runtime.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/creative-runtime.ts",
+      "targetSha256": "f292879b6c31d9966b4e263050900b0c45acbafcd69772e9ea3926205025c949",
+      "targetBytes": 51823,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/creative-theme-contract.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/creative-theme-contract.test.ts",
+      "targetSha256": "7852b755c06fd8b9f322bec458c5252f39a2493e6e9f64b60786f209de52e68a",
+      "targetBytes": 8539,
+      "evidence": "B",
+      "sourceSha256": "6117c0a18b8fd67b95dfd10b996b912b523be6d138122e52a4aa41af314d188b",
+      "sourceBytes": 4423
+    },
+    {
+      "path": "packages/video-studio/src/creative-theme-contract.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/creative-theme-contract.ts",
+      "targetSha256": "ccb7a6031f2f99617309f356772f496d49f6a81f7385fbad18b467748997ce35",
+      "targetBytes": 15755,
+      "evidence": "B",
+      "sourceSha256": "9257f1bcc596d57d882ebee69f31d8e7f05909675ac93c2b530467fb4228728a",
+      "sourceBytes": 9598
+    },
+    {
+      "path": "packages/video-studio/src/inspected-rc-reference.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/inspected-rc-reference.test.ts",
+      "targetSha256": "8a0de62f131c52b984c818bdc93bd6089c85e65d7bde90b86cb4ee439acc2b24",
+      "targetBytes": 2056,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/product-visual-authority.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
+      "targetSha256": "d92aed7bc46d21ac658d5a4a5b8680e3f65efe0f2c5cefd07ea5e5f7826fdd19",
+      "targetBytes": 18301,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
+      "targetSha256": "51b3d2f701418ae11e53b8bdd166523b74e5a03bb421467e74887ee6d904491f",
+      "targetBytes": 50285,
+      "evidence": "B",
+      "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
+      "sourceBytes": 29194
+    },
+    {
+      "path": "packages/video-studio/src/studio.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
+      "targetSha256": "95ae7020f82f28f022d7827de42ebbba4e789b8e7c8f4f84868f4a72f5df5b33",
+      "targetBytes": 56467,
+      "evidence": "B",
+      "sourceSha256": "d7c9e3958490e67a1bdf42c05b3791200ca474b6e667885c591cb832d03ccaf8",
+      "sourceBytes": 37741
+    },
+    {
+      "path": "packages/video-studio/src/studio.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
+      "targetSha256": "0284bc329ca3a85b45ee2f251c7bf22ffc02b1375501fcbc1547a1ac28aa5234",
+      "targetBytes": 56469,
+      "evidence": "B",
+      "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
+      "sourceBytes": 41259
+    }
+  ]
+}

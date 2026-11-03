@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { normalizeCreativeThemeContract } from "./creative-theme-contract.js";
+import { createRequire } from "node:module";
+import { describe, expect, it, vi } from "vitest";
+import { compileCreativeContract } from "./constraint-compiler.js";
+import { bindCreativeThemeModelAuthority, creativeThemeAuthority, normalizeCreativeThemeContract } from "./creative-theme-contract.js";
 
 function result() {
   return {
@@ -21,6 +23,62 @@ function result() {
 }
 
 describe("creative theme host contract", () => {
+  const scope = { tenantId: "fixture-tenant", workspaceId: "fixture-workspace", projectId: "fixture-project" };
+  const exactIntent = "制作抖音竖屏品牌短片《弯心夺线》，成片30秒；视觉参考《阿尔卑斯》；不参考《原野》。";
+  const source = compileCreativeContract({ scope, rawIntent: exactIntent, metadata: {
+    title: "宿主项目默认标题", brief: { namedStyleReferences: ["示例导演"] },
+  } });
+
+  it("derives only an explicit film title and source-approved named references", () => {
+    expect(creativeThemeAuthority(source)).toEqual({ filmTitle: "弯心夺线", namedStyleReferences: ["示例导演", "《阿尔卑斯》"] });
+    const onlyReference = compileCreativeContract({ scope, rawIntent: "制作参考影片《借鉴作品》的短片；参考《允许作品》。" });
+    expect(creativeThemeAuthority(onlyReference)).toEqual({ namedStyleReferences: ["《允许作品》"] });
+    const conflict = compileCreativeContract({ scope, rawIntent: exactIntent, metadata: { filmTitle: "另一片名" } });
+    expect(() => creativeThemeAuthority(conflict)).toThrow("CREATIVE_FILM_TITLE_CONFLICT");
+  });
+
+  it("sends exact title schema and reference scope through the actual vendor extractor with no legacy wire change", async () => {
+    const require = createRequire(import.meta.url);
+    const { CreativeThemeGenerator } = require("../../../vendor/supermickey/hyperreality-system/skills/creative-theme-generator/index.js");
+    const real = Object.create(CreativeThemeGenerator.prototype);
+    const output = { theme: "模型建议名", type: "商业广告", duration_sec: 30, visual_style: "侧逆光，低机位沿车身平移" };
+    const originalGenerate = vi.fn(function (this: unknown, _prompt: string, _options: Record<string, unknown>) {
+      expect(this).toBe(engine);
+      return { success: true, content: JSON.stringify(output) };
+    });
+    const engine = { generate: originalGenerate };
+    real.llmEngine = engine;
+    await expect(real._extractFieldsWithLLM(exactIntent)).resolves.toEqual(output);
+    const legacy = originalGenerate.mock.calls[0]!;
+    let active: ReturnType<typeof creativeThemeAuthority> | undefined;
+    bindCreativeThemeModelAuthority(real, () => active);
+    await expect(real._extractFieldsWithLLM(exactIntent)).resolves.toEqual(output);
+    expect(originalGenerate.mock.calls[1]).toEqual(legacy);
+    active = creativeThemeAuthority(source);
+    await expect(real._extractFieldsWithLLM(exactIntent)).resolves.toEqual(output);
+    const [prompt, options] = originalGenerate.mock.calls[2]!;
+    const authority = prompt.slice(0, prompt.indexOf("\n用户输入：\n"));
+    expect(prompt).toContain(`用户输入：\n${exactIntent}`);
+    expect(authority).toContain('"theme":{"type":"string","const":"弯心夺线"}');
+    expect(authority).toContain('["示例导演","《阿尔卑斯》"]');
+    expect(authority).not.toContain("《原野》");
+    expect(authority).not.toContain("必须点名");
+    expect(authority).not.toContain('是"提炼"不是"摘抄"');
+    expect(options).toEqual(legacy[1]);
+    expect(real.llmEngine).toBe(engine);
+  });
+
+  it("projects only the explicit title and leaves raw generated fields available for independent evaluation", () => {
+    const raw = result();
+    raw.tasks[0]!.description = "人物俯身压弯，结束后回头看赛道。";
+    raw.tasks[0]!.visual_style = "参考《阿尔卑斯》的柔光；侧逆光，低机位沿车身平移。";
+    const before = structuredClone(raw);
+    const normalized = normalizeCreativeThemeContract(raw, { pipelineRoute: { kind: "marketing" } }, creativeThemeAuthority(source));
+    expect(normalized.result.tasks).toMatchObject([{ theme: "弯心夺线", description: raw.tasks[0]!.description, visual_style: raw.tasks[0]!.visual_style }]);
+    expect(normalized.changes).toContain("explicit-film-title-bound");
+    expect(raw).toEqual(before);
+  });
+
   it("removes persons and unverified pain claims under an explicit no-person contract", () => {
     const normalized = normalizeCreativeThemeContract(result(), {
       pipelineRoute: { kind: "marketing" },

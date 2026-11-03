@@ -40,7 +40,7 @@ import { captureRequirementTheme, type RequirementApprovedTheme } from "./requir
 import { requirementHash } from "./requirement-contract.js";
 import type { ProducerReviewContracts } from "./producer-gate.js";
 import { normalizeNarrativePrdContract } from "./narrative-prd-contract.js";
-import { normalizeCreativeThemeContract } from "./creative-theme-contract.js";
+import { bindCreativeThemeModelAuthority, creativeThemeAuthority, normalizeCreativeThemeContract } from "./creative-theme-contract.js";
 import {
   buildMarketingPreproductionReport,
   isAbstractMarketingIntent,
@@ -694,6 +694,8 @@ export class VideoStudio {
         if (!creativeThemeGenerator || typeof creativeThemeGenerator.generate !== "function") {
           throw new Error("CREATIVE_THEME_CONTRACT_BRIDGE_UNAVAILABLE: vendor 缺少 CreativeThemeGenerator.generate");
         }
+        const currentThemeAuthority = () => creativeRuntime ? creativeThemeAuthority(creativeRuntime.contract) : undefined;
+        if (creativeEnforce) bindCreativeThemeModelAuthority(creativeThemeGenerator, currentThemeAuthority);
         const originalThemeGenerate = creativeThemeGenerator.generate as (
           this: Record<string, unknown>,
           themeInput: string,
@@ -703,16 +705,20 @@ export class VideoStudio {
           themeInput: string,
         ): Promise<Record<string, unknown>> {
           const generated = await Reflect.apply(originalThemeGenerate, this, [themeInput]);
-          const normalized = normalizeCreativeThemeContract(generated, metadata);
-          if (prdAuthority && creativeRuntime && cfg.creativeExecution && normalized.changes.includes("brief-duration-authority-normalized")) {
+          const authority = currentThemeAuthority();
+          const normalized = normalizeCreativeThemeContract(generated, metadata, authority);
+          const durationProjected = normalized.changes.includes("brief-duration-authority-normalized");
+          const titleProjected = normalized.changes.includes("explicit-film-title-bound");
+          if (prdAuthority && creativeRuntime && cfg.creativeExecution && (durationProjected || titleProjected)) {
             const directory = path.dirname(prdAuthority.marketing.g1Artifact.path);
             if (realpathSync(directory) !== directory) throw new Error("CREATIVE_THEME_ARCHIVE_INVALID: 当前主题档案目录经过符号链接");
             const raw = JSON.stringify(generated);
             const sha256 = createHash("sha256").update(raw).digest("hex");
             const artifact = "G2_THEME_GENERATED-" + (++themeProjectionOrdinal) + "-" + sha256 + ".json";
             await writeFile(path.join(directory, artifact), raw, { flag: "wx", mode: 0o600, flush: true });
-            await cfg.creativeExecution.session.onEvent({ kind: "creative.theme-duration.projected", payload: {
-              artifact, sha256, bytes: Buffer.byteLength(raw), durationSeconds: metadata.target_duration,
+            await cfg.creativeExecution.session.onEvent({ kind: durationProjected ? "creative.theme-duration.projected" : "creative.theme-title.projected", payload: {
+              artifact, sha256, bytes: Buffer.byteLength(raw), ...(durationProjected ? { durationSeconds: metadata.target_duration } : {}),
+              ...(titleProjected ? { filmTitle: authority?.filmTitle } : {}),
               contractHash: creativeRuntime.contract.hash, g1Sha256: prdAuthority.marketing.g1Artifact.sha256,
             } });
           }

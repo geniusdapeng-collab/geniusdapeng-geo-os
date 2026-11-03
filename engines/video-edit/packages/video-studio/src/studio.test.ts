@@ -53,7 +53,7 @@ vi.mock("./vendor-requirement-entry.js", () => ({
           },
           agentTimeoutMs: 0,
         };
-        creativeThemeGenerator = { generate: studioMocks.themeGenerate };
+        creativeThemeGenerator = { generate: studioMocks.themeGenerate, _extractFieldsWithLLM: vi.fn() };
         prdGenerator = { generate: async () => ({}) };
         pipelineGuard = { check: () => ({ passed: true, source: "assembly-fixture" }) };
         _generatePreproductionReport() { return "assembly fixture report"; }

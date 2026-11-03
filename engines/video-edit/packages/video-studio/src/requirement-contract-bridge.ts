@@ -18,7 +18,7 @@ import { currentCreativeRuntime } from "./creative-runtime.js";
 import { explicitCreativeShotPlan } from "./constraint-compiler.js";
 import { namedReferenceAuthority, referenceCuratorSchema, validateReferenceCases } from "./named-reference-authority.js";
 import {
-  ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, UNVERIFIED_MIRROR_DETAIL_RULE,
+  ABSTRACT_PRODUCT_VISUAL_MODE, VERIFIED_PRODUCT_VISUAL_MODE, INSPECTED_RC_REFERENCE_DETAIL_RULE,
   assertProductVisualContent, extractProductVisualAuthority, ProductVisualAuthorityError,
 } from "./product-visual-authority.js";
 
@@ -715,7 +715,7 @@ export function installRequirementContractBridge(
           } catch (error) {
             if (error instanceof ProductVisualAuthorityError && error.code === "PRODUCT_VISUAL_DETAIL_UNVERIFIED") {
               currentValidationFailure = new RequirementContractError(error.code, "SceneArchitect 引用了未经核实的镜体或依赖镜体的机位");
-              pendingFeedback = "\n\n## 上一次原生场景校验反馈\n" + UNVERIFIED_MIRROR_DETAIL_RULE;
+              pendingFeedback = "\n\n## 上一次原生场景校验反馈\n" + INSPECTED_RC_REFERENCE_DETAIL_RULE;
               throw currentValidationFailure;
             }
             const feedback = structuredSceneFeedback(error);

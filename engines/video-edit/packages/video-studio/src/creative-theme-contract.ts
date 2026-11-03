@@ -1,4 +1,12 @@
+import { CreativeContractError, type CreativeContract } from "./constraint-compiler.js";
+
 type RecordValue = Record<string, unknown>;
+type ThemeMethod = (this: RecordValue, ...args: unknown[]) => unknown;
+
+export interface CreativeThemeAuthority {
+  filmTitle?: string;
+  namedStyleReferences: string[];
+}
 
 export interface CreativeThemeNormalization {
   result: RecordValue;
@@ -10,6 +18,80 @@ const isRecord = (value: unknown): value is RecordValue =>
   Boolean(value && typeof value === "object" && !Array.isArray(value));
 const text = (value: unknown): string => typeof value === "string" ? value.trim() : "";
 const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+
+/** Read only the original customer inputs already bound to the current contract hash. */
+export function creativeThemeAuthority(contract: CreativeContract): CreativeThemeAuthority {
+  const { rawIntent, sourceMetadata } = contract;
+  const brief = isRecord(sourceMetadata.brief) ? sourceMetadata.brief : {};
+  const titles = new Set([text(sourceMetadata.filmTitle), text(brief.filmTitle), text(brief.title)].filter(Boolean));
+  const declarations = /(?:制作|拍摄|拍|创作|生成)(?:(?!参考|借鉴|致敬)[^，。；！？\r\n《》]){0,48}(?:短片|影片|广告片|宣传片|视频|广告)\s*(?:名为|题为|叫作|叫)?\s*《([^《》\r\n]{1,120})》|(?:^|[，。；！？\r\n])\s*(?:片名|作品名(?:称)?)\s*(?:定为|名为|为|是|叫作|叫|[:：])?\s*《([^《》\r\n]{1,120})》/gu;
+  for (const match of rawIntent.matchAll(declarations)) titles.add(text(match[1] ?? match[2]));
+  titles.delete("");
+  if (titles.size > 1 || [...titles].some(title => /[\r\n]/u.test(title) || Array.from(title).length > 120)) {
+    throw new CreativeContractError("CREATIVE_FILM_TITLE_CONFLICT", "明确片名有冲突或超出有效长度");
+  }
+  const referenceFields = ["namedStyleReferences", "references", "visualReferences", "referenceCases"];
+  const namedStyleReferences = new Set<string>();
+  for (const fields of [brief, sourceMetadata]) {
+    for (const key of referenceFields) {
+      const value = fields[key];
+      const entries = isRecord(value)
+        ? [value.director, ...list(value.directors), ...list(value.filmReferences), ...list(value.styleReferences)]
+        : Array.isArray(value) ? value : [value];
+      for (const entry of entries.map(text).filter(Boolean)) namedStyleReferences.add(entry);
+    }
+  }
+  const referenceText = /(?:^|[，。；！？\r\n])\s*(?:(?:视觉|风格|摄影)(?:可)?)?(?:参考|借鉴|致敬)\s*(《[^《》\r\n]{1,120}》|导演\s*[^，。；！？\r\n]{1,80})/gu;
+  for (const match of rawIntent.matchAll(referenceText)) namedStyleReferences.add(match[1]!.trim());
+  const filmTitle = [...titles][0];
+  return { ...(filmTitle ? { filmTitle } : {}), namedStyleReferences: [...namedStyleReferences] };
+}
+
+/** Replace the pinned native instructions before the complete user input starts. */
+export function creativeThemeAuthorityPrompt(prompt: string, authority: CreativeThemeAuthority): string {
+  const inputStart = prompt.indexOf("\n用户输入：\n");
+  const instructions = prompt.slice(0, inputStart);
+  const style = /^5\. visual_style 必须点名可参考的影片\/导演美学\+光线策略，禁止'唯美''震撼'这类无效词。$/mu;
+  const title = /^1\. theme（≤10字）是"提炼"不是"摘抄"：[^\r\n]+$/mu;
+  if (inputStart < 0 || !style.test(instructions) || (authority.filmTitle && !title.test(instructions))) {
+    throw new CreativeContractError("CREATIVE_THEME_CONTRACT_BRIDGE_UNAVAILABLE", "原生主题模型提示词的受控结构发生变化");
+  }
+  const properties = { theme: { type: "string", ...(authority.filmTitle ? { const: authority.filmTitle } : {}) },
+    visual_style: { type: "string", minLength: 1 } };
+  const references = JSON.stringify(authority.namedStyleReferences);
+  const revised = instructions.replace(style, () => "5. visual_style 写可执行的光线、机位、运镜、景别、构图与质感。"
+    + `只有当前客户明确提供的参考项 ${references} 可按原文引用；不得补充导演、人名、影片或作品名。名单为空时仅用无署名的影像技法。`);
+  const exact = authority.filmTitle ? revised.replace(title, () => `1. theme 必须逐字使用客户明确片名 ${JSON.stringify(authority.filmTitle)}，包括完整文字；其他字段继续围绕客户内容创作。`) : revised;
+  return exact + `\n本次主题 JSON 字段约束（其余原生字段照常返回）：${JSON.stringify({ type: "object", required: ["theme", "visual_style"], properties })}\n`
+    + prompt.slice(inputStart);
+}
+
+/** Only the native field-extraction request is wrapped; the generator retains its own instance state. */
+export function bindCreativeThemeModelAuthority(generator: RecordValue, current: () => CreativeThemeAuthority | undefined): void {
+  const extract = generator._extractFieldsWithLLM;
+  if (typeof extract !== "function") {
+    throw new CreativeContractError("CREATIVE_THEME_CONTRACT_BRIDGE_UNAVAILABLE", "原生主题字段提取入口缺失");
+  }
+  generator._extractFieldsWithLLM = function (this: RecordValue, ...args: unknown[]) {
+    const authority = current();
+    if (!authority) return Reflect.apply(extract as ThemeMethod, this, args);
+    const engine = this.llmEngine;
+    if (!isRecord(engine) || typeof engine.generate !== "function") {
+      throw new CreativeContractError("CREATIVE_THEME_CONTRACT_BRIDGE_UNAVAILABLE", "原生主题模型引擎缺少真实 generate");
+    }
+    const receiver = Object.create(this) as RecordValue;
+    const originalGenerate = engine.generate as ThemeMethod;
+    const extractJson = engine._extractJsonObject;
+    receiver.llmEngine = {
+      generate(prompt: unknown, ...options: unknown[]) {
+        if (typeof prompt !== "string") throw new CreativeContractError("CREATIVE_THEME_CONTRACT_BRIDGE_UNAVAILABLE", "原生主题请求必须为文本");
+        return Reflect.apply(originalGenerate, engine, [creativeThemeAuthorityPrompt(prompt, authority), ...options]);
+      },
+      ...(typeof extractJson === "function" ? { _extractJsonObject: extractJson.bind(engine) } : {}),
+    };
+    return Reflect.apply(extract as ThemeMethod, receiver, args);
+  };
+}
 
 function explicitAudience(intent: string, brief: RecordValue): string {
   const fromBrief = text(brief.audience);
@@ -89,6 +171,7 @@ function normalizeDisplayPlaceholders(value: unknown): boolean {
 export function normalizeCreativeThemeContract(
   resultValue: RecordValue,
   metadataValue: unknown,
+  authority?: CreativeThemeAuthority,
 ): CreativeThemeNormalization {
   if (!isRecord(metadataValue)) return { result: resultValue, applied: false, changes: [] };
   const tasks = list(resultValue.tasks).filter(isRecord);
@@ -176,6 +259,10 @@ export function normalizeCreativeThemeContract(
         changes.push("marketing-tone-normalized");
       }
     }
+    if (authority?.filmTitle && task.theme !== authority.filmTitle) {
+      task.theme = authority.filmTitle;
+      changes.push("explicit-film-title-bound");
+    }
 
     const expectedAudience = audience
       ? `${audience}（客户原文明确）`
@@ -186,7 +273,7 @@ export function normalizeCreativeThemeContract(
     }
 
     const style = text(task.visual_style);
-    const normalizedStyle = stripUnrequestedTitles(style, intent);
+    const normalizedStyle = authority ? style : stripUnrequestedTitles(style, intent);
     if (normalizedStyle !== style) {
       task.visual_style = normalizedStyle;
       changes.push("unrequested-external-title-removed");
@@ -194,7 +281,7 @@ export function normalizeCreativeThemeContract(
 
     const contract = [
       noPerson ? "本片明确无人，不出现人物、人体局部或人物动作" : "",
-      "不得新增客户原文未提供的导演、影片或作品名",
+      authority ? "仅可按原文引用当前客户明确提供的导演、影片或作品参考" : "不得新增客户原文未提供的导演、影片或作品名",
       "不得把未经 G1 核验的用户痛点、操作命令、使用效果或收益承诺写成既有事实",
       claims.length ? `本次 G1 核验官方主张（以“官方仓库/官方主张”归属）：${claims.join("；")}` : "",
       route === "marketing" ? "客户 Brief 中的品类仅作检索归类，不是已核验来源原文" : "",

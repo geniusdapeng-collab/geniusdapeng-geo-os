@@ -7,7 +7,7 @@ import {
   CreativeContractError, type CreativeContract, type CreativeFinding, type CreativeScope, type CreativeShot,
 } from "./constraint-compiler.js";
 import {
-  ABSTRACT_PRODUCT_RENDER_RULE, REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE, UNVERIFIED_MIRROR_DETAIL_RULE,
+  ABSTRACT_PRODUCT_RENDER_RULE, REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE, INSPECTED_RC_REFERENCE_DETAIL_RULE,
   VERIFIED_PRODUCT_VISUAL_MODE, assertProductVisualContent, registeredProductReferenceOmitsMirrors,
   type ProductVisualAuthority,
 } from "./product-visual-authority.js";
@@ -348,7 +348,7 @@ export class CreativeRuntime {
     return `\n\n## 本次已登记商品原图参考用途回执\n`
       + `宿主已核对当前项目、意图、登记字节和本次 G1 的同源图。本回执仅授权使用以下已登记字节作为本项目外观参考；`
       + `G1 公开资料卡的 license_risk 和 licensed_for_delivery 原样适用其公开素材，无从本回执获得新的传播权。不得将两种来源混用。\n`
-      + REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE + (this.omitUnverifiedMirrors ? UNVERIFIED_MIRROR_DETAIL_RULE : "") + "\n"
+      + REGISTERED_PRODUCT_REFERENCE_DETAIL_RULE + (this.omitUnverifiedMirrors ? INSPECTED_RC_REFERENCE_DETAIL_RULE : "") + "\n"
       + creativeCanonical({ schemaVersion: "workloom.registered-product-reference/v1", scope: this.contract.scope,
         rawIntentSha256: this.contract.rawIntentHash, references }) + "\n";
   }
