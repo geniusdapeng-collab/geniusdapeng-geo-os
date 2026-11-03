@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createVideoRuntime } from './video-runtime/index.mjs';
 import { privateDirectory, redactor, runtimeConfig } from './video-runtime/config.mjs';
 import { publicVideoCapabilities, publicVideoStatus } from './http/video-runtime.mjs';
+import { standardVideoIntent, standardWorkflowDescriptor } from './video-runtime/standard-workflow.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PRODUCTION_PLAN = 'growth.video.production.plan';
@@ -66,6 +67,7 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
     operation: 'execute', risk: 'low', dataMode: 'unverified',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   });
+  specials.push(standardWorkflowDescriptor);
   const entries = new Map([...catalog.entries, ...specials.map(item => [item.id, item])]);
   async function stopManaged() {
     if (!owned) return false;
@@ -133,6 +135,7 @@ export async function createPengManagerAgent({ rootDir = ROOT, dataDir, env = pr
       if (id === 'pengmanager.video.status') { emptyInput(input); return publicVideoStatus(await runtime.status()); }
       if (id === 'pengmanager.video.capabilities') { emptyInput(input); return publicVideoCapabilities(await runtime.capabilities()); }
       if (id === VIDEO_PREFLIGHT) return preflight(input, descriptor);
+      if (id === standardWorkflowDescriptor.id) return standardVideoIntent(input);
       if (id === VIDEO_STOP) {
         emptyInput(input);
         const stoppedByThisProcess = await stopManaged();

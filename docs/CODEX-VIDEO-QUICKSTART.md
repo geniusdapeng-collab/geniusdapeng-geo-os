@@ -2,6 +2,26 @@
 
 适用于在同一台电脑上使用 Codex、其他编程 Agent 或本地 stdio MCP 客户端的人。先完成不调用供应商的本机验收，再按当前项目授权进行预生产、渲染和后期。网站控制台、GitHub 仓库权限与本机视频运行时分别验证。
 
+## 默认收到一句制作意图时
+
+在 Codex 将鹏经理仓库选为当前项目根，或在项目外克隆后显式读根 `AGENTS.md`、[项目技能](../.agents/skills/pengmanager-standard-video/SKILL.md)和 [AI Agent 指南](AI-AGENT-GUIDE.md)。只需说“用鹏经理做一支三十秒的赛道短片”；不必另说“严格按管线”。默认由原生 Studio 按 `route:auto` 分流；只有确实缺少总时长或正式分流返回歧义时才补齐必需信息。用户原话保持不变，整数秒数写入 `metadata.brief.duration`（5–180）。
+
+首次使用先按第 1 节安装根仓依赖。只查看计划时，完成根仓依赖安装即可运行下列命令。
+
+```bash
+printf '%s\n' '{"intent":"用鹏经理做一支三十秒的赛道短片"}' |
+  node scripts/video-standard.mjs plan --input-file -
+```
+
+也可以用 MCP `pengmanager_video_workflow` 或 `node scripts/agent.mjs invoke pengmanager.video.workflow --input-file -`。三种形式都只返回原生输入与证据要求，不派单。已有同一私有目录、同一端口的原生服务和获准的进程级 `WORKLOOM_ACCESS_TOKEN` 时，使用下列固定 CLI；否则在有权限的本机工作台用 `plan.input` 启动同一正式入口。云端 Agent bearer 不适用。
+
+```bash
+node scripts/video-standard.mjs start --data-dir "$PM_DATA" --input-file "$PM_VIDEO_INTENT_JSON"
+node scripts/video-standard.mjs status --data-dir "$PM_DATA" --job "$PM_VIDEO_JOB_ID"
+```
+
+输入 JSON 含 `intent`；原话有多处秒数时，只有能从原话识别全片时长才另填 `durationSec`，不能猜。`start` 会在私有目录先占回执，再调用一次 `video.studio.start`。重复运行回读原回执；`pending` 需核对原生项目，禁止重新提交。`status` 核对本轮档案与片单总时长；`preproduction-verified` 的下一步仍是同轮服务资格。标准模式遇到人工搭桥、旧尝试或源不一致会停止。用下文步骤继续正式渲染和后期；需要人工审批时沿用原生票据，文件可播放且实际清单、来源与质检都回读后才交件。
+
 ## 1. 克隆并准备本机依赖
 
 用已获授权的 Git 身份克隆。令牌由 Git 凭据机制提供，不放进仓库 URL。已有 checkout 先检查当前分支和未提交改动。
@@ -15,19 +35,28 @@ git rev-parse HEAD
 
 PM_REPO="$(pwd -P)"
 PM_NODE="$(command -v node)"
+PM_ROOT_PNPM="$(command -v pnpm)"
 PM_PNPM="$(command -v pnpm)"
 PM_DATA="$HOME/.local/share/pengmanager/video-runtime"
 PM_PG_ROOT="/absolute/path/to/postgresql17-with-pgvector"
 "$PM_NODE" --version
-"$PM_PNPM" --version
+"$PM_NODE" -p 'require("./package.json").packageManager'
+"$PM_ROOT_PNPM" --version
 "$PM_NODE" -p 'require("./engines/video-edit/package.json").packageManager'
+(cd engines/video-edit && "$PM_PNPM" --version)
 ```
 
-- Node.js 需 24 或以上。用 `engines/video-edit/package.json` 中的确切 pnpm 版本，当前内置引擎声明 `pnpm@10.14.0`。若本机只有其他版本，先安装清单所写的版本，再将 `PM_NODE` 与 `PM_PNPM` 设为真实绝对路径。安装器可通过 `PENGMANAGER_PNPM_BIN` 选择该版本的二进制或 JavaScript 入口。根仓的 pnpm 版本用于根仓开发。 [pnpm 安装与版本选择](https://pnpm.io/installation#installing-a-specific-version)
+- Node.js 需 24 或以上。分别按根仓 `package.json` 和 `engines/video-edit/package.json` 的 `packageManager` 选择 pnpm，核对上述实际版本。需要两个不同的可执行文件时，将 `PM_ROOT_PNPM` 和 `PM_PNPM` 分别设为其绝对路径。引擎安装器通过 `PENGMANAGER_PNPM_BIN` 选择其固定版本。 [pnpm 安装与版本选择](https://pnpm.io/installation#installing-a-specific-version)
 - 准备与本机架构匹配、含 pgvector 的 PostgreSQL 17 工具安装目录。将 `PM_PG_ROOT` 设为真实绝对路径。目录含 `bin`、`lib`、`share`，并且该安装自身没有指向目录外的符号链接。准备的是程序工具，运行时会复制工具、初始化本机私有数据库。
 - `PM_DATA` 可改成任一源码仓库外的私有绝对路径。后续命令及 MCP 统一使用同一目录。已有目录需保持仅当前用户可访问，已有数据库和凭据随该目录一起保留。默认位置和端口见[视频运行时](VIDEO-RUNTIME.md)。
 
-先安装无界面的核心运行时。安装使用仓库快照固定的 UI 包及锁文件，在私有依赖 store 里预热，初始化完成后停止本次启动的 PostgreSQL。安装需要访问依赖来源。无需把视频供应商密钥传给安装命令。
+在仓库根目录先安装计划命令、Agent 和视频工位共同使用的依赖，包括本地文本计量所需的 tokenizer。 [pnpm 锁文件安装](https://pnpm.io/cli/install#--frozen-lockfile)
+
+```bash
+"$PM_ROOT_PNPM" install --frozen-lockfile --ignore-scripts
+```
+
+需要正式制作时，再安装无界面的核心运行时。安装使用仓库快照固定的 UI 包及锁文件，在私有依赖 store 里预热，初始化完成后停止本次启动的 PostgreSQL。安装需要访问依赖来源。无需把视频供应商密钥传给安装命令。
 
 ```bash
 PENGMANAGER_PNPM_BIN="$PM_PNPM" "$PM_NODE" scripts/video-setup.mjs --core-only --install \
@@ -191,4 +220,4 @@ cd "$PM_REPO"
 
 ### 给 Codex 的任务示例
 
-> 先完整阅读本仓 AGENTS.md、AI Agent 指南及本机工作台指南，运行不收费的安装与项目预检。以我给出的 Brief、已授权人物和真实商品资料制作一支 30 秒竖屏视频，先核对可复用的原片。前期、视频提交及后期使用仓库正式入口；每次付费都遵守当前项目的批准、报价和额度。没有获准的原生执行身份或本次资格时，告诉我实际缺失的阶段、回执和可继续完成的工作。已有 task ID 时先查该任务。最后交付真实可播放的母版、实测规格、文件 SHA、各阶段回执及仍未知的费用或授权。此次任务仅本机交付。
+> 用鹏经理做一支 30 秒竖屏短片，主题是雨夜赛道。
