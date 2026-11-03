@@ -128,6 +128,50 @@ function productInput(metadata: RecordValue): RecordValue {
   if (!input.name) fail("MARKETING_PRODUCT_REQUIRED", "营销预生产需要明确商品名，不能把自由文本猜成已核实商品事实");
   return input;
 }
+
+const IDENTITY_ONLY = "product-identity-only";
+const identityOnlyRestriction = "只允许展示已核实的商品名称、精确型号与已授权参考外观；禁止价格、性能/规格、卖点、用户口碑、竞品、真实比赛结果或赛事/品牌背书等商品事实主张。";
+
+function usesIdentityOnly(metadata: RecordValue): boolean {
+  return (metadata.dataMining as RecordValue | undefined)?.claimScope === IDENTITY_ONLY;
+}
+
+function identityMention(value: string, source: string, standalone = false): RegExpExecArray | null {
+  // Match literal display names while allowing spacing differences between words.
+  // A suffix such as "-Pro" must never satisfy a different exact model.
+  const words = value.trim().split(/\s+/u).map(word => word.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&"));
+  const prefix = /^[a-z0-9]/i.test(value) ? "(?<![a-z0-9_-])" : "";
+  const suffix = standalone ? "(?![a-z0-9_/-])" : "(?![a-z0-9_-])";
+  return new RegExp(prefix + words.join("\\s*") + suffix, "iu").exec(source);
+}
+
+function bindProductIdentityOnly(
+  product: RecordValue, images: readonly SelectedImageSource[], pages: SourceSnapshot[],
+): ValidatedStageFacts {
+  const { name, model } = product;
+  if (typeof name !== "string" || name.length > 240 || typeof model !== "string" || model.length > 128
+    || !identityMention(model, name) || !images.length) {
+    fail("MARKETING_IDENTITY_SCOPE_INVALID", "仅核验身份的营销片必须指定含精确型号的商品名，并选用当前已登记商品原图");
+  }
+  const references = images.map(image => {
+    const source = pages.find(page => (page.requestedUrl === image.pageUrl || page.finalUrl === image.pageUrl)
+      && page.assetUrls.includes(image.sourceUrl));
+    const nameQuote = source && identityMention(name, source.text);
+    const modelQuote = source && identityMention(model, source.text, true);
+    if (!source || !nameQuote || !modelQuote) fail("MARKETING_IDENTITY_SOURCE_MISMATCH", "已登记图片的当前来源页未逐字支持精确商品名称及型号");
+    return { source, nameQuote, modelQuote, image };
+  });
+  const { source, nameQuote, modelQuote } = references[0]!;
+  return validateStageFacts("A1", {
+    payload: { identity: { name, model }, images: references.map(({ image }) => ({
+      url: image.sourceUrl, page_url: image.pageUrl,
+    })) },
+    citations: ([["/identity/name", nameQuote], ["/identity/model", modelQuote]] as const).map(([pointer, quote]) => ({
+      pointer, sourceId: source.sourceId, quote: quote[0], quoteStart: quote.index,
+    })),
+  }, pages, true);
+}
+
 function engine(storeRoot: string): DossierEngine {
   const entry = fileURLToPath(new URL("../../../../vendor/supermickey/hyperreality-system/engines/data-mining-engine/index.js", import.meta.url));
   const module = createRequire(import.meta.url)(entry) as { JennyLoomEngine: new (options: RecordValue) => DossierEngine };
@@ -322,21 +366,24 @@ export async function prepareMarketingFacts(input: {
   const env = input.env ?? process.env;
   if (env.VM_DATA_MINING === "0" || env.VM_DATA_MINING_MODE === "spec") fail("MARKETING_SOURCE_REQUIRED", "正式营销不支持跳过来源采集或用任务书代替事实证据");
   const intent = input.intent, metadata = structuredClone(input.metadata);
-  visualCheck(() => explicitProductVisualMode(intent, metadata));
+  const visualMode = visualCheck(() => explicitProductVisualMode(intent, metadata));
+  const identityOnly = usesIdentityOnly(metadata);
   const scope = { ...input.scope }; Object.values({ ...scope, attempt: String(scope.attempt) }).forEach(component);
   if (!Number.isInteger(scope.attempt) || scope.attempt < 1) fail("MARKETING_SCOPE_INVALID", "来源执行编号非法");
   const root = await realpath(input.root), prefix = `stages/preproduction/attempt-${scope.attempt}.marketing`;
-  const storeRoot = path.join(root, `${prefix}-dossier`), product = productInput(metadata), collector = engine(storeRoot);
+  const storeRoot = path.join(root, `${prefix}-dossier`), query = productInput(metadata), collector = engine(storeRoot);
+  const product = identityOnly ? { name: query.name, model: query.model } : query;
   const selectedImages = input.selectedImageSources ?? [];
+  if (identityOnly && (visualMode?.value !== "verified_product_appearance" || !selectedImages.length)) {
+    fail("MARKETING_IDENTITY_SCOPE_INVALID", "仅核验身份的营销片需要明确的实物外观模式与当前已登记商品原图");
+  }
   if (selectedImages.some(item => item.productName !== product.name)) fail("PRODUCT_VISUAL_AUTHORITY_REQUIRED", "已登记图片与本次商品查询身份不一致");
   const plan = collector.plan(product);
   const reports: StageFactsReport[] = [], sources: ArchivedSource[] = [];
   const cache = new Map<string, SourceSnapshot>();
   const sourceFetch = input.dependencies?.fetchSource ?? fetchMarketingSourceWithRetry;
   const review = input.dependencies?.review ?? reviewStage;
-  const executor = createDataMiningExecutor({ llm: input.llm, search: input.dependencies?.search,
-    searchCacheFile: input.searchCacheFile,
-    evidenceCollector: async (stage, stagePlan, hits: SearchHit[]) => {
+  const evidenceCollector = async (stage: IntelStage, stagePlan: DataMiningStagePlan, hits: SearchHit[]) => {
       const pages: SourceSnapshot[] = [], failures: Array<{ url: string; reason: string }> = [];
       const currentImages = stage === "A1" ? selectedImages : [];
       const candidates = [...new Set([...currentImages.map(item => item.pageUrl), ...hits.map(hit => hit.url)])]; let attempted = 0;
@@ -377,8 +424,11 @@ export async function prepareMarketingFacts(input: {
         && page.assetUrls.includes(item.sourceUrl)))) {
         fail("PRODUCT_VISUAL_AUTHORITY_REQUIRED", "本次实际来源网页未包含已登记商品图片的精确地址");
       }
-      const { facts, extractions } = await extractStageFacts({ stage, plan: stagePlan, pages, product, scope, root, prefix,
-        llm: input.llm, selectedImageSources: currentImages });
+      const { facts, extractions } = identityOnly
+        ? { facts: bindProductIdentityOnly(product, currentImages, pages), extractions: undefined }
+        : await extractStageFacts({ stage, plan: stagePlan, pages, product, scope, root, prefix,
+          llm: input.llm, selectedImageSources: currentImages });
+      const extractionEvidence = extractions ? { extractions } : {};
       const acceptedImages = Array.isArray(facts.payload.images) ? facts.payload.images : [];
       if (currentImages.some(item => !acceptedImages.some(image => {
         const fact = object(image, "商品图片");
@@ -388,7 +438,7 @@ export async function prepareMarketingFacts(input: {
         // Empty stations have no claims to semantically review. Persist the
         // actual empty payload and source lineage; do not ask a reviewer to
         // invent user-review/competitor evidence the current source lacks.
-        reports.push({ stage, facts, sourceIds: pages.map(page => page.sourceId), discovery, extractions });
+        reports.push({ stage, facts, sourceIds: pages.map(page => page.sourceId), discovery, ...extractionEvidence });
         return facts.payload;
       }
       const reviewFacts = supportReviewFacts(stage, facts);
@@ -403,14 +453,18 @@ export async function prepareMarketingFacts(input: {
         context: { purpose: "marketing-source-support", stage, scope },
       });
       const verdict = reviewed.verdict;
-      if (!accepted(verdict, evidence.path, evidence.sha256)) fail("MARKETING_SUPPORT_REJECTED", `原文支持关系未通过：${verdict.reason}`);
+      if (!accepted(verdict, evidence.path, evidence.sha256)) {
+        fail("MARKETING_SUPPORT_REJECTED", `原文支持关系未通过（${verdict.status}，评分 ${verdict.score ?? "无"}）：${verdict.reason}`);
+      }
       await readBound(root, evidence.ref, evidence.sha256);
-      reports.push({ stage, facts, sourceIds: pages.map(page => page.sourceId), discovery, extractions, review: { ref: evidence.ref, sha256: evidence.sha256, verdict } });
+      reports.push({ stage, facts, sourceIds: pages.map(page => page.sourceId), discovery, ...extractionEvidence, review: { ref: evidence.ref, sha256: evidence.sha256, verdict } });
       return facts.payload;
-    } });
+  };
+  const executor = createDataMiningExecutor({ llm: input.llm, search: input.dependencies?.search,
+    searchCacheFile: input.searchCacheFile, evidenceCollector });
   const raw = {} as Record<IntelStage, RecordValue>;
   for (const stage of ["A1", "A2", "A3"] as const) {
-    const payload = await executor(stage, plan.plans[stage]);
+    const payload = identityOnly ? await evidenceCollector(stage, plan.plans[stage], []) : await executor(stage, plan.plans[stage]);
     if (!payload) fail("MARKETING_STAGE_UNVERIFIED", `${stage}没有受控事实回填`);
     raw[stage] = payload;
   }
@@ -419,7 +473,8 @@ export async function prepareMarketingFacts(input: {
   if (assembled.ok !== true || assembled.chain?.ok !== true || !assembled.dossier || !assembled.cards) fail("MARKETING_DOSSIER_UNVERIFIED", "情报五站未完成有效档案装订");
   if (canonicalRenderJson(object(assembled.dossier.identity, "已装订商品身份").specs)
     !== canonicalRenderJson(object(raw.A1.identity, "已审核商品身份").specs)) fail("MARKETING_DOSSIER_UNVERIFIED", "情报装订改变了已审核规格值");
-  const presentation = normalizeMarketingDossierPresentation(assembled.dossier, assembled.cards, product, {
+  const customerRestrictions = [...customerRestrictionLines(intent), ...(identityOnly ? [identityOnlyRestriction] : [])];
+  const presentation = normalizeMarketingDossierPresentation(assembled.dossier, assembled.cards, query, {
     hasReviewEvidence: reports.some((report) => report.stage === "A2" && report.facts.status === "source_bound"),
     hasCompetitorEvidence: reports.some((report) => report.stage === "A3" && report.facts.status === "source_bound"),
     sellingPointClaims: reports
@@ -427,7 +482,7 @@ export async function prepareMarketingFacts(input: {
       .flatMap((report) => report.facts.claims)
       .filter((claim) => /^\/identity\/official_selling_points\/\d+\/point$/.test(claim.pointer))
       .map((claim) => ({ pointer: claim.pointer, claimId: claim.claimId, sourceId: claim.sourceId })),
-    customerRestrictions: customerRestrictionLines(intent),
+    customerRestrictions,
   });
   if (typeof presentation.dossier.product_id !== "string" || !presentation.dossier.product_id.trim()) {
     fail("MARKETING_DOSSIER_UNVERIFIED", "情报档案缺少有效商品ID");
@@ -449,7 +504,7 @@ export async function prepareMarketingFacts(input: {
     ...reports.filter(report => report.facts.status === "no_evidence").map(report => report.stage === "A2"
       ? "没有可核实用户评价：禁止用户口碑、评分、人数、销量或使用效果共识主张"
       : "没有可核实竞品证据：禁止对比、竞品弱点或市场领先主张"),
-    ...customerRestrictionLines(intent),
+    ...customerRestrictions,
   ])];
   const bundle: MarketingFactsBundle = { schemaVersion: "workloom.marketing-facts/v1", issuer: "workloom.marketing-authority", scope,
     collectedAt: new Date().toISOString(), policyVersion: "source-claims/v1", productQuery: product, sources, stages: reports, rawByAgent: raw,
@@ -541,6 +596,15 @@ export async function verifyMarketingFacts(input: {
   const original = currentG1 === undefined ? input.g1Content : (await readBound(input.root, currentG1, bundle.g1ContentSha256, DEEPSEEK_REQUEST_BODY_LIMIT_BYTES)).toString("utf8");
   if (original === undefined || (input.g1Content !== undefined && original !== input.g1Content)) fail("MARKETING_G1_UNBOUND", "缺少本次已通过 G1 的完整原件或归档副本不同");
   const productVisualAuthority = checkedG1VisualContract(bundle, original);
+  const requestedMetadata = object(JSON.parse(original).requestedMetadata, "G1 客户输入");
+  const identityOnly = usesIdentityOnly(requestedMetadata);
+  if (identityOnly) {
+    const { name, model } = productInput(requestedMetadata);
+    if (productVisualAuthority.mode !== "verified_product_appearance" || !bundle.restrictions.includes(identityOnlyRestriction)
+      || canonicalRenderJson(bundle.productQuery) !== canonicalRenderJson({ name, model })) {
+      fail("MARKETING_IDENTITY_SCOPE_INVALID", "归档必须保留本次客户指定的型号、实物外观与事实用途限制");
+    }
+  }
   if (currentG1 === undefined && productVisualAuthority.mode === ABSTRACT_PRODUCT_VISUAL_MODE) {
     fail("MARKETING_G1_UNBOUND", "本次无外观镜头缺少与原始 G1 视觉模式绑定的完整终审");
   }
@@ -559,7 +623,20 @@ export async function verifyMarketingFacts(input: {
     if (records.length !== 1 || !record || record.facts.stage !== stage) fail("MARKETING_STAGE_UNVERIFIED", `当前营销事实缺少${stage}实际执行记录`);
     const used = record.sourceIds.map(id => pages.find(source => source.sourceId === id)).filter((source): source is SourceSnapshot => Boolean(source));
     if (used.length !== record.sourceIds.length || new Set(record.sourceIds).size !== record.sourceIds.length) fail("MARKETING_SOURCE_INVALID", "营销来源记录缺失或重复");
-    revalidateStageFacts(record.facts, used);
+    if (identityOnly && stage === "A1") {
+      const images = productVisualAuthority.images.map(image => ({
+        productName: String(bundle.productQuery.name), pageUrl: image.pageUrl, sourceUrl: image.url,
+      }));
+      const expected = bindProductIdentityOnly(bundle.productQuery, images, used);
+      if (record.extractions || canonicalRenderJson(record.facts) !== canonicalRenderJson(expected)) {
+        fail("MARKETING_IDENTITY_SCOPE_INVALID", "归档与当前来源页、原文位置或已登记参考外观不符");
+      }
+    } else {
+      revalidateStageFacts(record.facts, used);
+      if (identityOnly && (used.length || record.facts.claims.length || record.extractions)) {
+        fail("MARKETING_IDENTITY_SCOPE_INVALID", "身份范围不能添加评价、竞品或其他未授权事实");
+      }
+    }
     if (record.extractions !== undefined) await verifyExtractionAttempts({ root: input.root, prefix: expectedPrefix,
       scope: input.scope, stage, productQuery: bundle.productQuery, sources: used, facts: record.facts, extractions: record.extractions });
     if (record.facts.claims.length > 0 || record.review) {

@@ -30,8 +30,8 @@
     {
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
-      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
-      "targetBytes": 43721,
+      "targetSha256": "58ccd0e21692b5585531ff80d12ec21bc006ddb4182941525c4134bfefee5584",
+      "targetBytes": 46111,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "1896554a3d7b320fa68792b76b52aef5d8374656ff01cfeb15fcaf08391a17cc",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T15:52:15.078659+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T16:32:01.808920+00:00"
 }

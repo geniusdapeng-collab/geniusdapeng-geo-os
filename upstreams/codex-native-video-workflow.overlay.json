@@ -3,7 +3,7 @@
   "id": "T-2026-1103-0006",
   "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
   "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
-  "generatedAt": "2026-11-03T15:52:15.078659+00:00",
+  "generatedAt": "2026-11-03T16:32:01.808920+00:00",
   "scope": "PengManager native Codex video request intake, resumable owner execution, and exact native media delivery; source upstream pin unchanged.",
   "sourceOverlayCount": 4,
   "files": [
