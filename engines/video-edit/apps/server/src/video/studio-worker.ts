@@ -1191,13 +1191,13 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             let marketing: PreparedMarketingFacts | undefined;
             let productReferences: ProductionProductReference[] = [];
             let g1Approved = true;
+            const selectedManifest = input.isMarketing && portraitOptions.enabled ? portraitOptions.archivedCharacters : undefined;
+            const productInput = selectedManifest?.productReferenceSelection === undefined ? undefined : {
+              app: getAppPool(), scope, projectId: input.projectId, manifest: selectedManifest,
+              rawIntentSha256: renderSha256(input.rawIntent ?? input.intent),
+            };
+            const selectedImageSources = productInput ? await resolveProductionProductReferences(productInput) : undefined;
             if (input.isMarketing) {
-              const selectedManifest = portraitOptions.enabled ? portraitOptions.archivedCharacters : undefined;
-              const productInput = selectedManifest?.productReferenceSelection === undefined ? undefined : {
-                app: getAppPool(), scope, projectId: input.projectId, manifest: selectedManifest,
-                rawIntentSha256: renderSha256(input.rawIntent ?? input.intent),
-              };
-              const selectedImageSources = productInput ? await resolveProductionProductReferences(productInput) : undefined;
               marketing = await prepareMarketingFacts({ scope: { ...scope, projectId: input.projectId, runId: entry.runId, attempt: ctx.attempt },
                 root: archive.root, metadata: sourceMetadata, intent: input.rawIntent ?? input.intent, llm,
                 searchCacheFile: path.join(WORK_DIR, "search-cache", `${scope.workspaceId}.json`), selectedImageSources });
@@ -1233,6 +1233,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
                   if (!endpoint || endpoint.model !== llm.model) throw new Error("CREATIVE_BUDGET_UNCONFIGURED: candidate model must match the current Studio model");
                   return runEarlyCreativeCandidates({ session: activeCreative, endpoint, runId: entry.runId, count: 2, creativeInput,
                     ...(visualAuthority ? { visual: visualAuthority } : {}),
+                    // Only a selection matched to this project or intent can require a G1-bound receipt.
+                    ...(selectedImageSources?.length ? { trustedProductReferences: productReferences } : {}),
                     assertCurrent: async () => { await assertCurrent(); await verifyCreativeMarketingSource(contract); } });
                 } } } : {}), ...(marketing ? { dataMining: {
               mode: "api", storeRoot: marketing.storeRoot, refresh: true,
