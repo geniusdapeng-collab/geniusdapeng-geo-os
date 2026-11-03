@@ -198,22 +198,51 @@ describe("native creative candidate structure at the actual model transport", ()
     },
   );
 
-  it("keeps the independently valid first candidate after the second review returns malformed JSON", async () => {
-    await withFixture((user, index) => index === 4 ? { content: "{not-json" } : ({
+  it.each([2, 3])("keeps the independently valid first candidate after the second review fails with %i planned slots", async count => {
+    await withFixture((user, index) => index >= 4 ? { content: "{not-json" } : ({
       value: user.candidateHash ? goodReview(user) : { shots: [{ ...shot, action: shot.action + index }] },
     }), async (endpoint, requests, hashes) => {
       const settled: CreativeModelOutcome[] = [];
       const result = await withCreativeBudget(budget(settled), () => generateCreativeAssessments({
-        contract, endpoint, count: 2, assertCurrent: async () => {},
+        contract, endpoint, count, assertCurrent: async () => {},
       }));
-      expect(requests).toHaveLength(4);
+      const expectedRequests = count + 2;
+      expect(requests).toHaveLength(expectedRequests);
       expect(result.selected?.review.requestId).toBe("fixture-response-2");
       expect(result.rejected[0]).toMatchObject({ code: "CREATIVE_ART_REVIEW_UNVERIFIED", response: {
-        phase: "review", requestId: "fixture-response-4", responseHash: hashes[3], issues: [{ path: [], code: "invalid_json" }],
+        phase: "review", requestId: `fixture-response-${expectedRequests}`, responseHash: hashes[expectedRequests - 1],
+        issues: [{ path: [], code: "invalid_json" }],
       } });
       expect(settled[3]).toMatchObject({ usageKnown: true, success: false, finishReason: "stop" });
     });
   });
+
+  it.each([["{UNTRUSTED-RAW-REVIEW", "invalid_json"], ["   ", "empty_json"]])(
+    "re-reviews exactly the frozen candidate after settled %s using the remaining planned slot", async (content, code) => {
+      await withFixture((user, index) => index === 2 ? { content } : ({
+        value: user.candidateHash ? goodReview(user) : { shots: [shot] },
+      }), async (endpoint, requests, hashes) => {
+        const settled: CreativeModelOutcome[] = [];
+        const result = await withCreativeBudget(budget(settled), () => generateCreativeAssessments({
+          contract, endpoint, count: 2, assertCurrent: async () => {},
+        }));
+        expect(requests).toHaveLength(3);
+        const [generation, firstReview, retry] = requests.map(request => JSON.parse(request.messages.at(-1)!.content));
+        const { reviewStructureRetryOf, ...retryInput } = retry;
+        expect(generation).toMatchObject({ candidateOrdinal: 1 });
+        expect(retryInput).toEqual(firstReview);
+        expect(reviewStructureRetryOf).toEqual({ requestId: "fixture-response-2", responseHash: hashes[1], issues: [{ path: [], code }] });
+        expect(requests.every(request => request.model === model && request.response_format.type === "json_object")).toBe(true);
+        expect(result.selected?.generation.requestId).toBe("fixture-response-1");
+        expect(result.selected?.review).toMatchObject({ candidateHash: firstReview.candidateHash, requestId: "fixture-response-3" });
+        expect(result.rejected).toEqual([]);
+        expect(settled.map(row => [row.usageKnown, row.success, row.finishReason])).toEqual([
+          [true, true, "stop"], [true, false, "stop"], [true, true, "stop"],
+        ]);
+        expect(JSON.stringify(requests)).not.toContain("UNTRUSTED-RAW-REVIEW");
+      });
+    },
+  );
 
   it("spends at most one further planned slot after a known malformed review", async () => {
     await withFixture((user, index) => user.candidateHash ? { content: "{not-json" } : ({
@@ -222,8 +251,8 @@ describe("native creative candidate structure at the actual model transport", ()
       const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
         contract, endpoint, count: 3, assertCurrent: async () => {},
       }));
-      expect(requests).toHaveLength(4);
-      expect(result.rejected).toHaveLength(2);
+      expect(requests).toHaveLength(3);
+      expect(result.rejected).toHaveLength(1);
       expect(result.selected).toBeNull();
     });
   });
@@ -237,6 +266,30 @@ describe("native creative candidate structure at the actual model transport", ()
         contract, endpoint, count: 3, assertCurrent: async () => {},
       }))).rejects.toMatchObject({ code });
       expect(requests).toHaveLength(1);
+    });
+  });
+
+  it.each([
+    [{ content: "{", usage: "missing" }, "CREATIVE_USAGE_UNKNOWN"],
+    [{ content: "{", finishReason: "length" }, "MODEL_OUTPUT_TRUNCATED"],
+  ] as const)("stops after the first independent review when its usage or completion is unavailable (%j)", async (fixture, code) => {
+    await withFixture(user => user.candidateHash ? fixture : { value: { shots: [shot] } }, async (endpoint, requests) => {
+      await expect(withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract, endpoint, count: 3, assertCurrent: async () => {},
+      }))).rejects.toMatchObject({ code });
+      expect(requests).toHaveLength(2);
+    });
+  });
+
+  it("keeps review correction behind the first review's journal settlement", async () => {
+    await withFixture(user => user.candidateHash ? { content: "{" } : { value: { shots: [shot] } }, async (endpoint, requests) => {
+      const hooks = { ...budget(), afterModelCall: async (_reservation: unknown, outcome: CreativeModelOutcome) => {
+        if (!outcome.success) throw new Error("fixture settlement failure");
+      } };
+      await expect(withCreativeBudget(hooks, () => generateCreativeAssessments({
+        contract, endpoint, count: 3, assertCurrent: async () => {},
+      }))).rejects.toMatchObject({ code: "CREATIVE_RECEIPT_UNKNOWN" });
+      expect(requests).toHaveLength(2);
     });
   });
 
