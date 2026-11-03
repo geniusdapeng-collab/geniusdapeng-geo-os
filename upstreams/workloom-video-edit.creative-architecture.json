@@ -10,8 +10,8 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
-      "targetSha256": "a15287160d41e4fc3b500b8b21ef6d3bcdd85042df77c1a6a5b7ced7d87df580",
-      "targetBytes": 48642,
+      "targetSha256": "3082ff3384e03857f3c6b034f264c51291e27c43d64c53343536d874c5b09783",
+      "targetBytes": 49097,
       "evidence": "B",
       "targetOwned": true
     },
@@ -248,8 +248,8 @@
     {
       "path": "packages/video-studio/src/creative-evaluation.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/creative-evaluation.ts",
-      "targetSha256": "0879a5d8d9d0d4105cb60df176cadf0beba07f0ed10b0b6a4375360202bbb101",
-      "targetBytes": 17446,
+      "targetSha256": "9da17806dd86a524a823c79f62cfc29a1b1cbcf5ed98a8a0c24c2dbb2bf7b816",
+      "targetBytes": 17897,
       "evidence": "B",
       "targetOwned": true
     },
@@ -264,8 +264,8 @@
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/creative-runtime.ts",
-      "targetSha256": "8ebdf3c27a0bd79b73ccfbacd9710f558de5a99964a7edd09820e138432c23e7",
-      "targetBytes": 48900,
+      "targetSha256": "a4dbaec686cf96aaa53080dde343439366cbc4d1478239b56e269aed61333c15",
+      "targetBytes": 51813,
       "evidence": "B",
       "targetOwned": true
     },
@@ -308,8 +308,8 @@
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "759b690a21b2c0ce2eb99f0c1ef53431bca242b20fe3e917dc81b131f2a70c06",
-      "targetBytes": 105544,
+      "targetSha256": "395c3179a12cdbd0d38b2c1ea36592b60f239d5ac64dcf78aac0296a51fe8966",
+      "targetBytes": 107923,
       "evidence": "B",
       "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
       "sourceBytes": 82133
@@ -317,8 +317,8 @@
     {
       "path": "packages/video-studio/src/prd-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority.ts",
-      "targetSha256": "e6e29e9a87ee798e66cfcf554dbc8b5efc9641f5f8ad786a667a4e5a352d6dac",
-      "targetBytes": 37343,
+      "targetSha256": "82dce332f4f0290cc94c967d06b42e200edf36214caa791a8c657147be80104e",
+      "targetBytes": 39130,
       "evidence": "B",
       "sourceSha256": "a3af225eccf6df376bf4e35e433fbb1a7a5a02e546c49d5693586c3023611275",
       "sourceBytes": 33456
@@ -352,8 +352,8 @@
     {
       "path": "packages/video-studio/src/product-visual-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
-      "targetSha256": "2ef38ffe5218a6c015760b61f9218a0a94c57916403151660492c5e0e353e992",
-      "targetBytes": 15137,
+      "targetSha256": "7da83003d54238683c4fa678484bf4c0bd21628db8584f23294eadeeb30a2357",
+      "targetBytes": 16881,
       "evidence": "B",
       "targetOwned": true
     },
@@ -369,8 +369,8 @@
     {
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
-      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
-      "targetBytes": 46302,
+      "targetSha256": "80296e0c8ce536a690c9e552a4c9ed7397f73371cbab8304666eb4a49ac1ad8c",
+      "targetBytes": 47937,
       "evidence": "B",
       "sourceSha256": "22697b2fc959ac9b4246e372aa969f6263365b01d6977e1a766594baada804c6",
       "sourceBytes": 29194
@@ -405,8 +405,8 @@
     {
       "path": "packages/video-studio/src/studio.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.ts",
-      "targetSha256": "4e860572db3980d54b496bd28da26dd225442f90564c615136488f4c2bc682c1",
-      "targetBytes": 55511,
+      "targetSha256": "a9b39f600b7261f34d5942133ff74a7316a9bfd83876155f3f73551585ce9ef7",
+      "targetBytes": 55782,
       "evidence": "B",
       "sourceSha256": "14c37bfe06bb8e723e6c7c50a7871b6276592eb770a4b2b273a96a6ff35c431b",
       "sourceBytes": 41259
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T18:33:38.460941+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:51:13.134463+00:00"
 }

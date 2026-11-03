@@ -8,9 +8,17 @@ export const CREATIVE_ART_DIMENSIONS = ["readability", "hookPayoff", "emotionalP
 export type CreativeArtDimension = typeof CREATIVE_ART_DIMENSIONS[number];
 export type CreativeArtScores = Record<CreativeArtDimension, { score: number; evidence: string }>;
 interface RequestEvidence { model: string; requestId: string; promptHash: string; responseHash?: string }
+export interface CreativeProductReferenceReceipt {
+  ref: string; assetId: string; productId: string; productName: string;
+  sha256: string; bytes: number; mimeType: string;
+  authorizationBasis: "owner-confirmed-reference-use";
+  ownerManifestSha256: string; g1ContentSha256: string; g1ImageIndex: number;
+}
 export interface CreativeCandidateAssessment {
   candidateId: string;
   shots: CreativeShot[];
+  /** Host-only projection of the matched registered image and current G1. */
+  trustedProductReferences?: CreativeProductReferenceReceipt[];
   generation: RequestEvidence;
   review: RequestEvidence & {
     contractHash: string;

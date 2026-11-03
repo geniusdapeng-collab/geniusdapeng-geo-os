@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { compileCreativeContract, creativeTextHash, extractProductVisualAuthority, CREATIVE_ART_DIMENSIONS, withCreativeBudget, type CreativeModelOutcome } from "@hyperreality/video-studio";
+import { compileCreativeContract, creativeTextHash, extractProductVisualAuthority, CREATIVE_ART_DIMENSIONS, UNVERIFIED_MIRROR_DETAIL_RULE, CreativeRuntime, withCreativeBudget, type CreativeModelOutcome } from "@hyperreality/video-studio";
 import { describe, expect, it } from "vitest";
 import { generateCreativeAssessments } from "./creative-api-service.js";
 import type { ProductionProductReference } from "./studio-product-references.js";
@@ -75,6 +75,8 @@ describe("current owner product image in exact candidate and independent review 
     sourceUrl, pageUrl, sha256: "e".repeat(64), authorizationBasis: "owner-confirmed-reference-use",
     projectId: contract.scope.projectId, rawIntentSha256: marketing.rawIntentHash,
     relativePath: "PRIVATE-REGISTERED-FILE", bytes: 2048, mimeType: "image/jpeg", ownerManifestSha256: "f".repeat(64) };
+  const inspected: ProductionProductReference = { ...ref, productId: "zxmoto-820rr-rc",
+    sha256: "575d2bb914d62fafecfa34e16dd8b37ce06e5f020ff1872a7d9a8b489c2e888d" };
 
   it("binds the exact registered image to the candidate hash before independent review", async () => {
     await withFixture(user => ({ value: user.candidateHash ? goodReview(user) : { shots: [shot] } }),
@@ -93,6 +95,22 @@ describe("current owner product image in exact candidate and independent review 
         expect(result.selected?.shots[0]?.assetRefs).toEqual([opaque]);
         expect(result.selected?.review).toMatchObject({ candidateHash: review.candidateHash, responseHash: hashes[1] });
         expect(JSON.stringify(requests)).not.toContain(ref.relativePath);
+        expect(result.selected?.trustedProductReferences).toEqual(review.trustedProductReferences);
+        const options = {
+          contract: marketing, model, nativeSchemaHash: "a".repeat(64), visualAuthority: visual,
+          fields: { keys: ["scene"], labels: { scene: "画面" } },
+          cache: { read: async () => null, write: async () => {} },
+          generate: async () => { throw new Error("unexpected model call"); },
+        };
+        const runtime = new CreativeRuntime({ ...options, selectedCandidate: result.selected! });
+        const downstream = runtime.selectionContext();
+        expect(downstream).toContain("workloom.registered-product-reference/v1");
+        expect(downstream).toContain("licensed_for_delivery 原样适用其公开素材");
+        expect(downstream).toContain(opaque);
+        expect(downstream).not.toContain(ref.relativePath);
+        const corrupted = structuredClone(result.selected!);
+        corrupted.trustedProductReferences![0]!.g1ContentSha256 = "0".repeat(64);
+        expect(() => new CreativeRuntime({ ...options, selectedCandidate: corrupted })).toThrow("CREATIVE_PRODUCT_REFERENCE_UNVERIFIED");
       });
   });
 
@@ -129,6 +147,47 @@ describe("current owner product image in exact candidate and independent review 
         expect(result.selected).toBeNull();
         expect(result.rejected).toMatchObject([{ code: "CREATIVE_CANDIDATE_INVALID" }]);
         expect(requests).toHaveLength(1);
+      });
+  });
+
+  it.each(["画面从后视镜看到追兵", "不使用后视镜，但镜头切到后视镜反光", "Camera tracks in the rear-view mirror"])(
+    "rejects unsupported executable mirror content before the independent review (%s)", async action => {
+      await withFixture(() => ({ value: { shots: [{ ...shot, action }] } }), async (endpoint, requests) => {
+        const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+          contract: marketing, endpoint, runId, visual, trustedProductReferences: [inspected], count: 1, assertCurrent: async () => {},
+        }));
+        expect(result.selected).toBeNull();
+        expect(result.rejected).toMatchObject([{ code: "PRODUCT_VISUAL_DETAIL_UNVERIFIED" }]);
+        expect(requests).toHaveLength(1);
+      });
+    },
+  );
+
+  it("retains a negative instruction to omit the unverified part", async () => {
+    await withFixture(user => ({ value: user.candidateHash ? goodReview(user) : {
+      shots: [{ ...shot, action: "固定机位拍摄整体轮廓", fields: { 画面: UNVERIFIED_MIRROR_DETAIL_RULE } }],
+    } }), async (endpoint, requests) => {
+      const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract: marketing, endpoint, runId, visual, trustedProductReferences: [inspected], count: 1, assertCurrent: async () => {},
+      }));
+      expect(result.selected?.shots[0]?.fields.画面).toBe(UNVERIFIED_MIRROR_DETAIL_RULE);
+      expect(requests).toHaveLength(2);
+    });
+  });
+
+  it.each([
+    ["other authorized product", { ...inspected, productId: ref.productId }],
+    ["other authorized source of the same product", { ...inspected, sha256: ref.sha256 }],
+  ] as const)("keeps the %s with visible mirrors subject to independent review", async (_kind, reference) => {
+    const action = "画面从后视镜看到追兵";
+    await withFixture(user => ({ value: user.candidateHash ? goodReview(user) : { shots: [{ ...shot, action }] } }),
+      async (endpoint, requests) => {
+        const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+          contract: marketing, endpoint, runId, visual, trustedProductReferences: [reference], count: 1, assertCurrent: async () => {},
+        }));
+        expect(result.selected?.shots[0]?.action).toBe(action);
+        expect(requests).toHaveLength(2);
+        expect(JSON.stringify(requests[0])).not.toContain(UNVERIFIED_MIRROR_DETAIL_RULE);
       });
   });
 });

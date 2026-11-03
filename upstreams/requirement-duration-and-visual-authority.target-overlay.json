@@ -27,9 +27,9 @@
       "path": "packages/video-studio/src/requirement-contract-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/requirement-contract-bridge.ts",
       "sourceSha256": "f170c254fc7e1a6dc0388a6ad7129a5fb9f68a0f421be0bb81505cacb5381993",
-      "targetSha256": "10110ebe985108492f894440ea4e900e2668dd947ac611fdd19b398af924e94a",
+      "targetSha256": "80296e0c8ce536a690c9e552a4c9ed7397f73371cbab8304666eb4a49ac1ad8c",
       "sourceBytes": 27675,
-      "targetBytes": 46302
+      "targetBytes": 47937
     },
     {
       "path": "packages/video-studio/src/requirement-contract.test.ts",
@@ -67,8 +67,8 @@
       "path": "packages/video-studio/src/product-visual-authority.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/product-visual-authority.ts",
       "targetOwned": true,
-      "targetSha256": "2ef38ffe5218a6c015760b61f9218a0a94c57916403151660492c5e0e353e992",
-      "targetBytes": 15137
+      "targetSha256": "7da83003d54238683c4fa678484bf4c0bd21628db8584f23294eadeeb30a2357",
+      "targetBytes": 16881
     },
     {
       "path": "packages/video-studio/src/product-visual-authority.test.ts",
@@ -78,5 +78,5 @@
       "targetBytes": 6261
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T17:50:22.875854+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:51:13.134463+00:00"
 }

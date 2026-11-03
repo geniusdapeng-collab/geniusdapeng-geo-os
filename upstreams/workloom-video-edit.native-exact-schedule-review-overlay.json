@@ -10,16 +10,16 @@
     {
       "path": "apps/server/src/video/creative-api-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-api-service.ts",
-      "targetSha256": "a15287160d41e4fc3b500b8b21ef6d3bcdd85042df77c1a6a5b7ced7d87df580",
-      "targetBytes": 48642,
+      "targetSha256": "3082ff3384e03857f3c6b034f264c51291e27c43d64c53343536d874c5b09783",
+      "targetBytes": 49097,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "apps/server/src/video/creative-candidate-wire.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-candidate-wire.test.ts",
-      "targetSha256": "fb0034f02bc048e041eeffdb51a808241566fbbca30fe688d558c8c6ce38a296",
-      "targetBytes": 21017,
+      "targetSha256": "14e30c5f469a9300d939145bd932c2a56496ff3441e95969b676e26dee42fb42",
+      "targetBytes": 24868,
       "evidence": "B",
       "targetOwned": true
     },
@@ -34,20 +34,20 @@
     {
       "path": "packages/video-studio/src/explicit-shot-schedule.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/explicit-shot-schedule.test.ts",
-      "targetSha256": "c0f318d3bae4f40fe1e70620e3b073c9d31b4a2860b560e55d345c711b9a07df",
-      "targetBytes": 9134,
+      "targetSha256": "66c501cd00326d771f56a94c000807421a0dc893840413506ff64d591a39ab33",
+      "targetBytes": 9159,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "packages/video-studio/src/prd-authority-bridge.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/prd-authority-bridge.ts",
-      "targetSha256": "759b690a21b2c0ce2eb99f0c1ef53431bca242b20fe3e917dc81b131f2a70c06",
-      "targetBytes": 105544,
+      "targetSha256": "395c3179a12cdbd0d38b2c1ea36592b60f239d5ac64dcf78aac0296a51fe8966",
+      "targetBytes": 107923,
       "evidence": "B",
       "sourceSha256": "a5db02886290313f7cc00032eedc622536381290348ee1e5058d4bed727f8236",
       "sourceBytes": 82133
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T18:33:38.460941+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T18:51:13.134463+00:00"
 }

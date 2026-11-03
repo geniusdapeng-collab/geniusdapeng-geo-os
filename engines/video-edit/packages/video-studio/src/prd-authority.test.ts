@@ -5,7 +5,8 @@ import {
   authoritativeDelivery, authoritativeProduct, bindPrdProvenance, effectivePrdDeliverySchema, effectivePrdModelSchema, normalizeExplicitBriefDuration, normalizePrdProductionProfile,
   preparePrdAuthority, PrdAuthorityError, prdAuthorityPrompt, validatePrdDelivery, validatePrdModelPayload, validatePrdProduction
 } from "./prd-authority.js";
-import { installPrdAuthorityBridge, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import { exactPrdShotSchedule, installPrdAuthorityBridge, withPrdAuthorityScope } from "./prd-authority-bridge.js";
+import { compileCreativeContract } from "./constraint-compiler.js";
 import { extractProductVisualAuthority, VERIFIED_PRODUCT_VISUAL_MODE } from "./product-visual-authority.js";
 import { digest, PRDGenerator, PRDSchema, prdFixture } from "./prd-authority.test-support.js";
 
@@ -321,6 +322,28 @@ describe("verified product appearance through the native PRD generator", () => {
       vi.clearAllTimers();
       vi.useRealTimers();
     }
+  });
+});
+
+describe("approved narrative beats and exact production segment schedule", () => {
+  const scope = { tenantId: "tenant", workspaceId: "workspace", projectId: "fixture" };
+  const scenes = ["opening", "scene-1", "scene-2", "scene-3", "ending"]
+    .map((id, index) => ({ id, duration: [3, 6, 10, 5, 6][index]! }));
+  it("derives a complete source mapping without changing any approved beat or producing extra shots", () => {
+    const contract = compileCreativeContract({ scope, rawIntent: "30秒，恰好3个10秒镜头段。" });
+    const before = structuredClone(scenes);
+    expect(exactPrdShotSchedule(contract, scenes)).toEqual({ sceneCount: 5, shotCount: 3, shotDurationSeconds: 10, totalSeconds: 30,
+      segments: [
+        { index: 1, start: 0, end: 10, beats: [{ sceneId: "opening", start: 0, end: 3 },
+          { sceneId: "scene-1", start: 3, end: 9 }, { sceneId: "scene-2", start: 9, end: 10 }] },
+        { index: 2, start: 10, end: 20, beats: [{ sceneId: "scene-2", start: 10, end: 19 },
+          { sceneId: "scene-3", start: 19, end: 20 }] },
+        { index: 3, start: 20, end: 30, beats: [{ sceneId: "scene-3", start: 20, end: 24 },
+          { sceneId: "ending", start: 24, end: 30 }] },
+      ] });
+    expect(scenes).toEqual(before);
+    expect(() => exactPrdShotSchedule(contract, scenes.slice(1))).toThrow("PRD_SCENE_DURATION_CONFLICT");
+    expect(exactPrdShotSchedule(compileCreativeContract({ scope, rawIntent: "30秒。" }), scenes)).toBeUndefined();
   });
 });
 
