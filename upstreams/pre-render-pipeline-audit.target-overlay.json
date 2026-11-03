@@ -106,8 +106,8 @@
     {
       "path": "apps/server/src/video/studio-start.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
-      "targetSha256": "203d70b366d2e060bca7f60c81388f6f4a4f7f89077d219ebf1a0ece1643c4c1",
-      "targetBytes": 10813,
+      "targetSha256": "793654ff13863d16d43c83c8850be71bd304a7de073520abadb0b8df98e2293c",
+      "targetBytes": 10919,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "954bf6f7b51b30547b2ddbdb5c1ff041f7f8e608cc0ed6fe288d05fb7b78d93b",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T04:41:49.028676+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T04:46:19.066218+00:00"
 }

@@ -110,6 +110,7 @@ describe.each(branches)("studio.start %s project duration", branch => {
     "拍一条60秒的山间日出故事", "拍一条一分钟的山间日出故事",
     "Create a one-minute story", "每镜5秒，拍一条山间日出故事",
   ])("does not turn an omitted brief duration into a conflicting total for %s", async raw => {
+    if (branch === "existing") d.query.mockResolvedValue({ rows: [{ kind: "narrative" }], rowCount: 1 });
     const request = { ...input(branch, undefined, "narrative"), intent: raw };
     const result = await caller().start(request);
     expect(result).toMatchObject({ kind: "routed", pipeline: "narrative", runId: `RUN-${branch}` });

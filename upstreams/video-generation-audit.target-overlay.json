@@ -3,9 +3,9 @@
   "id": "T-2026-1103-0002",
   "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
   "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
-  "generatedAt": "2026-11-03T04:41:49.028676+00:00",
+  "generatedAt": "2026-11-03T04:46:19.066218+00:00",
   "scope": "Host-owned approved creative architecture implementation and subsequent audit; source upstream pin unchanged.",
-  "sourceOverlayCount": 45,
+  "sourceOverlayCount": 47,
   "files": [
     {
       "path": "apps/server/src/video/archive-host.test.ts",
@@ -173,6 +173,15 @@
       "evidence": "B",
       "sourceSha256": "ab4daab2e8a7ac0d046cf82cc4a5b596cd428316c0c2e45b1787bf1e1a2b0b1b",
       "sourceBytes": 57863
+    },
+    {
+      "path": "apps/server/src/video/gen/compiled-request.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/gen/compiled-request.test.ts",
+      "targetSha256": "77fa5aeb012e8d2ef7ac4ee5e56338c9044933a7b988610d1f5c537f91c3508e",
+      "targetBytes": 5264,
+      "evidence": "B",
+      "sourceSha256": "1eaa4d456329f593bb9c95bdb475a33e67ea7c1910d6f94a7835d1e5ad1f4ca0",
+      "sourceBytes": 5242
     },
     {
       "path": "apps/server/src/video/gen/compiled-request.ts",
@@ -384,6 +393,15 @@
       "targetBytes": 6375,
       "evidence": "B",
       "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/studio-start.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/studio-start.test.ts",
+      "targetSha256": "793654ff13863d16d43c83c8850be71bd304a7de073520abadb0b8df98e2293c",
+      "targetBytes": 10919,
+      "evidence": "B",
+      "sourceSha256": "954bf6f7b51b30547b2ddbdb5c1ff041f7f8e608cc0ed6fe288d05fb7b78d93b",
+      "sourceBytes": 10054
     },
     {
       "path": "apps/server/src/video/studio-worker.test.ts",
