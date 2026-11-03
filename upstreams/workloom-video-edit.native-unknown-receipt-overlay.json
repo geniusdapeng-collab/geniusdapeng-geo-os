@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "pengmanager.target-adaptation/v2",
+  "id": "T-2026-1104-0013",
+  "engineBaselineCommit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
+  "engineBaselineTree": "2f1a5835d4363496efd692fd4434506e28254e70",
+  "generatedAt": "2026-11-03T20:03:55.365414+00:00",
+  "scope": "Persist only allowlisted diagnostics from unknown text model outcomes without settling or retrying the original request. Source upstream pin unchanged.",
+  "sourceOverlayCount": 1,
+  "files": [
+    {
+      "path": "apps/server/src/video/creative-service.pg.test.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-service.pg.test.ts",
+      "targetSha256": "a0687390c40e5c9bf3773bb660f25dce90779c0c4ee1622e407b844979c4c999",
+      "targetBytes": 49121,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "apps/server/src/video/creative-service.ts",
+      "targetPath": "engines/video-edit/apps/server/src/video/creative-service.ts",
+      "targetSha256": "1725be3691461db3c83ee94fa2a0e0965a30681ecac5313f70bcd7794c326b5a",
+      "targetBytes": 57407,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/creative-runtime.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/creative-runtime.ts",
+      "targetSha256": "f1d058afa248e99bd4983e90948d040d14b7f117dd06903d94f6fa7bc458c3d8",
+      "targetBytes": 55272,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/producer-gate.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/producer-gate.test.ts",
+      "targetSha256": "94de3a01696d80137db0accb058861dd053853151483b0c537f05a3bd8a73750",
+      "targetBytes": 21067,
+      "evidence": "B",
+      "sourceSha256": "7285c2949e62d2f59dff44e57458be4df5e32d8005c2b5d9e6aec7df8cad0b78",
+      "sourceBytes": 9866
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.test.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.test.ts",
+      "targetSha256": "bf79be269902bbc97f09231c2df1a06eb3bfec1872c17e0298f480d330dd1031",
+      "targetBytes": 16967,
+      "evidence": "B",
+      "targetOwned": true
+    },
+    {
+      "path": "packages/video-studio/src/video-text-client.ts",
+      "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
+      "targetSha256": "3c87d245ab22bdde93f68197b5c7eb4ebec7fda88ae2323b6fdba493fdaf3dae",
+      "targetBytes": 19162,
+      "evidence": "B",
+      "targetOwned": true
+    }
+  ]
+}

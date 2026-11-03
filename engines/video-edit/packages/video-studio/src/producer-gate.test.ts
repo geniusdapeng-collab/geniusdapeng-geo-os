@@ -133,7 +133,9 @@ describe("AI producer evidence gate", () => {
       expect(second).toMatchObject({ status: "unverified", approved: false });
     })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
     expect(bodies).toHaveLength(1);
-    expect(receipts).toEqual([{ usageKnown: false, success: false, actualCny: null }]);
+    expect(receipts).toEqual([{ usageKnown: false, success: false, actualCny: null, httpStatus: 200,
+      failureClass: "response_usage_invalid", providerRequestId: "judge-response",
+      responseHash: expect.stringMatching(/^[a-f0-9]{64}$/) }]);
   });
 
   it("has review criteria for every stage", () => {

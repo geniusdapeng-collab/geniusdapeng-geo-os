@@ -102,7 +102,10 @@ describe("embedded video text dispatcher", () => {
       await expect(call()).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
     })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
     expect(wires).toHaveLength(1);
-    expect(outcomes).toEqual([{ usageKnown: false, success: false, actualCny: null }]);
+    expect(outcomes).toEqual([{ usageKnown: false, success: false, actualCny: null, httpStatus: 200,
+      failureClass: kind === "wrong-identity" ? "response_identity_invalid" : "response_usage_invalid",
+      responseHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
+      ...(kind === "wrong-identity" ? {} : { providerRequestId: "video-text-request-1" }) }]);
   });
 
   it("uses native HTTP by default so undici's body timeout cannot terminate a long complete review", async () => {
@@ -207,7 +210,9 @@ describe("embedded video text dispatcher", () => {
         prompt_tokens: 100, completion_tokens: 50, total_tokens: 1,
       } }))) as typeof fetch,
     }))).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
-    expect(outcomes).toEqual([{ actualCny: null, usageKnown: false, success: false }]);
+    expect(outcomes).toEqual([{ actualCny: null, usageKnown: false, success: false, httpStatus: 200,
+      failureClass: "response_usage_invalid", providerRequestId: "video-text-request-1",
+      responseHash: expect.stringMatching(/^[a-f0-9]{64}$/) }]);
   });
 
   it("blocks a lower creative provider max_tokens before reservation or HTTP", async () => {
@@ -221,6 +226,59 @@ describe("embedded video text dispatcher", () => {
     expect(beforeModelCall).not.toHaveBeenCalled();
     expect(transport).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { transport: "native", failure: "http" },
+    { transport: "native", failure: "timeout" },
+    { transport: "native", failure: "malformed" },
+    { transport: "budgeted fetch", failure: "http" },
+    { transport: "budgeted fetch", failure: "timeout" },
+    { transport: "budgeted fetch", failure: "malformed" },
+    { transport: "budgeted fetch", failure: "credential echo" },
+  ])("records safe wire evidence for $transport $failure and does not resend", async ({ transport, failure }) => {
+    const status = failure === "http" ? 503 : 200;
+    const responseBody = failure === "malformed" ? '{"invalid":' : '{"error":{"message":"private fixture detail"}}';
+    const requestId = failure === "credential echo" ? endpoint.apiKey : "loopback-request-123";
+    let posts = 0;
+    const server = createServer((request, response) => {
+      request.resume();
+      request.once("end", () => {
+        posts++;
+        response.writeHead(status, { "x-request-id": requestId, "set-cookie": "fixture=private" });
+        if (failure === "timeout") response.write(responseBody.slice(0, 5));
+        else response.end(responseBody);
+      });
+    });
+    await new Promise<void>((resolve, reject) => server.listen(0, "127.0.0.1", resolve).once("error", reject));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("loopback fixture has no port");
+      const url = `http://127.0.0.1:${address.port}`;
+      const messages = [{ role: "user" as const, content: "检查失败回执" }];
+      const send = creativeBudgetedFetch(fetch);
+      const call = () => transport === "native"
+        ? completeVideoTextTask({ endpoint: { ...endpoint, baseUrl: url }, scene: "video.deterministic", messages, timeoutMs: 1_000 })
+        : send(url, { method: "POST", signal: AbortSignal.timeout(1_000),
+          headers: { authorization: `Bearer ${endpoint.apiKey}` },
+          body: JSON.stringify({ model: endpoint.model, max_tokens: DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS, messages }) });
+      const afterModelCall = vi.fn(async (_reservation: unknown, _outcome: CreativeModelOutcome) => undefined);
+      await expect(withCreativeBudget({ beforeModelCall: async () => 1, afterModelCall }, async () => {
+        await expect(call()).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+        await expect(call()).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
+      expect(posts).toBe(1);
+      expect(afterModelCall).toHaveBeenCalledExactlyOnceWith(1, {
+        usageKnown: false, success: false, actualCny: null, httpStatus: status,
+        ...(failure === "credential echo" ? {} : { providerRequestId: requestId }),
+        failureClass: failure === "http" ? "http_error" : failure === "timeout" ? "response_body_timeout"
+          : failure === "credential echo" ? "response_identity_invalid" : "response_json_invalid",
+        ...(failure === "timeout" ? {} : { responseHash: createHash("sha256").update(responseBody).digest("hex") }),
+      });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  }, 5_000);
 
   it("rejects wrong model identity, truncation and missing usage after preserving the response", async () => {
     const cases = [

@@ -28175,9 +28175,9 @@
       "sourceMode": "100644",
       "gitBlob": "29555d01e874a9cd4e1e2e85e74583807f6c8306",
       "bytes": 9866,
-      "targetBytes": 20906,
+      "targetBytes": 21067,
       "sourceSha256": "7285c2949e62d2f59dff44e57458be4df5e32d8005c2b5d9e6aec7df8cad0b78",
-      "targetSha256": "51928a4b20c35e3b4bcdbaa12c068f6ae906a6c00429de0bfd91400b82e2dd7d",
+      "targetSha256": "94de3a01696d80137db0accb058861dd053853151483b0c537f05a3bd8a73750",
       "evidence": "B",
       "adaptation": "PengManager host integration preserved during the 2026-10-31 upgrade to WorkLoom-video-edit a544ab8b068790bfb14b7977efc81b33897fc9de; exact target bytes are listed here for runtime verification."
     },
@@ -40463,16 +40463,16 @@
     {
       "path": "apps/server/src/video/creative-service.pg.test.ts",
       "mode": "100644",
-      "bytes": 46288,
-      "targetSha256": "f8fa8040563e12389e557773bae4416a98f64dfdbd0f4d0287fcfccedba6d3e8",
+      "bytes": 49121,
+      "targetSha256": "a0687390c40e5c9bf3773bb660f25dce90779c0c4ee1622e407b844979c4c999",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
     {
       "path": "apps/server/src/video/creative-service.ts",
       "mode": "100644",
-      "bytes": 57225,
-      "targetSha256": "e0a3a31378182fb61dd244aa51c8908d1fffedf549c732a1af1804ca68e76cce",
+      "bytes": 57407,
+      "targetSha256": "1725be3691461db3c83ee94fa2a0e0965a30681ecac5313f70bcd7794c326b5a",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -40871,8 +40871,8 @@
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "mode": "100644",
-      "bytes": 51823,
-      "targetSha256": "f292879b6c31d9966b4e263050900b0c45acbafcd69772e9ea3926205025c949",
+      "bytes": 55272,
+      "targetSha256": "f1d058afa248e99bd4983e90948d040d14b7f117dd06903d94f6fa7bc458c3d8",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
@@ -41023,16 +41023,16 @@
     {
       "path": "packages/video-studio/src/video-text-client.test.ts",
       "mode": "100644",
-      "bytes": 13217,
-      "targetSha256": "c2166c46277d8026548f0babab1a5953209289cb2efdc1cf945c53c44359a350",
+      "bytes": 16967,
+      "targetSha256": "bf79be269902bbc97f09231c2df1a06eb3bfec1872c17e0298f480d330dd1031",
       "evidence": "B",
       "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "mode": "100644",
-      "bytes": 17858,
-      "targetSha256": "0663b5accef7202d185ff06a6b72e8b877217166622fafff355bddb9cdd27843",
+      "bytes": 19162,
+      "targetSha256": "3c87d245ab22bdde93f68197b5c7eb4ebec7fda88ae2323b6fdba493fdaf3dae",
       "evidence": "B",
       "reason": "PengManager model-routing integration added after the complete upstream rebind."
     },
