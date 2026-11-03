@@ -27,8 +27,12 @@ import { customerRestrictionLines, normalizeMarketingDossierPresentation } from 
 import { canonicalRenderJson, renderSha256 } from "./gen/compiled-request.js";
 import { SubmissionError } from "./gen/submission-ledger.js";
 import { reviewMarketingSupportWithRetry } from "./marketing-review-retry.js";
+import { DEEPSEEK_REQUEST_BODY_LIMIT_BYTES } from "@workloom/base/model-router";
 
 type RecordValue = Record<string, unknown>;
+// The extraction archive includes both the wire-length input and its output
+// (JSON-escaped text plus parsed data). It has its own bounded read policy.
+const MAX_EXTRACTION_ARCHIVE_BYTES = 80 * 1024 * 1024;
 type SelectedImageSource = { productName: string; sourceUrl: string; pageUrl: string };
 export interface MarketingScope { tenantId: string; workspaceId: string; projectId: string; runId: string; attempt: number }
 interface ArchivedSource extends Omit<SourceSnapshot, "text"> { rawRef: string; textRef: string }
@@ -100,14 +104,14 @@ async function writeBound(root: string, ref: string, bytes: string | Buffer): Pr
   await writeFile(file, bytes, { flag: "wx", mode: 0o600 });
   return { ref, path: file, sha256: renderSha256(bytes) };
 }
-async function readBound(root: string, ref: string, hash: string): Promise<Buffer> {
+async function readBound(root: string, ref: string, hash: string, maxBytes = 2 * 1024 * 1024): Promise<Buffer> {
   const file = path.resolve(root, ref);
   if (!/^[a-f0-9]{64}$/.test(hash) || !ref || path.isAbsolute(ref) || ref.split(/[\\/]/).some(part => part === ".." || part === ".")
     || !file.startsWith(`${root}${path.sep}`) || await realpath(file) !== file) fail("MARKETING_PATH_INVALID", "来源证据路径或摘要非法");
   const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await handle.stat();
-    if (!stat.isFile() || !stat.size || stat.size > 2 * 1024 * 1024) fail("MARKETING_FACTS_INVALID", "来源证据为空或过大");
+    if (!stat.isFile() || !stat.size || stat.size > maxBytes) fail("MARKETING_FACTS_INVALID", "来源证据为空或过大");
     const bytes = await handle.readFile();
     if (renderSha256(bytes) !== hash) fail("MARKETING_FACTS_CHANGED", "来源正文或事实评审字节已变化");
     return bytes;
@@ -180,8 +184,7 @@ async function extractStageFacts(input: {
           instruction: "从已保存实际来源核对下列本次已选商品图片。逐项保留原始 sourceUrl 与 pageUrl 到 A1 images；若与商品不符则不得列入。",
           items: input.selectedImageSources.map(({ sourceUrl, pageUrl }) => ({ sourceUrl, pageUrl }))
         } } : {}) });
-    if (prompt.length > 90_000) fail("MARKETING_REVIEW_TOO_LARGE", "完整来源或纠错上下文超单次提取预算，禁止裁剪后声称核实");
-    const result = await input.llm.reason(prompt, { forceJson: true, temperature: 0, maxTokens: 16384, thinking: { type: "disabled" } });
+    const result = await input.llm.reason(prompt, { forceJson: true, temperature: 0, scene: "video.data.extract" });
     let parsed: unknown, boundExtraction: ReturnType<typeof extractionSchema.parse> | undefined;
     let policyExclusions: ReturnType<typeof filterUnsafeMarketingExtraction>["exclusions"] = [];
     let bindings: CitationBinding[] = [], facts: ValidatedStageFacts | undefined, failure: unknown;
@@ -225,11 +228,11 @@ async function verifyExtractionAttempts(input: {
   let firstPayload: unknown;
   for (const [index, reference] of input.extractions.entries()) {
     if (reference.ref !== `${input.prefix}-${input.stage}.extraction-${index + 1}.json`) fail("MARKETING_PATH_INVALID", "提取证据不是当前阶段的有序尝试");
-    const artifact = JSON.parse((await readBound(input.root, reference.ref, reference.sha256)).toString("utf8")) as RecordValue;
+    const artifact = JSON.parse((await readBound(input.root, reference.ref, reference.sha256, MAX_EXTRACTION_ARCHIVE_BYTES)).toString("utf8")) as RecordValue;
     const schemaBound = artifact.schemaVersion === "workloom.marketing-extraction/v3";
     const indexed = schemaBound || artifact.schemaVersion === "workloom.marketing-extraction/v2";
     if (canonicalRenderJson(artifact.scope) !== canonicalRenderJson(input.scope) || artifact.stage !== input.stage || artifact.attempt !== index + 1
-      || typeof artifact.prompt !== "string" || artifact.prompt.length > 90_000 || !artifact.prompt.startsWith(schemaBound ? schemaExtractionContract : indexed ? extractionContract : legacyExtractionContract)
+      || typeof artifact.prompt !== "string" || !artifact.prompt.startsWith(schemaBound ? schemaExtractionContract : indexed ? extractionContract : legacyExtractionContract)
       || !schemaBound && artifact.prompt.startsWith(schemaExtractionContract)
       || artifact.schemaVersion !== undefined && !indexed) fail("MARKETING_EXTRACTION_UNVERIFIED", "提取证据身份或完整请求不符");
     const marker = `当前阶段：${input.stage}\n`, start = artifact.prompt.lastIndexOf(marker);
@@ -458,7 +461,6 @@ export async function prepareMarketingFacts(input: {
   delete (factsForReview as Partial<MarketingFactsBundle>).g1ContentSha256;
   const g1Content = canonicalRenderJson({ facts: factsForReview, requestedIntent: intent, requestedMetadata: metadata,
     instruction: "用户意图与Brief仅是需求，事实只能来自已核实claims；下游创意必须遵守restrictions" });
-  if (g1Content.length > 100_000) fail("MARKETING_REVIEW_TOO_LARGE", "完整事实档案超过G1评审容量，不能只审摘要");
   bundle.g1ContentSha256 = renderSha256(g1Content);
   return { bundle, g1Content, raw: structuredClone(raw), storeRoot, root, prefix };
 }
@@ -536,7 +538,7 @@ export async function verifyMarketingFacts(input: {
   if (!Number.isFinite(age) || age < -30_000 || age > 24 * 3600_000) fail("MARKETING_FACTS_EXPIRED", "营销事实来源超过24小时有效期，请刷新来源后重新预生产");
   const currentG1 = bundle.g1ContentRef;
   if (currentG1 !== undefined && currentG1 !== `${expectedPrefix}-g1.json`) fail("MARKETING_PATH_INVALID", "商品视觉模式必须绑定本次已接受 G1 原件");
-  const original = currentG1 === undefined ? input.g1Content : (await readBound(input.root, currentG1, bundle.g1ContentSha256)).toString("utf8");
+  const original = currentG1 === undefined ? input.g1Content : (await readBound(input.root, currentG1, bundle.g1ContentSha256, DEEPSEEK_REQUEST_BODY_LIMIT_BYTES)).toString("utf8");
   if (original === undefined || (input.g1Content !== undefined && original !== input.g1Content)) fail("MARKETING_G1_UNBOUND", "缺少本次已通过 G1 的完整原件或归档副本不同");
   const productVisualAuthority = checkedG1VisualContract(bundle, original);
   if (currentG1 === undefined && productVisualAuthority.mode === ABSTRACT_PRODUCT_VISUAL_MODE) {

@@ -65,6 +65,7 @@ export interface ExecutorLlm {
     temperature?: number;
     maxTokens?: number;
     thinking?: Record<string, unknown>;
+    scene?: string;
   }): Promise<LLMReasonResult>;
 }
 

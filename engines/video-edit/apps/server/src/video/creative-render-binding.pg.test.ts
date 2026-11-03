@@ -5,6 +5,7 @@ import path from "node:path";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeAllPools } from "@workloom/db";
+import { DEEPSEEK_INPUT_TOKEN_BASIS } from "@workloom/base/model-router";
 import { creativeTextHash } from "@hyperreality/video-studio";
 import { acquireProjectLease } from "./archive-host.js";
 import { createCreativeExecutionSession, creativeTx, lockCreativeProject, persistCreativeContract } from "./creative-service.js";
@@ -91,7 +92,8 @@ describe.runIf(isolated)("creative qualification binding (real PostgreSQL and pr
 
   it("blocks an unreconciled actual reservation before even reading the artifact, including rollback to a legacy attempt", () => fixture(async ({ session, verify }) => {
     await session.beginStage("final");
-    await session.beforeModelCall({ requestHash: creativeTextHash("fixture request"), inputChars: 10, maxOutputTokens: 20, model, attempt: 1 });
+    await session.beforeModelCall({ requestHash: creativeTextHash("fixture request"), inputChars: 10, requestBytes: 10,
+      inputTokenEstimate: 10, inputTokenUpperBound: 1034, inputTokenBasis: DEEPSEEK_INPUT_TOKEN_BASIS, maxOutputTokens: 20, model, attempt: 1 });
     const readFinal = vi.fn(async () => Buffer.from("must not be read"));
     await expect(verify({ runId: "legacy-off-run", sourceProof: undefined, readFinal })).rejects.toMatchObject({ code: "CREATIVE_USAGE_UNKNOWN" });
     expect(readFinal).not.toHaveBeenCalled();

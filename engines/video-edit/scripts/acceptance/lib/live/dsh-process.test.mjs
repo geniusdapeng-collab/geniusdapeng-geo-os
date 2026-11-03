@@ -74,16 +74,16 @@ test("DSH subprocess: init, explicit endpoint, audited terminal result and exact
   const f = fixture(t); process.env.SYNTHETIC_PARENT_PASSWORD = "never-pass-to-child"; t.after(() => { delete process.env.SYNTHETIC_PARENT_PASSWORD; });
   const result = await runDshTask(f.options);
   assert.equal(result.status, "ok", JSON.stringify(result)); assert.equal(result.tokens, 10); assert.equal(result.calls, 1); assert.equal(result.receipt.synced, true); assert.equal(f.requests(), 1);
-  assert.equal(result.audit.chain.ok, true); assert.equal(f.budget.summary().actual.llmTokens, 10); assert.equal(f.budget.summary().used.llmTokens, 100);
+  assert.equal(result.audit.chain.ok, true); assert.equal(f.budget.summary().actual.llmTokens, 10); assert.equal(f.budget.summary().used.llmTokens, 10);
   const actual = JSON.parse(readFileSync(join(f.workDir, "synthetic-child-environment.json")));
   assert.equal(actual.endpoint, f.baseUrl); assert.equal(actual.credentialWritten, false); assert.equal(actual.keys.includes("SYNTHETIC_PARENT_PASSWORD"), false); assert.equal(actual.home, join(f.workDir, "dsh-home"));
   assert.equal(readFileSync(result.evidence.patchPath, "utf8").includes("@deepseek-ai/dsh-llm-deepseek-api-key"), true);
 });
 
 test("DSH subprocess: each retried physical request is separately reserved and actual tokens sum", async (t) => {
-  const f = fixture(t, "retry"); const result = await runDshTask(f.options);
+  const f = fixture(t, "retry", { maxLlmTokens: 110 }); const result = await runDshTask(f.options);
   assert.equal(result.status, "ok", result.reason); assert.equal(result.calls, 2); assert.equal(result.tokens, 20); assert.equal(f.requests(), 2);
-  assert.equal(f.budget.summary().reservations.length, 2); assert.equal(f.budget.summary().used.llmTokens, 200);
+  assert.equal(f.budget.summary().reservations.length, 2); assert.equal(f.budget.summary().used.llmTokens, 20);
 });
 
 test("DSH subprocess: an allowed returned model is observed independently from the requested route", async (t) => {

@@ -20,8 +20,8 @@
     {
       "path": "apps/server/src/video/data-mining-executor.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/data-mining-executor.ts",
-      "targetSha256": "8a93c8474d0717f637755dce9eb89d0a2d8fc4842c6bf1efca5da901358f0527",
-      "targetBytes": 39809,
+      "targetSha256": "1c6d905d0fe0e6f3eb5b96276abf0c2f15d33ec7594dd84936917735f41531c7",
+      "targetBytes": 39829,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "e1a5400ffd346320a7f5ae689d2a869a219f479421d3f43bdb8df34aab9d5f37",
@@ -30,8 +30,8 @@
     {
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
-      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
-      "targetBytes": 42753,
+      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
+      "targetBytes": 43721,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "1896554a3d7b320fa68792b76b52aef5d8374656ff01cfeb15fcaf08391a17cc",
@@ -256,8 +256,8 @@
     {
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
-      "targetBytes": 49973,
+      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
+      "targetBytes": 50140,
       "evidence": "B",
       "semanticReview": "A",
       "sourceSha256": "d7c9e3958490e67a1bdf42c05b3791200ca474b6e667885c591cb832d03ccaf8",
@@ -294,5 +294,5 @@
       "sourceBytes": 112202
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

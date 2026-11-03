@@ -1,11 +1,14 @@
 /** Actual CLI + loopback HTTP; all provider keys/data are synthetic and no external calls occur. */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { recordEvidenceRun } from "../../../delivery/evidence.mjs";
+import { validateProductionFiles } from "../evidence.mjs";
+import { createBudget } from "./budget.mjs";
 import { fixture, llm, model, report, run } from "./cli-fixtures.mjs";
 
 async function server(t, reply) {
@@ -34,6 +37,7 @@ test("live CLI wire: opaque product tasks stop before login/dispatch even when r
     const f = fixture(t, { environment: { kind: "deployed", target: { apiUrl: s.url }, timeouts: { healthMs: 500 } }, live: { enabled: true, models: [], tasks: [{ id: "PROD-01", kind: "product", title: "synthetic FIXTURE", requireModel, fixtureMarker: "FIXTURE", residualDisclosure: "synthetic only", state_asserts: [{ event: { action: "ask.answer", field: "decision.after.text", minLength: 2 } }] }] } });
     const result = await child(f, ["--allow-prod-writes"]); assert.equal(result.status, 2, result.stderr);
     const actual = report(f); assert.equal(actual.tasks[0].status, "blocked"); assert.equal(actual.tasks[0].called, false); assert.match(actual.tasks[0].reason, /逐请求/);
+    assert.equal(actual.tasks[0].budgetAdmission, "server_budget_interface_missing");
     assert.equal(actual.budget.used.llmCalls, 0); assert.equal(actual.tasks[0].threadId, undefined);
   }
   assert.equal(s.calls.some((call) => /auth\.loginAs|threads\.dispatch|chat\/completions/u.test(call.url)), false);
@@ -55,20 +59,84 @@ test("live CLI wire: missing media usage freezes later paid tasks, retains reser
 test("live CLI wire: an internally started selftest gateway settles actual fixture usage and keeps production items unverified", (t) => {
   const f = fixture(t, { live: { enabled: true, models: [model], tasks: [{ ...llm, expectedTokens: 100 }] } });
   const result = run(f, ["--selftest"]); assert.equal(result.status, 0, result.stderr);
-  const actual = report(f); assert.equal(actual.tasks[0].status, "ok"); assert.equal(actual.budget.actual.llmTokens, 20); assert.equal(actual.budget.used.llmTokens, 100); assert.equal(actual.budget.measurementComplete, true);
+  const actual = report(f); assert.equal(actual.tasks[0].status, "ok"); assert.equal(actual.budget.actual.llmTokens, 20); assert.equal(actual.budget.used.llmTokens, 20); assert.equal(actual.budget.measurementComplete, true);
   assert.equal(actual.checks.filter((check) => check.status === "pass").length, 0); assert.notEqual(actual.verdict, "pass");
 });
 
 test("live CLI LLM admission: untrusted expectedTokens cannot authorize external gateway, DSH or fallback routes", async (t) => {
   const s = await server(t, (input) => ({ id: "synthetic-would-charge", model: input.model, choices: [{ message: { content: "STUB answer" } }], usage: { prompt_tokens: 7, completion_tokens: 3, total_tokens: 10 } }));
-  for (const chain of ["model-gateway", "dsh-harness", "undeclared-route"]) for (const expectedTokens of [1, 300_000]) {
+  for (const chain of ["model-gateway", "dsh-harness", "undeclared-route"]) for (const expectedTokens of [1, 393_216]) {
     const liveModel = { ...model, adapter: chain === "dsh-harness" ? chain : "model-gateway" };
     const f = fixture(t, { environment: { kind: "deployed", target: { apiUrl: s.url }, timeouts: { healthMs: 500 } }, live: { enabled: true, models: [liveModel], tasks: [{ ...llm, chain, expectedTokens }] } });
     const result = await child(f, [], { SYNTHETIC_API_KEY: "synthetic-only-key", SYNTHETIC_BASE_URL: s.url }); assert.equal(result.status, 2, result.stderr);
     const actual = report(f); assert.equal(actual.tasks[0].status, "blocked"); assert.equal(actual.tasks[0].called, false); assert.match(actual.tasks[0].reason, /可信.*总.*token|总.*token.*上界/);
+    assert.equal(actual.tasks[0].budgetAdmission, "trusted_request_bound_missing");
+    assert.equal(JSON.parse(readFileSync(join(f.out, "receipts/LLM-R1.json"))).budgetAdmission, "trusted_request_bound_missing");
     assert.equal(actual.budget.used.llmCalls, 0); assert.equal(actual.budget.used.llmTokens, 0); assert.deepEqual(actual.budget.reservations, []);
     for (const id of ["P1-01", "P1-02", "P1-03"]) assert.equal(actual.checks.find((check) => check.id === id).status, "unverified");
     assert.equal(actual.tasks[0].audit, undefined); assert.equal(s.calls.some((call) => /chat\/completions|auth\.loginAs|fence\.activeRules/u.test(call.url)), false);
+  }
+});
+
+test("live CLI LLM admission: the run cap rejects a reservation after charging only measured usage", (t) => {
+  const tasks = [
+    { ...llm, id: "LLM-FIRST", expectedTokens: 300_000 },
+    { ...llm, id: "LLM-EXACT", expectedTokens: 299_980 },
+    { ...llm, id: "LLM-EXCESS", expectedTokens: 299_961 },
+  ];
+  const f = fixture(t, { live: { enabled: true, models: [model], tasks, budgets: { maxLlmTokens: 393_216 } } });
+  const result = run(f, ["--selftest"]); assert.equal(result.status, 2, result.stderr);
+  const actual = report(f);
+  assert.equal(actual.budget.budgets.maxLlmTokens, 300_000);
+  assert.deepEqual(actual.tasks.map((task) => task.status), ["ok", "ok", "blocked"]);
+  assert.equal(actual.tasks[2].called, false);
+  assert.equal(actual.tasks[2].budgetAdmission, "reservation_denied");
+  assert.match(actual.tasks[2].reason, /整轮 token 上限/);
+  assert.equal(actual.budget.used.llmTokens, 40);
+  assert.equal(actual.budget.actual.llmTokens, 40);
+  assert.equal(actual.budget.pending.llmTokens, 0);
+});
+
+test("live report readback: verified actual and historic conservative ledger policies both reproduce from the run evidence", (t) => {
+  for (const historic of [false, true]) {
+    const f = fixture(t);
+    const artifactRoot = dirname(f.out);
+    const startedAt = new Date().toISOString();
+    const options = { outDir: f.out, environmentKind: "deployed", runId: "synthetic-ledger-replay", budgets: { maxLlmTokens: 100 } };
+    let budget = createBudget(options);
+    if (historic) {
+      const init = JSON.parse(readFileSync(budget.ledgerPath, "utf8"));
+      delete init.settlementPolicy;
+      writeFileSync(budget.ledgerPath, `${JSON.stringify(init)}\n`);
+      budget = createBudget(options);
+    }
+    assert.equal(budget.reserve({ taskId: llm.id, kind: "llm", tokens: 100 }).allowed, true);
+    assert.equal(budget.commit({ taskId: llm.id, kind: "llm", tokens: 20, measured: true }).committed, true);
+    const settled = budget.persist();
+    assert.equal(settled.used.llmTokens, historic ? 100 : 20);
+    const paths = ["live/budget-summary.json", "live/budget-ledger.jsonl"];
+    const bind = (runId) => recordEvidenceRun({ repoRoot: f.repo, artifactRoot, runId, command: "synthetic test ledger generation", actor: "synthetic fixture", exitCode: 0, startedAt, outputPaths: paths });
+    const { commit } = bind("ledger-fixture");
+    const context = { repoRoot: f.repo, artifactRoot, commit };
+    const report = { environment: { kind: "deployed" }, budget: settled, tasks: [] };
+    assert.deepEqual(validateProductionFiles(context, report), []);
+
+    const mismatched = { ...settled, settlementPolicy: historic ? "actual-usage" : undefined };
+    writeFileSync(join(f.out, "budget-summary.json"), JSON.stringify(mismatched));
+    bind("mismatched-fixture");
+    assert.match(validateProductionFiles(context, { ...report, budget: mismatched }).join("\n"), /结算口径未知或不同/);
+
+    if (!historic) {
+      const rows = readFileSync(budget.ledgerPath, "utf8").trimEnd().split("\n").map(JSON.parse);
+      const reservation = rows.find((row) => row.event === "reserve");
+      reservation.tokens = 101;
+      reservation.estimateCny = reservation.tokens / 1000 * settled.pricing.llmCnyPer1kTokens;
+      writeFileSync(budget.ledgerPath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
+      const overReserved = { ...settled, reservations: [{ ...settled.reservations[0], tokens: reservation.tokens }] };
+      writeFileSync(join(f.out, "budget-summary.json"), JSON.stringify(overReserved));
+      bind("over-reserved-fixture");
+      assert.match(validateProductionFiles(context, { ...report, budget: overReserved }).join("\n"), /llmTokens 超出当时可用额度/);
+    }
   }
 });
 

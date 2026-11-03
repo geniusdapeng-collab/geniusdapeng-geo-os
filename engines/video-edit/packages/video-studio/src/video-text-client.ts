@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
-import { creativeBudgetActive, creativeExecutionSignal, creativeImageInputTokens, guardedCreativeModelCall, type CreativeModelOutcome } from "./creative-runtime.js";
+import { creativeBudgetActive, creativeExecutionSignal, guardedCreativeModelCall, type CreativeModelOutcome } from "./creative-runtime.js";
 import {
   normalizeModelContent,
   planDeepSeekWindow,
@@ -15,7 +15,6 @@ import {
   resolveVideoApiKey,
   resolveVideoModel,
   resolveVideoScene,
-  videoThinkingBody,
   type VideoScene,
 } from "./llm-config.js";
 
@@ -46,6 +45,9 @@ export interface VideoTextResult {
   requestHash: string;
   responseHash: string;
   outputCeiling: number;
+  inputTokenEstimate: number;
+  inputTokenUpperBound: number;
+  inputTokenBasis: string;
   policyVersion: string;
 }
 
@@ -143,10 +145,6 @@ export function videoTextEndpointFromEnv(
   return baseUrl && apiKey && model ? { baseUrl, apiKey, model } : null;
 }
 
-function hashJson(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
-}
-
 function failureDetail(value: unknown): string {
   if (!value || typeof value !== "object") return "";
   const error = (value as { error?: { message?: unknown; code?: unknown } }).error;
@@ -202,8 +200,6 @@ export async function completeVideoTextTask(input: {
   endpoint: VideoTextEndpoint;
   scene: VideoScene;
   messages: VideoTextMessage[];
-  tokenMessages?: VideoTextMessage[];
-  imageTokens?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -220,13 +216,15 @@ export async function completeVideoTextTask(input: {
   const responseFormat = policy.responseFormat === "json_object"
     ? { type: "json_object" as const }
     : undefined;
-  const tokenMessages = input.tokenMessages ?? input.messages;
+  const thinking = { type: policy.thinking.type };
+  const reasoningEffort = thinking.type === "enabled" ? policy.thinking.effort ?? "high" : undefined;
   let budget: Awaited<ReturnType<typeof planDeepSeekWindow>>;
   try {
     budget = await planDeepSeekWindow({
-      messages: tokenMessages,
+      messages: input.messages,
       responseFormat,
-      imageTokens: input.imageTokens,
+      thinking,
+      reasoningEffort,
     });
   } catch (error) {
     throw new VideoTextDispatchError(
@@ -242,9 +240,12 @@ export async function completeVideoTextTask(input: {
     max_tokens: budget.outputCeiling,
     stream: false,
     ...(responseFormat === undefined ? {} : { response_format: responseFormat }),
-    ...videoThinkingBody(input.scene),
+    thinking,
+    ...(reasoningEffort === undefined ? {} : { reasoning_effort: reasoningEffort }),
   };
-  if (Buffer.byteLength(JSON.stringify(body)) > 48 * 1024 * 1024) {
+  const serialized = JSON.stringify(body);
+  const requestBytes = Buffer.byteLength(serialized);
+  if (requestBytes > 48 * 1024 * 1024) {
     throw new VideoTextDispatchError(
       "DEEPSEEK_REQUEST_TOO_LARGE",
       "完整文本/图像请求超过 DeepSeek 48MiB 单请求硬上限。",
@@ -253,11 +254,12 @@ export async function completeVideoTextTask(input: {
   }
 
   let billedFailure: CreativeModelOutcome | undefined;
-  const imageInputTokens = creativeImageInputTokens(body.messages);
+  const requestHash = createHash("sha256").update(serialized).digest("hex");
   return guardedCreativeModelCall({
-    requestHash: hashJson({ endpoint: input.endpoint.baseUrl, scene: input.scene, body }),
-    inputChars: Buffer.byteLength(JSON.stringify(body)), maxOutputTokens: budget.outputCeiling,
-    model: input.endpoint.model, ...(imageInputTokens ? { imageInputTokens } : {}),
+    requestHash, inputChars: requestBytes, requestBytes, inputTokenEstimate: budget.inputTokens,
+    inputTokenUpperBound: budget.inputTokenUpperBound,
+    inputTokenBasis: budget.inputTokenBasis, maxOutputTokens: budget.outputCeiling,
+    model: input.endpoint.model, ...(budget.imageTokens ? { imageInputTokens: budget.imageTokens } : {}),
   }, async () => {
   const executionSignal = creativeExecutionSignal();
   const signals = [input.signal, executionSignal, AbortSignal.timeout(input.timeoutMs ?? 600_000)]
@@ -273,7 +275,7 @@ export async function completeVideoTextTask(input: {
         "content-type": "application/json",
         authorization: `Bearer ${input.endpoint.apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: serialized,
       signal,
     });
   } catch (error) {
@@ -335,15 +337,23 @@ export async function completeVideoTextTask(input: {
   const usage = envelope.usage as {
     prompt_tokens?: number;
     completion_tokens?: number;
+    total_tokens?: number;
     completion_tokens_details?: { reasoning_tokens?: number };
   } | undefined;
+  const responseHash = createHash("sha256").update(rawBody).digest("hex");
+  const reportedReasoningTokens = usage?.completion_tokens_details?.reasoning_tokens;
   // Billing is a separate receipt from content acceptance. A complete,
   // identified response can have known usage and still be a failed output.
   if (Number.isSafeInteger(usage?.prompt_tokens) && usage!.prompt_tokens! >= 0
     && Number.isSafeInteger(usage?.completion_tokens) && usage!.completion_tokens! >= 0
     && usage!.completion_tokens! <= budget.outputCeiling
-    && usage!.prompt_tokens! + usage!.completion_tokens! <= DEEPSEEK_FLASH_CONTEXT_TOKENS) {
-    billedFailure = { usageKnown: true, success: false, inputTokens: usage!.prompt_tokens, outputTokens: usage!.completion_tokens };
+    && usage!.total_tokens === usage!.prompt_tokens! + usage!.completion_tokens!
+    && usage!.total_tokens <= DEEPSEEK_FLASH_CONTEXT_TOKENS) {
+    billedFailure = { usageKnown: true, success: false, inputTokens: usage!.prompt_tokens, outputTokens: usage!.completion_tokens,
+      totalTokens: usage!.total_tokens, providerRequestId: envelope.id, responseHash,
+      ...(reportedReasoningTokens !== undefined && Number.isSafeInteger(reportedReasoningTokens)
+        && reportedReasoningTokens >= 0 && reportedReasoningTokens <= usage!.completion_tokens!
+        ? { reasoningTokens: reportedReasoningTokens } : {}) };
   }
   const outputFailure = { retryable: false, unknown: !creativeBudgetActive() || !billedFailure };
   const choices = Array.isArray(envelope.choices) ? envelope.choices : [];
@@ -354,6 +364,9 @@ export async function completeVideoTextTask(input: {
     finish_reason?: string;
     message?: { content?: unknown; reasoning_content?: string | null };
   };
+  if (billedFailure && (choice.finish_reason === "stop" || choice.finish_reason === "length")) {
+    billedFailure.finishReason = choice.finish_reason;
+  }
   if (choice.finish_reason !== "stop") {
     throw new VideoTextDispatchError(
       choice.finish_reason === "length" ? "MODEL_OUTPUT_TRUNCATED" : "MODEL_OUTPUT_INCOMPLETE",
@@ -372,14 +385,13 @@ export async function completeVideoTextTask(input: {
   if (!text) {
     throw new VideoTextDispatchError("MODEL_CONTENT_EMPTY", "模型最终 content 为空。", outputFailure);
   }
-  if (!Number.isSafeInteger(usage?.prompt_tokens) || usage!.prompt_tokens! < 0
-    || !Number.isSafeInteger(usage?.completion_tokens) || usage!.completion_tokens! < 0) {
+  if (!billedFailure) {
     throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 usage 缺失或无效。", {
       retryable: false,
       unknown: true,
     });
   }
-  const reasoningTokens = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+  const reasoningTokens = reportedReasoningTokens ?? 0;
   if (!Number.isSafeInteger(reasoningTokens) || reasoningTokens < 0
     || reasoningTokens > usage!.completion_tokens!) {
     throw new VideoTextDispatchError("MODEL_USAGE_INVALID", "模型 reasoning_tokens 无效。", outputFailure);
@@ -389,15 +401,6 @@ export async function completeVideoTextTask(input: {
       "MODEL_THINKING_POLICY_VIOLATION",
       "非思考场景返回了 reasoning tokens。",
       outputFailure,
-    );
-  }
-  if (usage!.prompt_tokens! > DEEPSEEK_FLASH_CONTEXT_TOKENS
-    || usage!.completion_tokens! > budget.outputCeiling
-    || usage!.prompt_tokens! + usage!.completion_tokens! > DEEPSEEK_FLASH_CONTEXT_TOKENS) {
-    throw new VideoTextDispatchError(
-      "MODEL_USAGE_INVALID",
-      "模型 usage 超过本次上下文或输出预算。",
-      { retryable: false, unknown: true },
     );
   }
   let value: unknown;
@@ -422,11 +425,14 @@ export async function completeVideoTextTask(input: {
       outputTokens: usage!.completion_tokens!,
       reasoningTokens,
     },
-    requestHash: hashJson({ endpoint: input.endpoint.baseUrl, scene: input.scene, body }),
-    responseHash: hashJson(envelope),
+    requestHash,
+    responseHash,
     outputCeiling: budget.outputCeiling,
+    inputTokenEstimate: budget.inputTokens,
+    inputTokenUpperBound: budget.inputTokenUpperBound,
+    inputTokenBasis: budget.inputTokenBasis,
     policyVersion: VIDEO_SCENE_POLICY_VERSION,
   };
-  }, result => ({ usageKnown: true, success: true,
+  }, result => ({ ...billedFailure, usageKnown: true, success: true,
     inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens }), () => billedFailure);
 }

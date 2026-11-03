@@ -53,6 +53,8 @@ export interface ChatResult {
   effort?: ThinkingEffort;
   outputCeiling: number;
   inputTokenEstimate: number;
+  inputTokenUpperBound?: number;
+  inputTokenBasis?: string;
   imageCount: number;
   policyVersion: string;
   registryVersion: string;
@@ -341,10 +343,13 @@ export class OpenAiCompatibleProvider implements ModelProvider {
     const policy = policyForOptions(opts);
     const mode = policy.thinking.type;
     const effort = mode === "enabled" ? policy.thinking.effort ?? "high" : undefined;
+    const thinking = { type: mode };
     const responseFormat = policy.responseFormat === "json_object" ? { type: "json_object" } : undefined;
     const plan = await planDeepSeekWindow({
       messages: masked as BudgetMessage[],
       responseFormat,
+      thinking,
+      reasoningEffort: effort,
       productOutputCap: opts.productOutputCap,
     });
     const thinkingEnabled = mode === "enabled";
@@ -356,9 +361,7 @@ export class OpenAiCompatibleProvider implements ModelProvider {
       messages: masked,
       max_tokens: plan.outputCeiling,
       response_format: responseFormat,
-      thinking: thinkingEnabled
-        ? { type: "enabled" }
-        : { type: "disabled" },
+      thinking,
       ...(thinkingEnabled
         ? {
             reasoning_effort: effort,
@@ -466,9 +469,11 @@ export class OpenAiCompatibleProvider implements ModelProvider {
       let data: OpenAiResponse;
       try {
         data = JSON.parse(rawBody) as OpenAiResponse;
+        if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid response envelope");
       } catch (error) {
         throw new ModelProviderError("模型响应不是合法 JSON", "protocol", {
           retryable: false,
+          unknown: true,
           cause: error,
         });
       }
@@ -476,29 +481,9 @@ export class OpenAiCompatibleProvider implements ModelProvider {
         throw new ModelProviderError(
           `模型响应身份 ${data.model ?? "<missing>"} 与请求 ${this.modelId} 不一致`,
           "protocol",
-          { retryable: false },
+          { retryable: false, unknown: true },
         );
       }
-      if (data.choices?.length !== 1) {
-        throw new ModelProviderError("模型响应必须包含唯一 choice", "protocol", { retryable: false });
-      }
-      const choice = data.choices[0]!;
-      if (choice.finish_reason !== "stop") {
-        throw new ModelProviderError(
-          `模型未完整结束：${choice.finish_reason ?? "missing"}`,
-          "protocol",
-          { retryable: false },
-        );
-      }
-      if (!thinkingEnabled && String(choice.message?.reasoning_content ?? "").trim()) {
-        throw new ModelProviderError("非思考场景返回了 reasoning_content", "protocol", {
-          retryable: false,
-          unknown: true,
-        });
-      }
-      const text = textFromContent(choice.message?.content);
-      if (!text) throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: false });
-
       const promptTokens = data.usage?.prompt_tokens;
       const completionTokens = data.usage?.completion_tokens;
       const totalTokens = data.usage?.total_tokens;
@@ -507,8 +492,31 @@ export class OpenAiCompatibleProvider implements ModelProvider {
         || !safeInteger(completionTokens)
         || !safeInteger(totalTokens)
         || totalTokens !== promptTokens + completionTokens) {
-        throw new ModelProviderError("模型 usage 缺失或无效", "protocol", { retryable: false });
+        throw new ModelProviderError("模型 usage 缺失或无效", "protocol", { retryable: false, unknown: true });
       }
+      if (completionTokens > plan.outputCeiling || totalTokens > DEEPSEEK_FLASH_CONTEXT_TOKENS) {
+        throw new ModelProviderError("模型 usage 超过本次预算", "protocol", {
+          retryable: false,
+          unknown: true,
+        });
+      }
+      if (!Array.isArray(data.choices) || data.choices.length !== 1 || !data.choices[0] || typeof data.choices[0] !== "object") {
+        throw new ModelProviderError("模型响应必须包含唯一 choice", "protocol", { retryable: false });
+      }
+      const choice = data.choices[0];
+      if (choice.finish_reason !== "stop") {
+        const reason = choice.finish_reason === "length" ? "MODEL_OUTPUT_TRUNCATED: " : "";
+        throw new ModelProviderError(
+          `${reason}模型未完整结束：${choice.finish_reason ?? "missing"}`,
+          "protocol",
+          { retryable: false },
+        );
+      }
+      if (!thinkingEnabled && String(choice.message?.reasoning_content ?? "").trim()) {
+        throw new ModelProviderError("非思考场景返回了 reasoning_content", "protocol", { retryable: false });
+      }
+      const text = textFromContent(choice.message?.content);
+      if (!text) throw new ModelProviderError("模型返回 content 为空", "empty", { retryable: false });
       if (reasoningTokens !== undefined
         && (!safeInteger(reasoningTokens) || reasoningTokens > completionTokens)) {
         throw new ModelProviderError("模型 reasoning_tokens 无效", "protocol", { retryable: false });
@@ -519,13 +527,6 @@ export class OpenAiCompatibleProvider implements ModelProvider {
           unknown: true,
         });
       }
-      if (completionTokens > plan.outputCeiling || totalTokens > DEEPSEEK_FLASH_CONTEXT_TOKENS) {
-        throw new ModelProviderError("模型 usage 超过本次预算", "protocol", {
-          retryable: false,
-          unknown: true,
-        });
-      }
-
       return {
         text,
         promptTokens,
@@ -541,6 +542,8 @@ export class OpenAiCompatibleProvider implements ModelProvider {
         effort,
         outputCeiling: plan.outputCeiling,
         inputTokenEstimate: plan.inputTokens,
+        inputTokenUpperBound: plan.inputTokenUpperBound,
+        inputTokenBasis: plan.inputTokenBasis,
         imageCount: plan.imageCount,
         policyVersion: TEXT_PRIMARY_POLICY_VERSION,
         registryVersion: TEXT_PRIMARY_REGISTRY_VERSION,

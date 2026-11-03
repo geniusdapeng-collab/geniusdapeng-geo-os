@@ -1,10 +1,12 @@
 import { modelError } from "./errors.mjs";
-import { countMessagesTokens } from "./tokenizer.mjs";
+import { planDeepSeekWindow } from "../../engines/video-edit/packages/base/model-router/deepseek-window.mjs";
 
 export async function planWindow({
   messages,
   tools = [],
   responseFormat,
+  thinking,
+  reasoningEffort,
   contextTokens,
   maxOutputTokens,
   policyMaxOutputTokens,
@@ -19,30 +21,24 @@ export async function planWindow({
     && (!Number.isSafeInteger(policyMaxOutputTokens) || policyMaxOutputTokens < 1)) {
     throw modelError("MODEL_OUTPUT_BUDGET_INVALID", "产品输出上限必须为正安全整数。");
   }
-  const inputTokens = await countMessagesTokens(messages, { tools, responseFormat });
-  const legalRemaining = contextTokens - inputTokens;
-  if (!Number.isSafeInteger(legalRemaining) || legalRemaining < 1) {
-    throw modelError(
-      "MODEL_CONTEXT_EXCEEDED",
-      `完整输入占用 ${inputTokens} tokens，已超过模型上下文 ${contextTokens}。`,
-    );
+  try {
+    const plan = await planDeepSeekWindow({ messages, tools, responseFormat, thinking, reasoningEffort,
+      contextTokens, maxOutputTokens, productOutputCap: policyMaxOutputTokens });
+    return {
+      // This established field is the ledger bound; keep the offline estimate
+      // visible separately from both the reservation and provider settlement.
+      inputTokens: plan.inputTokenUpperBound,
+      inputTokenEstimate: plan.inputTokens,
+      inputTokenBasis: plan.inputTokenBasis,
+      imageTokens: plan.imageTokens,
+      legalRemaining: contextTokens - plan.inputTokenUpperBound,
+      outputCeiling: plan.outputCeiling,
+      outputConstrainedByProduct: plan.productConstrained,
+    };
+  } catch (cause) {
+    if (cause?.message === "DEEPSEEK_CONTEXT_EXCEEDED") {
+      throw modelError("MODEL_CONTEXT_EXCEEDED", `完整输入已占用模型上下文 ${contextTokens}，无法为输出预留空间。`, { cause });
+    }
+    throw modelError("MODEL_INPUT_WINDOW_UNVERIFIED", "无法核实完整模型输入及其预算，尚未发送请求。", { cause });
   }
-  const requested = Number.isSafeInteger(policyMaxOutputTokens)
-    ? policyMaxOutputTokens
-    : maxOutputTokens;
-  const outputCeiling = Math.min(
-    maxOutputTokens,
-    legalRemaining,
-    Number.isSafeInteger(requested) && requested > 0 ? requested : maxOutputTokens,
-  );
-  if (outputCeiling < 1) {
-    throw modelError("MODEL_OUTPUT_BUDGET_INVALID", "完整输入后没有可用的输出预算。");
-  }
-  return {
-    inputTokens,
-    legalRemaining,
-    outputCeiling,
-    outputConstrainedByProduct:
-      Number.isSafeInteger(requested) && requested > 0 && requested < Math.min(maxOutputTokens, legalRemaining),
-  };
 }

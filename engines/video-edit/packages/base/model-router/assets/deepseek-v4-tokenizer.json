@@ -7223,12 +7223,12 @@
     },
     {
       "id": 128799,
-      "content": "<｜place▁holder▁no▁799｜>",
+      "content": "<｜System｜>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": false,
-      "special": true
+      "normalized": true,
+      "special": false
     },
     {
       "id": 128800,
@@ -11408,66 +11408,66 @@
     },
     {
       "id": 129264,
-      "content": "<image>",
+      "content": "<｜deepseek_image｜>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129265,
-      "content": "</table>",
+      "content": "<|place_holder_mm_span_0436|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129266,
-      "content": "<table>",
+      "content": "<|place_holder_mm_span_0437|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129267,
-      "content": "</td>",
+      "content": "<|place_holder_mm_span_0438|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129268,
-      "content": "<td>",
+      "content": "<|place_holder_mm_span_0439|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129269,
-      "content": "</tr>",
+      "content": "<|place_holder_mm_span_0440|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129270,
-      "content": "<tr>",
+      "content": "<|place_holder_mm_span_0441|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": true
+      "special": false
     },
     {
       "id": 129271,
@@ -11543,7 +11543,7 @@
     },
     {
       "id": 129279,
-      "content": "<｜image｜>",
+      "content": "<|place_holder_mm_span_0442|>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,

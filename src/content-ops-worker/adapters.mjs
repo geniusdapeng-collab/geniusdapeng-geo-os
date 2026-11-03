@@ -17,6 +17,8 @@ const CLOSURE = Object.freeze([...new Set(['src/content-ops-worker/adapters.mjs'
   'src/domain/hash.mjs', 'src/domain/strict-json.mjs', 'src/domain/errors.mjs',
   'src/model-routing/budget.mjs', 'src/model-routing/dispatcher.mjs', 'src/model-routing/errors.mjs',
   'src/model-routing/policy.mjs', 'src/model-routing/registry.mjs', 'src/model-routing/tokenizer.mjs',
+  'engines/video-edit/packages/base/model-router/deepseek-window.mjs',
+  'engines/video-edit/packages/base/model-router/assets/deepseek-v4-tokenizer.json',
   ...mediaSourceClosureFiles, ...rendererSourceFiles])].sort());
 
 export async function contentOpsSourceClosure({ rootDir = ROOT } = {}) {

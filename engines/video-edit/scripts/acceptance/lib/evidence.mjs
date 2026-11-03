@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashBytes, ITEM_SCHEMA, INDEX_SCHEMA, revisionOf, verifyAcceptanceItem, verifyArtifact, verifyRun } from "../../delivery/evidence.mjs";
-import { LIVE_BUDGET_CAPS } from "./live/budget.mjs";
+import { ACTUAL_USAGE_SETTLEMENT, LIVE_BUDGET_CAPS } from "./live/budget.mjs";
 import { verifyRegressionSummary } from "./regression-evidence.mjs";
 
 const EXECUTOR_CHECKLIST = fileURLToPath(new URL("../../../docs/acceptance/checklist.v3.json", import.meta.url));
@@ -179,12 +179,44 @@ export function validateProductionFiles(context, live) {
       if (!Number.isFinite(budget.used?.wallClockMin) || budget.used.wallClockMin < 0 || budget.used.wallClockMin > budget.budgets?.maxWallClockMin) errors.push("P 实际墙钟缺失/非法/超限");
       const init = entries.filter((entry) => entry.event === "budget-init");
       if (init.length !== 1 || !same(init[0]?.budgets, budget.budgets) || !same(init[0]?.pricing, budget.pricing)) errors.push("P 预算账本缺唯一初始化或冻结额度/单价不同");
+      const settlementPolicy = init[0]?.settlementPolicy;
+      if (settlementPolicy !== budget.settlementPolicy || (settlementPolicy !== undefined && settlementPolicy !== ACTUAL_USAGE_SETTLEMENT)) errors.push("P 预算账本与摘要的结算口径未知或不同");
       const runStart = Date.parse(budgetFile.run.started_at); const runEnd = Date.parse(budgetFile.run.finished_at);
       if (!Number.isSafeInteger(init[0]?.startedAt) || init[0].startedAt < runStart || init[0].startedAt > runEnd || Math.abs(budget.used.wallClockMin - (runEnd - init[0].startedAt) / 60000) > 0.1) errors.push("P 预算墙钟与实际运行/初始化时间不一致");
       const reservations = new Map();
       const frozen = [];
       let previousAt = runStart;
       const estimate = (kind, units, tokens) => kind === "llm" ? tokens / 1000 * budget.pricing?.llmCnyPer1kTokens : kind === "image" ? units * budget.pricing?.imageCny : units * budget.pricing?.videoCnyPerSecond;
+      const limits = [["llmCalls", "maxLlmCalls"], ["llmTokens", "maxLlmTokens"], ["images", "maxImages"], ["videoClips", "maxVideoClips"], ["videoSeconds", "maxVideoSecondsTotal"], ["costCny", "maxCostCny"]];
+      const emptyUsage = () => ({ llmCalls: 0, llmTokens: 0, images: 0, videoClips: 0, videoSeconds: 0, costCny: 0 });
+      const add = (to, kind, units, tokens, cost, calls = 1) => {
+        if (kind === "llm") { to.llmCalls += calls; to.llmTokens += tokens; }
+        if (kind === "image") to.images += units;
+        if (kind === "video") { to.videoClips += units > 0 ? 1 : 0; to.videoSeconds += units; }
+        to.costCny += cost;
+      };
+      const measuredCharge = (reservation) => {
+        const { units, tokens, costCny, calls } = reservation.settlement;
+        return [reservation.kind, units, tokens, costCny ?? estimate(reservation.kind, units, tokens), calls];
+      };
+      const conservativeCharge = (reservation) => {
+        const { kind, settlement } = reservation;
+        const units = Math.max(reservation.units, settlement?.units ?? 0);
+        const tokens = Math.max(reservation.tokens, settlement?.tokens ?? 0);
+        const cost = Math.max(reservation.estimateCny, estimate(kind, units, tokens), settlement?.costCny ?? 0);
+        return [kind, units, tokens, cost];
+      };
+      const currentUsage = () => {
+        const total = emptyUsage();
+        for (const reservation of reservations.values()) {
+          if (settlementPolicy === ACTUAL_USAGE_SETTLEMENT && reservation.settlement?.measured === true) {
+            add(total, ...measuredCharge(reservation));
+          } else {
+            add(total, ...conservativeCharge(reservation), Math.max(1, reservation.settlement?.calls ?? 0));
+          }
+        }
+        return total;
+      };
       for (const entry of entries) {
         const at = Date.parse(entry.at);
         if (entry.schema !== "workloom.live-budget/v2" || entry.environmentKind !== live.environment?.kind || !Number.isFinite(at) || at < previousAt || at > runEnd) throw new Error("budget event identity/time invalid");
@@ -192,6 +224,10 @@ export function validateProductionFiles(context, live) {
         if (entry.event === "reserve") {
           if (reservations.has(entry.reservationId) || typeof entry.reservationId !== "string" || !entry.reservationId.trim() || typeof entry.taskId !== "string" || !entry.taskId.trim() || !["llm", "image", "video"].includes(entry.kind) || ![entry.units, entry.tokens, entry.estimateCny].every((n) => Number.isFinite(n) && n >= 0) || !Number.isSafeInteger(entry.tokens) || (entry.kind === "llm" && entry.tokens === 0) || (entry.kind === "image" && (!Number.isSafeInteger(entry.units) || entry.units === 0)) || (entry.kind === "video" && (entry.units < budget.budgets.minVideoSeconds || entry.units > budget.budgets.maxVideoSeconds)) || Math.abs(entry.estimateCny - estimate(entry.kind, entry.units, entry.tokens)) > 0.00000001) throw new Error("budget reservation invalid");
           reservations.set(entry.reservationId, { ...entry, settlement: null });
+          if (settlementPolicy === ACTUAL_USAGE_SETTLEMENT) {
+            const admitted = currentUsage();
+            for (const [key, limit] of limits) if (admitted[key] > budget.budgets[limit]) errors.push(`P 预算预占 ${entry.reservationId} 的 ${key} 超出当时可用额度`);
+          }
         } else if (entry.event === "commit") {
           const reservation = reservations.get(entry.reservationId);
           if (!reservation || reservation.settlement || reservation.taskId !== entry.taskId || reservation.kind !== entry.kind || ![entry.units, entry.tokens].every((n) => Number.isFinite(n) && n >= 0) || !Number.isSafeInteger(entry.tokens) || !Number.isSafeInteger(entry.calls) || entry.calls < 0 || (entry.kind !== "llm" && entry.calls !== 0) || typeof entry.measured !== "boolean" || !["ok", "failed", "blocked"].includes(entry.status) || (entry.costCny !== null && (!Number.isFinite(entry.costCny) || entry.costCny < 0))) throw new Error("budget settlement invalid");
@@ -201,30 +237,25 @@ export function validateProductionFiles(context, live) {
           frozen.push({ taskId: entry.taskId, reason: entry.reason });
         } else if (entry.event !== "budget-init" && !(typeof entry.event === "string" && entry.event.endsWith("-denied"))) throw new Error("budget event invalid");
       }
-      const usage = { llmCalls: 0, llmTokens: 0, images: 0, videoClips: 0, videoSeconds: 0, costCny: 0 };
-      const actual = { ...usage };
-      const unmeasured = { ...usage };
-      const add = (to, kind, units, tokens, cost, calls = 1) => {
-        if (kind === "llm") { to.llmCalls += calls; to.llmTokens += tokens; }
-        if (kind === "image") to.images += units;
-        if (kind === "video") { to.videoClips += units > 0 ? 1 : 0; to.videoSeconds += units; }
-        to.costCny += cost;
-      };
+      const usage = currentUsage();
+      const actual = emptyUsage();
+      const unmeasured = emptyUsage();
       for (const reservation of reservations.values()) {
         const settlement = reservation.settlement;
         if (!settlement) errors.push(`P 任务 ${reservation.taskId} 配额仍 pending`);
-        const units = Math.max(reservation.units, settlement?.units ?? 0); const tokens = Math.max(reservation.tokens, settlement?.tokens ?? 0);
-        const cost = Math.max(reservation.estimateCny, estimate(reservation.kind, units, tokens), settlement?.costCny ?? 0);
-        add(usage, reservation.kind, units, tokens, cost, Math.max(1, settlement?.calls ?? 0));
-        if (settlement?.measured === true) add(actual, reservation.kind, settlement.units, settlement.tokens, settlement.costCny ?? estimate(reservation.kind, settlement.units, settlement.tokens), settlement.calls);
-        else if (settlement) { add(unmeasured, reservation.kind, units, tokens, cost); frozen.push({ taskId: reservation.taskId, reservationId: reservation.reservationId, reason: settlement.detail || "实际用量没有取得供应商计量，后续付费调用冻结" }); }
+        if (settlement?.measured === true) {
+          add(actual, ...measuredCharge(reservation));
+        } else if (settlement) {
+          add(unmeasured, ...conservativeCharge(reservation));
+          frozen.push({ taskId: reservation.taskId, reservationId: reservation.reservationId, reason: settlement.detail || "实际用量没有取得供应商计量，后续付费调用冻结" });
+        }
       }
       for (const key of Object.keys(usage)) if (![usage[key], actual[key], budget.used?.[key], budget.actual?.[key]].every(Number.isFinite) || Math.abs(budget.used[key] - usage[key]) > 0.0001 || Math.abs(budget.actual[key] - actual[key]) > 0.0001 || budget.pending?.[key] !== 0) errors.push(`P 配额 ${key} 摘要与真实账本不一致或仍 pending`);
       for (const key of Object.keys(unmeasured)) if (!Number.isFinite(budget.unmeasured?.[key]) || Math.abs(budget.unmeasured[key] - unmeasured[key]) > 0.0001 || unmeasured[key] !== 0) errors.push(`P 配额 ${key} 实际计量缺失，预占不能表述为实际零用量`);
       if (budget.measurementComplete !== true || !same(budget.frozenBy, frozen) || frozen.length) errors.push("P 预算实际计量未完成/被冻结或摘要与真实账本不同");
       const declaredReservations = [...reservations.values()].map((r) => ({ reservationId: r.reservationId, taskId: r.taskId, kind: r.kind, units: r.units, tokens: r.tokens, status: r.settlement?.status ?? "pending", settlement: r.settlement }));
       if (!same(declaredReservations, budget.reservations)) errors.push("P 配额 reservation 摘要与真实账本不同");
-      for (const [key, limit] of [["llmCalls", "maxLlmCalls"], ["llmTokens", "maxLlmTokens"], ["images", "maxImages"], ["videoClips", "maxVideoClips"], ["videoSeconds", "maxVideoSecondsTotal"], ["costCny", "maxCostCny"]]) if (usage[key] > budget.budgets?.[limit]) errors.push(`P 实际用量 ${key} 超限`);
+      for (const [key, limit] of limits) if (usage[key] > budget.budgets?.[limit]) errors.push(`P 实际用量 ${key} 超限`);
       if (!Array.isArray(budget.exceeded) || budget.exceeded.length) errors.push("P 配额没有明确的空 exceeded 清单");
       for (const task of array(live?.tasks).filter((task) => task && ["llm", "image", "video"].includes(task.kind))) if (![...reservations.values()].some((reservation) => reservation.taskId === task.id && reservation.kind === task.kind && reservation.settlement?.status === "ok" && reservation.settlement.measured === true && (task.kind !== "llm" || reservation.settlement.calls > 0))) errors.push(`${task.id} 没有真实 reserve→commit(ok/measured) 配额链`);
     } catch { errors.push("P 预算摘要/账本不可解析或占额结算链断裂"); }

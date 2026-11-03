@@ -138,6 +138,10 @@ MCP 对应的预检工具是 `pengmanager_video_preflight`。空输入只检查�
 
 通用 MCP 的菜单按实际注册范围工作。当前 `archive`、`qualifyShot`、`render.submit` 和固定影片工位的 `film.start` 是原生服务入口；它们不因写进 prompt 而成为通用 MCP 工具。没有获准的原生客户端时，交接给当前本机 owner，在相应步骤保留明确阻塞。不要猜路由、构造审批数据、直连供应商补跑或把站点管理员的 bearer 当作本机身份。 [原生 Studio/渲染路由](../engines/video-edit/apps/server/src/video/router.ts) · [资格路由](../engines/video-edit/apps/server/src/video/production-router.ts)
 
+已有前期失败时，从原档案和费用台账检查同一个项目。原生 `video.studio.resume` 只在没有活动执行、未决审批或未知费用时接续；如当前尝试尚未绑定创作合同，营销恢复需要准确的原始意图和完整 metadata。保留旧运行号和新运行号，不用新项目掩盖原失败。
+
+单次模型窗口、项目费用和 RDAS 验收总量分别核对。原生创作在请求前按完整消息、工具与参考图占用计算 `max_tokens`，再用本项目批准的调用、总 token 与费用预占；结束后按供应商实际用量记账。RDAS 的 300,000 是专门的整轮验收限额。若容不下已核实的最坏请求预占，结果应是未派发，不应把这个额度写成模型输出配置。普通生产需有独立且明确获准的项目预算。输出截断不能通过内容验收；用量未知时保留预占并查原请求。
+
 ### 在本机工作台审核，或使用正式逐镜 CLI
 
 需要本机网页进行人工审核时，在 core setup 之后用已核对版本的 pnpm 构建 Web，再显式启动工作台。下面以 `PM_PNPM` 指向实际 pnpm 可执行文件为例。
@@ -152,7 +156,7 @@ MCP 对应的预检工具是 `pengmanager_video_preflight`。空输入只检查�
 
 有权调用同一个已运行原生实例的本机执行者，也可走服务项目逐镜 CLI。下列命令在已安装的 `engines/video-edit` 目录执行。连接参数 `WORKLOOM_API` 取已核实的本机 loopback 原生后端地址。`WORKLOOM_TOKEN` 由获准的原生客户端提供给进程，避免写进日志、脚本、CLI 参数或长期配置。若由本机程序管理运行时，应保留同一个 `runtime = createVideoRuntime(...)` 实例，等待 `runtime.start()` 成功，再通过该实例的 `runtime.nativeSession()` 把会话交给受控子进程；任务结束由拥有该实例的程序停止它。
 
-本例的逐镜 CLI 未提供首帧或参考图参数，适用于无需显式视觉参考的任务。当前工作台可提交首帧；真实商品外观模式只接受本次 G1 采纳的规范 HTTPS 图片作为显式首帧或参考图。接受来源地址与核实图片当前字节、商用权利是分别验收的事项。遇到必须把角色与商品两类参考一起绑定的任务，应先确认当前原生接口支持该组合，不用无参考图的命令替代。
+本例的逐镜 CLI 未提供首帧或参考图参数，适用于无需显式视觉参考的任务。当前工作台可提交首帧；真实商品外观模式可使用本次 G1 采纳的规范 HTTPS 图片。需要同时绑定角色和商品原图时，由本机 owner 在私有复用 manifest 中显式选择当前 G5 合成人物及已登记的同项目商品原件，原生服务按本次 G1 来源、素材摘要及授权签发。提交使用资格回执对应的原始参考，不能用无参考图的命令代替。[AI Agent 指南第 9 节](AI-AGENT-GUIDE.md) · [商品选择 schema 和校验](../engines/video-edit/apps/server/src/video/studio-product-references.ts)
 
 ```bash
 cd "$PM_REPO/engines/video-edit"

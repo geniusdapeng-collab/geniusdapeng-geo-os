@@ -7,6 +7,7 @@ import { join, resolve } from "node:path";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeAllPools } from "@workloom/db";
+import { DEEPSEEK_INPUT_TOKEN_BASIS } from "@workloom/base/model-router";
 import { buildCreativeShots, compileCreativeContract, CREATIVE_ART_DIMENSIONS, creativeHash, creativeTextHash,
   type CreativeFinding, type CreativeScope } from "@hyperreality/video-studio";
 import type { TrpcContext } from "../trpc/context.js";
@@ -63,7 +64,8 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
     scope: baseScope, projectId, runId, rawIntent, isMarketing, mode: "enforce", model,
   });
   const modelRequest = (attempt: number) => ({ attempt, model, requestHash: creativeHash({ attempt }),
-    inputChars: 100, maxOutputTokens: 100 });
+    inputChars: 100, requestBytes: 100, inputTokenEstimate: 100, inputTokenUpperBound: 1124,
+    inputTokenBasis: DEEPSEEK_INPUT_TOKEN_BASIS, maxOutputTokens: 100 });
   const known = { usageKnown: true, success: true, inputTokens: 10, outputTokens: 20 };
 
   it("creates the third route with its real scoped 16:9 draft and refuses a Studio restart", async () => {
@@ -323,7 +325,8 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
     const projectId = await project(), runId = randomUUID();
     const lease = await acquireProjectLease(baseScope, projectId);
     const previousLimit = process.env.VM_CREATIVE_MAX_TOKENS;
-    const request = { ...modelRequest(1), imageInputTokens: 1024 };
+    const request = { ...modelRequest(1), inputChars: 6_700_000, requestBytes: 6_700_000,
+      inputTokenEstimate: 1124, inputTokenUpperBound: 2148, imageInputTokens: 1024 };
     try {
       vi.stubEnv("VM_CREATIVE_MAX_TOKENS", "2000");
       const limited = await start(projectId);
@@ -336,14 +339,19 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
       const session = await start(projectId, runId);
       await session.beginStage("preparation");
       await expect(session.beforeModelCall({ ...request, imageInputTokens: -1 })).rejects.toThrow(/CREATIVE_BUDGET_REQUEST_INVALID/);
+      await expect(session.beforeModelCall({ ...request, requestBytes: 1 })).rejects.toThrow(/CREATIVE_BUDGET_REQUEST_INVALID/);
+      await expect(session.beforeModelCall({ ...request, inputTokenBasis: "provider-input-unverified" })).rejects.toThrow(/CREATIVE_BUDGET_REQUEST_INVALID/);
       const reservation = await session.beforeModelCall(request);
-      await session.afterModelCall(reservation, { usageKnown: true, success: true, inputTokens: 2100, outputTokens: 50 });
+      const usage = { inputTokens: 2100, outputTokens: 50, totalTokens: 2150, reasoningTokens: 17,
+        finishReason: "stop", providerRequestId: "fixture-provider-request", responseHash: creativeTextHash("fixture response") };
+      await session.afterModelCall(reservation, { usageKnown: true, success: true, ...usage });
       await session.completeStage("preparation", { current: true });
       await session.finish({ success: true });
 
-      const operation = await database.query("SELECT state,request,cost FROM video_pipeline_operations WHERE pipeline_run_id=$1", [runId]);
+      const operation = await database.query("SELECT state,request,cost,receipt FROM video_pipeline_operations WHERE pipeline_run_id=$1", [runId]);
       expect(operation.rows).toEqual([expect.objectContaining({ state: "accepted",
-        request: expect.objectContaining({ inputChars: 100, imageInputTokens: 1024, inputLimit: 2148, outputLimit: 100 }),
+        request: expect.objectContaining({ requestBytes: 6_700_000, inputTokenEstimate: 1124, imageInputTokens: 1024, inputLimit: 2148, outputLimit: 100 }),
+        receipt: { usageKnown: true, success: true, ...usage },
         cost: { micros: 1100, tokens: 2150, reserved: false },
       })]);
     } finally {
@@ -369,6 +377,24 @@ describe.skipIf(!adminUrl || !appPassword || !gatewayPassword)("creative tRPC an
     const { rows } = await database.query("SELECT state,cost,request_hash FROM video_pipeline_operations WHERE project_id=$1", [projectId]);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ state: "unknown", cost: { reserved: true }, request_hash: modelRequest(1).requestHash });
+  });
+
+  it("keeps a reservation when reported usage exceeds its bound and preserves reported evidence", async () => {
+    const projectId = await project(), runId = randomUUID();
+    const lease = await acquireProjectLease(baseScope, projectId);
+    try {
+      const session = await start(projectId, runId);
+      await session.beginStage("preparation");
+      const reservation = await session.beforeModelCall(modelRequest(1));
+      const reportedUsage = { inputTokens: 1125, outputTokens: 20, totalTokens: 1145, reasoningTokens: 7 };
+      await expect(session.afterModelCall(reservation, { usageKnown: true, success: true, ...reportedUsage, finishReason: "stop" }))
+        .rejects.toThrow(/CREATIVE_USAGE_UNKNOWN/);
+      await expect(session.beforeModelCall(modelRequest(2))).rejects.toThrow(/CREATIVE_USAGE_UNKNOWN/);
+      const { rows } = await database.query("SELECT state,cost,receipt FROM video_pipeline_operations WHERE id=$1", [reservation]);
+      expect(rows).toEqual([{ state: "unknown", cost: { micros: 662, tokens: 1224, reserved: true },
+        receipt: { usageKnown: false, reportedUsage, finishReason: "stop" } }]);
+      await session.finish({ success: false });
+    } finally { await lease?.release(); }
   });
 
   it("moves a crashed dispatched request into the reconciliation projection and preserves its original reservation", async () => {

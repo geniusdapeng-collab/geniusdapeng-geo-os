@@ -38,8 +38,8 @@
       "sourceGitBlob": "675885bafdcd10e3ad160875e30510d3ff2d1cfd",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "targetMode": "100644",
-      "targetSha256": "35ab444951e214758fe28f3b823a7ebdddc7fbef910ab11b9348c62142ef3aec",
-      "targetBytes": 18390,
+      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
+      "targetBytes": 18699,
       "transform": "none"
     },
     {
@@ -110,8 +110,8 @@
       "sourceGitBlob": "3533af0a91b93ee190a6f8831429059510cbef64",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
       "targetMode": "100644",
-      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
-      "targetBytes": 49973,
+      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
+      "targetBytes": 50140,
       "transform": "none"
     },
     {
@@ -152,5 +152,5 @@
       "docs/AI-AGENT-GUIDE.md"
     ]
   },
-  "targetDigestsRefreshedAt": "2026-11-03T03:55:32.073397+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

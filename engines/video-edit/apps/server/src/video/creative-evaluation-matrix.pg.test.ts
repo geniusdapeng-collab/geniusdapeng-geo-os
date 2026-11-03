@@ -163,7 +163,7 @@ function fixtureFields(s: Scenario, shot: ReturnType<typeof shotInputs>[number],
 function successEnvelope(id: string, value: unknown): Response {
   return new Response(JSON.stringify({ id, model: endpoint.model,
     choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }],
-    usage: { prompt_tokens: 150, completion_tokens: 80, completion_tokens_details: { reasoning_tokens: 0 } },
+    usage: { prompt_tokens: 150, completion_tokens: 80, total_tokens: 230, completion_tokens_details: { reasoning_tokens: 0 } },
   }));
 }
 

@@ -44,16 +44,16 @@
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
       "previousTargetSha256": "b9e697a9568fed920fb0c138505f97ebb8dbdd8c8ae5b244461f34c9d834b5c5",
-      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
-      "targetBytes": 42753,
+      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
+      "targetBytes": 43721,
       "targetMode": "100644"
     },
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
       "previousTargetSha256": "6e7dac86e9f1509d270fbdf619d2d13f162ab5e892556df86dbc6bfcfd59dcc6",
-      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
-      "targetBytes": 48383,
+      "targetSha256": "94175ccb56d092256d1d3fd66c137769453c444a178679e8afa58d101f0180a3",
+      "targetBytes": 48417,
       "targetMode": "100644"
     },
     {
@@ -124,8 +124,8 @@
       "path": "packages/base/model-router/providers.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/providers.ts",
       "previousTargetSha256": "15c1d4152c041e634421731f411bcdbb2edf002900306b74fbe7c44091740c0b",
-      "targetSha256": "a327e033dc790f7896f473e26041ffae305d6b1b4d66a063372cfaee2e63e378",
-      "targetBytes": 7744,
+      "targetSha256": "9f97991305adf80c84a09a6a2c25ec0170818dca3ca9acbddc04297872455afb",
+      "targetBytes": 20277,
       "targetMode": "100644"
     },
     {
@@ -140,8 +140,8 @@
       "path": "packages/base/model-router/router.ts",
       "targetPath": "engines/video-edit/packages/base/model-router/router.ts",
       "previousTargetSha256": "bbbc6fe180fd13ddf309267d23733545a716bcf061efe186cf82dc2c6f3d00a5",
-      "targetSha256": "952e8120a385158a3c05d28ffbd8f29ba9383e25cbe003419002e3e11a9b166b",
-      "targetBytes": 26699,
+      "targetSha256": "7717d2b3a3eb7e9c49ca942de32a0a5b05a984ebc236f4dec6062c720d5f1923",
+      "targetBytes": 18560,
       "targetMode": "100644"
     },
     {
@@ -172,8 +172,8 @@
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
       "previousTargetSha256": "edaa0e337c611b329acf8b78779442d52a395b05d0415b75f335ec2a71412116",
-      "targetSha256": "35ab444951e214758fe28f3b823a7ebdddc7fbef910ab11b9348c62142ef3aec",
-      "targetBytes": 18390,
+      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
+      "targetBytes": 18699,
       "targetMode": "100644"
     },
     {
@@ -273,5 +273,5 @@
       "targetMode": "100644"
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

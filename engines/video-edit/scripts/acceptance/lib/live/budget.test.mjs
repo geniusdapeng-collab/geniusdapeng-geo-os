@@ -62,13 +62,30 @@ test("budget: a new physical attempt requires a new reservationId", (t) => {
   assert.equal(b.summary().used.llmTokens, 2000);
 });
 
-test("budget: smaller actual usage and failed unknown usage do not release the reservation", (t) => {
+test("budget: smaller measured usage releases unused headroom, while failed unknown usage freezes the run", (t) => {
   const b = budget(t, { maxLlmTokens: 10_000 });
   b.reserve(llm("small", 4000)); b.commit(llm("small", 20));
-  b.reserve(llm("failed", 6000)); b.commit({ ...llm("failed", 0), measured: false, status: "failed" });
-  assert.equal(b.summary().used.llmTokens, 10_000);
+  assert.equal(b.summary().used.llmTokens, 20);
+  assert.equal(b.reserve(llm("failed", 9000)).allowed, true);
+  b.commit({ ...llm("failed", 0), measured: false, status: "failed" });
+  assert.equal(b.summary().used.llmTokens, 9020);
   assert.equal(b.summary().actual.llmTokens, 20);
+  assert.equal(b.summary().unmeasured.llmTokens, 9000);
   assert.equal(b.reserve(llm("next", 1)).allowed, false);
+});
+
+test("budget: resuming an earlier ledger preserves its original conservative accounting", (t) => {
+  const options = { outDir: directory(t), budgets: { maxLlmTokens: 10_000 } };
+  const b = createBudget(options);
+  b.reserve(llm("historical", 4000));
+  b.commit(llm("historical", 20));
+  const rows = readFileSync(b.ledgerPath, "utf8").trimEnd().split("\n").map(JSON.parse);
+  delete rows[0].settlementPolicy;
+  writeFileSync(b.ledgerPath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`);
+  const resumed = createBudget(options);
+  assert.equal(resumed.summary().used.llmTokens, 4000);
+  assert.equal(resumed.summary().actual.llmTokens, 20);
+  assert.equal(resumed.reserve(llm("later", 6001)).allowed, false);
 });
 
 test("budget: actual overruns are recorded in full and block later calls", (t) => {

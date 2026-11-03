@@ -342,7 +342,7 @@ async function runTask(task) {
       // expectedTokens 是调用方估算；它不能证明输入/context、输出及每次
       // 重试的总量会落在剩余额度内。先验总量不可得时，不得先计费再冻结。
       // 所有未知/fallback LLM chain 同受此闸；只有内部本地 stub 的 selftest 可继续。
-      if (!SELFTEST) return { ...base, chain, status: "blocked", called: false, reason: LLM_TOTAL_BUDGET_BLOCK, ms: 0 };
+      if (!SELFTEST) return { ...base, chain, status: "blocked", called: false, budgetAdmission: "trusted_request_bound_missing", reason: LLM_TOTAL_BUDGET_BLOCK, ms: 0 };
       // fail-closed：链路需要真实凭据而凭据缺失时，任务状态必须是 blocked（未验证），不得跑成“模型调用失败”
       if (resolved && resolved.ready === false) {
         return { ...base, chain, status: "blocked", reason: resolved.missing.join("；"), ms: Date.now() - startedAt };
@@ -429,7 +429,7 @@ async function runTask(task) {
           baseUrl: resolved.baseUrl,
         };
         const gate = budget.reserve({ taskId: task.id, kind: "llm", units: 1, tokens: task.expectedTokens ?? 8000, detail: chain });
-        if (!gate.allowed) return { ...base, chain, status: "blocked", reason: gate.reason, ms: Date.now() - startedAt };
+        if (!gate.allowed) return { ...base, chain, status: "blocked", called: false, budgetAdmission: "reservation_denied", reason: gate.reason, ms: Date.now() - startedAt };
         reserved = { kind: "llm" };
         out = await runChatTask({ resolved: gatewayResolved, prompt: task.prompt, timeoutMs: TASK_TIMEOUT_MS, image, env: runnerEnv });
         settle(out, { tokens: out.tokens ?? 0, calls: out.called === false ? 0 : out.calls ?? 1, measured: out.called === false || out.usage?.complete === true });
@@ -521,7 +521,7 @@ async function runTask(task) {
       // dispatch 总先 routeIntent(intentClassifier(scope))；任务声明不控制服务端计量。
       // 当前接口仅 Promise<string>，没有可绑定此次 budget/WAL 的逐请求占额与 usage。
       // 保留低层确定性 transport 的业务回读测试；真实 CLI 先阻断，不触发登录/派单。
-      return { ...base, chain: "product-dispatch", status: "blocked", called: false, reason: PRODUCT_DISPATCH_BUDGET_BLOCK, ms: Date.now() - startedAt };
+      return { ...base, chain: "product-dispatch", status: "blocked", called: false, budgetAdmission: "server_budget_interface_missing", reason: PRODUCT_DISPATCH_BUDGET_BLOCK, ms: Date.now() - startedAt };
     }
     return { ...base, status: "failed", reason: `未知任务类型：${task.kind}`, ms: 0 };
   } catch (err) {
@@ -543,7 +543,7 @@ for (const task of tasks) {
   const icon = result.status === "ok" ? "✓" : result.status === "blocked" ? "⏸" : result.status === "skipped" ? "–" : "✗";
   console.log(`[acceptance:live] ${icon} ${result.id} ${result.status}${result.reason ? `（${result.reason.slice(0, 120)}）` : ""}`);
   const receiptPath = join(OUT_DIR, "receipts", `${result.id}.json`);
-  writeFileSync(receiptPath, JSON.stringify({ task: result.id, at: new Date().toISOString(), status: result.status, receipt: result.receipt ?? null, artifacts: result.artifacts ?? [], reason: result.reason ?? null }, null, 1));
+  writeFileSync(receiptPath, JSON.stringify({ task: result.id, at: new Date().toISOString(), status: result.status, called: result.called, budgetAdmission: result.budgetAdmission, receipt: result.receipt ?? null, artifacts: result.artifacts ?? [], reason: result.reason ?? null }, null, 1));
   writeFileSync(join(OUT_DIR, "transcripts", `${result.id}.json`), JSON.stringify(result, null, 1));
 }
 
@@ -687,16 +687,21 @@ function renderMarkdown(r) {
   md.push("");
   md.push("## 四、配额与成本台账（硬上限）");
   md.push("");
-  md.push("| 计量 | 已用 | 上限 |");
-  md.push("|---|---:|---:|");
+  md.push("配额应用于整轮 RDAS 生产实测。LLM token 计入输入和输出，模型单次输出上限由供应商决定。");
+  md.push("");
+  md.push("| 计量 | 配额占用 | 已核实实际量 | 整轮上限 |");
+  md.push("|---|---:|---:|---:|");
   const u = r.budget.used;
+  const a = r.budget.actual;
   const b = r.budget.budgets;
-  md.push(`| LLM 调用 | ${u.llmCalls} | ${b.maxLlmCalls} |`);
-  md.push(`| LLM token | ${u.llmTokens} | ${b.maxLlmTokens} |`);
-  md.push(`| 生图张数 | ${u.images} | ${b.maxImages} |`);
-  md.push(`| 视频段数 | ${u.videoClips} | ${b.maxVideoClips} |`);
-  md.push(`| 视频总秒数 | ${u.videoSeconds} | ${b.maxVideoSecondsTotal} |`);
-  md.push(`| 预估成本 | ¥${u.costCny} | ¥${b.maxCostCny} |`);
+  md.push(`| LLM 调用 | ${u.llmCalls} | ${a.llmCalls} | ${b.maxLlmCalls} |`);
+  md.push(`| LLM token | ${u.llmTokens} | ${a.llmTokens} | ${b.maxLlmTokens} |`);
+  md.push(`| 生图张数 | ${u.images} | ${a.images} | ${b.maxImages} |`);
+  md.push(`| 视频段数 | ${u.videoClips} | ${a.videoClips} | ${b.maxVideoClips} |`);
+  md.push(`| 视频总秒数 | ${u.videoSeconds} | ${a.videoSeconds} | ${b.maxVideoSecondsTotal} |`);
+  md.push(`| 按用量估算成本 | ¥${u.costCny} | ¥${a.costCny} | ¥${b.maxCostCny} |`);
+  md.push("");
+  md.push(`配额占用口径：${r.budget.costBasis.used}。供应商账单另行对账。`);
   if (r.budget.blocked.length) {
     md.push("");
     md.push("额度拦下的任务（不得静默跳过）：");

@@ -25,8 +25,8 @@
       "sourceBytes": 38033,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
-      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
-      "targetBytes": 48383,
+      "targetSha256": "94175ccb56d092256d1d3fd66c137769453c444a178679e8afa58d101f0180a3",
+      "targetBytes": 48417,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -37,8 +37,8 @@
       "sourceBytes": 34358,
       "sourceMode": "100644",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
-      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
-      "targetBytes": 42753,
+      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
+      "targetBytes": 43721,
       "targetMode": "100644",
       "transform": "none"
     },
@@ -71,5 +71,5 @@
   "wholeEngineUpgradeClaimed": false,
   "bundleAssetsChanged": false,
   "bundleAssetCount": 644,
-  "targetDigestsRefreshedAt": "2026-11-03T14:06:39.052754+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }

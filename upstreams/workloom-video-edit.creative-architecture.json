@@ -18,8 +18,8 @@
     {
       "path": "apps/server/src/video/creative-evaluation-matrix.pg.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-evaluation-matrix.pg.test.ts",
-      "targetSha256": "c320cb203e1cb37133cd7b50dc8634202e1475ab85e684c5b242a33de7cc9db9",
-      "targetBytes": 35013,
+      "targetSha256": "b5bbe4d15df053bacd812d1936d888f140e454eb68d5cbcbfc934b89797e028c",
+      "targetBytes": 35032,
       "evidence": "B",
       "targetOwned": true
     },
@@ -34,8 +34,8 @@
     {
       "path": "apps/server/src/video/creative-render-binding.pg.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-render-binding.pg.test.ts",
-      "targetSha256": "08420038259c340e0d965bd504b39a32a6405648ed31415c75ee2f6de5244f43",
-      "targetBytes": 6326,
+      "targetSha256": "7ecd260969fdf3d7f2ceaf70583ccd10a792b29e9737ef0650d7f51682a8783c",
+      "targetBytes": 6521,
       "evidence": "B",
       "targetOwned": true
     },
@@ -58,16 +58,16 @@
     {
       "path": "apps/server/src/video/creative-service.pg.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-service.pg.test.ts",
-      "targetSha256": "058678f9acb8f06257a89a575072d3860c2596ac61f5125ea3298af08305514e",
-      "targetBytes": 44157,
+      "targetSha256": "f8fa8040563e12389e557773bae4416a98f64dfdbd0f4d0287fcfccedba6d3e8",
+      "targetBytes": 46288,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "apps/server/src/video/creative-service.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/creative-service.ts",
-      "targetSha256": "dbe54998366be384567a29f608375b549b120854c3d89c571a32ac99740e4618",
-      "targetBytes": 55273,
+      "targetSha256": "e0a3a31378182fb61dd244aa51c8908d1fffedf549c732a1af1804ca68e76cce",
+      "targetBytes": 57225,
       "evidence": "B",
       "targetOwned": true
     },
@@ -90,8 +90,8 @@
     {
       "path": "apps/server/src/video/data-mining-executor.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/data-mining-executor.ts",
-      "targetSha256": "8a93c8474d0717f637755dce9eb89d0a2d8fc4842c6bf1efca5da901358f0527",
-      "targetBytes": 39809,
+      "targetSha256": "1c6d905d0fe0e6f3eb5b96276abf0c2f15d33ec7594dd84936917735f41531c7",
+      "targetBytes": 39829,
       "evidence": "B",
       "sourceSha256": "e1a5400ffd346320a7f5ae689d2a869a219f479421d3f43bdb8df34aab9d5f37",
       "sourceBytes": 38740
@@ -126,8 +126,8 @@
     {
       "path": "apps/server/src/video/marketing-authority.test.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.test.ts",
-      "targetSha256": "cf976315aef14fcb9df16f5ad844e259779f5fe850375105fb13e3ffe2f4a8a2",
-      "targetBytes": 42753,
+      "targetSha256": "1a0a4514935aa1a9e7d5628cb7a4162e3a4f1912ae2e20ba792c6f7dcf823e4a",
+      "targetBytes": 43721,
       "evidence": "B",
       "sourceSha256": "1896554a3d7b320fa68792b76b52aef5d8374656ff01cfeb15fcaf08391a17cc",
       "sourceBytes": 38616
@@ -135,8 +135,8 @@
     {
       "path": "apps/server/src/video/marketing-authority.ts",
       "targetPath": "engines/video-edit/apps/server/src/video/marketing-authority.ts",
-      "targetSha256": "2478866fcedde0041b116155e38aea5ddbd9ead5a881574db8d092ff5a3fd1d2",
-      "targetBytes": 48383,
+      "targetSha256": "94175ccb56d092256d1d3fd66c137769453c444a178679e8afa58d101f0180a3",
+      "targetBytes": 48417,
       "evidence": "B",
       "sourceSha256": "e3cb6c7ed60b6c29d1f182104532c0176fda9a3b86accaa45bc6e389b87202a3",
       "sourceBytes": 42833
@@ -264,8 +264,8 @@
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/creative-runtime.ts",
-      "targetSha256": "497eb498137e042e65da64ccdd101196a39bbc6d5dcc59045ee58a7fda5fad13",
-      "targetBytes": 47426,
+      "targetSha256": "8ebdf3c27a0bd79b73ccfbacd9710f558de5a99964a7edd09820e138432c23e7",
+      "targetBytes": 48900,
       "evidence": "B",
       "targetOwned": true
     },
@@ -281,8 +281,8 @@
     {
       "path": "packages/video-studio/src/llm-adapter.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/llm-adapter.ts",
-      "targetSha256": "35ab444951e214758fe28f3b823a7ebdddc7fbef910ab11b9348c62142ef3aec",
-      "targetBytes": 18390,
+      "targetSha256": "256996a929dca527f88828d342b90847b19431210388259ba6e098a4ceedcb1f",
+      "targetBytes": 18699,
       "evidence": "B",
       "sourceSha256": "6a49f7dd52babf538a948f809e51dbb6661f3737a4a111d0ef2970ffa1b0abb0",
       "sourceBytes": 16655
@@ -396,8 +396,8 @@
     {
       "path": "packages/video-studio/src/studio.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/studio.test.ts",
-      "targetSha256": "a6b6ed85c4459e77abb1fa4910365a4daf5c481596756520ee48b0eae4816db0",
-      "targetBytes": 49973,
+      "targetSha256": "4c72ba1358260ed1821c51cdbd496f7fc973f1784189a0ceba57a251d551c73f",
+      "targetBytes": 50140,
       "evidence": "B",
       "sourceSha256": "d7c9e3958490e67a1bdf42c05b3791200ca474b6e667885c591cb832d03ccaf8",
       "sourceBytes": 37741
@@ -423,16 +423,16 @@
     {
       "path": "packages/video-studio/src/video-text-client.test.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.test.ts",
-      "targetSha256": "0d522b7e327b90e94d2f3831a3a9d5aed494224d6d650140fae880a9adfca42d",
-      "targetBytes": 9519,
+      "targetSha256": "c2166c46277d8026548f0babab1a5953209289cb2efdc1cf945c53c44359a350",
+      "targetBytes": 13217,
       "evidence": "B",
       "targetOwned": true
     },
     {
       "path": "packages/video-studio/src/video-text-client.ts",
       "targetPath": "engines/video-edit/packages/video-studio/src/video-text-client.ts",
-      "targetSha256": "7bb1de72d0ce31631e819463e8ad8c87b81f4f2c6ed5888891e0b8f483928023",
-      "targetBytes": 16795,
+      "targetSha256": "4da4d4a6369dafb9b506d3ac8daf0369fa35c121aaef6006fe1587f387ea31e0",
+      "targetBytes": 17185,
       "evidence": "B",
       "targetOwned": true
     },
@@ -445,5 +445,5 @@
       "targetOwned": true
     }
   ],
-  "targetDigestsRefreshedAt": "2026-11-03T14:21:26.021342+00:00"
+  "targetDigestsRefreshedAt": "2026-11-03T14:53:29.452686+00:00"
 }
