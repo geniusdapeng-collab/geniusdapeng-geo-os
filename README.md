@@ -78,6 +78,8 @@ English bio:
 
 ## 本地启动
 
+通过 Codex、Qoder 对话操作时，先按 [AI 办公平台接入](docs/AI-WORKBENCH-SETUP.md) 设置当前项目。`node scripts/ai-workbench.mjs config --client codex` 或 `--client qoder` 输出真实本机绝对路径的配置；`node scripts/agent.mjs guide` 与 MCP `pengmanager_agent_guide` 返回完整现行指南、字节摘要和入口。用户只需在对话中提出任务，由 Agent 调用工具并核对结果。完整视频制作由有 shell 的 Agent 执行既有标准 CLI，MCP 负责指南、发现、计划、预检及已登记能力；无 shell 的纯 MCP 客户端尚不支持完整生产。
+
 Codex 和其他本机 Agent 从[视频接入与真实交付快速指南](docs/CODEX-VIDEO-QUICKSTART.md)开始。该路径可先完成私有视频运行时的核心安装与只读预检，再按项目补齐媒体工位、模型和授权。
 
 以下示例同时准备完整视频工作台并启动根控制台。
@@ -96,6 +98,7 @@ node src/server.mjs
 
 ```bash
 node scripts/agent.mjs status
+node scripts/agent.mjs guide
 node scripts/agent.mjs capabilities
 node scripts/agent.mjs list
 node scripts/agent.mjs describe growth.video.production.shots

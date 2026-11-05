@@ -15,6 +15,8 @@
     "video:doctor": "node scripts/video-doctor.mjs",
     "video:start": "node scripts/video-start.mjs",
     "agent": "node scripts/agent.mjs",
+    "agent:guide": "node scripts/agent.mjs guide",
+    "agent:config": "node scripts/ai-workbench.mjs config",
     "mcp": "node scripts/agent-mcp.mjs",
     "video:status": "node scripts/agent.mjs status",
     "video:capabilities": "node scripts/agent.mjs capabilities",
