@@ -69,6 +69,8 @@ PENGMANAGER_PNPM_BIN="$PM_PNPM" "$PM_NODE" scripts/video-setup.mjs --core-only -
 
 ## 2. 连接 Codex 或其他本机客户端
 
+Codex／Qoder 的配置生成、项目 Agent 引导和新会话检查见 [AI 办公平台接入](AI-WORKBENCH-SETUP.md)。可以用 `node scripts/ai-workbench.mjs config --client codex` 或 `--client qoder` 导出绝对路径配置。MCP 连接后先调用 `pengmanager_agent_guide {}`，完整阅读返回的文档。完整制作使用 Agent 的 shell 运行本页标准 CLI；纯 MCP 无 shell 客户端仅具备当前登记的范围。
+
 在 Codex 打开实际 checkout，从仓库根开始工作。项目级配置依赖 Codex 的项目受信任状态。其他 Agent 若不自动发现 `AGENTS.md`，将“先完整读取 `AGENTS.md` 与 `docs/AI-AGENT-GUIDE.md`”写入该项目的启动说明。 [Codex 项目说明发现规则](https://learn.chatgpt.com/docs/agent-configuration/agents-md) · [Codex 项目配置与信任](https://learn.chatgpt.com/docs/config-file/config-advanced#project-config-files-codexconfigtoml)
 
 仅做目录发现时，可以登记一个无供应商凭据的 stdio 服务器：

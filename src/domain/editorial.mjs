@@ -33,6 +33,7 @@ export function editorialSensitiveFindings(value, { credentialUrls = true } = {}
     if (Array.isArray(child) && HASH_ARRAY_FIELDS.has(key) && child.every(item => typeof item === "string" && /^[a-f0-9]{64}$/.test(item))) return child.map(() => "[sha256]");
     if (typeof child === "string" && LOCATOR_ID_FIELDS.has(key) && /^\d{5,30}$/.test(child)) return "[community-id]";
     if ((key === "assetId" || key === "posterAssetId") && typeof child === "string" && /^MED-[a-f0-9]{32}$/.test(child)) return "[media-asset-id]";
+    if (key === "artifactId" && typeof child === "string" && child.length === 36 && /^ART-[a-f0-9]{32}$/.test(child)) return "[native-artifact-id]";
     return child;
   });
   const findings = scanSensitiveText(serialized);

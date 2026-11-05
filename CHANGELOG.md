@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-05 — Codex and Qoder conversation workflow
+
+- Add read-only, absolute-path MCP configuration export for Codex, Qoder and
+  other local stdio clients without copying secrets or overwriting host settings.
+- Add `pengmanager_agent_guide` and the CLI `guide` command to return the complete
+  current checkout instructions, byte hashes and actual CLI/MCP support boundary.
+- Add Qoder project Agent guidance and a shared setup guide. Full production
+  continues through the existing owner CLI with original budgets and receipts;
+  pure MCP clients without shell do not gain a new production executor.
+- Keep client and owner runtimes on the same private directory, document safe
+  handover and timeout recovery, and verify real CLI/MCP entry processes.
+- Recognize an exact structured native artifact ID in receipt sensitivity
+  checks, while retaining prose, credential and malformed-ID protection.
+
 ## 2026-10-25 — Bilingual editorial publishing and real media
 
 - Add crawlable Chinese/English article, visual and video pages with full text,

@@ -2,6 +2,12 @@
 
 This repository is a private, local-first personal GEO control plane.
 
+## Codex, Qoder and other AI workbenches
+
+The user can stay in the conversation. The Agent performs CLI/MCP operations and reports actual receipts. On first connection or after an update, call MCP `pengmanager_agent_guide` with `{}`, or run `node scripts/agent.mjs guide`, and completely read its current documents. They include this file and the mandatory guide below. Client setup and lifecycle rules are in [AI workbench setup](docs/AI-WORKBENCH-SETUP.md). Generate absolute-path Codex/Qoder settings with `node scripts/ai-workbench.mjs config --client codex` or `--client qoder`; merge only the named server into existing client settings.
+
+Full video production uses this Agent's shell and the existing standard CLI. A pure MCP client without shell cannot execute the full production workflow. Keep the same checkout and private data directory throughout. Before switching from a managed MCP runtime to the owner CLI, verify no local job is active, stop only this MCP session's runtime, and read back its stopped status. Retain a long-running shell session and the original job receipt across client timeouts; do not launch a duplicate job.
+
 ## Default entry for a video request
 
 A request such as “用鹏经理做一支 30 秒的赛道视频” already selects the standard video workflow. After the required guide below, follow [the project video skill](.agents/skills/pengmanager-standard-video/SKILL.md) and use `pengmanager.video.workflow` (MCP: `pengmanager_video_workflow`) or `node scripts/video-standard.mjs plan --input-file -` with the original intent. Continue through native Studio routing and the same project's qualified rendering, official post and media checks. A preview or finished Studio preproduction is not a finished video. Do not handcraft shotlists, call a provider directly, use manual bridging, or substitute local media tools for the official workflow on a standard request. If a formal step cannot proceed, preserve its receipt and identify that step.

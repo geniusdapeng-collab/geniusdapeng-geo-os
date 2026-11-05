@@ -40,6 +40,8 @@ cat docs/AI-AGENT-GUIDE.md
 
 已有 checkout 则先检查当前分支和未提交改动，再按任务约定更新；不要为了拉取强制重置他人的改动。每次切分支／更新后，如指南或 `AGENTS.md` 有变化，重新完整阅读。`AGENTS.md` 是供遵循该约定的 Agent 自动读取的仓库入口；不能保证忽略仓库说明的平台自动执行这些规则。其他平台应把“先读这两个文件”同时写入它的项目启动说明。
 
+Codex、Qoder 等平台的接入配置可用 `node scripts/ai-workbench.mjs config --client codex` 或 `--client qoder` 生成，详见 [AI 办公平台接入](AI-WORKBENCH-SETUP.md)。MCP 新会话先调用 `pengmanager_agent_guide {}`，CLI 对应用 `node scripts/agent.mjs guide`；返回当前 checkout 的完整必读文档、SHA-256、绝对入口与同一私有目录。Agent 须读完整正文，再执行用户在对话中交代的任务。指南返回不代表已获得权限或完成生产。
+
 先做无需秘密的公网检查：
 
 ```bash

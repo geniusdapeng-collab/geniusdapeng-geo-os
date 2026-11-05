@@ -4,6 +4,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { editorialInput, normalizeEditorialAssetRefs, normalizeEditorialBlocks, assertEditorialAssets, assertEditorialStateIntegrity } from "../src/domain/editorial.mjs";
 import { JsonStore } from "../src/storage/json-store.mjs";
+import { AccountOperationsService } from "../src/services/account-operations.mjs";
+import { hashObject } from "../src/domain/hash.mjs";
 import { editorialFixture, readyWebsite, createEditionVariant, approvedRelease, activateRelease, context, FIXED_TIME } from "./editorial-fixtures.mjs";
 
 test("sensitive scan exempts validated machine digest and community IDs while keeping human text and malformed fields visible", () => {
@@ -25,6 +27,48 @@ test("canonical media asset IDs with phone-like digits survive reference and blo
   const refs = normalizeEditorialAssetRefs(input.assetRefs, "zh-CN");
   assert.equal(refs[0].assetId, assetId);
   assert.equal(normalizeEditorialBlocks([{ type: "image", assetId, alt: "Synthetic image" }], "body", refs)[0].assetId, assetId);
+});
+
+test("only exact artifactId fields exempt canonical native artifact IDs with phone-like digits", () => {
+  const artifactId = `ART-a13800138000a${"b".repeat(19)}`;
+  const input = { artifactHashes: [{ artifactId, sha256: "a".repeat(64) }] }, before = structuredClone(input);
+  assert.match(artifactId, /^ART-[a-f0-9]{32}$/);
+  assert.equal(editorialInput(input, ["artifactHashes"]), input);
+  assert.deepEqual(input, before);
+  for (const value of [artifactId.slice(0, -1), `${artifactId}b`, artifactId.toUpperCase(), artifactId.replace("ART-", "art-"),
+    `${artifactId.slice(0, -1)}g`, `prefix-${artifactId}`, `${artifactId} suffix`, `${artifactId}\n`, `${artifactId}\r`, `${artifactId}\r\n`, [artifactId], { value: artifactId }]) {
+    assert.throws(() => editorialInput({ artifactId: value }, ["artifactId"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+  }
+  for (const field of ["id", "assetId", "body", "caption", "alt"]) {
+    assert.throws(() => editorialInput({ [field]: artifactId }, [field]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+  }
+  assert.throws(() => editorialInput({ artifactId, body: "Call 13800138000" }, ["artifactId", "body"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+  assert.throws(() => editorialInput({ artifactId, password: "isolated synthetic value" }, ["artifactId", "password"]), { code: "CREDENTIALS_NOT_ALLOWED" });
+  assert.throws(() => editorialInput({ artifactId, body: "https://docs.github.com/page?token=x" }, ["artifactId", "body"]), { code: "EDITORIAL_SENSITIVE_INPUT" });
+});
+
+test("native completion recovery accepts the exact opaque ART reference but rejects another ID or bytes", async () => {
+  const artifactId = `ART-a13800138000a${"b".repeat(19)}`;
+  const receipt = { url: "https://www.linkedin.com/posts/isolated-artifact-reference", publishedAt: FIXED_TIME.toISOString(),
+    capturedBy: "isolated fixture collector", dataMode: "imported", verificationMethod: "manual_readback",
+    verifiedAt: FIXED_TIME.toISOString(), verifiedBy: "isolated fixture reviewer", contentHash: "a".repeat(64),
+    editorialSnapshotHash: "b".repeat(64), assetHashes: [], packageHash: "c".repeat(64), reviewSnapshotHash: "d".repeat(64),
+    artifactHashes: [{ artifactId, sha256: "e".repeat(64) }] };
+  const operation = { id: "OP-isolated-native-recovery", status: "completed", snapshotSchema: "pengmanager.editorial-variant/v3",
+    contentHash: receipt.contentHash, editorialSnapshotHash: receipt.editorialSnapshotHash, packageHash: receipt.packageHash,
+    reviewSnapshotHash: receipt.reviewSnapshotHash, editorialSnapshot: { assetRefs: [], publicationPackage: {
+      artifactRefs: [{ id: artifactId, sha256: "e".repeat(64) }],
+    } }, receipt: { ...receipt, receiptHash: hashObject(receipt) } };
+  // A retained completion snapshot exercises the real replay path without a
+  // platform call, a new approval or any ledger mutation.
+  const store = { snapshot: () => ({ accountOperations: [operation] }), mutate() { assert.fail("Receipt recovery must not write another completion."); } };
+  const service = new AccountOperationsService({ service: { store }, clock: () => new Date(FIXED_TIME) });
+  assert.equal(await service.complete(operation.id, { actor: "isolated fixture operator", receipt }), operation);
+  for (const artifactHashes of [[], [{ artifactId: `ART-c13800138000c${"d".repeat(19)}`, sha256: "e".repeat(64) }],
+    [{ artifactId, sha256: "f".repeat(64) }]]) {
+    await assert.rejects(service.complete(operation.id, { actor: "isolated fixture operator", receipt: { ...receipt, artifactHashes } }),
+      { code: "RECEIPT_NATIVE_PACKAGE_MISMATCH" });
+  }
 });
 
 test("canonical media poster IDs require the video block's bound poster or cover reference", () => {
