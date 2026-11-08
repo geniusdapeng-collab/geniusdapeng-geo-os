@@ -14,8 +14,32 @@ import {
 import { creativeCandidateHash, rankCreativeCandidates, type CreativeCandidateAssessment } from "./creative-evaluation.js";
 
 export const CREATIVE_EXECUTOR_VERSION = "workloom.creative-executor/v1";
+export const CREATIVE_NATIVE_PROMPT_MIN_CHARS = 1_200;
+export const CREATIVE_NATIVE_PROMPT_MAX_CHARS = 3_000;
 const OPENING_TITLE_FIELDS = ["title_content", "subtitle_content", "title_animation", "title_font_design", "opening_audio_design"] as const;
 type Recordish = Record<string, unknown>;
+export interface CreativeContinuityRecord {
+  shotId: string;
+  sourceHash: string;
+  outputHash: string;
+  promptHash: string;
+  promptCharCount: number;
+  promptByteCount: number;
+  fields: Recordish;
+}
+export interface CreativeShotReviewContext {
+  contract: CreativeContract;
+  shot: CreativeShot;
+  source: Recordish;
+  previousAccepted: CreativeContinuityRecord | null;
+  nextSource: Recordish | null;
+  fields: { keys: string[]; labels: Record<string, string> };
+  attempt: number;
+}
+export interface CreativeShotReviewResult {
+  findings: CreativeFinding[];
+  checks?: Array<{ id: string; pass: boolean; evidence: string }>;
+}
 export interface CreativeModelRequest {
   requestHash: string; inputChars: number; maxOutputTokens: number; model: string; attempt: number;
   requestBytes: number;
@@ -23,6 +47,7 @@ export interface CreativeModelRequest {
   inputTokenUpperBound: number;
   inputTokenBasis: string;
   imageInputTokens?: number;
+  shotId?: string;
 }
 export interface CreativeModelOutcome {
   actualCny?: number | null; usageKnown: boolean; success: boolean;
@@ -67,6 +92,34 @@ export function modelTransportFailureClass(error: unknown, signal: AbortSignal |
   }
   if (afterHeaders) return "response_body_unreadable";
   return signal?.aborted ? "transport_cancelled" : "transport_error";
+}
+function technicalNativeFailure(error: unknown): boolean {
+  if (error instanceof CreativeContractError) {
+    return ["CREATIVE_NATIVE_INVALID", "CREATIVE_JSON_INVALID", "CREATIVE_MODEL_SCOPE_CHANGED",
+      "CREATIVE_MODEL_UNVERIFIED", "CREATIVE_TECHNICAL_RETRY_EXHAUSTED"].includes(error.code);
+  }
+  if (!(error instanceof Error)) return false;
+  if (/CREATIVE_FORGED_IR|CREATIVE_SCHEMA_UNVERIFIED|CREATIVE_USAGE_UNKNOWN|CREATIVE_BUDGET|CREATIVE_CANCELLED/u.test(error.message)) return false;
+  return /JSON|Schema|schema|structure|single-shot|exactly the current shot|parse|解析|结构/u.test(error.message);
+}
+function technicalRepairPatchFailure(error: unknown): boolean {
+  if (error instanceof CreativeContractError) {
+    return ["CREATIVE_NATIVE_INVALID", "CREATIVE_JSON_INVALID", "PATCH_SCOPE_VIOLATION"].includes(error.code);
+  }
+  return technicalNativeFailure(error);
+}
+function shotScopedFailure(code: string): boolean {
+  return [
+    "CREATIVE_MODEL_SCOPE_CHANGED",
+    "CREATIVE_MODEL_UNVERIFIED",
+    "CREATIVE_TECHNICAL_RETRY_EXHAUSTED",
+    "CREATIVE_REPAIR_LIMIT",
+    "CREATIVE_REPAIR_FORBIDDEN",
+    "CREATIVE_NATIVE_PROMPT_TOO_LONG",
+    "CREATIVE_NATIVE_PROMPT_TOO_SHORT",
+    "REPAIR_NO_PROGRESS",
+    "PATCH_SCOPE_VIOLATION",
+  ].includes(code);
 }
 export interface CreativeBudgetHooks {
   beforeModelCall(request: CreativeModelRequest): Promise<unknown>;
@@ -166,10 +219,12 @@ export function creativeBudgetedFetch(transport: typeof fetch): typeof fetch {
     if (maxOutputTokens !== window.outputCeiling) fail("CREATIVE_REQUEST_UNVERIFIED", "actual max_tokens does not equal the complete legal output window");
     const requestBytes = Buffer.byteLength(init.body);
     let usage: CreativeModelOutcome = { usageKnown: false, success: false, actualCny: null };
+    const current = executions.getStore();
     return guardedCreativeModelCall({ requestHash: creativeTextHash(init.body), inputChars: requestBytes, requestBytes,
       inputTokenEstimate: window.inputTokens, inputTokenUpperBound: window.inputTokenUpperBound, inputTokenBasis: window.inputTokenBasis,
       maxOutputTokens, model: body.model,
-      ...(window.imageTokens ? { imageInputTokens: window.imageTokens } : {}) }, async () => {
+      ...(window.imageTokens ? { imageInputTokens: window.imageTokens } : {}),
+      ...(current?.shotId ? { shotId: current.shotId } : {}) }, async () => {
       const request = input instanceof Request ? input : undefined;
       const signal = init.signal ?? request?.signal;
       let response: Response;
@@ -315,6 +370,7 @@ export interface CreativeRuntimeOptions {
   preparationStage?: string;
   selectedCandidate?: CreativeCandidateAssessment;
   visualAuthority?: ProductVisualAuthority;
+  reviewShot?: (context: CreativeShotReviewContext) => Promise<CreativeShotReviewResult>;
   generate: (prompt: string, schema: unknown) => Promise<unknown>;
 }
 export function currentCreativeRuntime(): CreativeRuntime | undefined { return executions.getStore()?.runtime; }
@@ -344,6 +400,17 @@ export class CreativeRuntime {
   private readonly sources = new Map<string, Recordish>();
   private readonly planned = new Map<string, CreativeShot>();
   private readonly accepted = new Map<string, CreativeShot>();
+  private readonly shotMetrics = new Map<string, {
+    startedAt: number;
+    technicalRetries: number;
+    repairAttempts: number;
+    semanticReviews: number;
+    cacheReused: boolean;
+    promptChars?: number;
+    promptBytes?: number;
+    outputHash?: string;
+    failureCode?: string;
+  }>();
   private readonly selectedCandidate?: CreativeCandidateAssessment;
   private titleShotId: string | undefined;
   private productionStarted = false;
@@ -443,16 +510,36 @@ export class CreativeRuntime {
       contractHash: this.contract.hash, outputHash, output });
     await this.event("creative.stage.completed", { stage, key, outputHash }); return output;
   }
+  private continuityRecord(shot: CreativeShot): CreativeContinuityRecord {
+    const prompt = this.renderUnchecked(shot);
+    return { shotId: shot.id, sourceHash: shot.sourceHash, outputHash: creativeHash(shot),
+      promptHash: creativeHash(prompt), promptCharCount: prompt.length, promptByteCount: Buffer.byteLength(prompt),
+      fields: snapshot(shot.fields) };
+  }
+  private previousAccepted(shotId: string): CreativeContinuityRecord | null {
+    const ids = [...this.sources.keys()], index = ids.indexOf(shotId);
+    if (index < 0) fail("CREATIVE_SHOT_UNKNOWN", shotId);
+    for (let cursor = index - 1; cursor >= 0; cursor--) {
+      const shot = this.accepted.get(ids[cursor]!);
+      if (shot) return this.continuityRecord(shot);
+    }
+    return null;
+  }
   modelSlice(shotId: string): string {
     const source = this.sources.get(shotId);
     if (!source) fail("CREATIVE_SHOT_UNKNOWN", shotId);
     const ids = [...this.sources.keys()], index = ids.indexOf(shotId);
+    const acceptedPrevious = this.previousAccepted(shotId);
     const relevant = this.contract.constraints.filter(c => c.subject === "film" || c.subject === "shot"
       || this.contract.coverage.some(cov => cov.constraintId === c.id && this.planned.get(shotId)?.claimIds.includes(cov.claimId)));
     return `\n\n## 当前单镜创作合同切片（只处理 ${shotId}）\n${creativeCanonical({
       contractHash: this.contract.hash, rawIntent: this.contract.rawIntent, constraints: relevant,
-      current: source, previous: index > 0 ? this.sources.get(ids[index - 1]!) ?? null : null,
+      current: source, previous: acceptedPrevious,
+      previousSource: index > 0 ? this.sources.get(ids[index - 1]!) ?? null : null,
       next: index + 1 < ids.length ? this.sources.get(ids[index + 1]!) ?? null : null,
+      continuityPolicy: acceptedPrevious
+        ? "上一镜以已通过的完整字段状态为连续性权威；previousSource 仅作原始来源对账，不得用它覆盖已接受字节。"
+        : "前序镜头尚无已接受状态；只使用原始来源，不得虚构已通过内容。",
       visualAuthority: this.options.visualAuthority ?? null,
     })}\n以下为本次已接受事实的完整原件，不是摘要；仅在批准用途内引用：\n${this.contract.facts?.content ?? "通用叙事不消费营销G1事实"}\n` + this.productReferenceContext();
   }
@@ -503,12 +590,48 @@ export class CreativeRuntime {
     if (creativeHash(normalized) !== creativeHash(ir.fields) || native.prompt !== this.render(ir)) fail("CREATIVE_COMPILED_CHANGED", "native fields/prompt differ from the accepted IR bytes");
     if (this.validateFields(ir).length) fail("CREATIVE_CACHE_INVALID", "accepted native fields no longer meet current schema");
   }
-  private render(shot: CreativeShot): string {
+  private renderUnchecked(shot: CreativeShot): string {
     if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, { fields: shot.fields, prompt: shot.prompt }, "creative-ir", this.omitUnverifiedMirrors);
     let prompt = compileCreativePrompt(this.contract, shot);
     if (this.contract.profile.visualMode === "abstract_without_product_appearance" && !prompt.includes(ABSTRACT_PRODUCT_RENDER_RULE)) prompt += `\n${ABSTRACT_PRODUCT_RENDER_RULE}`;
     if (this.options.visualAuthority) assertProductVisualContent(this.options.visualAuthority, prompt, "creative-compiled-prompt", this.omitUnverifiedMirrors);
     return prompt;
+  }
+  private render(shot: CreativeShot): string {
+    const prompt = this.renderUnchecked(shot);
+    if (prompt.length > CREATIVE_NATIVE_PROMPT_MAX_CHARS) {
+      fail("CREATIVE_NATIVE_PROMPT_TOO_LONG",
+        `compiled native prompt must not exceed ${CREATIVE_NATIVE_PROMPT_MAX_CHARS} UTF-16 code units`);
+    }
+    return prompt;
+  }
+  private shotMetric(shotId: string) {
+    let metric = this.shotMetrics.get(shotId);
+    if (!metric) {
+      metric = { startedAt: Date.now(), technicalRetries: 0, repairAttempts: 0, semanticReviews: 0, cacheReused: false };
+      this.shotMetrics.set(shotId, metric);
+    }
+    return metric;
+  }
+  private promptLengthFindings(shot: CreativeShot, prompt: string): CreativeFinding[] {
+    if (prompt.length <= CREATIVE_NATIVE_PROMPT_MAX_CHARS) return [];
+    const preferredKeys = ["lighting", "composition", "color_palette", "depth_of_field", "mood",
+      "director_instruction", "scene", "action", "props", "timeline"];
+    const allowedChanges = preferredKeys.flatMap(key => {
+      const label = this.options.fields.labels[key];
+      return label && Object.hasOwn(shot.fields, label) ? [`fields.${label}`] : [];
+    });
+    return [{
+      code: "CREATIVE_NATIVE_PROMPT_TOO_LONG",
+      targetId: shot.id,
+      fieldPath: "prompt",
+      expected: `<=${CREATIVE_NATIVE_PROMPT_MAX_CHARS} UTF-16 code units`,
+      actual: prompt.length,
+      evidence: [`sha256:${creativeHash(prompt)}`, `bytes:${Buffer.byteLength(prompt)}`],
+      ownerStage: "creative",
+      allowedChanges,
+      blocking: true,
+    }];
   }
   private async deriveTechnicalFields(native: Recordish): Promise<Recordish> {
     const output = snapshot(native), fields = object(output.fields, "native fields"), profile = this.contract.profile;
@@ -539,13 +662,55 @@ export class CreativeRuntime {
   }
   private findings(shot: CreativeShot): CreativeFinding[] {
     // Film duration/count/coverage are checked against the complete set after all shots exist.
-    return [...this.validateFields(shot), ...validateCreativeShots(this.contract, [shot])
-      .filter(f => f.targetId === shot.id && f.code !== "CREATIVE_CLAIM_NOT_EXPRESSED")];
+    return [...this.validateFields(shot), ...this.promptLengthFindings(shot, this.renderUnchecked(shot)),
+      ...validateCreativeShots(this.contract, [shot])
+        .filter(f => f.targetId === shot.id && f.code !== "CREATIVE_CLAIM_NOT_EXPRESSED")];
+  }
+  private async semanticFindings(shot: CreativeShot, attempt: number): Promise<CreativeFinding[]> {
+    if (!this.options.reviewShot) return [];
+    const source = this.sources.get(shot.id);
+    if (!source) fail("CREATIVE_SHOT_UNKNOWN", shot.id);
+    const ids = [...this.sources.keys()], index = ids.indexOf(shot.id);
+    const metric = this.shotMetric(shot.id);
+    const review = await this.options.reviewShot({
+      contract: this.contract,
+      shot: snapshot(shot),
+      source: snapshot(source),
+      previousAccepted: this.previousAccepted(shot.id),
+      nextSource: index + 1 < ids.length ? snapshot(this.sources.get(ids[index + 1]!) ?? null) : null,
+      fields: structuredClone(this.options.fields),
+      attempt,
+    });
+    metric.semanticReviews += 1;
+    const raw = object(snapshot(review), "creative shot review");
+    if (!Array.isArray(raw.findings) || raw.findings.length > 20) fail("CREATIVE_SHOT_REVIEW_INVALID", "host review must return bounded findings");
+    const allowedRoots = new Set(this.options.fields.keys.map(key => `${key}:${this.options.fields.labels[key]}`));
+    const findings = raw.findings.map((value, index) => {
+      const finding = object(value, `creative shot review finding ${index + 1}`) as unknown as CreativeFinding;
+      if (finding.targetId !== shot.id || finding.ownerStage !== "creative" || finding.blocking !== true
+        || !Array.isArray(finding.allowedChanges)
+        || finding.allowedChanges.some(path => {
+          if (typeof path !== "string" || !path.startsWith("fields.")) return true;
+          const label = path.slice("fields.".length);
+          return !this.options.fields.keys.some(key => allowedRoots.has(`${key}:${label}`));
+        })) {
+        fail("CREATIVE_SHOT_REVIEW_INVALID", "host review finding is outside the active shot field registry");
+      }
+      return snapshot(finding);
+    });
+    await this.event("creative.shot.reviewed", {
+      shotId: shot.id,
+      sourceHash: shot.sourceHash,
+      attempt,
+      findings: findings.map(finding => ({ code: finding.code, fieldPath: finding.fieldPath, allowedChanges: finding.allowedChanges })),
+      checks: Array.isArray(raw.checks) ? snapshot(raw.checks).slice(0, 20) : [],
+    });
+    return findings;
   }
   private async repair(initial: CreativeShot): Promise<CreativeShot> {
     let shot = initial, previousSignature: string | undefined;
     for (let attempt = 0; ; attempt++) {
-      const findings = this.findings(shot);
+      const findings = [...this.findings(shot), ...await this.semanticFindings(shot, attempt)];
       if (!findings.length) return shot;
       const signature = creativeHash(findings.map(f => ({ code: f.code, fieldPath: f.fieldPath, actual: f.actual })));
       await this.event("creative.shot.rejected", { shot: snapshot(shot), findings: snapshot(findings),
@@ -554,17 +719,41 @@ export class CreativeRuntime {
       if (signature === previousSignature) fail("REPAIR_NO_PROGRESS", "same finding signature after a patch", findings);
       const allowed = [...new Set(findings.flatMap(f => f.allowedChanges))];
       if (!allowed.length) fail("CREATIVE_REPAIR_FORBIDDEN", "finding has no authorized local changes", findings);
-      previousSignature = signature; await this.assertCurrent();
+      previousSignature = signature;
+      this.shotMetric(shot.id).repairAttempts += 1;
+      await this.assertCurrent();
       await this.event("creative.repair.started", { shotId: shot.id, sourceHash: shot.sourceHash,
         attempt: attempt + 1, signature, allowedChanges: allowed });
-      const raw = await this.options.generate(`只返回完整候选JSON。只允许修复以下镜头的这些字段，不得改变来源、镜号、约束、其他镜头或事实。\n`
+      const repairPrompt = `只返回完整候选JSON。只允许修复以下镜头的这些字段，不得改变来源、镜号、约束、其他镜头或事实。\n`
         + `保留当前 fieldOrder，增加字段后的排序由宿主派生。\n`
-        + `${this.modelSlice(shot.id)}\n问题：${creativeCanonical(findings)}\n允许路径：${creativeCanonical(allowed)}\n当前候选：${creativeCanonical(shot)}`, shot);
-      const candidate = snapshot(object(raw, "local patch candidate")) as unknown as CreativeShot;
-      const actualDiff = validatePatchDelta(shot, candidate, allowed);
+        + `${this.modelSlice(shot.id)}\n问题：${creativeCanonical(findings)}\n允许路径：${creativeCanonical(allowed)}\n当前候选：${creativeCanonical(shot)}`;
+      let correction = "", candidate: CreativeShot | undefined, actualDiff: string[] | undefined;
+      for (let technicalAttempt = 0; technicalAttempt < 2; technicalAttempt++) {
+        try {
+          const raw = await this.options.generate(repairPrompt + correction, shot);
+          candidate = snapshot(object(raw, "local patch candidate")) as unknown as CreativeShot;
+          actualDiff = validatePatchDelta(shot, candidate, allowed);
+          if (!actualDiff.length) fail("REPAIR_NO_PROGRESS", "repair patch produced no actual field change", findings);
+          break;
+        } catch (error) {
+          if (technicalAttempt >= 1 || !technicalRepairPatchFailure(error)) throw error;
+          this.shotMetric(shot.id).technicalRetries += 1;
+          await this.assertCurrent();
+          await this.event("creative.repair.technical_retry", {
+            shotId: shot.id,
+            sourceHash: shot.sourceHash,
+            attempt: technicalAttempt + 1,
+            failureCode: error instanceof CreativeContractError ? error.code : "CREATIVE_REPAIR_RESPONSE_INVALID",
+            allowedChanges: allowed,
+          });
+          correction = `\n上一次补丁未通过技术/作用域校验。只返回一个完整镜头 JSON 对象，`
+            + `shotId、来源、合同、时长与镜头顺序保持不变，只修改 allowedChanges 中的字段，并确保实际字节发生变化。`;
+        }
+      }
+      if (!candidate || !actualDiff) fail("CREATIVE_TECHNICAL_RETRY_EXHAUSTED", "repair patch did not produce a verifiable candidate", findings);
       const previousOrder = candidate.fieldOrder;
       candidate.fieldOrder = this.orderedFields(candidate.fields);
-      const beforeHash = creativeHash(shot); this.render(candidate); await this.assertCurrent();
+      const beforeHash = creativeHash(shot); this.renderUnchecked(candidate); await this.assertCurrent();
       candidate.revision = shot.revision + 1; candidate.parentHash = beforeHash;
       await this.event("creative.repair.applied", { shotId: shot.id, attempt: attempt + 1, beforeHash,
         afterHash: creativeHash(candidate), actualDiff,
@@ -592,73 +781,165 @@ export class CreativeRuntime {
     if (timing.length) fail("CREATIVE_NATIVE_PLAN_INFEASIBLE", "actual source timing or count violates the contract", timing);
     for (const shot of plan) this.planned.set(shot.id, shot);
     const outputs: Recordish[] = [];
+    const failures: Array<{ shotId: string; code: string; sourceHash: string }> = [];
     for (const [id, source] of this.sources) {
       const context = executions.getStore()!;
-      const output = await executions.run({ ...context, phase: "phase3", shotId: id }, () => this.cached<Recordish>(`shot:${id}`, { source, blueprint }, (candidate, fromCache) => {
-        if (candidate.shotId !== id || candidate.degraded === true || !candidate.fields || !candidate.prompt) fail("CREATIVE_CACHE_INVALID", "not a complete accepted shot");
-        const ir = snapshot(object(candidate._workloomCreativeShot, "trusted cache IR")) as unknown as CreativeShot;
-        if (!fromCache && creativeHash(ir) !== creativeHash(this.accepted.get(id))) fail("CREATIVE_FORGED_IR", "output was not issued by this invocation");
-        this.assertNativeBinding(candidate, ir); this.accepted.set(id, ir);
-      }, async () => {
-        const view = Object.create(agent) as Recordish;
-        view.llmMaxRetries = 0; view._callBudget = new Map();
-        view._callLLM = async (prompt: unknown, schema: unknown) => {
-          let modelPrompt = String(prompt), modelSchema = schema;
-          if (id === this.titleShotId) {
-            const titleSchema = snapshot(object(schema, "opening title schema"));
-            const template = Array.isArray(titleSchema.shots) ? object(titleSchema.shots[0], "opening shot template") : fail("CREATIVE_SCHEMA_UNVERIFIED", "opening shot template is missing");
-            const fields = object(template.fields, "opening shot fields");
-            for (const key of OPENING_TITLE_FIELDS) fields[key] = "string";
-            modelSchema = titleSchema;
-            modelPrompt += "\n客户要求片头标题。仅当前片头镜头生成正式主标题、副标题、标题动画、字体设计和开场音效。把五项写入当前 fields，保留客户原文和制作合同，不使用占位。";
-          }
-          const result = object(await this.options.generate(modelPrompt, modelSchema), "single-shot model envelope");
-          if (!Array.isArray(result.shots) || result.shots.length !== 1) fail("CREATIVE_MODEL_SCOPE_CHANGED", "model must return exactly the current shot");
-          const entry = object(result.shots[0], "single-shot model output"), fields = object(entry.fields, "single-shot model fields");
-          if (entry.shotId !== id) fail("CREATIVE_MODEL_SCOPE_CHANGED", "model changed the current shot identity");
-          if ([result, entry, fields].some(value => Object.keys(value).some(key => /^_workloomCreative/i.test(key)))) {
-            fail("CREATIVE_FORGED_IR", "model may not issue host acceptance evidence");
-          }
-          if (id !== this.titleShotId && OPENING_TITLE_FIELDS.some(key => Object.hasOwn(fields, key) || Object.hasOwn(fields, this.options.fields.labels[key] ?? key))) {
-            fail("CREATIVE_MODEL_SCOPE_CHANGED", "opening title fields are outside this shot's declared scope");
-          }
-          return { result, degraded: false };
-        };
-        // Missing fields are handled by one bounded, diff-checked local repair policy.
-        view._ensureFieldCompleteness = async (_source: unknown, fields: unknown) => ({ fields, usedRuleFallback: false });
-        view._finalizeShotResult = async (_source: unknown, output: unknown) => output;
-        view._assembleStandardPrompt = (_source: unknown, fieldsValue: unknown) => Object.entries(object(fieldsValue, "native model fields"))
-          .map(([key, value]) => `【${this.options.fields.labels[key] ?? key}】${typeof value === "string" ? value : creativeCanonical(value)}`).join("\n");
-        if (agent.consistencyChecker && typeof agent.consistencyChecker === "object") {
-          const checker = Object.create(agent.consistencyChecker) as Recordish;
-          checker.autoFix = (value: unknown) => value; view.consistencyChecker = checker;
-        }
-        const config = object(blueprint.config ?? {}, "blueprint config"), cast = object(blueprint.character_system ?? {}, "blueprint cast");
-        // The native deadline wrapper owns a hidden retry loop. Call its actual
-        // one-request implementation once; transport deadlines and the trusted
-        // journal own timeout, cancellation and any subsequent local repair.
-        const raw = object(await Reflect.apply(agent._fuseSingleShot as (...args: unknown[]) => unknown, view,
-          [snapshot(source), config.aspectRatio ?? this.contract.profile.aspectRatio, cast.characters ?? [], blueprint, 300_000]), "native fused shot");
-        if (raw.degraded === true || raw.degradeReason || raw.degradedReason || raw.error) fail("CREATIVE_MODEL_UNVERIFIED", "native fusion returned fallback or unverified output");
-        const derived = await this.deriveTechnicalFields(raw);
-        const ir = await this.repair(this.project(derived));
-        const prompt = this.render(ir);
-        const fields = Object.fromEntries(Object.entries(ir.fields).map(([label, value]) => [this.nativeFieldKeys().find(key => this.options.fields.labels[key] === label) ?? label, value]));
-        this.accepted.set(id, ir);
-        return { ...raw, ...fields, fields, prompt, promptCharCount: prompt.length, degraded: false,
-          ...(id === this.titleShotId ? { title: fields.title_content, subtitle: fields.subtitle_content } : {}),
-          _workloomCreativeShot: snapshot(ir), _workloomCreativeCompiler: { version: CREATIVE_EXECUTOR_VERSION, contractHash: this.contract.hash, promptHash: creativeHash(prompt) } };
-      }));
-      await this.event("creative.shot.accepted", { shotId: id, shotHash: creativeHash(this.accepted.get(id)), sourceHash: creativeHash(source) });
-      outputs.push(output);
+      const metric = this.shotMetric(id);
+      const ids = [...this.sources.keys()], index = ids.indexOf(id);
+      const nextSource = index + 1 < ids.length ? this.sources.get(ids[index + 1]!) ?? null : null;
+      const previousAccepted = this.previousAccepted(id);
+      try {
+        await this.event("creative.shot.started", {
+          shotId: id,
+          sourceHash: creativeHash(source),
+          previousAcceptedShotId: previousAccepted?.shotId ?? null,
+          telemetry: { ...metric, elapsedMs: Math.max(0, Date.now() - metric.startedAt) },
+        });
+        const output = await executions.run({ ...context, phase: "phase3", shotId: id }, () =>
+          this.cached<Recordish>(`shot:${id}`, { source, blueprint, previousAccepted, nextSource }, (candidate, fromCache) => {
+            metric.cacheReused = fromCache;
+            if (candidate.shotId !== id || candidate.degraded === true || !candidate.fields || !candidate.prompt) fail("CREATIVE_CACHE_INVALID", "not a complete accepted shot");
+            const ir = snapshot(object(candidate._workloomCreativeShot, "trusted cache IR")) as unknown as CreativeShot;
+            if (!fromCache && creativeHash(ir) !== creativeHash(this.accepted.get(id))) fail("CREATIVE_FORGED_IR", "output was not issued by this invocation");
+            this.assertNativeBinding(candidate, ir);
+            const prompt = this.render(ir);
+            metric.promptChars = prompt.length; metric.promptBytes = Buffer.byteLength(prompt);
+            metric.outputHash = creativeHash(ir); delete metric.failureCode;
+            this.accepted.set(id, ir);
+          }, async () => {
+            const view = Object.create(agent) as Recordish;
+            view.llmMaxRetries = 0; view._callBudget = new Map();
+            view._callLLM = async (prompt: unknown, schema: unknown) => {
+              let modelPrompt = String(prompt), modelSchema = schema, technicalAttempts = 0;
+              if (id === this.titleShotId) {
+                const titleSchema = snapshot(object(schema, "opening title schema"));
+                const template = Array.isArray(titleSchema.shots) ? object(titleSchema.shots[0], "opening shot template") : fail("CREATIVE_SCHEMA_UNVERIFIED", "opening shot template is missing");
+                const fields = object(template.fields, "opening shot fields");
+                for (const key of OPENING_TITLE_FIELDS) fields[key] = "string";
+                modelSchema = titleSchema;
+                modelPrompt += "\n客户要求片头标题。仅当前片头镜头生成正式主标题、副标题、标题动画、字体设计和开场音效。把五项写入当前 fields，保留客户原文和制作合同，不使用占位。";
+              }
+              for (;;) {
+                try {
+                  const result = object(await this.options.generate(modelPrompt, modelSchema), "single-shot model envelope");
+                  if (!Array.isArray(result.shots) || result.shots.length !== 1) fail("CREATIVE_MODEL_SCOPE_CHANGED", "model must return exactly the current shot");
+                  const entry = object(result.shots[0], "single-shot model output"), fields = object(entry.fields, "single-shot model fields");
+                  if (entry.shotId !== id) fail("CREATIVE_MODEL_SCOPE_CHANGED", "model changed the current shot identity");
+                  if ([result, entry, fields].some(value => Object.keys(value).some(key => /^_workloomCreative/i.test(key)))) {
+                    fail("CREATIVE_FORGED_IR", "model may not issue host acceptance evidence");
+                  }
+                  if (id !== this.titleShotId && OPENING_TITLE_FIELDS.some(key => Object.hasOwn(fields, key) || Object.hasOwn(fields, this.options.fields.labels[key] ?? key))) {
+                    fail("CREATIVE_MODEL_SCOPE_CHANGED", "opening title fields are outside this shot's declared scope");
+                  }
+                  return { result, degraded: false };
+                } catch (error) {
+                  if (!technicalNativeFailure(error) || technicalAttempts >= 1) {
+                    if (technicalNativeFailure(error) && technicalAttempts >= 1) {
+                      throw new CreativeContractError("CREATIVE_TECHNICAL_RETRY_EXHAUSTED",
+                        "single-shot response remained invalid after one technical correction");
+                    }
+                    throw error;
+                  }
+                  technicalAttempts += 1;
+                  metric.technicalRetries += 1;
+                  await this.assertCurrent();
+                  await this.event("creative.shot.technical_retry", {
+                    shotId: id,
+                    sourceHash: creativeHash(source),
+                    attempt: technicalAttempts,
+                    failureCode: error instanceof CreativeContractError ? error.code : "CREATIVE_MODEL_RESPONSE_INVALID",
+                  });
+                  modelPrompt += `\n上一次响应未通过技术校验。不要解释、不要 Markdown、不要附加字段。`
+                    + `必须恰好返回一个 JSON 对象，shots 数组仅含当前镜头 ${id}，并完整填写 schema 要求的 fields。`;
+                }
+              }
+            };
+            // Missing fields are handled by one bounded, diff-checked local repair policy.
+            view._ensureFieldCompleteness = async (_source: unknown, fields: unknown) => ({ fields, usedRuleFallback: false });
+            view._finalizeShotResult = async (_source: unknown, output: unknown) => output;
+            view._assembleStandardPrompt = (_source: unknown, fieldsValue: unknown) => Object.entries(object(fieldsValue, "native model fields"))
+              .map(([key, value]) => `【${this.options.fields.labels[key] ?? key}】${typeof value === "string" ? value : creativeCanonical(value)}`).join("\n");
+            if (agent.consistencyChecker && typeof agent.consistencyChecker === "object") {
+              const checker = Object.create(agent.consistencyChecker) as Recordish;
+              checker.autoFix = (value: unknown) => value; view.consistencyChecker = checker;
+            }
+            const config = object(blueprint.config ?? {}, "blueprint config"), cast = object(blueprint.character_system ?? {}, "blueprint cast");
+            // The native deadline wrapper owns a hidden retry loop. Call its actual
+            // one-request implementation once; transport deadlines and the trusted
+            // journal own timeout, cancellation and any subsequent local repair.
+            const raw = object(await Reflect.apply(agent._fuseSingleShot as (...args: unknown[]) => unknown, view,
+              [snapshot(source), config.aspectRatio ?? this.contract.profile.aspectRatio, cast.characters ?? [], blueprint, 300_000]), "native fused shot");
+            if (raw.degraded === true || raw.degradeReason || raw.degradedReason || raw.error) fail("CREATIVE_MODEL_UNVERIFIED", "native fusion returned fallback or unverified output");
+            const derived = await this.deriveTechnicalFields(raw);
+            const ir = await this.repair(this.project(derived));
+            const prompt = this.render(ir);
+            const fields = Object.fromEntries(Object.entries(ir.fields).map(([label, value]) => [this.nativeFieldKeys().find(key => this.options.fields.labels[key] === label) ?? label, value]));
+            metric.promptChars = prompt.length; metric.promptBytes = Buffer.byteLength(prompt);
+            metric.outputHash = creativeHash(ir); delete metric.failureCode;
+            this.accepted.set(id, ir);
+            return { ...raw, ...fields, fields, prompt, promptCharCount: prompt.length, promptByteCount: Buffer.byteLength(prompt), degraded: false,
+              ...(id === this.titleShotId ? { title: fields.title_content, subtitle: fields.subtitle_content } : {}),
+              _workloomCreativeShot: snapshot(ir), _workloomCreativeCompiler: { version: CREATIVE_EXECUTOR_VERSION, contractHash: this.contract.hash, promptHash: creativeHash(prompt) } };
+          }));
+        await this.event("creative.shot.accepted", {
+          shotId: id,
+          shotHash: creativeHash(this.accepted.get(id)),
+          sourceHash: creativeHash(source),
+          previousAcceptedShotId: previousAccepted?.shotId ?? null,
+          telemetry: { ...metric, elapsedMs: Math.max(0, Date.now() - metric.startedAt) },
+        });
+        outputs.push(output);
+      } catch (error) {
+        const code = error instanceof CreativeContractError ? error.code : "CREATIVE_SHOT_FAILED";
+        metric.failureCode = code;
+        if (!shotScopedFailure(code)) throw error;
+        failures.push({ shotId: id, code, sourceHash: creativeHash(source) });
+        await this.event("creative.shot.failed", {
+          shotId: id,
+          sourceHash: creativeHash(source),
+          code,
+          telemetry: { ...metric, elapsedMs: Math.max(0, Date.now() - metric.startedAt) },
+        });
+      }
+    }
+    if (failures.length) {
+      await this.event("creative.phase3.partial", {
+        acceptedShotIds: [...this.accepted.keys()],
+        failures,
+        telemetry: [...this.shotMetrics.entries()].map(([shotId, metric]) => ({ shotId, ...metric })),
+      });
+      fail("CREATIVE_SHOTS_UNRESOLVED", `${failures.length} shot(s) remain unresolved after bounded repair; accepted shots are cached`,
+        failures.map(failure => ({
+          code: "CREATIVE_SHOTS_UNRESOLVED",
+          targetId: failure.shotId,
+          fieldPath: "shot",
+          expected: "accepted bounded shot",
+          actual: failure.code,
+          evidence: [`sourceSha256:${failure.sourceHash}`],
+          ownerStage: "creative",
+          allowedChanges: [],
+          blocking: true,
+        })));
     }
     const irs = [...this.accepted.values()];
     const allFindings = validateCreativeShots(this.contract, irs);
     if (allFindings.some(f => f.blocking)) fail("CREATIVE_FILM_UNVERIFIED", "complete film contract did not pass", allFindings);
     const result = object(state.result, "phase3 result");
     const stages = object(result.stages ?? {}, "phase3 stages");
+    const telemetry = [...this.shotMetrics.entries()].map(([shotId, metric]) => ({
+      shotId,
+      technicalRetries: metric.technicalRetries,
+      repairAttempts: metric.repairAttempts,
+      semanticReviews: metric.semanticReviews,
+      cacheReused: metric.cacheReused,
+      elapsedMs: Math.max(0, Date.now() - metric.startedAt),
+      ...(metric.promptChars !== undefined ? { promptChars: metric.promptChars } : {}),
+      ...(metric.promptBytes !== undefined ? { promptBytes: metric.promptBytes } : {}),
+      ...(metric.outputHash ? { outputHash: metric.outputHash } : {}),
+    }));
     stages.phase3Fusion = { status: "passed", executor: CREATIVE_EXECUTOR_VERSION, contractHash: this.contract.hash,
-      shotHashes: irs.map(shot => ({ id: shot.id, sourceHash: shot.sourceHash, outputHash: creativeHash(shot) })) };
+      shotHashes: irs.map(shot => ({ id: shot.id, sourceHash: shot.sourceHash, outputHash: creativeHash(shot) })),
+      telemetry };
     result.stages = stages;
     const output = { success: true, shots: outputs, result, timing: 0 };
     await this.options.completeStage?.("phase3", snapshot(output)); return output;

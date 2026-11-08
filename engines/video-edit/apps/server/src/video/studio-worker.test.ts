@@ -112,7 +112,7 @@ vi.mock("@hyperreality/video-studio", async (importOriginal) => ({
     }
   },
   reviewStage: doubles.review,
-  WorkloomLLMEngine: { fromEnv: () => ({ attachRouter: vi.fn() }) },
+  WorkloomLLMEngine: { fromEnv: () => ({ model: "deepseek-flash", attachRouter: vi.fn() }) },
   installVendorEngineBridge: vi.fn(),
   installVendorRenderCompatBridge: vi.fn(),
   installVendorPortraitBindingBridge: () => doubles.uninstall,
@@ -277,8 +277,18 @@ async function archiveOutput(projectId: string, attempt: number) {
 }
 
 describe("worker creative rollout receipts", () => {
+  const stubCreativeBudget = () => {
+    vi.stubEnv("VM_CREATIVE_BUDGET_CNY", "10");
+    vi.stubEnv("VM_CREATIVE_MAX_CALLS", "40");
+    vi.stubEnv("VM_CREATIVE_MAX_TOKENS", "200000");
+    vi.stubEnv("VM_CREATIVE_MAX_WALL_MS", "600000");
+    vi.stubEnv("VM_CREATIVE_MODEL_PRICES", JSON.stringify({ "deepseek-flash": {
+      inputCnyPerMillion: 1.5, outputCnyPerMillion: 3.5,
+    } }));
+  };
   it.each(["off", "shadow", "enforce"])("%s cannot dispatch around unresolved paid usage", async mode => {
     vi.stubEnv("PIPELINE_COORDINATOR", mode); vi.stubEnv("PIPELINE_SCOPE", "all");
+    if (mode === "enforce") stubCreativeBudget();
     doubles.assertNoCreativePendingUsage.mockRejectedValueOnce(new Error("CREATIVE_USAGE_UNKNOWN"));
     const { entry, projectId } = await runToTerminal(false);
     expect(entry).toMatchObject({ status: "failed", error: "CREATIVE_USAGE_UNKNOWN" });
@@ -305,13 +315,31 @@ describe("worker creative rollout receipts", () => {
     expect(native.shots).toEqual(before.shots);
   });
 
+  it("enforce fails closed before lease, project inspection or model dispatch when creative budgets are absent", async () => {
+    vi.stubEnv("PIPELINE_COORDINATOR", "enforce"); vi.stubEnv("PIPELINE_SCOPE", "all");
+    for (const key of ["VM_CREATIVE_BUDGET_CNY", "VM_CREATIVE_MAX_CALLS", "VM_CREATIVE_MAX_TOKENS",
+      "VM_CREATIVE_MAX_WALL_MS", "VM_CREATIVE_MODEL_PRICES"]) vi.stubEnv(key, "");
+    const before = doubles.assertNoCreativePendingUsage.mock.calls.length;
+    const { entry } = await runToTerminal(false);
+    expect(entry).toMatchObject({ status: "failed", error: expect.stringContaining("CREATIVE_BUDGET_UNCONFIGURED") });
+    expect(doubles.assertNoCreativePendingUsage).toHaveBeenCalledTimes(before);
+    expect(doubles.createCreativeSession).not.toHaveBeenCalled();
+    expect(doubles.release).not.toHaveBeenCalled();
+    expect(doubles.runPreproduction).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])("enforce binds archived prompt bytes and publishes finished only after the creative receipt (receipt failure=%s)", async failReceipt => {
     vi.stubEnv("PIPELINE_COORDINATOR", "enforce"); vi.stubEnv("PIPELINE_SCOPE", "all");
+    stubCreativeBudget();
     const contractHash = "a".repeat(64), planHash = "b".repeat(64);
     const completeStage = vi.fn(async () => undefined), finish = vi.fn(async () => undefined);
     if (failReceipt) finish.mockRejectedValueOnce(new Error("creative final receipt unavailable"));
     doubles.createCreativeSession.mockResolvedValue({ contract: { hash: contractHash }, planHash, beginStage: vi.fn(async () => undefined),
       completeStage, finish, shouldAbort: () => false });
+    doubles.gateContracts.G6_PROMPT = { shots: [
+      { shotId: "S01", prompt: "镜".repeat(1_200), fields: { 场景: "真实场景" } },
+      { shotId: "S02", prompt: "镜".repeat(1_200), fields: { 场景: "真实场景" } },
+    ] };
     doubles.runPreproduction.mockResolvedValue(success());
     const { entry, projectId, runId } = await runToTerminal(false);
     expect(doubles.runPreproduction).toHaveBeenCalledTimes(1);

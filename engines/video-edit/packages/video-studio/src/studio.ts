@@ -202,6 +202,7 @@ export interface StudioConfig {
     sourceMetadata: Record<string, unknown>;
     selectCandidate(input: { contract: CreativeContract; visualAuthority?: ProductVisualAuthority; creativeInput: unknown;
       assertCurrent: () => Promise<void> }): Promise<CreativeCandidateAssessment>;
+    reviewShot?: CreativeRuntimeOptions["reviewShot"];
     session: {
       readonly contract: CreativeContract;
       bindContract(contract: CreativeContract, marketing?: PrdMarketingAuthority): Promise<CreativeContract>;
@@ -839,6 +840,7 @@ export class VideoStudio {
             fields: { keys, labels, requiredKeys }, cache: { read: key => execution.session.readCache(key),
               write: (key, value) => execution.session.writeCache(key, value) },
             assertCurrent, selectedCandidate, preparationStage: "native-preparation",
+            ...(execution.reviewShot ? { reviewShot: execution.reviewShot } : {}),
             beginStage: stage => execution.session.beginStage(stage),
             completeStage: (stage, output) => execution.session.completeStage(stage, output),
             onEvent: event => execution.session.onEvent(event),

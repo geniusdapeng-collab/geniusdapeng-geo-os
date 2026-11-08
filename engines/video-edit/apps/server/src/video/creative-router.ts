@@ -2,8 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { CreativeContractError, ProductVisualAuthorityError } from "@hyperreality/video-studio";
 import { loadPipelineFeatureFlags } from "@workloom/pipeline-control";
-import { scopeOf, writeProcedure } from "../trpc/context.js";
-import { applyRepair, compileIntent, creativeCandidates, repairPreview } from "./creative-api-service.js";
+import { protectedProcedure, scopeOf, writeProcedure } from "../trpc/context.js";
+import { applyRepair, compileIntent, creativeCandidates, creativeTelemetry, repairPreview } from "./creative-api-service.js";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -37,6 +37,9 @@ async function mapped<T>(execute: () => Promise<T>): Promise<T> {
 }
 
 export const creativeStudioProcedures = {
+  creativeTelemetry: protectedProcedure.input(z.object({ projectId: id }).strict()).query(({ ctx, input }) =>
+    mapped(() => creativeTelemetry(actorOf(ctx.identity, input.projectId)))),
+
   compileIntent: writeProcedure.input(z.object({
     ...command, rawIntent: z.string().min(1).max(200_000),
     metadata: z.record(z.string(), z.json()).refine(value => Buffer.byteLength(JSON.stringify(value)) <= 512 * 1024).optional(),

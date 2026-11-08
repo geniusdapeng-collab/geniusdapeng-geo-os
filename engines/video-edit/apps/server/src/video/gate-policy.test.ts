@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   AUTO_GATES, GATE_PRODUCER_STAGE, appliedApprovalFeedback, gateDeterministicChecks, portraitGateEvidence, portraitReviewManifest,
-  renderSubmitAutoAllowed, systemAutoApprovalEnabled,
+  promptPackageGateChecks, renderSubmitAutoAllowed, systemAutoApprovalEnabled,
 } from "./gate-policy.js";
 const selectionContext = vi.hoisted(() => vi.fn<() => string | undefined>());
 vi.mock("@hyperreality/video-studio", () => ({ currentCreativeSelectionContext: selectionContext }));
@@ -173,4 +173,25 @@ it("批准后的建议只作审核注解，不得作为改写已批准产物的�
   expect(appliedApprovalFeedback(true, ["建议下一镜优化", 7])).toEqual([]);
   expect(appliedApprovalFeedback(false, ["修改字段A", " ", 7])).toEqual(["修改字段A"]);
   expect(appliedApprovalFeedback(false, "not-an-array")).toEqual([]);
+});
+
+describe("G6 exact prompt package preflight", () => {
+  it("requires current structured cards and checks each final native prompt", () => {
+    expect(promptPackageGateChecks(undefined)).toEqual([expect.objectContaining({ id: "prompt-package-present", pass: false })]);
+    const good = promptPackageGateChecks({ shots: [
+      { shotId: "S01", prompt: "镜".repeat(1_200), fields: { 场景: "窗边" } },
+      { shotId: "S02", prompt: "镜".repeat(3_000), fields: { 场景: "街口" } },
+    ] });
+    expect(good.every(check => check.pass)).toBe(true);
+    expect(good.map(check => check.id)).toContain("prompt-length:S02");
+  });
+
+  it("rejects over-3000 prompts and duplicate shot identities before semantic review", () => {
+    const bad = promptPackageGateChecks({ shots: [
+      { shotId: "S01", prompt: "镜".repeat(3_001), fields: { 场景: "窗边" } },
+      { shotId: "S01", prompt: "镜".repeat(1_200), fields: { 场景: "街口" } },
+    ] });
+    expect(bad).toContainEqual(expect.objectContaining({ id: "prompt-length:S01", pass: false, hard: true }));
+    expect(bad).toContainEqual(expect.objectContaining({ id: "prompt-shape:S01", pass: false, hard: true }));
+  });
 });

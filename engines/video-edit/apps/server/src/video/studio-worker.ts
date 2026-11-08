@@ -76,6 +76,8 @@ import { assertNoCreativePendingUsage, createCreativeExecutionSession, verifyCre
 import { runEarlyCreativeCandidates } from "./creative-api-service.js";
 import { withCreativeExternalBudget, guardedCreativeExternalCall as dispatchCreativeExternalCall } from "./creative-external-budget.js";
 import { observeCreativeShadow } from "./creative-shadow.js";
+import { createCreativeShotQualityReviewer } from "./creative-shot-quality.js";
+import { assertCreativeConfigurationReady } from "./creative-config.js";
 import {
   AUTO_GATES,
   GATE_PRODUCER_STAGE,
@@ -84,6 +86,7 @@ import {
   isProducerRejection,
   producerModeFromEnv,
   portraitGateEvidence,
+  promptPackageGateChecks,
   systemAutoApprovalEnabled,
   writeGateArtifact,
   type ProducerMode,
@@ -604,6 +607,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
       "LLM 引擎未配置（需 LLM_BASE_URL/LLM_API_KEY/LLM_MODEL），拒绝启动预生产（vendor 纪律：禁止静默降级）",
     );
   }
+  const creativeShotReviewer = createCreativeShotQualityReviewer(llm);
   // v3.0 收口：注入路由配置——预生产全部 LLM 调用经 routeSmart
   // （preproduction 场景 × 降级链 × 真实计量 × model.call 事件留痕，fastModel 快速调用强制 L1）
   const forceModel = resolveVideoModel(process.env) || undefined;
@@ -879,7 +883,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
             hard: true,
             detail: "本次剧本结构 characters_count=0 且 PortraitStudio 无角色/商品任务",
           }]
-        : [...(portrait?.deterministic ?? gateDeterministicChecks(gate, req.contentMd ?? "")), ...g7Checks];
+        : [...(portrait?.deterministic ?? gateDeterministicChecks(gate, req.contentMd ?? "")),
+          ...(gate === "G6_PROMPT" && creativeSession ? promptPackageGateChecks(req.contracts) : []), ...g7Checks];
       const marketingReview = marketingGateEvidence?.forReview(gate, currentArtifact);
       if (PRODUCER_MODE === "review") {
         if (portrait?.notApplicable) {
@@ -1131,6 +1136,7 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
     let detachStructuredLog: (() => void) | null = null;
     let projectMeta: Awaited<ReturnType<typeof readProjectMeta>> = null;
     try {
+      if (controlMode === "enforce") assertCreativeConfigurationReady(process.env, llm.model);
       activeLease = await acquireProjectLease(scope, input.projectId);
       if (!activeLease) {
         throw new Error(`项目 ${input.projectId} 已有执行者持有档案租约（不重复启动，避免双份烧额度）`);
@@ -1273,7 +1279,8 @@ export function startRun(scope: Scope, input: StudioRunInput): string {
               ...(portraitOptions.enabled && productReferences.length ? { portraits: { ...portraitOptions,
                 archivedProductReferences: productReferences.map(({ productId, productName }) => ({ productId, productName })) } } : {}),
               ...(activeCreative ? { creativeExecution: { mode: "enforce" as const, rawIntent: input.rawIntent ?? input.intent,
-                sourceMetadata, session: activeCreative, selectCandidate: async ({ contract, visualAuthority, creativeInput, assertCurrent }) => {
+                sourceMetadata, session: activeCreative, reviewShot: creativeShotReviewer,
+                selectCandidate: async ({ contract, visualAuthority, creativeInput, assertCurrent }) => {
                   const endpoint = videoTextEndpointFromEnv();
                   if (!endpoint || endpoint.model !== llm.model) throw new Error("CREATIVE_BUDGET_UNCONFIGURED: candidate model must match the current Studio model");
                   return runEarlyCreativeCandidates({ session: activeCreative, endpoint, runId: entry.runId, count: 2, creativeInput,

@@ -16,7 +16,8 @@ import type { ProducerStage } from "@hyperreality/video-studio";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, resolve, relative, sep } from "node:path";
-import { currentCreativeSelectionContext, type ProducerArtifact, type DeterministicCheck, type PortraitIndex } from "@hyperreality/video-studio";
+import { currentCreativeSelectionContext, type ProducerArtifact, type DeterministicCheck, type PortraitIndex,
+  type ProducerReviewContracts } from "@hyperreality/video-studio";
 import { loadPipelineFeatureFlags } from "@workloom/pipeline-control";
 
 /**
@@ -33,6 +34,68 @@ export const AUTO_GATES = new Set<string>([
   "G7_FINAL",
   "G8_RENDER",
 ]);
+
+export const NATIVE_PROMPT_MIN_CHARS = 1_200;
+export const NATIVE_PROMPT_MAX_CHARS = 3_000;
+/** Aligns the pre-G6 package bound with the later exact qualification request ceiling. */
+export const PROMPT_PACKAGE_MAX_BYTES = 24_000_000;
+
+/**
+ * G6 receives the exact structured cards through the native bridge. These
+ * deterministic checks bind prompt length and package bytes before a semantic
+ * review can spend calls or pass a prompt that render qualification will reject.
+ */
+export function promptPackageGateChecks(contracts: ProducerReviewContracts | undefined): Array<{
+  id: string; pass: boolean; detail: string; hard: true;
+}> {
+  if (!contracts || !Array.isArray(contracts.shots) || contracts.shots.length === 0) {
+    return [{ id: "prompt-package-present", pass: false, hard: true,
+      detail: "G6 缺少来自本次原生流水线的结构化镜头卡，不能重建或猜测提示词" }];
+  }
+  const checks: Array<{ id: string; pass: boolean; detail: string; hard: true }> = [{
+    id: "prompt-package-present",
+    pass: true,
+    hard: true,
+    detail: `${contracts.shots.length} 个本次结构化原生镜头卡已绑定`,
+  }];
+  const ids = new Set<string>();
+  let totalBytes = 0;
+  for (const [index, raw] of contracts.shots.entries()) {
+    const shot = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+    const id = typeof shot.shotId === "string" && shot.shotId.trim() ? shot.shotId
+      : typeof shot.shot_id === "string" && shot.shot_id.trim() ? shot.shot_id : `index-${index + 1}`;
+    const prompt = typeof shot.prompt === "string" ? shot.prompt : "";
+    const bytes = Buffer.byteLength(JSON.stringify({ shotId: id, prompt, fields: shot.fields ?? null }));
+    totalBytes += bytes;
+    const unique = !ids.has(id);
+    ids.add(id);
+    checks.push({
+      id: `prompt-shape:${id}`,
+      pass: unique && Boolean(prompt.trim()) && Boolean(shot.fields && typeof shot.fields === "object" && !Array.isArray(shot.fields)),
+      hard: true,
+      detail: `${id}: ${unique ? "唯一" : "重复"}，prompt=${prompt.length} 字符，fields=${shot.fields && typeof shot.fields === "object" ? Object.keys(shot.fields).length : 0} 项`,
+    });
+    checks.push({
+      id: `prompt-length:${id}`,
+      pass: prompt.length >= NATIVE_PROMPT_MIN_CHARS && prompt.length <= NATIVE_PROMPT_MAX_CHARS,
+      hard: true,
+      detail: `${id}: 最终原生 prompt ${prompt.length} 字符（允许 ${NATIVE_PROMPT_MIN_CHARS}-${NATIVE_PROMPT_MAX_CHARS} UTF-16）`,
+    });
+    checks.push({
+      id: `prompt-bytes:${id}`,
+      pass: bytes <= PROMPT_PACKAGE_MAX_BYTES,
+      hard: true,
+      detail: `${id}: 镜头 prompt+fields JSON ${bytes} 字节（上限 ${PROMPT_PACKAGE_MAX_BYTES}）`,
+    });
+  }
+  checks.push({
+    id: "prompt-package-bytes",
+    pass: totalBytes <= PROMPT_PACKAGE_MAX_BYTES,
+    hard: true,
+    detail: `本次 G6 结构化 prompt 包 ${totalBytes} 字节（上限 ${PROMPT_PACKAGE_MAX_BYTES}）`,
+  });
+  return checks;
+}
 
 /**
  * Global kill switch for policy-based auto-approval. The default is enforce;

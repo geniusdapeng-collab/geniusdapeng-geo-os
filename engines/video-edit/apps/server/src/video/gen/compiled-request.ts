@@ -8,6 +8,9 @@ import { SubmissionError, submissionRequestHash } from "./submission-ledger.js";
 import { resolveProviderModel } from "./catalog.js";
 import { serviceTierRejectionReason } from "./params.js";
 
+export const NATIVE_VIDEO_PROMPT_MAX_CHARS = 3_000;
+export const PROVIDER_REQUEST_MAX_BYTES = 24_000_000;
+
 export interface CompiledProviderRequest {
   schemaVersion: "workloom.provider-request/v1";
   provider: string;
@@ -109,6 +112,9 @@ export function compileProviderRequest(provider: string, req: GenRequest, option
   const target = new URL(endpoint);
   if (!["https:", "http:"].includes(target.protocol) || target.username || target.password || target.hash) throw new SubmissionError("REQUEST_INVALID", "供应商地址非法或含秘密");
   const bodyJson = canonicalRenderJson(body);
+  if (Buffer.byteLength(bodyJson) > PROVIDER_REQUEST_MAX_BYTES) {
+    throw new SubmissionError("REQUEST_TOO_LARGE", `完整供应商请求超过 ${PROVIDER_REQUEST_MAX_BYTES} 字节，禁止静默压缩或删除字段`);
+  }
   return { schemaVersion: "workloom.provider-request/v1", provider, providerModel: model, endpoint, method: "POST",
     body: JSON.parse(bodyJson) as Record<string, unknown>, bodyJson,
     payloadHash: renderSha256(canonicalRenderJson({ provider, providerModel: model, endpoint, method: "POST", body: JSON.parse(bodyJson) })) };
@@ -116,9 +122,9 @@ export function compileProviderRequest(provider: string, req: GenRequest, option
 
 export function buildRenderPrompt(script: Pick<RenderScriptLike, "md">, model: MediaModel): string {
   const prompt = script.md;
-  const max = model.limits?.maxPromptChars ?? 4000;
+  const max = Math.min(model.limits?.maxPromptChars ?? 4000, NATIVE_VIDEO_PROMPT_MAX_CHARS);
   if (!prompt.trim()) throw new SubmissionError("REQUEST_INVALID", "镜头提示词为空");
-  if (prompt.length > max) throw new SubmissionError("PROMPT_TOO_LONG", `完整提示词 ${prompt.length} 字符超过模型上限 ${max}，必须重新编译并审核，禁止截断`);
+  if (prompt.length > max) throw new SubmissionError("PROMPT_TOO_LONG", `完整提示词 ${prompt.length} 字符超过最终原生上限 ${max}，必须重新编译并审核，禁止截断`);
   return prompt;
 }
 

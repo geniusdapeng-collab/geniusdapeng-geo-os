@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { compileFunction } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetCircuit } from "@workloom/base/model-router";
-import { buildCreativeShots, compileCreativeContract, compileCreativePrompt, creativeHash, creativeTextHash, type CreativeShot } from "./constraint-compiler.js";
+import { buildCreativeShots, compileCreativeContract, compileCreativePrompt, creativeCanonical, creativeHash, creativeTextHash, type CreativeShot } from "./constraint-compiler.js";
 import { CreativeRuntime, withCreativeBudget, withCreativeRuntime, type CreativeBudgetHooks, type CreativeRuntimeOptions } from "./creative-runtime.js";
 import { creativeCandidateHash, CREATIVE_ART_DIMENSIONS, type CreativeCandidateAssessment } from "./creative-evaluation.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
@@ -71,7 +71,10 @@ function fixture(opts: {
   };
   const options: CreativeRuntimeOptions = { contract, model: DEEPSEEK_FLASH_MODEL, nativeSchemaHash: creativeTextHash("native-schema-v1"),
     fields: { keys, labels, requiredKeys }, cache: { read: async key => cache.has(key) ? structuredClone(cache.get(key)) : null,
-      write: async (key, value) => { cache.set(key, structuredClone(value)); } }, onEvent: async event => { events.push(event); },
+      write: async (key, value) => { cache.set(key, structuredClone(value)); } }, onEvent: async event => {
+        creativeCanonical(event);
+        events.push(event);
+      },
     generate: async (prompt, schema) => {
       const result = await llm.reasonStructured(prompt, schema, { scene: "video.prompt.synthesis" });
       if (!result.success || !result.data) throw new Error(result.error ?? "missing fixture model output");
@@ -238,7 +241,7 @@ describe("enforced native creative runtime and HTTP boundary", () => {
     expect(f.requests).toHaveLength(2);
   });
 
-  it.each(["forged-ir", "foreign-shot", "extra-shot"])("rejects %s in real model response with one HTTP call", async (kind) => {
+  it.each(["forged-ir", "foreign-shot", "extra-shot"])("rejects %s in real model response with the bounded technical policy", async (kind) => {
     const f = fixture({ onRequest: ({ schema, call }) => {
       const value = fieldsForSchema(schema, nativeFields());
       if (kind === "forged-ir") value.shots[0]!.fields._workloomCreativeShot = { claimed: "accepted" };
@@ -246,14 +249,121 @@ describe("enforced native creative runtime and HTTP boundary", () => {
       if (kind === "extra-shot") value.shots.push({ shotId: "foreign", fields: nativeFields() });
       return envelope(value, call);
     } });
-    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow(/CREATIVE_(FORGED_IR|MODEL_SCOPE_CHANGED)/);
-    expect(f.requests).toHaveLength(1); expect(f.cache.size).toBe(0);
+    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow(
+      kind === "forged-ir" ? /CREATIVE_FORGED_IR/ : /CREATIVE_SHOTS_UNRESOLVED/);
+    expect(f.requests).toHaveLength(kind === "forged-ir" ? 1 : 4);
+    expect(f.cache.size).toBe(0);
+  });
+
+  it("separates one bounded technical JSON correction from semantic repair", async () => {
+    const f = fixture({ onRequest: ({ schema, call }) => {
+      if (call === 1) return envelope({ shots: [] }, call);
+      const shotId = (schema.shots as Array<{ shotId: string }>)[0]!.shotId;
+      return envelope(fieldsForSchema(schema, nativeFields()), call);
+    } });
+    const fused = await f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent));
+    expect((fused.shots as Obj[]).map(shot => shot.shotId)).toEqual(["s1", "s2"]);
+    expect(f.requests).toHaveLength(3);
+    expect(f.requests[1]!.prompt).toContain("上一次响应未通过技术校验");
+    expect(f.events.find(event => event.kind === "creative.shot.technical_retry")?.payload).toMatchObject({
+      shotId: "s1", attempt: 1, failureCode: "CREATIVE_MODEL_SCOPE_CHANGED",
+    });
+    expect(f.events.find(event => event.kind === "creative.shot.accepted" && event.payload.shotId === "s1")?.payload)
+      .toMatchObject({ telemetry: { technicalRetries: 1 } });
+    expect((fused.result as Obj).stages).toMatchObject({ phase3Fusion: { telemetry: [
+      expect.objectContaining({ shotId: "s1", technicalRetries: 1 }),
+      expect.objectContaining({ shotId: "s2", technicalRetries: 0 }),
+    ] } });
+  });
+
+  it("continues independent shots after one bounded shot failure and resumes only the failed shot", async () => {
+    const failingFirst = fixture({ onRequest: ({ schema, call }) => {
+      const shotId = (schema.shots as Array<{ shotId: string }>)[0]!.shotId;
+      return envelope(shotId === "s1" ? { shots: [] } : fieldsForSchema(schema, nativeFields()), call);
+    } });
+    await expect(failingFirst.run(() => failingFirst.runtime.executePhase3(nativeInputs(), failingFirst.agent)))
+      .rejects.toThrow("CREATIVE_SHOTS_UNRESOLVED");
+    expect(failingFirst.requests).toHaveLength(3);
+    expect(failingFirst.cache.size).toBe(1);
+    expect(failingFirst.events.find(event => event.kind === "creative.shot.failed")?.payload)
+      .toMatchObject({ shotId: "s1", code: "CREATIVE_TECHNICAL_RETRY_EXHAUSTED" });
+    expect(failingFirst.events.find(event => event.kind === "creative.phase3.partial")?.payload)
+      .toMatchObject({ acceptedShotIds: ["s2"] });
+
+    const resumed = fixture({ cache: failingFirst.cache });
+    const finished = await resumed.run(() => resumed.runtime.executePhase3(nativeInputs(), resumed.agent));
+    expect(resumed.requests).toHaveLength(2);
+    expect(resumed.requests[0]!.prompt).toContain("只处理 s1");
+    expect((finished.shots as Obj[]).map(shot => shot.shotId)).toEqual(["s1", "s2"]);
+    expect(resumed.events.find(event => event.kind === "creative.shot.accepted" && event.payload.shotId === "s2")?.payload)
+      .toMatchObject({ telemetry: { cacheReused: false } });
+  });
+
+  it("uses accepted previous-shot bytes in the continuity ledger", async () => {
+    const f = fixture();
+    await f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent));
+    const secondPrompt = f.requests[1]!.prompt;
+    expect(secondPrompt).toContain("上一镜以已通过的完整字段状态为连续性权威");
+    expect(secondPrompt).toContain('"previous":{"fields"');
+    expect(secondPrompt).toContain('"shotId":"s1"');
+    expect(secondPrompt).toContain("镜头保留窗台的光线运动及背景细节");
+  });
+
+  it("repairs an over-3000-character native prompt before accepting the shot", async () => {
+    const f = fixture({ onRequest: ({ schema, call }) => {
+      if (Array.isArray(schema.shots)) {
+        const shotId = (schema.shots as Array<{ shotId: string }>)[0]!.shotId;
+        const fields = nativeFields(shotId === "s1" ? { scene: "长".repeat(3_200) } : {});
+        return envelope(fieldsForSchema(schema, fields), call);
+      }
+      const patch = structuredClone(schema) as unknown as CreativeShot;
+      patch.fields[labels.scene!] = "窗台长镜头，主体动作与空间关系清楚。";
+      return envelope(patch, call);
+    } });
+    const fused = await f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent));
+    expect(f.requests).toHaveLength(3);
+    expect(String((fused.shots as Obj[])[0]!.prompt).length).toBeLessThanOrEqual(3_000);
+    expect(f.events.filter(event => event.kind === "creative.repair.started")[0]?.payload.allowedChanges)
+      .toContain(`fields.${labels.scene}`);
+  });
+
+  it("feeds source-bound semantic findings into the same bounded field repair loop", async () => {
+    let reviewShot = 0;
+    const f = fixture({
+      runtime: {
+        reviewShot: async context => {
+          reviewShot += 1;
+          if (context.shot.id === "s1" && context.attempt === 0) {
+            return { findings: [{
+              code: "SQ5_PURPOSE_UNCLEAR", targetId: "s1", fieldPath: `fields.${labels.action}`,
+              expected: "这一镜有明确叙事作用", actual: "动作过于泛化", evidence: ["fixture-source"],
+              ownerStage: "creative", allowedChanges: [`fields.${labels.action}`], blocking: true,
+            }], checks: [{ id: "SQ5_PURPOSE", pass: false, evidence: "action too generic" }] };
+          }
+          return { findings: [], checks: [{ id: "SQ5_PURPOSE", pass: true, evidence: "clear source-bound action" }] };
+        },
+      },
+      onRequest: ({ schema, call }) => {
+        if (!Array.isArray(schema.shots)) {
+          const patch = structuredClone(schema) as unknown as CreativeShot;
+          patch.fields[labels.action!] = "人物按下窗边开关，室内光线随之转亮";
+          return envelope(patch, call);
+        }
+        return envelope(fieldsForSchema(schema, nativeFields()), call);
+      },
+    });
+    const fused = await f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent));
+    expect(f.requests).toHaveLength(3);
+    expect(reviewShot).toBe(3);
+    expect(String((fused.shots as Obj[])[0]!.prompt)).toContain("人物按下窗边开关");
+    expect(f.events.find(event => event.kind === "creative.shot.reviewed")?.payload)
+      .toMatchObject({ shotId: "s1", attempt: 0 });
   });
 
   it("resumes the accepted first shot after the second fails without repeating the accepted request", async () => {
     const first = fixture({ onRequest: ({ schema, call }) => envelope(call === 1 ? fieldsForSchema(schema, nativeFields()) : { shots: [] }, call) });
-    await expect(first.run(() => first.runtime.executePhase3(nativeInputs(), first.agent))).rejects.toThrow("CREATIVE_MODEL_SCOPE_CHANGED");
-    expect(first.requests).toHaveLength(2); expect(first.cache.size).toBe(1);
+    await expect(first.run(() => first.runtime.executePhase3(nativeInputs(), first.agent))).rejects.toThrow("CREATIVE_SHOTS_UNRESOLVED");
+    expect(first.requests).toHaveLength(3); expect(first.cache.size).toBe(1);
     const next = fixture({ cache: first.cache });
     const finished = await next.run(() => next.runtime.executePhase3(nativeInputs(), next.agent));
     expect(next.requests).toHaveLength(1); expect(next.requests[0]!.prompt).toContain("只处理 s2");
@@ -288,26 +398,36 @@ describe("enforced native creative runtime and HTTP boundary", () => {
     expect(f.events.find(e => e.kind === "creative.repair.applied")?.payload).toMatchObject({ actualDiff: [`fields.${labels.action}`], derivedFieldOrder: expect.arrayContaining([labels.action]) });
   });
 
-  it.each(["same", "outside"])("stops local repair on %s actual diff without another HTTP attempt", async (kind) => {
+  it.each(["same", "outside"])("stops local repair on %s actual diff with the bounded technical policy", async (kind) => {
     const f = fixture({ onRequest: ({ schema, call }) => {
       if (call === 1) { const fields = nativeFields(); delete fields.action; return envelope(fieldsForSchema(schema, fields), call); }
+      if (Array.isArray(schema.shots) && (schema.shots as Array<{ shotId: string }>)[0]?.shotId === "s2") {
+        return envelope(fieldsForSchema(schema, nativeFields()), call);
+      }
       const patch = structuredClone(schema) as unknown as CreativeShot;
       if (kind === "outside") { patch.fields[labels.action!] = "repair"; patch.id = "changed-id"; }
       return envelope(patch, call);
     } });
-    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow(kind === "same" ? "REPAIR_NO_PROGRESS" : "PATCH_SCOPE_VIOLATION");
-    expect(f.requests).toHaveLength(2);
+    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow("CREATIVE_SHOTS_UNRESOLVED");
+    expect(f.events.find(event => event.kind === "creative.shot.failed")?.payload.code)
+      .toBe(kind === "same" ? "REPAIR_NO_PROGRESS" : "PATCH_SCOPE_VIOLATION");
+    expect(f.requests).toHaveLength(kind === "outside" ? 4 : 3);
+    expect(f.events.filter(event => event.kind === "creative.repair.technical_retry")).toHaveLength(kind === "outside" ? 1 : 0);
   });
 
   it("caps unresolved repair at two actual local requests", async () => {
     const f = fixture({ onRequest: ({ schema, call }) => {
       if (call === 1) { const fields = nativeFields(); delete fields.action; return envelope(fieldsForSchema(schema, fields), call); }
+      if (Array.isArray(schema.shots) && (schema.shots as Array<{ shotId: string }>)[0]?.shotId === "s2") {
+        return envelope(fieldsForSchema(schema, nativeFields()), call);
+      }
       const patch = structuredClone(schema) as unknown as CreativeShot;
       patch.fields[labels.action!] = call === 2 ? "" : " ";
       return envelope(patch, call);
     } });
-    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow("CREATIVE_REPAIR_LIMIT");
-    expect(f.requests).toHaveLength(3);
+    await expect(f.run(() => f.runtime.executePhase3(nativeInputs(), f.agent))).rejects.toThrow("CREATIVE_SHOTS_UNRESOLVED");
+    expect(f.events.find(event => event.kind === "creative.shot.failed")?.payload.code).toBe("CREATIVE_REPAIR_LIMIT");
+    expect(f.requests).toHaveLength(4);
     expect(f.events.filter(event => event.kind === "creative.repair.started").map(event => event.payload.attempt)).toEqual([1, 2]);
   });
 

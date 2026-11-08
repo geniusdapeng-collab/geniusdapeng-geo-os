@@ -146,8 +146,10 @@ function shotInputs(s: Scenario, contract: Session["contract"]) {
   }));
 }
 function fixtureFields(s: Scenario, shot: ReturnType<typeof shotInputs>[number], keys: string[]): Obj {
-  const natural = "利用左侧自然漫射光的运动建立构图，保留右侧暗部与几何轮廓之间的连续变化。";
-  const fields = Object.fromEntries(keys.map(key => [key, natural.repeat(key === "timeline" ? 8 : 6)]));
+  const natural = "利用左侧自然漫射光建立构图，保留右侧暗部与几何轮廓。";
+  const fields = Object.fromEntries(keys.map(key => [key, key === "timeline"
+    ? `T0-3s ${natural}；T3-6s 光点缓慢聚合。`
+    : natural]));
   fields.scene = s.combination === "claims_rights" ? shot.shotId === "S1" ? firstClaim : secondClaim : shot.scene;
   fields.action = shot.action;
   fields.character = s.combination === "cast_voice" ? approvedName : "场景中无人出镜";
@@ -157,7 +159,7 @@ function fixtureFields(s: Scenario, shot: ReturnType<typeof shotInputs>[number],
   fields.color_palette = s.combination === "visual_platform" ? "暖橙色为主" : "窗边暖色";
   fields.composition = s.combination === "time_text" ? "屏上独立图形文字：节点关系" : "几何主体位于安全画幅内";
   fields.negative = s.combination === "visual_platform" ? ABSTRACT_PRODUCT_RENDER_RULE : "无未经授权文字";
-  for (const key of ["scene", "action", "color_palette", "composition", "audio"]) fields[key] = `${String(fields[key])}。${natural.repeat(6)}`;
+  for (const key of ["scene", "action", "color_palette", "composition", "audio"]) fields[key] = `${String(fields[key])}。${natural}`;
   return fields;
 }
 function successEnvelope(id: string, value: unknown): Response {
