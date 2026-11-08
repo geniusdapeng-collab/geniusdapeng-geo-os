@@ -40906,16 +40906,16 @@
     {
       "path": "packages/video-studio/src/creative-runtime.test.ts",
       "mode": "100644",
-      "bytes": 36616,
-      "targetSha256": "926b5de1370885989f427f232250c3042efa747b2f119bbd10481533066601df",
+      "bytes": 36683,
+      "targetSha256": "2334b6d17a313897681510d20237df7d00adb7e4aba85dbc672ed109e10483ad",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },
     {
       "path": "packages/video-studio/src/creative-runtime.ts",
       "mode": "100644",
-      "bytes": 69507,
-      "targetSha256": "f518e6bf1c4f8ab1bb6f645e4f8780d0caac8dec71ae417ff40373f20a7083af",
+      "bytes": 69497,
+      "targetSha256": "0d7a269fdcae05bbd6b1d0650c50070e7bea54f43bfadfbf007a9384aa221f51",
       "evidence": "B",
       "reason": "PengManager host-owned runtime integration, capability, test, documentation, asset, or tool file retained across the full upstream rebind."
     },

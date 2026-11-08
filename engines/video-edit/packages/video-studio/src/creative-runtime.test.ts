@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { compileFunction } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetCircuit } from "@workloom/base/model-router";
-import { buildCreativeShots, compileCreativeContract, compileCreativePrompt, creativeHash, creativeTextHash, type CreativeShot } from "./constraint-compiler.js";
+import { buildCreativeShots, compileCreativeContract, compileCreativePrompt, creativeCanonical, creativeHash, creativeTextHash, type CreativeShot } from "./constraint-compiler.js";
 import { CreativeRuntime, withCreativeBudget, withCreativeRuntime, type CreativeBudgetHooks, type CreativeRuntimeOptions } from "./creative-runtime.js";
 import { creativeCandidateHash, CREATIVE_ART_DIMENSIONS, type CreativeCandidateAssessment } from "./creative-evaluation.js";
 import { WorkloomLLMEngine } from "./llm-adapter.js";
@@ -71,7 +71,10 @@ function fixture(opts: {
   };
   const options: CreativeRuntimeOptions = { contract, model: DEEPSEEK_FLASH_MODEL, nativeSchemaHash: creativeTextHash("native-schema-v1"),
     fields: { keys, labels, requiredKeys }, cache: { read: async key => cache.has(key) ? structuredClone(cache.get(key)) : null,
-      write: async (key, value) => { cache.set(key, structuredClone(value)); } }, onEvent: async event => { events.push(event); },
+      write: async (key, value) => { cache.set(key, structuredClone(value)); } }, onEvent: async event => {
+        creativeCanonical(event);
+        events.push(event);
+      },
     generate: async (prompt, schema) => {
       const result = await llm.reasonStructured(prompt, schema, { scene: "video.prompt.synthesis" });
       if (!result.success || !result.data) throw new Error(result.error ?? "missing fixture model output");

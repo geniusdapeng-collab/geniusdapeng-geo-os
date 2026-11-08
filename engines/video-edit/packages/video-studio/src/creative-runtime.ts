@@ -804,7 +804,7 @@ export class CreativeRuntime {
             this.assertNativeBinding(candidate, ir);
             const prompt = this.render(ir);
             metric.promptChars = prompt.length; metric.promptBytes = Buffer.byteLength(prompt);
-            metric.outputHash = creativeHash(ir); metric.failureCode = undefined;
+            metric.outputHash = creativeHash(ir); delete metric.failureCode;
             this.accepted.set(id, ir);
           }, async () => {
             const view = Object.create(agent) as Recordish;
@@ -875,7 +875,7 @@ export class CreativeRuntime {
             const prompt = this.render(ir);
             const fields = Object.fromEntries(Object.entries(ir.fields).map(([label, value]) => [this.nativeFieldKeys().find(key => this.options.fields.labels[key] === label) ?? label, value]));
             metric.promptChars = prompt.length; metric.promptBytes = Buffer.byteLength(prompt);
-            metric.outputHash = creativeHash(ir); metric.failureCode = undefined;
+            metric.outputHash = creativeHash(ir); delete metric.failureCode;
             this.accepted.set(id, ir);
             return { ...raw, ...fields, fields, prompt, promptCharCount: prompt.length, promptByteCount: Buffer.byteLength(prompt), degraded: false,
               ...(id === this.titleShotId ? { title: fields.title_content, subtitle: fields.subtitle_content } : {}),
