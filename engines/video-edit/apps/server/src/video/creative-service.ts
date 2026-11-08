@@ -16,6 +16,7 @@ import { archiveWorkDir } from "./archive-host.js";
 import type { CreativeExternalRequest } from "./creative-external-budget.js";
 import { createMarketingGateEvidenceGuard } from "./marketing-gate-evidence.js";
 import { compileLegacyShadowPlan } from "./pipeline/shadow.js";
+import { assertCreativeConfigurationReady } from "./creative-config.js";
 
 export const CREATIVE_PLAN = "workloom.video-creative/v1";
 const SHA = /^[a-f0-9]{64}$/;
@@ -75,25 +76,11 @@ async function insertCreativeContract(client: PoolClient, contract: CreativeCont
 type Price = { inputCnyPerMillion: number; outputCnyPerMillion: number };
 interface Budget { maxMicros: number; maxCalls: number; maxTokens: number; maxWallMs: number; price: Price }
 function budgetFor(model: string): Budget {
-  const prices = process.env.VM_CREATIVE_MODEL_PRICES;
-  const maxMicros = Math.floor(Number(process.env.VM_CREATIVE_BUDGET_CNY) * MICRO);
-  const maxCalls = Number(process.env.VM_CREATIVE_MAX_CALLS);
-  const maxTokens = Number(process.env.VM_CREATIVE_MAX_TOKENS);
-  const maxWallMs = Number(process.env.VM_CREATIVE_MAX_WALL_MS);
-  let price: Price | undefined;
   try {
-    const parsed = JSON.parse(prices ?? "{}");
-    if (parsed && Object.hasOwn(parsed, model)) price = parsed[model];
-  } catch {
-    creativeError("CREATIVE_BUDGET_UNCONFIGURED", "模型定价必须是有效 JSON");
+    return assertCreativeConfigurationReady(process.env, model);
+  } catch (error) {
+    return creativeError("CREATIVE_BUDGET_UNCONFIGURED", error instanceof Error ? error.message : String(error));
   }
-  if (!price || ![price.inputCnyPerMillion, price.outputCnyPerMillion].every(value =>
-    typeof value === "number" && Number.isFinite(value) && value > 0)
-    || ![maxMicros, maxCalls, maxTokens, maxWallMs].every(value => Number.isSafeInteger(value) && value > 0)
-    || maxWallMs > 2_147_483_647) {
-    return creativeError("CREATIVE_BUDGET_UNCONFIGURED", "需配置可信模型定价、金额、请求、令牌与时间上限");
-  }
-  return { maxMicros, maxCalls, maxTokens, maxWallMs, price };
 }
 function costMicros(input: number, output: number, price: Price) {
   return Math.ceil(input * price.inputCnyPerMillion + output * price.outputCnyPerMillion);
@@ -331,6 +318,7 @@ interface SessionInput {
 interface ModelRequest {
   requestHash: string; inputChars: number; imageInputTokens?: number; maxOutputTokens: number; model: string; attempt: number;
   requestBytes: number; inputTokenEstimate: number; inputTokenUpperBound: number; inputTokenBasis: string;
+  shotId?: string;
 }
 interface ModelOutcome {
   usageKnown: boolean; success: boolean; inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
@@ -522,6 +510,7 @@ export async function createCreativeExecutionSession(input: SessionInput) {
     if (!budget || request.model !== model || !SHA.test(request.requestHash)
       || request.inputTokenBasis !== DEEPSEEK_INPUT_TOKEN_BASIS || request.requestBytes > DEEPSEEK_REQUEST_BODY_LIMIT_BYTES
       || request.requestBytes !== request.inputChars
+      || (request.shotId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(request.shotId))
       || !Number.isSafeInteger(imageInputTokens) || imageInputTokens < 0
       || ![request.requestBytes, request.inputTokenEstimate, inputLimit, outputLimit, request.attempt].every(n => Number.isSafeInteger(n) && n > 0)
       || inputLimit < request.inputTokenEstimate || request.inputTokenEstimate < imageInputTokens || outputLimit > DEEPSEEK_FLASH_MAX_OUTPUT_TOKENS
@@ -742,9 +731,22 @@ export async function createCreativeExecutionSession(input: SessionInput) {
         );
         return;
       }
+      const rawTelemetry = event.payload.telemetry && typeof event.payload.telemetry === "object"
+        ? event.payload.telemetry as Record<string, unknown> : {};
+      const telemetryNumber = (key: string) => {
+        const value = rawTelemetry[key];
+        return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+      };
       await insertCreativeArtifact(client, { scope, runId, stageId: active.id, role: "creative-event",
-        logicalId: `event:${++receiptSequence}`, revision: 1, model, metadata: { contractHash: contract.hash, kind: event.kind, shotId: event.payload.shotId ?? null,
-          sourceHash: event.payload.sourceHash ?? null, signature: event.payload.signature ?? null },
+        logicalId: `event:${++receiptSequence}`, revision: 1, model, metadata: {
+          contractHash: contract.hash, kind: event.kind, shotId: event.payload.shotId ?? null,
+          sourceHash: event.payload.sourceHash ?? null, signature: event.payload.signature ?? null,
+          ...(typeof event.payload.code === "string" ? { failureCode: event.payload.code } : {}),
+          ...(typeof rawTelemetry.outputHash === "string" && SHA.test(rawTelemetry.outputHash) ? { outputHash: rawTelemetry.outputHash } : {}),
+          ...(rawTelemetry.cacheReused === true ? { cacheReused: true } : {}),
+          ...Object.fromEntries(["technicalRetries", "repairAttempts", "semanticReviews", "elapsedMs", "promptChars", "promptBytes"]
+            .flatMap(key => telemetryNumber(key) === undefined ? [] : [[key, telemetryNumber(key)!]])),
+        },
         output: event.payload });
     });
   }

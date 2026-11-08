@@ -297,6 +297,25 @@ describe("native creative candidate structure at the actual model transport", ()
     });
   });
 
+  it("feeds a hard-invalid candidate's findings into the next planned slot", async () => {
+    await withFixture((user, index) => ({
+      value: user.candidateHash ? goodReview(user) : index === 1
+        ? { shots: [{ ...shot, fields: { 画面: "" } }] }
+        : { shots: [shot] },
+    }), async (endpoint, requests) => {
+      const result = await withCreativeBudget(budget(), () => generateCreativeAssessments({
+        contract, endpoint, count: 2, assertCurrent: async () => {},
+      }));
+      expect(requests).toHaveLength(3);
+      const secondGeneration = JSON.parse(requests[1]!.messages.at(-1)!.content);
+      expect(secondGeneration.priorHardFindings).toContainEqual(expect.objectContaining({
+        targetId: "S1", blocking: true,
+      }));
+      expect(result.rejected[0]).toMatchObject({ code: "CREATIVE_CANDIDATE_INVALID" });
+      expect(result.selected?.generation.requestId).toBe("fixture-response-2");
+    });
+  });
+
   it.each([["{UNTRUSTED-RAW-OUTPUT", "invalid_json"], ["   ", "empty_json"]])(
     "recovers a known stopped generation with one slot and safe diagnostics (%s)", async (content, code) => {
       await withFixture((user, index) => index === 1 ? { content } : ({

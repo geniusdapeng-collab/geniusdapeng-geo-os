@@ -2,7 +2,7 @@
   "repository": "https://github.com/geniusdapeng-collab/WorkLoom-video-edit",
   "commit": "a544ab8b068790bfb14b7977efc81b33897fc9de",
   "tree": "2f1a5835d4363496efd692fd4434506e28254e70",
-  "verifiedAt": "2026-11-03T20:06:45.123244+00:00",
+  "verifiedAt": "2026-11-08T12:20:00.000000+00:00",
   "license": "Apache-2.0; vendored components retain their own licenses and required authorization gates",
   "integration": "complete-contained-edit-runtime",
   "codeCopied": true,
@@ -10,7 +10,7 @@
   "sourceFileCount": 3650,
   "sourceBytes": 336706560,
   "snapshot": "upstreams/workloom-video-edit.snapshot.json",
-  "snapshotSha256": "6961335efc9987c1ae005b27345782d09dfe4a71dbf4515c95c5958bde0def69",
+  "snapshotSha256": "ff2e7b13186b2d5740f15cfece1de118c213aa7487b0c16ef4b6a449d120ed8f",
   "capabilityCatalog": "engines/video-edit/pengmanager-capabilities.json",
   "capabilities": [
     "ai-video-generation",
@@ -23,8 +23,8 @@
     "post-production-delivery"
   ],
   "validationStatus": "complete-byte-inventory-of-current-upstream-plus-reviewed-host-integration",
-  "targetOwnedFileCount": 107,
-  "sourceOverlayCount": 187,
+  "targetOwnedFileCount": 112,
+  "sourceOverlayCount": 190,
   "pendingAfterV1": [],
   "assetOverlays": [],
   "compatibilityOverlays": [],

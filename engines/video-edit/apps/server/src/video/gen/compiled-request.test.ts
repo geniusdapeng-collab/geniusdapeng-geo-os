@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ArkImageProvider, ArkVideoProvider, HiggsfieldProvider, MuapiProvider } from "./providers.js";
-import { buildRenderPrompt, canonicalRenderJson, compileProviderRequest, compileRenderRequest, validateProductionParams } from "./compiled-request.js";
+import {
+  NATIVE_VIDEO_PROMPT_MAX_CHARS,
+  PROVIDER_REQUEST_MAX_BYTES,
+  buildRenderPrompt,
+  canonicalRenderJson,
+  compileProviderRequest,
+  compileRenderRequest,
+  validateProductionParams,
+} from "./compiled-request.js";
 import { getModel } from "./catalog.js";
 
 const model = getModel("doubao-seedance-2-5")!;
@@ -29,7 +37,7 @@ describe("完整最终请求编译", () => {
   });
   it("保留完整正文与换行，不追加脚本标签；超过模型上限明确拒绝", () => {
     expect(buildRenderPrompt(script, model)).toBe(script.md);
-    const limit = model.limits?.maxPromptChars ?? 4000;
+    const limit = NATIVE_VIDEO_PROMPT_MAX_CHARS;
     expect(buildRenderPrompt({ md: "字".repeat(limit) }, model)).toHaveLength(limit);
     expect(() => buildRenderPrompt({ md: "字".repeat(limit + 1) }, model)).toThrow("PROMPT_TOO_LONG");
     expect(() => buildRenderPrompt({ md: " " }, model)).toThrow("REQUEST_INVALID");
@@ -44,6 +52,16 @@ describe("完整最终请求编译", () => {
       { params: { durationSec: 5, referenceImageUrls: ["asset://b", "asset://a"] } },
       { params: { ...input.params, watermark: true } },
     ]) expect(compileRenderRequest({ ...input, ...patch }).requestHash).not.toBe(original.requestHash);
+  });
+  it("always enforces the final native 3000-character ceiling and complete request bytes", () => {
+    expect(NATIVE_VIDEO_PROMPT_MAX_CHARS).toBe(3_000);
+    expect(buildRenderPrompt({ md: "字".repeat(3_000) }, model)).toHaveLength(3_000);
+    expect(() => buildRenderPrompt({ md: "字".repeat(3_001) }, model)).toThrow("PROMPT_TOO_LONG");
+    const huge = "a".repeat(PROVIDER_REQUEST_MAX_BYTES + 1_000);
+    expect(() => compileProviderRequest("seedance", {
+      prompt: "短提示词", estimatedUnits: 5,
+      params: { providerModel: "model/video", extra: { payload: huge } },
+    })).toThrow("REQUEST_TOO_LARGE");
   });
   it("对象顺序规范化、数组保序，__proto__ 不会消失", () => {
     expect(canonicalRenderJson({ b: 2, a: 1 })).toBe(canonicalRenderJson({ a: 1, b: 2 }));
